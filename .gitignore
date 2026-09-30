@@ -1,0 +1,7 @@
+node_modules/
+test-results/
+playwright-report/
+# npm install sırasında scripts/copy-assets.mjs ile üretilir
+public/ocr/
+public/pdfjs/
+dist/
