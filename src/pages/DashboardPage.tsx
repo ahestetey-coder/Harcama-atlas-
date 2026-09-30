@@ -29,6 +29,11 @@ export default function DashboardPage() {
   const [drawer, setDrawer] = useState<{ title: string; filter: (t: Transaction) => boolean; categoryId?: string | null; day?: number } | null>(null)
   const [budgetOpen, setBudgetOpen] = useState(false)
   const today = todayIso()
+  // Seçili ay boşsa kayıtlı en yakın ay (ör. geçen ayın ekstresi yüklendiyse)
+  const otherMonth = useMemo(() => {
+    const months = [...new Set((txs ?? []).map((t) => monthOf(t.date)))].filter((m) => m !== month).sort()
+    return months.filter((m) => m < month).pop() ?? months[0] ?? null
+  }, [txs, month])
 
   const summary = useMemo(() => (txs ? summarizeMonth(txs, month) : null), [txs, month])
   const comparison = useMemo(() => (txs ? compareWithPrevious(txs, month, addMonths(month, -1), today) : null), [txs, month, today])
@@ -85,7 +90,12 @@ export default function DashboardPage() {
             title={`${monthLabel(month)} için kayıt yok`}
             action={
               <>
-                <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
+                {otherMonth && (
+                  <Button variant="primary" onClick={() => setMonth(otherMonth)}>
+                    {monthLabel(otherMonth)} kayıtlarını göster
+                  </Button>
+                )}
+                <Button variant={otherMonth ? 'secondary' : 'primary'} icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
                   Gider ekle
                 </Button>
                 <Button icon={<FileUp className="size-4" />} onClick={() => navigate('/ice-aktar')}>

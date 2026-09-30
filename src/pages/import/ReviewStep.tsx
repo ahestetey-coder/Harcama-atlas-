@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { CategoryIcon } from '../../components/common'
 import { ConfirmDialog, Modal } from '../../components/ui/Modal'
-import { Alert, Badge, Button, Card, Checkbox, IconButton, Input, Select } from '../../components/ui/primitives'
+import { Alert, Badge, Button, Card, Checkbox, Input, Select } from '../../components/ui/primitives'
 import { OTHER_CATEGORY_ID } from '../../data/seed'
 import { formatDate, todayIso } from '../../domain/dates'
 import { formatKurus, formatKurusPlain, parseAmount } from '../../domain/money'
@@ -13,6 +13,7 @@ import { newDraftId } from '../../import/mapping'
 import type { DocLine, DraftRow, RowStatus } from '../../import/types'
 import { cn } from '../../lib/cn'
 import { useCategories, useRules, useTransactions } from '../../state/data'
+import { useUi } from '../../state/ui'
 import type { ReviewData } from './useImportFlow'
 
 const PAGE = 40
@@ -66,6 +67,30 @@ export function ReviewStep({
   useEffect(() => {
     if (page >= pages) setPage(pages - 1)
   }, [page, pages])
+
+  // Silinen satırı geri almak için güncel satırlar ve geri çağrı
+  const { toast } = useUi()
+  const latest = useRef({ rows, onRowsChange })
+  useEffect(() => {
+    latest.current = { rows, onRowsChange }
+  })
+  const removeRow = (r: DraftRow) => {
+    const index = rows.findIndex((x) => x.id === r.id)
+    onRowsChange(rows.filter((x) => x.id !== r.id))
+    toast('Satır silindi; kaydedilmeyecek.', {
+      kind: 'info',
+      action: {
+        label: 'Geri al',
+        onClick: () => {
+          const cur = latest.current.rows
+          if (cur.some((x) => x.id === r.id)) return
+          const next = [...cur]
+          next.splice(Math.min(index, next.length), 0, r)
+          latest.current.onRowsChange(next)
+        },
+      },
+    })
+  }
 
   const updateRow = (id: string, patch: Partial<DraftRow>) => {
     const next = rows.map((r) => {
@@ -225,7 +250,7 @@ export function ReviewStep({
                   activeIds={activeIds}
                   existing={existingById}
                   onChange={updateRow}
-                  onRemove={r.source.kind === 'manual-row' ? () => onRowsChange(rows.filter((x) => x.id !== r.id)) : undefined}
+                  onRemove={() => removeRow(r)}
                   onShowSource={() => {
                     const k = sourceKey(r)
                     if (k) {
@@ -389,9 +414,9 @@ const RowCard = memo(function RowCard({
           {r.source.kind === 'manual-row' ? 'Elle eklendi' : r.source.kind === 'sheet-row' ? `Satır ${r.source.line}` : `s.${r.source.page} · satır ${r.source.line}`}
         </button>
         {onRemove && (
-          <IconButton label="Satırı kaldır" size="sm" onClick={onRemove} className="hover:text-danger">
-            <Trash2 className="size-4" />
-          </IconButton>
+          <Button size="sm" variant="ghost" icon={<Trash2 className="size-4" />} onClick={onRemove} aria-label="Satırı sil" className="hover:text-danger">
+            Sil
+          </Button>
         )}
       </div>
       <p className="num mt-1.5 truncate rounded-lg bg-surface-2 px-2 py-1 font-mono text-[11.5px] text-subtle" title={r.source.text}>

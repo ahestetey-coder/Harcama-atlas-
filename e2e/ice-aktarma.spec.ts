@@ -111,3 +111,32 @@ test('Taranmış (görüntü) PDF sayfa bazında OCR ile okunur', async ({ page 
   const n = Number((await tab(page, 'Tümü').innerText()).replace(/\D/g, ''))
   expect(n).toBeGreaterThanOrEqual(10)
 })
+
+test('inceleme satırı silinir ve geri alınır; kayıttan sonra panel aktarılan ayı gösterir', async ({ page }) => {
+  // Bugün Ekim olsa bile Eylül ekstresi panelde görünmeli
+  await page.clock.setFixedTime(new Date('2026-10-01T10:00:00+03:00'))
+  await uploadImport(page, 'ornek-kart-ekstresi.csv')
+  await page.getByRole('button', { name: 'İşlemleri çıkar ve incele' }).click()
+  await expect(tab(page, 'Tümü')).toContainText('10')
+
+  const row = page.getByRole('article', { name: /SHELL ATAŞEHİR/ })
+  await row.getByRole('button', { name: 'Satırı sil' }).click()
+  await expect(row).toHaveCount(0)
+  await expect(tab(page, 'Tümü')).toContainText('9')
+  await page.getByRole('button', { name: 'Geri al' }).click()
+  await expect(row).toHaveCount(1)
+  await row.getByRole('button', { name: 'Satırı sil' }).click()
+  await expect(page.getByText(/6 işlem\s*kaydedilecek/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Onayla ve kaydet' }).click()
+  await page.getByRole('dialog', { name: '6 işlem kaydedilsin mi?' }).getByRole('button', { name: 'Kaydet', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Eylül 2026: 6 işlem' })).toBeVisible()
+  await page.getByRole('button', { name: /Panele git/ }).click()
+  await expect(page.getByRole('button', { name: /Ay seç, seçili: Eylül 2026/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /için kayıt yok/ })).toHaveCount(0)
+
+  // Boş aya geçilirse kayıtlı aya dönüş düğmesi çıkar
+  await page.getByRole('button', { name: 'Sonraki ay' }).click()
+  await page.getByRole('button', { name: 'Eylül 2026 kayıtlarını göster' }).click()
+  await expect(page.getByRole('button', { name: /Ay seç, seçili: Eylül 2026/ })).toBeVisible()
+})

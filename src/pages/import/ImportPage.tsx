@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/AppShell'
 import { Alert, Button, Card, Field, Input, Select } from '../../components/ui/primitives'
 import { IMPORT_LIMITS } from '../../config/app'
 import { toUserMessage } from '../../data/repository'
-import { formatDate } from '../../domain/dates'
+import { formatDate, monthLabel, monthOf } from '../../domain/dates'
 import { formatKurus } from '../../domain/money'
 import { PAYMENT_LABEL, type PaymentMethod } from '../../domain/types'
 import { buildCommit } from '../../import/enrich'
@@ -25,7 +25,7 @@ export default function ImportPage() {
   const { stage, info, review } = flow
   const { repo, isDemo } = useData()
   const categories = useCategories()
-  const { toast } = useUi()
+  const { toast, setMonth } = useUi()
   const navigate = useNavigate()
   const [payment, setPayment] = useState<PaymentMethod | ''>('credit')
   const [saving, setSaving] = useState(false)
@@ -51,6 +51,12 @@ export default function ImportPage() {
       })
       const res = await repo.commitImport(commit)
       if (!res.saved) toast('Bu aktarım zaten kaydedilmişti; tekrar eklenmedi.', { kind: 'info' })
+      // İşlemler hangi aylara düştü? Panel, en çok işlemin olduğu aya geçer
+      // (ekstre geçen aya aitse panel bu ayı boş gösterirdi).
+      const byMonth = new Map<string, number>()
+      for (const t of commit.transactions) byMonth.set(monthOf(t.date), (byMonth.get(monthOf(t.date)) ?? 0) + 1)
+      const months = [...byMonth].map(([month, count]) => ({ month, count })).sort((a, b) => b.count - a.count || b.month.localeCompare(a.month))
+      if (months[0]) setMonth(months[0].month)
       // Geçici veriler (dosya, satırlar) bellekten bırakılır
       flow.setReview(null)
       flow.setStage({
@@ -60,6 +66,7 @@ export default function ImportPage() {
         skipped: commit.record.skippedCount,
         expenseKurus: commit.record.totalExpenseKurus,
         refundKurus: commit.record.totalRefundKurus,
+        months,
       })
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
@@ -195,10 +202,27 @@ export default function ImportPage() {
               Gider {formatKurus(stage.expenseKurus)} · İade {formatKurus(stage.refundKurus)}
               {stage.skipped > 0 && ` · ${stage.skipped} satır kaydedilmedi`}
             </p>
+            {stage.months.length > 0 && (
+              <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label="İşlemlerin eklendiği aylar">
+                {stage.months.map((m) => (
+                  <button
+                    key={m.month}
+                    type="button"
+                    onClick={() => {
+                      setMonth(m.month)
+                      navigate('/')
+                    }}
+                    className="num rounded-full border border-line-strong px-3 py-1 text-[13px] text-muted hover:text-ink"
+                  >
+                    {monthLabel(m.month)}: {m.count} işlem
+                  </button>
+                ))}
+              </div>
+            )}
             <p className="mt-3 text-[12.5px] text-subtle">Yüklenen dosya saklanmadı; yalnızca onayladığınız işlemler kaydedildi.</p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               <Button variant="primary" onClick={() => navigate('/')}>
-                Panele git
+                {stage.months[0] ? `Panele git (${monthLabel(stage.months[0].month)})` : 'Panele git'}
               </Button>
               <Button onClick={() => navigate(`/islemler?aktarim=${stage.importId}`)}>Aktarılan işlemler</Button>
               <Button variant="ghost" icon={<FileUp className="size-4" />} onClick={flow.reset}>

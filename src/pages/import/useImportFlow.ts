@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { IMPORT_LIMITS } from '../../config/app'
-import type { ImportFileKind, ImportRecord } from '../../domain/types'
+import type { ImportFileKind, ImportRecord, MonthKey } from '../../domain/types'
 import { applyRules, markDuplicates, sha256 } from '../../import/enrich'
 import { loadImage, prepareImage, type ImageAdjustments } from '../../import/image'
 import { guessMapping, rowsFromMapping, type ColumnMapping } from '../../import/mapping'
@@ -44,7 +44,7 @@ export type Stage =
   | { k: 'mapping'; tables: SheetTable[]; sheetIndex: number; mapping: ColumnMapping; notes: string[] }
   | { k: 'image'; bitmap: ImageBitmap }
   | { k: 'review' }
-  | { k: 'done'; importId: string; count: number; skipped: number; expenseKurus: number; refundKurus: number }
+  | { k: 'done'; importId: string; count: number; skipped: number; expenseKurus: number; refundKurus: number; months: { month: MonthKey; count: number }[] }
   | { k: 'error'; message: string; canRetry: boolean }
 
 export const ACCEPT = '.pdf,.csv,.txt,.xlsx,.png,.jpg,.jpeg,application/pdf,text/csv,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
