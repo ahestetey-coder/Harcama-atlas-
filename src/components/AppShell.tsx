@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, Menu, Plus, Settings, Tags } from 'lucide-react'
+import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, Menu, Plus, Settings, Tags, Users } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -15,6 +15,7 @@ const NAV = [
   { to: '/ice-aktar', label: 'İçe aktar', icon: FileUp },
   { to: '/kategoriler', label: 'Kategoriler ve gruplar', short: 'Kategoriler', icon: Tags },
   { to: '/aktarimlar', label: 'Aktarım geçmişi', short: 'Aktarımlar', icon: History },
+  { to: '/uyeler', label: 'Üyeler ve paylaşım', short: 'Üyeler', icon: Users },
   { to: '/yedekleme', label: 'Yedekleme ve veri', short: 'Yedekleme', icon: Database },
   { to: '/ayarlar', label: 'Ayarlar', icon: Settings },
 ]
@@ -98,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
           )}
-          <p className="px-2 text-[11.5px] leading-relaxed text-subtle">Veriler yalnızca bu tarayıcıda saklanır. Cihazlar arası eşitleme yok.</p>
+          <p className="px-2 text-[11.5px] leading-relaxed text-subtle">Veriler bu tarayıcıda saklanır. Yalnızca paylaşıma açtığınız gruptaki harcamalar üyelerle eşitlenir.</p>
         </div>
       </aside>
 

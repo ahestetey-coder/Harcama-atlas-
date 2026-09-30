@@ -6,7 +6,7 @@ export type MonthKey = string
 /** gider, iade, kart ödemesi/transfer */
 export type TxType = 'expense' | 'refund' | 'transfer'
 export type PaymentMethod = 'cash' | 'debit' | 'credit'
-export type TxSource = 'manual' | 'pdf' | 'csv' | 'xlsx' | 'image' | 'demo'
+export type TxSource = 'manual' | 'pdf' | 'csv' | 'xlsx' | 'image' | 'demo' | 'shared'
 export type CategorySource = 'manual' | 'rule' | 'file' | 'confirmed-other'
 
 export interface Installment {
@@ -35,6 +35,8 @@ export interface Transaction {
   categorySource?: CategorySource
   /** Kategoriden bağımsız ikinci gruplama (ör. Bireysel, Ortak). Boşsa grupsuz. */
   groupId?: string | null
+  /** Harcamayı yapan üye. Boşsa bu cihazın sahibi ("Ben"). */
+  memberId?: string | null
   note?: string
   paymentMethod?: PaymentMethod
   accountAlias?: string
@@ -64,8 +66,24 @@ export interface SpendGroup {
   id: string
   name: string
   color: string
+  /** Bulutta paylaşılan grubun kimliği. Varsa gruptaki işlemler grup üyeleriyle eşitlenir. */
+  cloudId?: string
   archived: boolean
   order: number
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Üye: ortak gruplarda harcama yapan kişi. Her cihazın kendi üyesi ("Ben") vardır;
+ * davet bağlantısıyla katılan kişi, davet edenin verdiği kimliği alır.
+ */
+export interface Member {
+  id: string
+  name: string
+  color: string
+  /** Üyenin dahil olduğu harcama grupları. */
+  groupIds: string[]
   createdAt: string
   updatedAt: string
 }
@@ -113,6 +131,8 @@ export interface Settings {
   id: 'settings'
   monthlyBudgetKurus: number | null
   defaultPaymentMethod?: PaymentMethod
+  /** Bu cihazın sahibinin üye kimliği. */
+  selfMemberId?: string
   updatedAt: string
 }
 
@@ -135,4 +155,5 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   xlsx: 'Excel',
   image: 'Görsel',
   demo: 'Demo',
+  shared: 'Üyeden',
 }

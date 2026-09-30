@@ -195,3 +195,19 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - Bu örnekler sentetiktir ve gerçek banka uyumluluğunu kanıtlamaz.
 
 **Testler.** 91 birim testi ve 23 uçtan uca test geçti.
+
+## 9. Güncelleme (01.10.2026): üyeler ve ortak harcamalar
+
+İstek: üye eklemek, üyeyi bir gruba dahil etmek, üyenin kendi harcamasını ekleyebilmesi ve ortak harcamaların panelde toplam ve kategorilere göre görülmesi. Seçilen yöntem: bulut eşitleme.
+
+- **Nasıl çalışır:** Kullanıcının kendi açacağı ücretsiz Supabase projesi kullanılır. Bir grup “Paylaşıma aç” ile buluta bağlanır, “Üye davet et” ile 7 gün geçerli bir bağlantı üretilir. Üye bağlantıyı açıp hesap oluşturur ve gruba katılır.
+- **Ne gider:** Yalnızca paylaşılan gruptaki kendi harcamalarınız (tarih, tutar, tür, açıklama, kategori adı/simgesi/rengi, not, taksit). Diğer gruplar, grupsuz kayıtlar, belgeler ve ekstre metinleri cihazdan çıkmaz.
+- **Güvenlik:** Satır düzeyi güvenlik ve yalnızca kimlik denetleyen fonksiyonlarla yazma. Herkes yalnızca kendi işlemini değiştirebilir. Uygulamada da üyenin eklediği kayıt salt okunur gösterilir; silme ve toplu işlemler bu kayıtları atlar. Paylaşılan grup, paylaşımdan ayrılmadan silinemez.
+- **Panel:** Grup filtresinden paylaşılan grup seçilince toplam ve kategori dağılımı tüm üyelerin harcamalarını içerir. Yeni “Kişilere göre” kartı kimin ne harcadığını gösterir. İşlem listesinde ekleyen üyenin adı görünür.
+- **Kurulum:** `BULUT-KURULUM.md`.
+
+**Testler.**
+- Güvenlik kuralları yerel PostgreSQL 16 üzerinde test edildi (`npm run test:sql`): üye olmayan okuyamaz, başkasının işlemi değiştirilemez, süresi dolan davet reddedilir vb.
+- Eşitleme mantığı bellek içi sahte bulutla iki cihaz senaryosunda test edildi (`src/cloud/sync.test.ts`).
+- 104 birim testi ve 28 uçtan uca test geçti.
+- **Gerçek Supabase ile test edilmedi:** geliştirme ortamının ağı Supabase'e erişemiyor. İlk gerçek kullanımda bir sorun çıkarsa bildirin.

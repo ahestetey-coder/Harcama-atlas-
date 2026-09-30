@@ -5,6 +5,7 @@ import { AppShell } from './components/AppShell'
 import { TransactionFormHost } from './components/TransactionForm'
 import { Spinner } from './components/ui/primitives'
 import DashboardPage from './pages/DashboardPage'
+import { CloudProvider } from './state/cloud'
 import { DataProvider } from './state/data'
 import { ThemeProvider } from './state/theme'
 import { UiProvider } from './state/ui'
@@ -16,6 +17,8 @@ const CategoriesPage = lazy(() => import('./pages/CategoriesPage'))
 const ImportHistoryPage = lazy(() => import('./pages/ImportHistoryPage'))
 const BackupPage = lazy(() => import('./pages/BackupPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const MembersPage = lazy(() => import('./pages/MembersPage'))
+const JoinPage = lazy(() => import('./pages/JoinPage'))
 
 function Layout() {
   return (
@@ -56,6 +59,8 @@ const router = createHashRouter([
       { path: '/kategoriler', element: <CategoriesPage /> },
       { path: '/aktarimlar', element: <ImportHistoryPage /> },
       { path: '/yedekleme', element: <BackupPage /> },
+      { path: '/uyeler', element: <MembersPage /> },
+      { path: '/katil', element: <JoinPage /> },
       { path: '/ayarlar', element: <SettingsPage /> },
       { path: '*', element: <NotFound /> },
     ],
@@ -68,7 +73,9 @@ export default function App() {
       <ThemeProvider>
         <DataProvider>
           <UiProvider>
-            <RouterProvider router={router} />
+            <CloudProvider>
+              <RouterProvider router={router} />
+            </CloudProvider>
           </UiProvider>
         </DataProvider>
       </ThemeProvider>

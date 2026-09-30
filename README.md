@@ -2,8 +2,8 @@
 
 Aylık giderleri tarayıcıda, cihaz dışına veri göndermeden takip eden Türkçe bir web uygulaması.
 Elle gider girişi, PDF/CSV/Excel/görsel ekstre içe aktarma, kural tabanlı kategori önerisi,
-aylık özet paneli, yedekleme ve çevrimdışı kullanım içerir. Yapay zekâ servisi, bulut OCR veya
-sunucu yoktur.
+aylık özet paneli, yedekleme ve çevrimdışı kullanım içerir. Yapay zekâ servisi veya bulut OCR
+yoktur. İsteğe bağlı üye paylaşımı açılmadıkça hiçbir veri cihazdan çıkmaz.
 
 > Uygulamanın adı `src/config/app.ts` içindeki `APP_CONFIG.name` alanından gelir. Adı yalnızca
 > orada değiştirmeniz yeterlidir (sayfa başlığı, menü, PWA manifesti ve yedek dosya adları dahil).
@@ -65,6 +65,11 @@ geliştirildiği konteynerdeki yol). Kendi makinenizde `npx playwright install c
   "Ayrı işlem olarak ekle" seçer.
 - **Tema:** Açık, koyu ve sistem; seçim hatırlanır. Animasyonlar 150–250 ms ve
   `prefers-reduced-motion` desteklenir.
+- **Üyeler ve paylaşım (isteğe bağlı):** Bir grubu (ör. Ortak) paylaşıma açıp davet
+  bağlantısıyla üye eklenir. Herkes kendi harcamasını ekler; grubun toplamı, kategori dağılımı
+  ve kişilere göre dağılımı panelde görünür. Kendi Supabase projeniz gerekir; kurulum:
+  [BULUT-KURULUM.md](BULUT-KURULUM.md). Yalnızca paylaşılan gruptaki kendi harcamalarınız buluta
+  gider.
 - **Demo modu:** Ayrı bir IndexedDB veritabanı kullanır; gerçek verilerle karışmaz.
 - **Çevrimdışı:** PWA. Uygulama kabuğu önbelleğe alınır; OCR ve PDF dosyaları ilk
   kullanımda (veya Ayarlar'dan tek tıkla) önbelleğe alınır ve durumları Ayarlar'da gösterilir.
@@ -108,9 +113,14 @@ doğrulanmadı"). Okunamayan belgelerde ham metin gösterilir ve satırlar elle 
 
 ## Veri, gizlilik ve yedekleme
 
-- Finansal veriler yalnızca bu tarayıcının **IndexedDB** alanında tutulur (Dexie, sürümlü şema
-  ve geçişler). `localStorage` yalnızca tema ve demo modu tercihi için kullanılır.
-- **Eşitleme yoktur.** Başka cihazda verileriniz görünmez.
+- Finansal veriler bu tarayıcının **IndexedDB** alanında tutulur (Dexie, sürümlü şema ve
+  geçişler). `localStorage` tema ve demo modu tercihi ile (paylaşım açıldıysa) Supabase oturum
+  anahtarı için kullanılır.
+- **Eşitleme yalnızca paylaşılan gruplar içindir.** Paylaşım açılmadıkça hiçbir şey cihazdan
+  çıkmaz. Açıldığında yalnızca o gruptaki kendi harcamalarınız (tarih, tutar, tür, açıklama,
+  kategori adı, not, taksit) sizin Supabase projenize gönderilir; belgeler, diğer gruplar ve
+  grupsuz kayıtlar gönderilmez. Erişim kuralları veritabanında (RLS) zorlanır:
+  `supabase/schema.sql`, testleri `npm run test:sql`.
 - Tarayıcı verilerini temizlemek, gizli pencere kullanmak veya tarayıcıyı kaldırmak kayıtları
   kalıcı olarak silebilir. Yedekleme ekranı bunu açıkça söyler ve kalıcı depolama izni
   isteyebilir.
@@ -199,4 +209,6 @@ boyutunu ve çevrimdışı önbellekte olup olmadığını gösterir.
 - OCR doğruluğu görüntü kalitesine bağlıdır ve düşük çözünürlüklü görsellerde tutarlar
   eksik okunabilir (bu durumda satır sorunlu olarak gelir).
 - Döviz işlemleri için kur dönüşümü yapılmaz; TL karşılığını elle girmeniz gerekir.
-- Veriler cihazlar arasında eşitlenmez.
+- Yalnızca paylaşılan gruplar eşitlenir; kişisel veriler cihazlar arasında eşitlenmez.
+- Paylaşım özelliği gerçek bir Supabase projesine karşı geliştirme ortamından denenemedi
+  (ayrıntı: BULUT-KURULUM.md, “Sınırlar”).

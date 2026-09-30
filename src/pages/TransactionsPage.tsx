@@ -116,7 +116,12 @@ export default function TransactionsPage() {
     try {
       const removed = await repo.deleteTransactions(ids)
       setSelected(new Set())
-      toast(ids.length === 1 ? 'İşlem silindi.' : `${removed.length} işlem silindi.`, {
+      const skipped = ids.length - removed.length
+      if (!removed.length) {
+        toast('Seçilenler grup üyelerinin harcamaları; yalnızca ekleyen silebilir.', { kind: 'info' })
+        return
+      }
+      toast((ids.length === 1 ? 'İşlem silindi.' : `${removed.length} işlem silindi.`) + (skipped ? ` Üyelerin eklediği ${skipped} işlem atlandı.` : ''), {
         action: {
           label: 'Geri al',
           onClick: async () => {
@@ -142,7 +147,7 @@ export default function TransactionsPage() {
     setBusy(true)
     try {
       const n = await repo.bulkSetCategory([...selected], bulkCat)
-      toast(`${n} işlemin kategorisi “${catMap.get(bulkCat)?.name}” yapıldı.`)
+      toast(`${n} işlemin kategorisi “${catMap.get(bulkCat)?.name}” yapıldı.` + skippedNote(selected.size - n))
       setSelected(new Set())
       setBulkCatOpen(false)
     } catch (e) {
@@ -156,7 +161,7 @@ export default function TransactionsPage() {
     setBusy(true)
     try {
       const n = await repo.bulkSetGroup([...selected], bulkGroup || null)
-      toast(bulkGroup ? `${n} işlem “${groupMap.get(bulkGroup)?.name}” grubuna alındı.` : `${n} işlemin grubu kaldırıldı.`)
+      toast((bulkGroup ? `${n} işlem “${groupMap.get(bulkGroup)?.name}” grubuna alındı.` : `${n} işlemin grubu kaldırıldı.`) + skippedNote(selected.size - n))
       setSelected(new Set())
       setBulkGroupOpen(false)
     } catch (e) {
@@ -459,4 +464,8 @@ export default function TransactionsPage() {
       </ConfirmDialog>
     </div>
   )
+}
+
+function skippedNote(n: number): string {
+  return n > 0 ? ` Üyelerin eklediği ${n} işlem değiştirilmedi.` : ''
 }

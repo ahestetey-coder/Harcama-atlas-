@@ -1,5 +1,5 @@
 import { PRIORITY } from '../domain/rules'
-import type { Category, Rule, RuleMatchMode, SpendGroup } from '../domain/types'
+import type { Category, Member, Rule, RuleMatchMode, SpendGroup } from '../domain/types'
 
 export const OTHER_CATEGORY_ID = 'cat-diger'
 
@@ -29,6 +29,11 @@ export const DEFAULT_GROUPS: Pick<SpendGroup, 'id' | 'name' | 'color'>[] = [
 
 export function buildDefaultGroups(now: string): SpendGroup[] {
   return DEFAULT_GROUPS.map((g, i) => ({ ...g, archived: false, order: i, createdAt: now, updatedAt: now }))
+}
+
+/** Bu cihazın sahibi. Kimliği rastgeledir; davetle katılınca davet edenin verdiği kimliğe geçer. */
+export function buildSelfMember(now: string, name = 'Ben'): Member {
+  return { id: crypto.randomUUID(), name, color: '#0f766e', groupIds: DEFAULT_GROUPS.map((g) => g.id), createdAt: now, updatedAt: now }
 }
 
 type SeedRule = [pattern: string, categoryId: string, mode?: RuleMatchMode]

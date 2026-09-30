@@ -1,16 +1,17 @@
-import { Lightbulb } from 'lucide-react'
+import { Cloud, Lightbulb, Lock } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { hasErrors, type TxFieldErrors } from '../data/validation'
-import { toUserMessage } from '../data/repository'
-import { isIsoDate, todayIso, monthOf } from '../domain/dates'
+import { SHARED_READONLY, toUserMessage } from '../data/repository'
+import { formatDate, isIsoDate, todayIso, monthOf } from '../domain/dates'
 import { formatKurusPlain, parseUserAmount } from '../domain/money'
 import { merchantKey, normalizeText } from '../domain/normalize'
 import { evaluateRules } from '../domain/rules'
 import { PAYMENT_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Transaction, type TxType } from '../domain/types'
-import { useCategories, useGroups, useRepo, useRules, useSettings } from '../state/data'
+import { useMembers } from '../state/cloud'
+import { useCategories, useCategoryMap, useGroupMap, useGroups, useRepo, useRules, useSettings } from '../state/data'
 import { useUi } from '../state/ui'
 import { cn } from '../lib/cn'
-import { CategoryIcon, GroupPicker } from './common'
+import { CategoryIcon, GroupBadge, GroupPicker, Money } from './common'
 import { Modal } from './ui/Modal'
 import { Button, Checkbox, Field, Input, Segmented, Select, Textarea } from './ui/primitives'
 
@@ -51,12 +52,16 @@ export function TransactionFormHost() {
     <Modal
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
-      title={formState.tx ? 'İşlemi düzenle' : 'Gider ekle'}
-      description={formState.tx ? undefined : 'Kategorisini siz seçersiniz; kayıt yalnızca bu cihazda tutulur.'}
+      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx ? 'İşlemi düzenle' : 'Gider ekle'}
+      description={formState.tx ? undefined : 'Kategorisini siz seçersiniz. Paylaşılan bir gruba eklemediğiniz sürece kayıt yalnızca bu cihazda tutulur.'}
       size="md"
       side
     >
-      <TransactionForm key={formState.tx?.id ?? 'new'} tx={formState.tx} onDone={closeTransactionForm} />
+      {formState.tx?.source === 'shared' ? (
+        <SharedTxView tx={formState.tx} />
+      ) : (
+        <TransactionForm key={formState.tx?.id ?? 'new'} tx={formState.tx} onDone={closeTransactionForm} />
+      )}
     </Modal>
   )
 }
@@ -229,6 +234,11 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
       {activeGroups.length > 0 && (
         <Field label="Harcama grubu" optional hint="Kategoriden ayrı bir gruplama; panelde bu gruba göre filtreleyebilirsiniz.">
           <GroupPicker groups={activeGroups} value={s.groupId} onChange={(v) => set('groupId', v)} />
+          {activeGroups.find((g) => g.id === s.groupId)?.cloudId && (
+            <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-medium text-accent">
+              <Cloud className="size-3.5" /> Bu harcama grup üyeleriyle paylaşılır.
+            </p>
+          )}
         </Field>
       )}
 
@@ -282,5 +292,50 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
         </Button>
       </div>
     </form>
+  )
+}
+
+/** Başka bir üyenin eklediği harcama: yalnızca görüntülenir. */
+function SharedTxView({ tx }: { tx: Transaction }) {
+  const { map } = useMembers()
+  const cat = useCategoryMap().get(tx.categoryId ?? '')
+  const group = useGroupMap().get(tx.groupId ?? '')
+  const member = tx.memberId ? map.get(tx.memberId) : undefined
+  return (
+    <div className="flex flex-col gap-4 pt-1">
+      <p className="flex items-start gap-2 rounded-2xl border border-line bg-surface-2 p-3 text-sm text-muted">
+        <Lock className="mt-0.5 size-4 shrink-0" /> {SHARED_READONLY}
+      </p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
+        <dt className="text-muted">Ekleyen</dt>
+        <dd className="font-medium text-ink">{member?.name ?? 'Grup üyesi'}</dd>
+        <dt className="text-muted">Tutar</dt>
+        <dd>
+          <Money kurus={tx.amountKurus} type={tx.type} />
+        </dd>
+        <dt className="text-muted">Tarih</dt>
+        <dd className="text-ink">{formatDate(tx.date, 'long')}</dd>
+        <dt className="text-muted">Açıklama</dt>
+        <dd className="break-words text-ink">{tx.description}</dd>
+        <dt className="text-muted">Kategori</dt>
+        <dd className="flex items-center gap-2 text-ink">
+          {cat ? (
+            <>
+              <CategoryIcon category={cat} size="sm" /> {cat.name}
+            </>
+          ) : (
+            'Kategorisiz'
+          )}
+        </dd>
+        <dt className="text-muted">Grup</dt>
+        <dd>{group ? <GroupBadge group={group} /> : '—'}</dd>
+        {tx.note && (
+          <>
+            <dt className="text-muted">Not</dt>
+            <dd className="break-words text-ink">{tx.note}</dd>
+          </>
+        )}
+      </dl>
+    </div>
   )
 }

@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { normalizeText } from '../domain/normalize'
-import type { Category, ImportRecord, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
-import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, RULES_BEFORE_V3 } from './seed'
+import type { Category, ImportRecord, Member, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
+import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, buildSelfMember, RULES_BEFORE_V3 } from './seed'
 
 export interface MetaEntry {
   key: string
@@ -12,6 +12,7 @@ export type AtlasDb = Dexie & {
   transactions: EntityTable<Transaction, 'id'>
   categories: EntityTable<Category, 'id'>
   groups: EntityTable<SpendGroup, 'id'>
+  members: EntityTable<Member, 'id'>
   rules: EntityTable<Rule, 'id'>
   imports: EntityTable<ImportRecord, 'id'>
   settings: EntityTable<Settings, 'id'>
@@ -27,7 +28,7 @@ export const DEMO_DB_NAME = 'harcama-atlasi-demo'
  *  2. Gerekirse `.upgrade()` ile mevcut kayıtları dönüştürün.
  *  3. `CURRENT_SCHEMA_VERSION` değerini artırın; yedek dosyaları bu değeri taşır.
  */
-export const CURRENT_SCHEMA_VERSION = 4
+export const CURRENT_SCHEMA_VERSION = 5
 
 export function createDb(name: string): AtlasDb {
   const db = new Dexie(name) as AtlasDb
@@ -75,12 +76,28 @@ export function createDb(name: string): AtlasDb {
       await tx.table('groups').bulkAdd(buildDefaultGroups(new Date().toISOString()))
     })
 
+  // v5: üyeler ve "kim harcadı". Cihaz sahibi için "Ben" üyesi oluşturulur.
+  db.version(5)
+    .stores({
+      transactions: 'id, date, type, categoryId, groupId, memberId, source, importId, amountKurus, normalizedDescription, accountAlias, [date+amountKurus]',
+      members: 'id',
+    })
+    .upgrade(async (tx) => {
+      const now = new Date().toISOString()
+      const self = buildSelfMember(now)
+      await tx.table('members').add(self)
+      const s = (await tx.table('settings').get('settings')) as Settings | undefined
+      await tx.table('settings').put({ ...(s ?? { id: 'settings', monthlyBudgetKurus: null }), selfMemberId: self.id, updatedAt: now })
+    })
+
   db.on('populate', async (tx) => {
     const now = new Date().toISOString()
+    const self = buildSelfMember(now)
     await tx.table('categories').bulkAdd(buildDefaultCategories(now))
     await tx.table('groups').bulkAdd(buildDefaultGroups(now))
+    await tx.table('members').add(self)
     await tx.table('rules').bulkAdd(buildDefaultRules(now))
-    await tx.table('settings').add({ id: 'settings', monthlyBudgetKurus: null, updatedAt: now } satisfies Settings)
+    await tx.table('settings').add({ id: 'settings', monthlyBudgetKurus: null, selfMemberId: self.id, updatedAt: now } satisfies Settings)
   })
 
   return db

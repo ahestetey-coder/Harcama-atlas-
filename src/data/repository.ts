@@ -2,10 +2,10 @@ import Dexie from 'dexie'
 import { APP_CONFIG } from '../config/app'
 import { merchantKey, normalizeText, cleanDescription } from '../domain/normalize'
 import { PRIORITY, validateRulePattern } from '../domain/rules'
-import type { Category, ImportRecord, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
+import type { Category, ImportRecord, Member, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from './backup'
 import { CURRENT_SCHEMA_VERSION, type AtlasDb } from './db'
-import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, OTHER_CATEGORY_ID } from './seed'
+import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, buildSelfMember, OTHER_CATEGORY_ID } from './seed'
 import { hasErrors, validateTransaction } from './validation'
 
 export function newId(): string {
@@ -14,6 +14,7 @@ export function newId(): string {
 
 const nowIso = () => new Date().toISOString()
 
+export const SHARED_READONLY = 'Bu harcamayı grup üyesi ekledi; yalnızca o değiştirebilir veya silebilir.'
 export class UserFacingError extends Error {
   constructor(message: string) {
     super(message)
@@ -42,6 +43,7 @@ export interface TransactionInput {
   description: string
   categoryId: string | null
   groupId?: string | null
+  memberId?: string | null
   note?: string
   paymentMethod?: Transaction['paymentMethod']
   accountAlias?: string
@@ -109,6 +111,7 @@ export class AtlasRepository {
       categoryId: input.type === 'transfer' ? (input.categoryId ?? null) : input.categoryId,
       categorySource: input.categorySource ?? 'manual',
       groupId: input.groupId || null,
+      memberId: input.memberId,
       note: input.note?.trim() || undefined,
       paymentMethod: input.paymentMethod,
       accountAlias: input.accountAlias?.trim() || undefined,
@@ -123,6 +126,8 @@ export class AtlasRepository {
 
   async addTransaction(input: TransactionInput, learn?: LearnRuleRequest): Promise<Transaction> {
     const tx = this.buildTransaction(input, this.isDemo ? 'demo' : 'manual')
+    // "Kim harcadı" belirtilmezse cihazın sahibi
+    if (tx.memberId === undefined) tx.memberId = (await this.getSettings()).selfMemberId ?? null
     const errors = validateTransaction(tx, await this.categoryIdSet())
     if (hasErrors(errors)) throw new UserFacingError(Object.values(errors)[0]!)
     await this.assertGroup(tx.groupId)
@@ -136,6 +141,7 @@ export class AtlasRepository {
   async updateTransaction(id: string, input: TransactionInput, learn?: LearnRuleRequest): Promise<void> {
     const existing = await this.db.transactions.get(id)
     if (!existing) throw new UserFacingError('İşlem bulunamadı; silinmiş olabilir.')
+    if (existing.source === 'shared') throw new UserFacingError(SHARED_READONLY)
     const description = cleanDescription(input.description)
     const updated: Transaction = {
       ...existing,
@@ -162,11 +168,11 @@ export class AtlasRepository {
     })
   }
 
-  /** Siler ve geri alma için silinen kayıtları döndürür. */
+  /** Siler ve geri alma için silinen kayıtları döndürür. Üyelerden gelen kayıtlar silinmez. */
   async deleteTransactions(ids: string[]): Promise<Transaction[]> {
     return this.db.transaction('rw', this.db.transactions, async () => {
-      const found = (await this.db.transactions.bulkGet(ids)).filter((t): t is Transaction => !!t)
-      await this.db.transactions.bulkDelete(ids)
+      const found = (await this.db.transactions.bulkGet(ids)).filter((t): t is Transaction => !!t && t.source !== 'shared')
+      await this.db.transactions.bulkDelete(found.map((t) => t.id))
       return found
     })
   }
@@ -181,6 +187,7 @@ export class AtlasRepository {
     return this.db.transactions
       .where('id')
       .anyOf(ids)
+      .filter((t) => t.source !== 'shared')
       .modify((t) => {
         t.categoryId = categoryId
         t.categorySource = 'manual'
@@ -195,6 +202,7 @@ export class AtlasRepository {
     return this.db.transactions
       .where('id')
       .anyOf(ids)
+      .filter((t) => t.source !== 'shared')
       .modify((t) => {
         t.groupId = groupId
         t.updatedAt = now
@@ -244,6 +252,7 @@ export class AtlasRepository {
 
   /** Grubu siler; o gruptaki işlemler silinmez, grupsuz kalır. */
   async deleteGroup(id: string): Promise<number> {
+    if ((await this.db.groups.get(id))?.cloudId) throw new UserFacingError('Bu grup üyelerle paylaşılıyor. Silmeden önce Üyeler sayfasından paylaşımdan ayrılın.')
     return this.db.transaction('rw', this.db.groups, this.db.transactions, async () => {
       const now = nowIso()
       const n = await this.db.transactions
@@ -458,7 +467,7 @@ export class AtlasRepository {
   // ---------- Yedekleme ----------
 
   async exportBackup(): Promise<Backup> {
-    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.rules, this.db.imports, this.db.settings], async () => ({
+    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings], async () => ({
       format: BACKUP_FORMAT,
       backupVersion: BACKUP_VERSION,
       schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -468,6 +477,7 @@ export class AtlasRepository {
         transactions: await this.db.transactions.toArray(),
         categories: await this.db.categories.toArray(),
         groups: await this.db.groups.toArray(),
+        members: await this.db.members.toArray(),
         rules: await this.db.rules.toArray(),
         imports: await this.db.imports.toArray(),
         settings: (await this.db.settings.get('settings')) ?? null,
@@ -492,8 +502,11 @@ export class AtlasRepository {
    */
   async restoreBackup(backup: Backup, mode: RestoreMode): Promise<RestoreReport> {
     const d = backup.data
-    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.rules, this.db.imports, this.db.settings]
+    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings]
     return this.db.transaction('rw', tables, async () => {
+      // Cihazın kendi üye kimliği korunur (bulut hesabı bu cihaza bağlıdır)
+      const cur = await this.getSettings()
+      const selfBefore = cur.selfMemberId ? await this.db.members.get(cur.selfMemberId) : undefined
       const report: RestoreReport = {
         mode,
         added: { transactions: 0, categories: 0, groups: 0, rules: 0, imports: 0 },
@@ -512,7 +525,10 @@ export class AtlasRepository {
         await this.db.rules.bulkAdd(d.rules)
         await this.db.imports.bulkAdd(d.imports)
         await this.db.transactions.bulkAdd(d.transactions)
-        await this.db.settings.put(d.settings ?? { id: 'settings', monthlyBudgetKurus: null, updatedAt: nowIso() })
+        const members: Member[] = d.members ?? []
+        if (members.length) await this.db.members.bulkPut(members)
+        if (selfBefore) await this.db.members.put(selfBefore)
+        await this.db.settings.put({ ...(d.settings ?? { id: 'settings', monthlyBudgetKurus: null }), selfMemberId: cur.selfMemberId, updatedAt: nowIso() })
         report.added = { transactions: d.transactions.length, categories: d.categories.length, groups: groups.length, rules: d.rules.length, imports: d.imports.length }
         return report
       }
@@ -525,6 +541,10 @@ export class AtlasRepository {
       }
       await mergeTable(this.db.categories as unknown as Dexie.Table<Category, string>, d.categories, 'categories')
       if (d.groups) await mergeTable(this.db.groups as unknown as Dexie.Table<SpendGroup, string>, d.groups, 'groups')
+      if (d.members) {
+        const existing = new Set((await this.db.members.bulkGet(d.members.map((m) => m.id))).filter(Boolean).map((m) => m!.id))
+        await this.db.members.bulkAdd(d.members.filter((m) => !existing.has(m.id)))
+      }
       await mergeTable(this.db.rules as unknown as Dexie.Table<Rule, string>, d.rules, 'rules')
       await mergeTable(this.db.imports as unknown as Dexie.Table<ImportRecord, string>, d.imports, 'imports')
       await mergeTable(this.db.transactions as unknown as Dexie.Table<Transaction, string>, d.transactions, 'transactions')
@@ -534,14 +554,21 @@ export class AtlasRepository {
 
   /** Bütün verileri siler ve başlangıç kategorileri/kurallarıyla yeniden başlatır. */
   async clearAll(): Promise<void> {
-    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.rules, this.db.imports, this.db.settings]
+    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.meta]
     await this.db.transaction('rw', tables, async () => {
+      const cur = await this.getSettings()
+      const selfBefore = cur.selfMemberId ? await this.db.members.get(cur.selfMemberId) : undefined
+      const cloudConfig = await this.db.meta.get('cloud-config')
       await Promise.all(tables.map((t) => t.clear()))
       const now = nowIso()
+      // Cihaz sahibi ve bulut bağlantı ayarı korunur; paylaşılan grup bağlantıları silinir.
+      const self = selfBefore ? { ...selfBefore, groupIds: buildDefaultGroups(now).map((g) => g.id), updatedAt: now } : buildSelfMember(now)
+      await this.db.members.put(self)
+      if (cloudConfig) await this.db.meta.put(cloudConfig)
       await this.db.categories.bulkAdd(buildDefaultCategories(now))
       await this.db.groups.bulkAdd(buildDefaultGroups(now))
       await this.db.rules.bulkAdd(buildDefaultRules(now))
-      await this.db.settings.put({ id: 'settings', monthlyBudgetKurus: null, updatedAt: now })
+      await this.db.settings.put({ id: 'settings', monthlyBudgetKurus: null, selfMemberId: self.id, updatedAt: now })
     })
   }
 }

@@ -12,9 +12,10 @@ import { toUserMessage } from '../data/repository'
 import { addMonths, currentMonth, dayOf, daysInMonth, formatDate, MONTH_NAMES, monthLabel, monthOf, parseMonthKey, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { compareWithPrevious, summarizeMonth, type CategoryTotal } from '../domain/summary'
-import type { SpendGroup, Transaction } from '../domain/types'
+import type { Member, SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
+import { useMembers } from '../state/cloud'
 import { useUi } from '../state/ui'
 
 const MAX_SLICES = 7
@@ -45,6 +46,8 @@ export default function DashboardPage() {
   const monthTxs = useMemo(() => (txs ?? []).filter((t) => monthOf(t.date) === month), [txs, month])
   const groupRows = useMemo(() => groupBreakdown(allTxs ?? [], month, groups ?? []), [allTxs, month, groups])
   const filterName = groupFilter === 'none' ? 'Grupsuz' : groupFilter ? groupMap.get(groupFilter)?.name : undefined
+  const { map: memberMap, selfId } = useMembers()
+  const personRows = useMemo(() => personBreakdown(monthTxs, memberMap, selfId), [monthTxs, memberMap, selfId])
   const allMonthCount = useMemo(() => (allTxs ?? []).filter((t) => monthOf(t.date) === month).length, [allTxs, month])
 
   const slices: DonutSlice[] = useMemo(() => {
@@ -266,6 +269,28 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <GroupTable rows={groupRows} selected={groupFilter} onSelect={(id) => setGroupFilter(groupFilter === id ? '' : id)} />
+            </Card>
+          )}
+
+          {/* Kişilere göre: paylaşılan gruplarda kim ne harcadı */}
+          {personRows.length > 1 && (
+            <Card className="p-5 lg:col-span-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="font-display text-base font-semibold">Kişilere göre{filterName ? ` · ${filterName}` : ''}</h2>
+                <Link to="/uyeler" className="text-[13px] font-medium text-accent hover:underline">
+                  Üyeler
+                </Link>
+              </div>
+              <GroupTable
+                rows={personRows}
+                selected=""
+                actionLabel="Harcamalarını göster"
+                footer="Net = gider − iade. Bir kişiye dokunursanız bu aydaki harcamaları açılır."
+                onSelect={(id) => {
+                  const r = personRows.find((x) => x.id === id)
+                  setDrawer({ title: r?.name ?? '', filter: (t) => (t.memberId ?? selfId ?? 'self') === id })
+                }}
+              />
             </Card>
           )}
         </div>
@@ -503,7 +528,39 @@ function groupBreakdown(txs: Transaction[], month: string, groups: SpendGroup[])
   return [...rows.values()].filter((r) => r.count > 0 || (r.id !== 'none' && !archived.has(r.id)))
 }
 
-function GroupTable({ rows, selected, onSelect }: { rows: GroupRow[]; selected: string; onSelect: (id: string) => void }) {
+/** Seçili ay ve gruptaki işlemlerin kişilere dağılımı. Üye bilgisi olmayan kayıtlar cihaz sahibinindir. */
+function personBreakdown(txs: Transaction[], members: Map<string, Member>, selfId: string | null): GroupRow[] {
+  const rows = new Map<string, GroupRow>()
+  for (const t of txs) {
+    if (t.type === 'transfer') continue
+    const id = t.memberId ?? selfId ?? 'self'
+    let r = rows.get(id)
+    if (!r) {
+      const m = members.get(id)
+      r = { id, name: m?.name ?? 'Grup üyesi', color: m?.color ?? '#94a3b8', expenseKurus: 0, refundKurus: 0, count: 0 }
+      if (id === selfId && (!m || m.name === 'Ben')) r.name = 'Siz'
+      rows.set(id, r)
+    }
+    r.count++
+    if (t.type === 'expense') r.expenseKurus += t.amountKurus
+    else r.refundKurus += t.amountKurus
+  }
+  return [...rows.values()].sort((a, b) => b.expenseKurus - b.refundKurus - (a.expenseKurus - a.refundKurus))
+}
+
+function GroupTable({
+  rows,
+  selected,
+  onSelect,
+  actionLabel = 'Paneli bu gruba göre filtrele',
+  footer = 'Net = gider − iade. Bir gruba dokunursanız bütün panel o gruba göre gösterilir.',
+}: {
+  rows: GroupRow[]
+  selected: string
+  onSelect: (id: string) => void
+  actionLabel?: string
+  footer?: string
+}) {
   const total = rows.reduce((s, r) => s + r.expenseKurus - r.refundKurus, 0)
   return (
     <ul className="flex flex-col gap-1">
@@ -516,7 +573,7 @@ function GroupTable({ rows, selected, onSelect }: { rows: GroupRow[]; selected: 
               type="button"
               onClick={() => onSelect(r.id)}
               aria-pressed={selected === r.id}
-              aria-label={`${r.name}: net ${formatKurus(net)}, ${r.count} işlem. Paneli bu gruba göre filtrele`}
+              aria-label={`${r.name}: net ${formatKurus(net)}, ${r.count} işlem. ${actionLabel}`}
               className={cn('w-full rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-2', selected === r.id && 'bg-surface-2 ring-1 ring-line-strong')}
             >
               <div className="flex items-center gap-2 text-[13.5px]">
@@ -532,7 +589,7 @@ function GroupTable({ rows, selected, onSelect }: { rows: GroupRow[]; selected: 
           </li>
         )
       })}
-      <li className="px-2 pt-1 text-[12px] text-subtle">Net = gider − iade. Bir gruba dokunursanız bütün panel o gruba göre gösterilir.</li>
+      <li className="px-2 pt-1 text-[12px] text-subtle">{footer}</li>
     </ul>
   )
 }

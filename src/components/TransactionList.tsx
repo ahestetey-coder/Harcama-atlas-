@@ -3,8 +3,9 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { formatDate } from '../domain/dates'
 import { formatKurus } from '../domain/money'
-import { PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type Category, type SpendGroup, type Transaction } from '../domain/types'
+import { PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type Category, type Member, type SpendGroup, type Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
+import { useMembers } from '../state/cloud'
 import { useGroupMap } from '../state/data'
 import { useUi } from '../state/ui'
 import { CategoryIcon, GroupBadge, Money, TransferIcon } from './common'
@@ -24,9 +25,15 @@ interface Props {
   limit?: number
 }
 
-function TxMeta({ t, group }: { t: Transaction; group?: SpendGroup }) {
+function TxMeta({ t, group, member }: { t: Transaction; group?: SpendGroup; member?: Member }) {
   return (
     <>
+      {member && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[11.5px] font-medium text-muted" title={`${member.name} ekledi`}>
+          <span className="size-2 rounded-full" style={{ background: member.color }} aria-hidden />
+          {member.name}
+        </span>
+      )}
       <GroupBadge group={group} />
       {t.type !== 'expense' && <Badge tone={t.type === 'refund' ? 'accent' : 'neutral'}>{TX_TYPE_LABEL[t.type]}</Badge>}
       {t.installment && (
@@ -39,7 +46,7 @@ function TxMeta({ t, group }: { t: Transaction; group?: SpendGroup }) {
           {(t.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {t.foreign.currency}
         </Badge>
       )}
-      {t.source !== 'manual' && t.source !== 'demo' && <Badge>{SOURCE_LABEL[t.source]}</Badge>}
+      {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge>{SOURCE_LABEL[t.source]}</Badge>}
     </>
   )
 }
@@ -47,6 +54,8 @@ function TxMeta({ t, group }: { t: Transaction; group?: SpendGroup }) {
 export function TransactionList({ transactions, categories, selectable, selected, onToggle, onToggleAll, onEdit, onDelete, compact, limit = 500 }: Props) {
   const { highlightId, setHighlightId } = useUi()
   const groups = useGroupMap()
+  const { map: members, selfId } = useMembers()
+  const memberOf = (t: Transaction) => (t.memberId && t.memberId !== selfId ? members.get(t.memberId) : undefined)
   const shown = transactions.slice(0, limit)
   const allSelected = selectable && shown.length > 0 && shown.every((t) => selected?.has(t.id))
   const flashRef = useRef<string | null>(null)
@@ -108,7 +117,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                         {t.description}
                       </div>
                       <div className="mt-0.5 flex flex-wrap gap-1 empty:hidden">
-                        <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} />
+                        <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} />
                       </div>
                     </td>
                     <td className="border-b border-line py-2.5 pl-3">
@@ -136,7 +145,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                               <Pencil className="size-4" />
                             </IconButton>
                           )}
-                          {onDelete && (
+                          {onDelete && t.source !== 'shared' && (
                             <IconButton label={`${t.description} sil`} size="sm" onClick={() => onDelete(t)} className="hover:text-danger">
                               <Trash2 className="size-4" />
                             </IconButton>
@@ -183,13 +192,13 @@ export function TransactionList({ transactions, categories, selectable, selected
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-subtle">
                       <span className="num whitespace-nowrap">{formatDate(t.date)}</span>
                       <span className={cn('whitespace-nowrap font-medium', cat || t.type === 'transfer' ? 'text-muted' : 'text-warning')}>{cat?.name ?? (t.type === 'transfer' ? 'Transfer' : 'Kategorisiz')}</span>
-                      <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} />
+                      <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} />
                     </div>
                   </button>
                   <div className="shrink-0 text-right text-[14px] font-semibold">
                     <Money kurus={t.amountKurus} type={t.type} />
                   </div>
-                  {onDelete && !compact && (
+                  {onDelete && !compact && t.source !== 'shared' && (
                     <IconButton label={`${t.description} sil`} size="sm" onClick={() => onDelete(t)} className="-mr-1 hover:text-danger">
                       <Trash2 className="size-4" />
                     </IconButton>

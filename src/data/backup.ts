@@ -21,11 +21,12 @@ const transactionSchema = z.object({
   normalizedDescription: z.string(),
   categoryId: z.string().nullable(),
   groupId: z.string().nullable().optional(),
+  memberId: z.string().nullable().optional(),
   categorySource: z.enum(['manual', 'rule', 'file', 'confirmed-other']).optional(),
   note: z.string().optional(),
   paymentMethod: z.enum(['cash', 'debit', 'credit']).optional(),
   accountAlias: z.string().optional(),
-  source: z.enum(['manual', 'pdf', 'csv', 'xlsx', 'image', 'demo']),
+  source: z.enum(['manual', 'pdf', 'csv', 'xlsx', 'image', 'demo', 'shared']),
   importId: z.string().optional(),
   installment: z.object({ current: z.number().int(), total: z.number().int(), purchaseTotalKurus: kurus.optional() }).optional(),
   foreign: z.object({ currency: z.string(), amountMinor: z.number().int() }).optional(),
@@ -49,8 +50,18 @@ const groupSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   color: z.string(),
+  cloudId: z.string().optional(),
   archived: z.boolean(),
   order: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+const memberSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  color: z.string(),
+  groupIds: z.array(z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -88,6 +99,7 @@ const settingsSchema = z.object({
   id: z.literal('settings'),
   monthlyBudgetKurus: kurus.nullable(),
   defaultPaymentMethod: z.enum(['cash', 'debit', 'credit']).optional(),
+  selfMemberId: z.string().optional(),
   updatedAt: z.string(),
 })
 
@@ -102,6 +114,8 @@ export const backupSchema = z.object({
     categories: z.array(categorySchema).min(1),
     /** v4 öncesi yedeklerde yoktur. */
     groups: z.array(groupSchema).optional(),
+    /** v5 öncesi yedeklerde yoktur. */
+    members: z.array(memberSchema).optional(),
     rules: z.array(ruleSchema),
     imports: z.array(importSchema),
     settings: settingsSchema.nullable(),
