@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { normalizeText } from '../domain/normalize'
 import type { Category, ImportRecord, Rule, Settings, Transaction } from '../domain/types'
-import { buildDefaultCategories, buildDefaultRules } from './seed'
+import { buildDefaultCategories, buildDefaultRules, RULES_BEFORE_V3 } from './seed'
 
 export interface MetaEntry {
   key: string
@@ -26,7 +26,7 @@ export const DEMO_DB_NAME = 'harcama-atlasi-demo'
  *  2. Gerekirse `.upgrade()` ile mevcut kayıtları dönüştürün.
  *  3. `CURRENT_SCHEMA_VERSION` değerini artırın; yedek dosyaları bu değeri taşır.
  */
-export const CURRENT_SCHEMA_VERSION = 2
+export const CURRENT_SCHEMA_VERSION = 3
 
 export function createDb(name: string): AtlasDb {
   const db = new Dexie(name) as AtlasDb
@@ -53,6 +53,16 @@ export function createDb(name: string): AtlasDb {
           if (!t.normalizedDescription) t.normalizedDescription = normalizeText(t.description ?? '')
         })
     })
+
+  // v3: yeni varsayılan kurallar (mevcut kullanıcılara da eklenir; silinmiş eski kurallar geri gelmez).
+  db.version(3).upgrade(async (tx) => {
+    const now = new Date().toISOString()
+    const catIds = new Set((await tx.table('categories').toArray()).map((c: Category) => c.id))
+    const fresh = buildDefaultRules(now)
+      .slice(RULES_BEFORE_V3)
+      .filter((r) => catIds.has(r.categoryId))
+    for (const r of fresh) if (!(await tx.table('rules').get(r.id))) await tx.table('rules').add(r)
+  })
 
   db.on('populate', async (tx) => {
     const now = new Date().toISOString()

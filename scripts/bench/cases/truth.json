@@ -1,0 +1,240 @@
+{
+  "mobil-tarih-altta.png": [
+    {
+      "date": "2026-09-27",
+      "amountKurus": 12422,
+      "type": "expense",
+      "desc": "BİM A.Ş. MODA"
+    },
+    {
+      "date": "2026-09-26",
+      "amountKurus": 32915,
+      "type": "expense",
+      "desc": "CİNEMAXİMUM KADIKÖY"
+    },
+    {
+      "date": "2026-09-25",
+      "amountKurus": 15230,
+      "type": "expense",
+      "desc": "MARTI TECH İSTANBUL"
+    },
+    {
+      "date": "2026-09-24",
+      "amountKurus": 45000,
+      "type": "refund",
+      "desc": "ZARA İADE"
+    },
+    {
+      "date": "2026-09-22",
+      "amountKurus": 123456,
+      "type": "expense",
+      "desc": "TRENDYOL.COM"
+    },
+    {
+      "date": "2026-09-20",
+      "amountKurus": 8990,
+      "type": "expense",
+      "desc": "A101 YENİ MAĞAZACILIK"
+    },
+    {
+      "date": "2026-09-18",
+      "amountKurus": 215000,
+      "type": "expense",
+      "desc": "SHELL ATAŞEHİR"
+    },
+    {
+      "date": "2026-09-15",
+      "amountKurus": 41275,
+      "type": "expense",
+      "desc": "GETİR"
+    }
+  ],
+  "mobil-koyu-yilsiz.png": [
+    {
+      "date": "2026-09-27",
+      "amountKurus": 12422,
+      "type": "expense",
+      "desc": "BİM A.Ş. MODA"
+    },
+    {
+      "date": "2026-09-26",
+      "amountKurus": 32915,
+      "type": "expense",
+      "desc": "CİNEMAXİMUM KADIKÖY"
+    },
+    {
+      "date": "2026-09-25",
+      "amountKurus": 15230,
+      "type": "expense",
+      "desc": "MARTI TECH İSTANBUL"
+    },
+    {
+      "date": "2026-09-24",
+      "amountKurus": 45000,
+      "type": "refund",
+      "desc": "ZARA İADE"
+    },
+    {
+      "date": "2026-09-22",
+      "amountKurus": 123456,
+      "type": "expense",
+      "desc": "TRENDYOL.COM"
+    },
+    {
+      "date": "2026-09-20",
+      "amountKurus": 8990,
+      "type": "expense",
+      "desc": "A101 YENİ MAĞAZACILIK"
+    },
+    {
+      "date": "2026-09-18",
+      "amountKurus": 215000,
+      "type": "expense",
+      "desc": "SHELL ATAŞEHİR"
+    },
+    {
+      "date": "2026-09-15",
+      "amountKurus": 41275,
+      "type": "expense",
+      "desc": "GETİR"
+    }
+  ],
+  "telefon-fotografi.jpg": [
+    {
+      "date": "2026-09-27",
+      "amountKurus": 12422,
+      "type": "expense",
+      "desc": "BİM A.Ş. MODA"
+    },
+    {
+      "date": "2026-09-26",
+      "amountKurus": 32915,
+      "type": "expense",
+      "desc": "CİNEMAXİMUM KADIKÖY"
+    },
+    {
+      "date": "2026-09-25",
+      "amountKurus": 15230,
+      "type": "expense",
+      "desc": "MARTI TECH İSTANBUL"
+    },
+    {
+      "date": "2026-09-24",
+      "amountKurus": 45000,
+      "type": "refund",
+      "desc": "ZARA İADE"
+    },
+    {
+      "date": "2026-09-22",
+      "amountKurus": 123456,
+      "type": "expense",
+      "desc": "TRENDYOL.COM"
+    },
+    {
+      "date": "2026-09-20",
+      "amountKurus": 8990,
+      "type": "expense",
+      "desc": "A101 YENİ MAĞAZACILIK"
+    },
+    {
+      "date": "2026-09-18",
+      "amountKurus": 215000,
+      "type": "expense",
+      "desc": "SHELL ATAŞEHİR"
+    },
+    {
+      "date": "2026-09-15",
+      "amountKurus": 41275,
+      "type": "expense",
+      "desc": "GETİR"
+    }
+  ],
+  "ekstre-farkli-duzen.pdf": [
+    {
+      "date": "2026-09-01",
+      "amountKurus": 123456,
+      "type": "expense",
+      "desc": "MİGROS TİCARET A.Ş."
+    },
+    {
+      "date": "2026-09-03",
+      "amountKurus": 100000,
+      "type": "expense",
+      "desc": "TEKNOSA İÇ VE DIŞ TİC."
+    },
+    {
+      "date": "2026-09-05",
+      "amountKurus": 845000,
+      "type": "transfer",
+      "desc": "HESABINIZDAN YAPILAN ÖDEME"
+    },
+    {
+      "date": "2026-09-07",
+      "amountKurus": 22999,
+      "type": "expense",
+      "desc": "NETFLIX.COM"
+    },
+    {
+      "date": "2026-09-09",
+      "amountKurus": 35000,
+      "type": "refund",
+      "desc": "KOTON MAĞAZACILIK İADE"
+    },
+    {
+      "date": "2026-09-12",
+      "amountKurus": 38900,
+      "type": "expense",
+      "desc": "TURKCELL FATURA"
+    },
+    {
+      "date": "2026-09-14",
+      "amountKurus": 25640,
+      "type": "expense",
+      "desc": "YEMEKSEPETİ"
+    }
+  ],
+  "ekstre-taranmis-dusuk-kalite.pdf": [
+    {
+      "date": "2026-09-01",
+      "amountKurus": 123456,
+      "type": "expense",
+      "desc": "MİGROS TİCARET A.Ş."
+    },
+    {
+      "date": "2026-09-03",
+      "amountKurus": 100000,
+      "type": "expense",
+      "desc": "TEKNOSA İÇ VE DIŞ TİC."
+    },
+    {
+      "date": "2026-09-05",
+      "amountKurus": 845000,
+      "type": "transfer",
+      "desc": "HESABINIZDAN YAPILAN ÖDEME"
+    },
+    {
+      "date": "2026-09-07",
+      "amountKurus": 22999,
+      "type": "expense",
+      "desc": "NETFLIX.COM"
+    },
+    {
+      "date": "2026-09-09",
+      "amountKurus": 35000,
+      "type": "refund",
+      "desc": "KOTON MAĞAZACILIK İADE"
+    },
+    {
+      "date": "2026-09-12",
+      "amountKurus": 38900,
+      "type": "expense",
+      "desc": "TURKCELL FATURA"
+    },
+    {
+      "date": "2026-09-14",
+      "amountKurus": 25640,
+      "type": "expense",
+      "desc": "YEMEKSEPETİ"
+    }
+  ]
+}

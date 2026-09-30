@@ -140,7 +140,7 @@ export function useImportFlow() {
         ocrRef.current = null
         const out = parseStatement(doc)
         const ocrPages = doc.pages.filter((p) => p.mode === 'ocr')
-        const notes: string[] = []
+        const notes: string[] = [...(out.notes ?? [])]
         const skipped = doc.pages.filter((p) => p.mode === 'skipped')
         if (skipped.length) notes.push(`${skipped.length} sayfa okunamadı: ${skipped.map((p) => `s.${p.page} (${p.note})`).join(', ')}`)
         if (ocrPages.length) notes.push(`${ocrPages.map((p) => p.page).join(', ')}. sayfa(lar) metin içermediği için OCR ile okundu.`)
@@ -179,7 +179,7 @@ export function useImportFlow() {
         bitmap.close()
         const doc = { kind: 'image' as const, lines: res.lines, pages: [{ page: 1, mode: 'ocr' as const, textItems: 0, ocrConfidence: res.meanConfidence }], rawText: res.text, usedOcr: true }
         const out = parseStatement(doc)
-        const notes: string[] = []
+        const notes: string[] = [...(out.notes ?? [])]
         if (res.wordCount === 0) notes.push('Görselde metin bulunamadı. Kırpma veya iyileştirme ile yeniden deneyin.')
         await toReview({ ...out, lines: doc.lines, pages: doc.pages, parserVerified: false, notes, usedOcr: true, ocrConfidence: res.meanConfidence })
       } catch (e) {

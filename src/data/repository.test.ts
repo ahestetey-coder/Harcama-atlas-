@@ -3,6 +3,7 @@ import Dexie from 'dexie'
 import { parseBackup } from './backup'
 import { createDb, type AtlasDb } from './db'
 import { AtlasRepository, UserFacingError } from './repository'
+import { buildDefaultCategories, buildDefaultRules, RULES_BEFORE_V3 } from './seed'
 import { buildCommit } from '../import/enrich'
 import type { DraftRow } from '../import/types'
 
@@ -45,7 +46,7 @@ describe('ilk kurulum ve göç', () => {
     const cats = await db.categories.toArray()
     expect(cats.map((c) => c.name)).toEqual(expect.arrayContaining(['Market', 'Akaryakıt', 'Restoran/Kafe', 'Ulaşım', 'Faturalar', 'Kira/Ev', 'Sağlık', 'Eğitim', 'Giyim', 'Bebek/Çocuk', 'Eğlence', 'Abonelikler', 'Diğer']))
     expect(await db.rules.count()).toBeGreaterThan(20)
-    expect(db.verno).toBe(2)
+    expect(db.verno).toBe(3)
   })
   it('v1 veritabanını v2ye taşır ve normalize açıklamayı doldurur', async () => {
     const name = `mig-${Math.random()}`
@@ -59,6 +60,25 @@ describe('ilk kurulum ve göç', () => {
     const t = await v2.transactions.get('x')
     expect(t?.normalizedDescription).toBe('SOK MARKET')
     v2.close()
+    await Dexie.delete(name)
+  })
+  it('v2 veritabanına yeni varsayılan kuralları ekler, silinmiş eski kuralı geri getirmez', async () => {
+    const name = `mig3-${Math.random()}`
+    const v2 = new Dexie(name)
+    v2.version(1).stores({ transactions: 'id, date, type, categoryId, source, importId, amountKurus', categories: 'id, order', rules: 'id, categoryId, priority', imports: 'id, fileHash, importedAt, status', settings: 'id', meta: 'key' })
+    v2.version(2).stores({ transactions: 'id, date, type, categoryId, source, importId, amountKurus, normalizedDescription, accountAlias, [date+amountKurus]' })
+    await v2.open()
+    const now = '2026-01-01T00:00:00.000Z'
+    await v2.table('categories').bulkAdd(buildDefaultCategories(now))
+    const oldRules = buildDefaultRules(now).slice(0, RULES_BEFORE_V3)
+    await v2.table('rules').bulkAdd(oldRules.slice(1)) // kullanıcı ilk kuralı silmiş
+    v2.close()
+    const v3 = createDb(name)
+    await v3.open()
+    const ids = new Set((await v3.rules.toArray()).map((r) => r.id))
+    expect(ids.has(oldRules[0].id)).toBe(false)
+    expect([...ids].some((id) => (buildDefaultRules(now).find((r) => r.pattern === 'LOKANTA')?.id ?? '') === id)).toBe(true)
+    v3.close()
     await Dexie.delete(name)
   })
 })

@@ -103,7 +103,25 @@ const SEED_RULES: SeedRule[] = [
   ['KKDF', 'cat-banka'],
   ['YILLIK ÜCRET', 'cat-banka'],
   ['KART ÜCRETİ', 'cat-banka'],
+  // v3 ile eklenenler (gerçek bir döküm örneğinde sık görülen ifadeler). Yeni kural eklerken sona ekleyin.
+  ['TP İSTASYON', 'cat-akaryakit'],
+  ['PETROL', 'cat-akaryakit', 'prefix'],
+  ['LOKANTA', 'cat-restoran', 'prefix'],
+  ['YEMEK SALONU', 'cat-restoran'],
+  ['PİDE', 'cat-restoran', 'prefix'],
+  ['KEBAP', 'cat-restoran', 'prefix'],
+  ['KANTİN', 'cat-restoran', 'prefix'],
+  ['GIDA', 'cat-market'],
+  ['FİLE', 'cat-market'],
+  ['İŞLEM ÜCRETİ', 'cat-banka'],
+  ['KOMİSYON', 'cat-banka'],
+  ['AMAZONPRIME', 'cat-abonelik', 'contains'],
+  ['FATURA', 'cat-faturalar'],
+  ['FAT ABONE', 'cat-faturalar'],
 ]
+
+/** v2 şemasına kadar tohumlanan varsayılan kural sayısı; sonrakiler geçişle eklenir. */
+export const RULES_BEFORE_V3 = 78
 
 export function buildDefaultCategories(now: string): Category[] {
   return DEFAULT_CATEGORIES.map((c, i) => ({ ...c, archived: false, order: i, system: c.system ?? false, createdAt: now, updatedAt: now }))

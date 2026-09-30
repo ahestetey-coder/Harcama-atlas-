@@ -46,7 +46,8 @@ export function parseAmount(input: string | number | null | undefined, hint: Num
     const kurus = Math.round(input * 100)
     return { ok: true, kurus, negative: kurus < 0 }
   }
-  let s = String(input).replace(/\u00a0|\u202f/g, ' ').trim()
+  // Boşluk türleri ve Unicode eksi/tire (−, –, —) sadeleştirilir.
+  let s = String(input).replace(/\u00a0|\u202f/g, ' ').replace(/[\u2212\u2013\u2014]/g, '-').trim()
   if (!s) return { ok: false, reason: 'empty', message: 'Tutar boş.' }
 
   const currency = detectCurrency(s)

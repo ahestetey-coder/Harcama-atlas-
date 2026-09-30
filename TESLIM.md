@@ -175,3 +175,23 @@ farklı sonuç verebilir. Bu nedenle her aktarım onaydan önce incelenmelidir.
 - Tarayıcı testleri yalnızca Chromium'da çalıştırıldı. Firefox ve Safari'de otomatik test
   yapılmadı. pdf.js için polyfill'li derleme seçildi, ancak Safari'de elle denenmesi önerilir.
 - Döviz işlemleri için kur dönüşümü yapılmaz; TL karşılığı elle girilir.
+
+## 8. Güncelleme (30.09.2026): görüntü ve PDF okuma iyileştirmeleri
+
+Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belgenin kendisi depoya eklenmedi; testler yalnızca düzenini taklit eden uydurma verilerle yazıldı.
+
+- **Tutar sütunu:** "Tutar" başlıklı sütun önceliklidir; ParafPara/Puan/Bonus gibi sütunlar tutar sayılmaz.
+- **İşaret düzeni:** Harcamaları eksi (−) yazan belgeler algılanır; artı tutarlar iade, indirim veya ödeme olarak yorumlanır ve içe aktarma ekranında not gösterilir.
+- **Gereksiz satırlar:** Sayfa başlığı (tarih ve saat), sayfa numarası, bakiye ve limit satırları işlem sayılmaz. 0,00 tutarlı puan satırları hariç tutulur.
+- **Taksit:** "500,00 TL / 6 - 1. Taksit" biçimi okunur; kalan borç alışveriş toplamı sanılmaz.
+- **Bitişik şehir adı:** "LOKANTAANKARA" gibi açıklamalar ayrılır.
+- **Mobil ekranlar:** Tarihin işlemin altında olduğu düzen, yılsız "27 Eylül" tarihleri, Unicode eksi işareti ve saatler desteklenir.
+- **OCR düzeltmeleri:** "₺" simgesinin "£" veya "L" okunması, çift işaret ve rakam yerine harf okunması düzeltilir.
+- **Taranmış ekstreler:** İki satıra bölünen sütun başlıkları ve tutarı alt satırda olan iki satırlı işlemler okunur.
+- **Kategori kuralları:** Yeni varsayılan kurallar eklendi (akaryakıt, lokanta, fatura vb.). Var olan veritabanlarına geçişle eklenir; silinmiş kurallar geri gelmez.
+
+**Ölçüm.** `npm run bench` komutu, `scripts/bench/cases` altındaki 5 zor sentetik örneği okur: iki mobil ekran görüntüsü (biri koyu tema), bir eğik ve gürültülü telefon fotoğrafı, farklı düzende bir PDF ve düşük kaliteli taranmış bir PDF. Toplam 38 işlem var.
+- Doğru okunan işlem (tarih, tutar ve tür) sayısı 22'den 38'e çıktı.
+- Bu örnekler sentetiktir ve gerçek banka uyumluluğunu kanıtlamaz.
+
+**Testler.** 91 birim testi ve 23 uçtan uca test geçti.

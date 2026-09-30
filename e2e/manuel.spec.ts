@@ -99,9 +99,10 @@ test('sayfa yenilendikten sonra veriler kalır', async ({ page }) => {
 test('ay değiştirme: toplamlar, iade ve grafik tutarlı', async ({ page }) => {
   await open(page)
   // Bugünkü ay ve önceki ayda kayıtlar
-  const now = new Date()
+  // "Bugün" tarayıcının saat diliminde hesaplanır (Node UTC'de ay sonuna denk gelebilir).
+  const [year, month] = await page.evaluate(() => [new Date().getFullYear(), new Date().getMonth()])
   const pad = (n: number) => String(n).padStart(2, '0')
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 15)
+  const prev = new Date(year, month - 1, 15)
   const prevIso = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-15`
   await addExpense(page, { amount: '300', description: 'Bu Ay Market', category: 'Market' })
   await expect(page.getByRole('dialog')).toBeHidden()

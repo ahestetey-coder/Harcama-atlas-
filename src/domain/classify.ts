@@ -20,6 +20,12 @@ function anyPhrase(normalized: string, phrases: string[]): string | null {
 const SUMMARY_PHRASES = [
   'ÖNCEKİ DÖNEM BORCU',
   'ÖNCEKİ DÖNEM BAKİYESİ',
+  'ÖNCEKİ DÖNEM BAKİYENİZ',
+  'SON HESAP BAKİYESİ',
+  'HESAP BAKİYESİ',
+  'GÜNCEL BAKİYE',
+  'BORÇ BAKİYESİ',
+  'KULLANILABİLİR BAKİYE',
   'DEVREDEN BAKİYE',
   'DEVREDEN BORÇ',
   'DÖNEM BORCU',
@@ -65,13 +71,17 @@ const TX_TOTAL_PHRASES = ['DÖNEM İÇİ HARCAMALAR', 'DÖNEM İÇİ İŞLEMLER'
 const PAYMENT_PHRASES = [
   'ÖDEMENİZ İÇİN TEŞEKKÜR',
   'ÖDEMENİZ İÇİN TEŞEKKÜRLER',
+  'ÖDEME TEŞEKKÜR EDERİZ',
+  'ÖDEMENİZ İÇİN TEŞEKKÜR EDERİZ',
+  'HESABINIZDAN YAPILAN ÖDEME',
+  'HESAPTAN ÖDEME',
+  'OTOMATİK ÖDEME TALİMATI',
   'KART ÖDEMESİ',
   'KREDİ KARTI ÖDEMESİ',
   'KREDİ KARTI BORÇ ÖDEMESİ',
   'KART BORCU ÖDEMESİ',
   'KART BORÇ ÖDEMESİ',
   'BORÇ ÖDEME',
-  'HESAPTAN ÖDEME',
   'OTOMATİK ÖDEME',
   'MOBİL ÖDEME',
   'İNTERNET ÖDEME',
@@ -87,9 +97,10 @@ const PAYMENT_PHRASES = [
   'PARA TRANSFERİ',
 ]
 
-const REFUND_PHRASES = ['İADE', 'IADE', 'İADESİ', 'İPTAL', 'REFUND', 'CHARGEBACK', 'İADE İŞLEMİ']
+// İndirim/kampanya iadeleri de harcamayı azaltan alacaklardır.
+const REFUND_PHRASES = ['İADE', 'IADE', 'İADESİ', 'İPTAL', 'REFUND', 'CHARGEBACK', 'İADE İŞLEMİ', 'İNDİRİM', 'İNDİRİMİ', 'CASHBACK']
 
-const FEE_PHRASES = ['FAİZ', 'AKDİ FAİZ', 'GECİKME FAİZİ', 'BSMV', 'KKDF', 'YILLIK ÜCRET', 'KART ÜCRETİ', 'KART AİDATI', 'ÜYELİK ÜCRETİ', 'HESAP İŞLETİM ÜCRETİ', 'NAKİT AVANS ÜCRETİ', 'MASRAF', 'KOMİSYON']
+const FEE_PHRASES = ['FAİZ', 'AKDİ FAİZ', 'GECİKME FAİZİ', 'BSMV', 'KKDF', 'YILLIK ÜCRET', 'KART ÜCRETİ', 'KART AİDATI', 'ÜYELİK ÜCRETİ', 'HESAP İŞLETİM ÜCRETİ', 'NAKİT AVANS ÜCRETİ', 'MASRAF', 'KOMİSYON', 'İŞLEM ÜCRETİ']
 
 export function isSummaryLine(text: string): string | null {
   const n = normalizeText(text)
@@ -129,10 +140,12 @@ export function decideType(description: string, signedKurus: number, creditHint?
   const warnings: string[] = []
   const credit = creditHint ?? signedKurus < 0
   const amountKurus = Math.abs(signedKurus)
-  if (isPaymentLine(description)) return { type: 'transfer', amountKurus, warnings }
+  // "TURKCELL FATURA OTOMATİK ÖDEME" gibi borç yönlü fatura talimatları harcamadır, kart ödemesi değil.
+  const billDebit = !credit && /\b(FATURA|FATURASI|ABONE)\b/.test(normalizeText(description))
+  if (isPaymentLine(description) && !billDebit) return { type: 'transfer', amountKurus, warnings }
   if (isRefundLine(description)) return { type: 'refund', amountKurus, warnings }
   if (credit) {
-    warnings.push('Alacak (eksi) tutar iade olarak yorumlandı; kontrol edin.')
+    warnings.push('Alacak tutarı iade olarak yorumlandı; kontrol edin.')
     return { type: 'refund', amountKurus, warnings }
   }
   return { type: 'expense', amountKurus, warnings }
@@ -151,6 +164,13 @@ const INSTALLMENT_RES = [
  */
 export function detectInstallment(text: string): Installment | null {
   const folded = foldTr(text)
+  // "6 - 1. Taksit" biçimi: toplam taksit – bu taksit (bazı banka mobil dökümleri)
+  const dash = /(?<![\d.,])(\d{1,2})\s*-\s*(\d{1,2})\s*\.\s*TAKSIT\b/.exec(folded)
+  if (dash) {
+    const total = Number(dash[1])
+    const current = Number(dash[2])
+    if (current >= 1 && total >= 2 && total <= 48 && current <= total) return { current, total }
+  }
   for (const re of INSTALLMENT_RES) {
     const m = re.exec(folded)
     if (!m) continue

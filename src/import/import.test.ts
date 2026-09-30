@@ -6,6 +6,7 @@ import { applyRules, markDuplicates, reviewCounts, rowProblems } from './enrich'
 import { guessMapping, rowsFromMapping } from './mapping'
 import { detectDelimiter, parseCsv } from './sheet'
 import { parseStatement } from './statement'
+import { fixOcrWord } from './ocr'
 import { decodeText, repairMojibake } from './text'
 import type { DocLine, ParsedDocument } from './types'
 
@@ -185,5 +186,124 @@ describe('tekrar şüphesi işaretleme', () => {
     expect(rows[0].duplicateDecision).toBeNull()
     expect(rows[1].duplicateOf).toBeUndefined()
     expect(reviewCounts(rows, activeIds)).toMatchObject({ duplicate: 1, valid: 1 })
+  })
+})
+
+/** Hücreleri [x, x2, metin] olarak veren yardımcı (sağa hizalı tutar sütunları için). */
+function lineXY(page: number, index: number, cells: Array<[number, number, string]>, origin: 'text' | 'ocr' = 'text'): DocLine {
+  return { page, index, y: index * 12, origin, cells: cells.map(([x, x2, text]) => ({ x, x2, text })), text: cells.map((c) => c[2]).join('  ') }
+}
+
+describe('harcamaların eksi yazıldığı mobil banka dökümü (puan sütunlu)', () => {
+  // Gerçek bir dökümün DÜZENİ taklit edilmiştir; iş yerleri ve tutarlar uydurmadır.
+  const lines: DocLine[] = [
+    lineXY(1, 0, [[57, 143, '01.10.2026 01:24'], [297, 398, 'Örnek Banka Mobil Şube']]),
+    lineXY(1, 1, [[57, 89, 'Kart Limiti :'], [380, 414, '100.000,00 TL']]),
+    lineXY(1, 2, [[57, 113, 'Hesap Kesim Tarihi :'], [380, 407, '15.09.2026']]),
+    lineXY(1, 3, [[57, 127, 'Önceki Dönem Bakiyeniz :'], [380, 411, '12.345,67 TL']]),
+    lineXY(1, 4, [[82, 113, 'İşlem Tarihi'], [211, 235, 'Açıklama'], [329, 344, 'Tutar'], [394, 444, 'Kalan Borç / Taksit'], [486, 524, 'ParafPara(TL)']]),
+    lineXY(1, 5, [[62, 111, '1111 22** **** 3333']]),
+    lineXY(1, 6, [[84, 111, '30.09.2026'], [143, 208, 'ÖRNEK PETROL İSTASYONPuan Kullanım'], [342, 360, '0,00 TL'], [502, 532, '-500,00 TL']]),
+    lineXY(1, 7, [[84, 111, '29.09.2026'], [143, 194, 'ÖRNEK LOKANTAANKARA'], [329, 360, '-1.234,56 TL'], [511, 532, '12,35 TL']]),
+    lineXY(1, 8, [[84, 111, '25.09.2026'], [143, 206, 'Ödeme - Teşekkür Ederiz -'], [328, 360, '10.000,00 TL']]),
+    lineXY(1, 9, [[84, 111, '24.09.2026'], [143, 221, 'Örnek Kart Restoran İndirimi'], [336, 360, '50,00 TL']]),
+    lineXY(1, 10, [[84, 111, '23.09.2026'], [143, 221, 'ÖRNEK MAĞAZAİSTANBUL'], [334, 360, '-100,00 TL'], [409, 466, '500,00 TL / 6 - 1. Taksit'], [514, 532, '1,00 TL']]),
+    lineXY(1, 11, [[84, 111, '22.09.2026'], [143, 221, 'ÖRNEK ONLINE STOREİSTANBUL'], [331, 360, '999,00 TL']]),
+    lineXY(1, 12, [[522, 537, '1/2']]),
+    lineXY(1, 13, [[57, 118, 'Son Hesap Bakiyesi * :'], [380, 402, '-69,90 TL']]),
+  ]
+  const doc: ParsedDocument = { kind: 'pdf', lines, pages: [], rawText: lines.map((l) => l.text).join('\n'), usedOcr: false }
+  const out = parseStatement(doc)
+  const by = (d: string) => out.rows.find((r) => r.description.startsWith(d))!
+
+  it('yalnızca işlem satırlarını alır (başlık, sayfa no, bakiye, limit hariç)', () => {
+    expect(out.rows.map((r) => r.description)).toEqual([
+      'ÖRNEK PETROL İSTASYONPuan Kullanım',
+      'ÖRNEK LOKANTA ANKARA',
+      'Ödeme - Teşekkür Ederiz -',
+      'Örnek Kart Restoran İndirimi',
+      'ÖRNEK MAĞAZA İSTANBUL',
+      'ÖRNEK ONLINE STORE İSTANBUL',
+    ])
+    expect(out.notes?.[0]).toMatch(/eksi/)
+  })
+  it('tutarı "Tutar" sütunundan alır, puan sütunundan almaz; eksi tutar gider sayılır', () => {
+    expect(by('ÖRNEK LOKANTA')).toMatchObject({ amountKurus: 123456, type: 'expense' })
+  })
+  it('artı tutarlar: ödeme transfer, indirim ve iade alacak', () => {
+    expect(by('Ödeme')).toMatchObject({ type: 'transfer', amountKurus: 1000000 })
+    expect(by('Örnek Kart Restoran')).toMatchObject({ type: 'refund', amountKurus: 5000 })
+    expect(by('ÖRNEK ONLINE')).toMatchObject({ type: 'refund', amountKurus: 99900 })
+  })
+  it('0,00 tutarlı puan satırı hariç tutulur', () => {
+    expect(by('ÖRNEK PETROL')).toMatchObject({ include: false, amountKurus: 0 })
+  })
+  it('"6 - 1. Taksit" hücresi: taksit 1/6, kalan borç alışveriş toplamı sayılmaz', () => {
+    const r = by('ÖRNEK MAĞAZA')
+    expect(r).toMatchObject({ amountKurus: 10000, type: 'expense', installment: { current: 1, total: 6 } })
+    expect(r.installment?.purchaseTotalKurus).toBeUndefined()
+  })
+})
+
+describe('mobil ekran düzenleri', () => {
+  it('tarih işlemin altındaki satırdaysa o işleme bağlanır (Unicode eksi, saat)', () => {
+    const lines = [
+      lineXY(1, 0, [[20, 200, 'Hesap Hareketleri']], 'ocr'),
+      lineXY(1, 1, [[20, 60, 'BİM'], [66, 90, 'A.Ş.'], [96, 150, 'MODA'], [600, 700, '−124,22'], [705, 725, 'TL']], 'ocr'),
+      lineXY(1, 2, [[20, 120, '27.09.2026'], [130, 175, '14:32']], 'ocr'),
+      lineXY(1, 3, [[20, 80, 'ZARA'], [86, 130, 'İADE'], [600, 700, '+450,00'], [705, 725, 'TL']], 'ocr'),
+      lineXY(1, 4, [[20, 120, '24.09.2026'], [130, 175, '09:05']], 'ocr'),
+    ]
+    const out = parseStatement({ kind: 'image', lines, pages: [], rawText: '', usedOcr: true })
+    expect(out.rows).toHaveLength(2)
+    expect(out.rows[0]).toMatchObject({ date: '2026-09-27', amountKurus: 12422, type: 'expense' })
+    expect(out.rows[1]).toMatchObject({ date: '2026-09-24', amountKurus: 45000, type: 'refund' })
+  })
+  it('yılsız "27 Eylül" tarihini belgedeki aya/yıla göre tamamlar; ₺ ön ekli tutar', () => {
+    const lines = [
+      lineXY(1, 0, [[20, 200, 'Kart Hareketleri']], 'ocr'),
+      lineXY(1, 1, [[20, 120, 'Eylül'], [126, 170, '2026']], 'ocr'),
+      lineXY(1, 2, [[20, 90, 'GETİR'], [600, 700, '-₺412,75']], 'ocr'),
+      lineXY(1, 3, [[20, 40, '15'], [46, 90, 'Eylül'], [96, 100, '·'], [106, 160, 'Kredi'], [166, 200, 'kartı']], 'ocr'),
+    ]
+    const out = parseStatement({ kind: 'image', lines, pages: [], rawText: lines.map((l) => l.text).join('\n'), usedOcr: true })
+    expect(out.rows).toHaveLength(1)
+    expect(out.rows[0]).toMatchObject({ date: '2026-09-15', amountKurus: 41275, description: 'GETİR' })
+  })
+})
+
+describe('OCR tutar düzeltmeleri', () => {
+  it('₺ simgesinin £/L okunmasını, çift işareti ve harf-rakam karışıklığını düzeltir', () => {
+    expect(fixOcrWord('-£124,22')).toBe('-₺124,22')
+    expect(fixOcrWord('-L89,90')).toBe('-₺89,90')
+    expect(fixOcrWord('++£450,00')).toBe('+₺450,00')
+    expect(fixOcrWord('1.2O4,56')).toBe('1.204,56')
+  })
+  it('tutar olmayan kelimelere dokunmaz', () => {
+    expect(fixOcrWord('LOKANTA')).toBe('LOKANTA')
+    expect(fixOcrWord('L1234')).toBe('L1234')
+    expect(fixOcrWord('Ödeme')).toBe('Ödeme')
+  })
+})
+
+describe('taranmış ekstre düzenleri', () => {
+  it('iki satıra bölünmüş başlık ve tutarı alt satırda olan işlem', () => {
+    const lines = [
+      lineXY(1, 0, [[20, 60, 'İşlem'], [66, 110, 'Tarihi'], [130, 200, 'Açıklama']], 'ocr'),
+      lineXY(1, 1, [[380, 420, 'Taksit'], [460, 500, 'Tutar'], [505, 530, '(TL)'], [560, 600, 'Puan']], 'ocr'),
+      lineXY(1, 2, [[20, 110, '01/09/2026'], [130, 200, 'ÖRNEK'], [206, 260, 'MARKET']], 'ocr'),
+      lineXY(1, 3, [[130, 200, 'KADIKÖY'], [440, 500, '1.234,56'], [505, 525, 'TL'], [570, 600, '12,35']], 'ocr'),
+      lineXY(1, 4, [[20, 110, '05/09/2026'], [130, 200, 'HESABINIZDAN'], [206, 260, 'YAPILAN'], [266, 300, 'ÖDEME']], 'ocr'),
+      lineXY(1, 5, [[440, 500, '-8.450,00'], [505, 525, 'TL']], 'ocr'),
+      lineXY(1, 6, [[20, 110, '12/09/2026'], [130, 200, 'ÖRNEK'], [206, 260, 'FATURA']], 'ocr'),
+      lineXY(1, 7, [[130, 200, 'OTOMATİK'], [206, 260, 'ÖDEME'], [440, 500, '389,00'], [505, 525, 'TL'], [570, 600, '3,89']], 'ocr'),
+    ]
+    const out = parseStatement({ kind: 'pdf', lines, pages: [], rawText: lines.map((l) => l.text).join('\n'), usedOcr: true })
+    expect(out.rows.map((r) => [r.date, r.amountKurus, r.type])).toEqual([
+      ['2026-09-01', 123456, 'expense'],
+      ['2026-09-05', 845000, 'transfer'],
+      ['2026-09-12', 38900, 'expense'],
+    ])
+    expect(out.rows[0].description).toBe('ÖRNEK MARKET KADIKÖY')
   })
 })

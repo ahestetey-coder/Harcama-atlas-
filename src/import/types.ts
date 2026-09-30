@@ -87,6 +87,8 @@ export interface ParseOutput {
   unparsed: DocLine[]
   totals: StatementTotal[]
   periodText?: string
+  /** Belge geneline ait açıklamalar (ör. işaret düzeni). */
+  notes?: string[]
   parserId: string
   parserLabel: string
 }

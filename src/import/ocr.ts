@@ -126,6 +126,20 @@ function toLines(data: { blocks: Array<{ paragraphs: Array<{ lines: Array<{ word
   return { lines, text: lines.map((l) => l.text).join('\n'), meanConfidence: Math.round(conf), wordCount: words.length }
 }
 
+/**
+ * Tutar kelimelerindeki tipik OCR karışıklıklarını düzeltir: "₺" simgesinin "£"/"L" okunması,
+ * çift işaret ("++450,00") ve rakam yerine harf ("1.2O4,56"). Yalnızca kuruşlu tutar
+ * biçimindeki kelimelere dokunur; diğer metin olduğu gibi kalır.
+ */
+export function fixOcrWord(text: string): string {
+  let t = text.replace(/^([-+−])[-+−]+/, '$1')
+  const m = /^([-+−]?)([£L&¥₺]?)([\dOoIl|]{1,3}(?:[.,][\dOoIl|]{3})*[.,][\dOoIl|]{2})(\s*(?:TL|₺)?)$/.exec(t)
+  if (!m || !/\d.*\d/.test(m[3])) return t
+  const digits = m[3].replace(/[Oo]/g, '0').replace(/[Il|]/g, '1')
+  t = m[1] + (m[2] ? '₺' : '') + digits + m[4]
+  return t
+}
+
 export function groupWords(words: TWord[], page: number): DocLine[] {
   const sorted = [...words].sort((a, b) => (a.bbox.y0 + a.bbox.y1) / 2 - (b.bbox.y0 + b.bbox.y1) / 2)
   const groups: TWord[][] = []
@@ -145,7 +159,7 @@ export function groupWords(words: TWord[], page: number): DocLine[] {
   return groups.map((g, index) => {
     const cells: DocCell[] = g
       .sort((a, b) => a.bbox.x0 - b.bbox.x0)
-      .map((w) => ({ x: w.bbox.x0, x2: w.bbox.x1, text: w.text, conf: w.confidence }))
+      .map((w) => ({ x: w.bbox.x0, x2: w.bbox.x1, text: fixOcrWord(w.text), conf: w.confidence }))
     return { page, index, y: g[0].bbox.y0, cells, text: cells.map((c) => c.text).join(' '), origin: 'ocr' as const }
   })
 }
