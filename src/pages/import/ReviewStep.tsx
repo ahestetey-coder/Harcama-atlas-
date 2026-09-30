@@ -1,18 +1,18 @@
 import { AlertTriangle, CircleCheck, Copy, FileText, Info, Plus, SkipForward, Split, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { CategoryIcon } from '../../components/common'
+import { CategoryIcon, GroupPicker } from '../../components/common'
 import { ConfirmDialog, Modal } from '../../components/ui/Modal'
 import { Alert, Badge, Button, Card, Checkbox, Input, Select } from '../../components/ui/primitives'
 import { OTHER_CATEGORY_ID } from '../../data/seed'
 import { formatDate, todayIso } from '../../domain/dates'
 import { formatKurus, formatKurusPlain, parseAmount } from '../../domain/money'
-import { SOURCE_LABEL, TX_TYPE_LABEL, type Category, type Transaction, type TxType } from '../../domain/types'
+import { SOURCE_LABEL, TX_TYPE_LABEL, type Category, type SpendGroup, type Transaction, type TxType } from '../../domain/types'
 import { applyRules, confirmOther, markDuplicates, reviewCounts, rowProblems, rowStatus, suggestLearnPattern } from '../../import/enrich'
 import { newDraftId } from '../../import/mapping'
 import type { DocLine, DraftRow, RowStatus } from '../../import/types'
 import { cn } from '../../lib/cn'
-import { useCategories, useRules, useTransactions } from '../../state/data'
+import { useCategories, useGroups, useRules, useTransactions } from '../../state/data'
 import { useUi } from '../../state/ui'
 import type { ReviewData } from './useImportFlow'
 
@@ -67,6 +67,12 @@ export function ReviewStep({
   useEffect(() => {
     if (page >= pages) setPage(pages - 1)
   }, [page, pages])
+
+  const groups = useGroups()
+  const activeGroups = useMemo(() => (groups ?? []).filter((g) => !g.archived), [groups])
+  // Bütün satırlar aynı gruptaysa o grup, değilse karışık (null)
+  const commonGroup = rows.length && rows.every((r) => (r.groupId ?? '') === (rows[0].groupId ?? '')) ? (rows[0].groupId ?? '') : null
+  const setAllGroups = (groupId: string) => onRowsChange(rows.map((r) => ({ ...r, groupId: groupId || null })))
 
   // Silinen satırı geri almak için güncel satırlar ve geri çağrı
   const { toast } = useUi()
@@ -187,6 +193,13 @@ export function ReviewStep({
           <Stat label="Net etki" value={formatKurus(extractedNet)} />
           <Stat label="Transfer (gidere dahil değil)" value={formatKurus(counts.transferKurus)} />
         </div>
+        {activeGroups.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+            <span className="text-[13px] font-medium text-muted">Tüm satırların grubu:</span>
+            <GroupPicker groups={activeGroups} value={commonGroup ?? '__mixed'} onChange={setAllGroups} label="Tüm satırların grubu" size="sm" />
+            {commonGroup === null && <span className="text-[12px] text-subtle">(satırlarda farklı gruplar var)</span>}
+          </div>
+        )}
       </Card>
 
       {/* Bilgi ve uyarılar */}
@@ -247,6 +260,7 @@ export function ReviewStep({
                   row={r}
                   status={rowStatus(r, activeIds)}
                   categories={categories}
+                  groups={activeGroups}
                   activeIds={activeIds}
                   existing={existingById}
                   onChange={updateRow}
@@ -342,6 +356,7 @@ const RowCard = memo(function RowCard({
   row: r,
   status,
   categories,
+  groups,
   activeIds,
   existing,
   onChange,
@@ -352,6 +367,7 @@ const RowCard = memo(function RowCard({
   row: DraftRow
   status: RowStatus
   categories: Category[]
+  groups: SpendGroup[]
   activeIds: Set<string>
   existing: Map<string, Transaction>
   onChange: (id: string, patch: Partial<DraftRow>) => void
@@ -480,6 +496,13 @@ const RowCard = memo(function RowCard({
           </div>
         </label>
       </div>
+
+      {groups.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-[11.5px] font-medium text-subtle">Grup</span>
+          <GroupPicker groups={groups} value={r.groupId ?? ''} onChange={(v) => onChange(r.id, { groupId: v || null })} label={`${r.description || 'Satır'} grubu`} size="sm" />
+        </div>
+      )}
 
       {r.amountCandidates && r.amountKurus === null && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[12.5px]">

@@ -20,6 +20,7 @@ const transactionSchema = z.object({
   description: z.string().min(1),
   normalizedDescription: z.string(),
   categoryId: z.string().nullable(),
+  groupId: z.string().nullable().optional(),
   categorySource: z.enum(['manual', 'rule', 'file', 'confirmed-other']).optional(),
   note: z.string().optional(),
   paymentMethod: z.enum(['cash', 'debit', 'credit']).optional(),
@@ -40,6 +41,16 @@ const categorySchema = z.object({
   archived: z.boolean(),
   order: z.number(),
   system: z.boolean().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+const groupSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  color: z.string(),
+  archived: z.boolean(),
+  order: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -89,6 +100,8 @@ export const backupSchema = z.object({
   data: z.object({
     transactions: z.array(transactionSchema),
     categories: z.array(categorySchema).min(1),
+    /** v4 öncesi yedeklerde yoktur. */
+    groups: z.array(groupSchema).optional(),
     rules: z.array(ruleSchema),
     imports: z.array(importSchema),
     settings: settingsSchema.nullable(),
@@ -125,6 +138,9 @@ export function parseBackup(text: string): BackupParseResult {
   if (orphan.length) {
     return { ok: false, message: `Yedekte kategorisi bulunmayan ${orphan.length} işlem var; dosya bozuk olabilir.` }
   }
+  // Grubu yedekte bulunmayan işlemler grupsuz yüklenir (dosyayı reddetmeye değmez).
+  const groupIds = new Set((r.data.data.groups ?? []).map((g) => g.id))
+  for (const t of r.data.data.transactions) if (t.groupId && !groupIds.has(t.groupId)) t.groupId = null
   return { ok: true, backup: r.data }
 }
 

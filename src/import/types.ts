@@ -50,6 +50,8 @@ export interface DraftRow {
   amountCandidates?: number[]
   type: TxType
   categoryId: string | null
+  /** Harcama grubu (Bireysel, Ortak…); boşsa grupsuz. */
+  groupId?: string | null
   categorySource?: 'rule' | 'file' | 'manual' | 'confirmed-other'
   ruleNote?: string
   ruleConflict?: string

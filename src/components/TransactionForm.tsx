@@ -7,10 +7,10 @@ import { formatKurusPlain, parseUserAmount } from '../domain/money'
 import { merchantKey, normalizeText } from '../domain/normalize'
 import { evaluateRules } from '../domain/rules'
 import { PAYMENT_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Transaction, type TxType } from '../domain/types'
-import { useCategories, useRepo, useRules, useSettings } from '../state/data'
+import { useCategories, useGroups, useRepo, useRules, useSettings } from '../state/data'
 import { useUi } from '../state/ui'
 import { cn } from '../lib/cn'
-import { CategoryIcon } from './common'
+import { CategoryIcon, GroupPicker } from './common'
 import { Modal } from './ui/Modal'
 import { Button, Checkbox, Field, Input, Segmented, Select, Textarea } from './ui/primitives'
 
@@ -20,6 +20,7 @@ interface FormState {
   type: TxType
   description: string
   categoryId: string
+  groupId: string
   note: string
   paymentMethod: PaymentMethod | ''
   accountAlias: string
@@ -34,6 +35,7 @@ function initialState(tx?: Transaction): FormState {
     type: tx?.type ?? 'expense',
     description: tx?.description ?? '',
     categoryId: tx?.categoryId ?? '',
+    groupId: tx?.groupId ?? '',
     note: tx?.note ?? '',
     paymentMethod: tx?.paymentMethod ?? '',
     accountAlias: tx?.accountAlias ?? '',
@@ -63,6 +65,8 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
   const repo = useRepo()
   const categories = useCategories()
   const rules = useRules()
+  const groups = useGroups()
+  const activeGroups = useMemo(() => (groups ?? []).filter((g) => !g.archived || g.id === tx?.groupId), [groups, tx])
   const { toast, setHighlightId, setMonth, month } = useUi()
   const [s, setS] = useState<FormState>(() => initialState(tx))
   const [errors, setErrors] = useState<TxFieldErrors>({})
@@ -121,6 +125,7 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
         type: s.type,
         description: s.description,
         categoryId: s.categoryId || null,
+        groupId: s.groupId || null,
         note: s.note,
         paymentMethod: s.paymentMethod || undefined,
         accountAlias: s.accountAlias,
@@ -220,6 +225,12 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
           </button>
         )}
       </Field>
+
+      {activeGroups.length > 0 && (
+        <Field label="Harcama grubu" optional hint="Kategoriden ayrı bir gruplama; panelde bu gruba göre filtreleyebilirsiniz.">
+          <GroupPicker groups={activeGroups} value={s.groupId} onChange={(v) => set('groupId', v)} />
+        </Field>
+      )}
 
       {categoryChanged && s.description.trim() && (
         <div className="rounded-2xl border border-line bg-surface-2 p-3">

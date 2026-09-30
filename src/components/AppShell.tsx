@@ -13,7 +13,7 @@ const NAV = [
   { to: '/', label: 'Panel', icon: LayoutDashboard, end: true },
   { to: '/islemler', label: 'İşlemler', icon: ListOrdered },
   { to: '/ice-aktar', label: 'İçe aktar', icon: FileUp },
-  { to: '/kategoriler', label: 'Kategoriler ve kurallar', short: 'Kategoriler', icon: Tags },
+  { to: '/kategoriler', label: 'Kategoriler ve gruplar', short: 'Kategoriler', icon: Tags },
   { to: '/aktarimlar', label: 'Aktarım geçmişi', short: 'Aktarımlar', icon: History },
   { to: '/yedekleme', label: 'Yedekleme ve veri', short: 'Yedekleme', icon: Database },
   { to: '/ayarlar', label: 'Ayarlar', icon: Settings },

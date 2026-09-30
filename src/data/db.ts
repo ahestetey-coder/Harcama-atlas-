@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { normalizeText } from '../domain/normalize'
-import type { Category, ImportRecord, Rule, Settings, Transaction } from '../domain/types'
-import { buildDefaultCategories, buildDefaultRules, RULES_BEFORE_V3 } from './seed'
+import type { Category, ImportRecord, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
+import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, RULES_BEFORE_V3 } from './seed'
 
 export interface MetaEntry {
   key: string
@@ -11,6 +11,7 @@ export interface MetaEntry {
 export type AtlasDb = Dexie & {
   transactions: EntityTable<Transaction, 'id'>
   categories: EntityTable<Category, 'id'>
+  groups: EntityTable<SpendGroup, 'id'>
   rules: EntityTable<Rule, 'id'>
   imports: EntityTable<ImportRecord, 'id'>
   settings: EntityTable<Settings, 'id'>
@@ -26,7 +27,7 @@ export const DEMO_DB_NAME = 'harcama-atlasi-demo'
  *  2. Gerekirse `.upgrade()` ile mevcut kayıtları dönüştürün.
  *  3. `CURRENT_SCHEMA_VERSION` değerini artırın; yedek dosyaları bu değeri taşır.
  */
-export const CURRENT_SCHEMA_VERSION = 3
+export const CURRENT_SCHEMA_VERSION = 4
 
 export function createDb(name: string): AtlasDb {
   const db = new Dexie(name) as AtlasDb
@@ -64,9 +65,20 @@ export function createDb(name: string): AtlasDb {
     for (const r of fresh) if (!(await tx.table('rules').get(r.id))) await tx.table('rules').add(r)
   })
 
+  // v4: harcama grupları (Bireysel, Ortak…) ve işlemlerde grup alanı.
+  db.version(4)
+    .stores({
+      transactions: 'id, date, type, categoryId, groupId, source, importId, amountKurus, normalizedDescription, accountAlias, [date+amountKurus]',
+      groups: 'id, order',
+    })
+    .upgrade(async (tx) => {
+      await tx.table('groups').bulkAdd(buildDefaultGroups(new Date().toISOString()))
+    })
+
   db.on('populate', async (tx) => {
     const now = new Date().toISOString()
     await tx.table('categories').bulkAdd(buildDefaultCategories(now))
+    await tx.table('groups').bulkAdd(buildDefaultGroups(now))
     await tx.table('rules').bulkAdd(buildDefaultRules(now))
     await tx.table('settings').add({ id: 'settings', monthlyBudgetKurus: null, updatedAt: now } satisfies Settings)
   })

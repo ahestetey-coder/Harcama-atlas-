@@ -2,8 +2,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createDb, DEMO_DB_NAME, REAL_DB_NAME } from '../data/db'
 import { AtlasRepository } from '../data/repository'
-import type { Category, ImportRecord, Rule, Settings, Transaction } from '../domain/types'
+import type { Category, ImportRecord, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
 import { readPref, writePref } from './prefs'
+import { useUi } from './ui'
 
 interface DataCtx {
   repo: AtlasRepository
@@ -84,6 +85,16 @@ export function useCategories(): Category[] | undefined {
   return useLiveQuery(() => repo.db.categories.orderBy('order').toArray(), [repo])
 }
 
+export function useGroups(): SpendGroup[] | undefined {
+  const repo = useRepo()
+  return useLiveQuery(() => repo.db.groups.orderBy('order').toArray(), [repo])
+}
+
+export function useGroupMap(): Map<string, SpendGroup> {
+  const groups = useGroups()
+  return useMemo(() => new Map((groups ?? []).map((g) => [g.id, g])), [groups])
+}
+
 export function useRules(): Rule[] | undefined {
   const repo = useRepo()
   return useLiveQuery(() => repo.db.rules.toArray(), [repo])
@@ -102,4 +113,15 @@ export function useSettings(): Settings | undefined {
 export function useCategoryMap(): Map<string, Category> {
   const cats = useCategories()
   return useMemo(() => new Map((cats ?? []).map((c) => [c.id, c])), [cats])
+}
+
+/** Geçerli grup filtresi; silinmiş bir gruba işaret ediyorsa "tümü"ne döner. */
+export function useGroupFilter(): [string, (g: string) => void] {
+  const { groupFilter, setGroupFilter } = useUi()
+  const groups = useGroups()
+  const valid = !groupFilter || groupFilter === 'none' || !groups || groups.some((g) => g.id === groupFilter)
+  useEffect(() => {
+    if (!valid) setGroupFilter('')
+  }, [valid, setGroupFilter])
+  return [valid ? groupFilter : '', setGroupFilter]
 }

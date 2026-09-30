@@ -46,7 +46,8 @@ describe('ilk kurulum ve göç', () => {
     const cats = await db.categories.toArray()
     expect(cats.map((c) => c.name)).toEqual(expect.arrayContaining(['Market', 'Akaryakıt', 'Restoran/Kafe', 'Ulaşım', 'Faturalar', 'Kira/Ev', 'Sağlık', 'Eğitim', 'Giyim', 'Bebek/Çocuk', 'Eğlence', 'Abonelikler', 'Diğer']))
     expect(await db.rules.count()).toBeGreaterThan(20)
-    expect(db.verno).toBe(3)
+    expect(db.verno).toBe(4)
+    expect((await db.groups.orderBy('order').toArray()).map((g) => g.name)).toEqual(['Bireysel', 'Ortak'])
   })
   it('v1 veritabanını v2ye taşır ve normalize açıklamayı doldurur', async () => {
     const name = `mig-${Math.random()}`
@@ -196,5 +197,72 @@ describe('yedekleme / geri yükleme', () => {
     const future = { ...bad, backupVersion: 99 }
     const r2 = parseBackup(JSON.stringify(future))
     expect(!r2.ok && r2.message).toMatch(/daha yeni/)
+  })
+})
+
+describe('harcama grupları', () => {
+  it('v3 veritabanına varsayılan grupları ekler; işlemler grupsuz kalır', async () => {
+    const name = `mig4-${Math.random()}`
+    const v3 = new Dexie(name)
+    v3.version(3).stores({
+      transactions: 'id, date, type, categoryId, source, importId, amountKurus, normalizedDescription, accountAlias, [date+amountKurus]',
+      categories: 'id, order',
+      rules: 'id, categoryId, priority',
+      imports: 'id, fileHash, importedAt, status',
+      settings: 'id',
+      meta: 'key',
+    })
+    await v3.open()
+    await v3.table('transactions').add({ id: 'x', date: '2026-01-01', amountKurus: 100, type: 'expense', description: 'A', normalizedDescription: 'A', categoryId: null, source: 'manual' })
+    v3.close()
+    const v4 = createDb(name)
+    await v4.open()
+    expect((await v4.groups.toArray()).map((g) => g.name).sort()).toEqual(['Bireysel', 'Ortak'])
+    expect((await v4.transactions.get('x'))?.groupId ?? null).toBeNull()
+    v4.close()
+    await Dexie.delete(name)
+  })
+  it('işlemde grup saklanır, düzenlenir ve toplu atanır', async () => {
+    const t = await repo.addTransaction({ date: '2026-09-01', amountKurus: 100, type: 'expense', description: 'A', categoryId: 'cat-market', groupId: 'grp-ortak' })
+    expect((await db.transactions.get(t.id))?.groupId).toBe('grp-ortak')
+    // Düzenlemede grup verilmezse korunur
+    await repo.updateTransaction(t.id, { date: '2026-09-01', amountKurus: 200, type: 'expense', description: 'A', categoryId: 'cat-market' })
+    expect((await db.transactions.get(t.id))?.groupId).toBe('grp-ortak')
+    await repo.updateTransaction(t.id, { date: '2026-09-01', amountKurus: 200, type: 'expense', description: 'A', categoryId: 'cat-market', groupId: null })
+    expect((await db.transactions.get(t.id))?.groupId).toBeNull()
+    expect(await repo.bulkSetGroup([t.id], 'grp-bireysel')).toBe(1)
+    expect((await db.transactions.get(t.id))?.groupId).toBe('grp-bireysel')
+    await expect(repo.bulkSetGroup([t.id], 'yok')).rejects.toBeInstanceOf(UserFacingError)
+  })
+  it('grup ekler; aynı ad iki kez eklenemez; silinen grubun işlemleri silinmez, grupsuz kalır', async () => {
+    const g = await repo.addGroup({ name: 'İş', color: '#000' })
+    await expect(repo.addGroup({ name: ' iş ', color: '#000' })).rejects.toBeInstanceOf(UserFacingError)
+    const t = await repo.addTransaction({ date: '2026-09-01', amountKurus: 100, type: 'expense', description: 'A', categoryId: 'cat-market', groupId: g.id })
+    expect(await repo.deleteGroup(g.id)).toBe(1)
+    expect((await db.transactions.get(t.id))?.groupId).toBeNull()
+    expect(await db.groups.get(g.id)).toBeUndefined()
+  })
+  it('içe aktarmada satır grubu kaydedilir', async () => {
+    const commit = buildCommit({ importId: 'impg', rows: [draft({ groupId: 'grp-ortak' }), draft({ amountKurus: 700 })], activeCategoryIds: await active(), file, isDemo: false })
+    await repo.commitImport(commit)
+    const saved = await db.transactions.where('importId').equals('impg').toArray()
+    expect(saved.map((t) => t.groupId ?? null).sort()).toEqual(['grp-ortak', null])
+  })
+  it('yedek grupları taşır; grupsuz eski yedek varsayılan gruplarla yüklenir', async () => {
+    const g = await repo.addGroup({ name: 'Tatil', color: '#111' })
+    await repo.addTransaction({ date: '2026-09-01', amountKurus: 100, type: 'expense', description: 'A', categoryId: 'cat-market', groupId: g.id })
+    const parsed = parseBackup(JSON.stringify(await repo.exportBackup()))
+    if (!parsed.ok) throw new Error(parsed.message)
+    await repo.clearAll()
+    await repo.restoreBackup(parsed.backup, 'replace')
+    expect((await db.transactions.toArray())[0].groupId).toBe(g.id)
+    expect((await db.groups.toArray()).map((x) => x.name)).toContain('Tatil')
+
+    const old = { ...parsed.backup, data: { ...parsed.backup.data, groups: undefined } }
+    const reparsed = parseBackup(JSON.stringify(old))
+    if (!reparsed.ok) throw new Error(reparsed.message)
+    expect(reparsed.backup.data.transactions[0].groupId).toBeNull()
+    await repo.restoreBackup(reparsed.backup, 'replace')
+    expect((await db.groups.toArray()).map((x) => x.name).sort()).toEqual(['Bireysel', 'Ortak'])
   })
 })

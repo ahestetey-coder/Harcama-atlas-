@@ -1,5 +1,6 @@
 import { Archive, ArchiveRestore, FlaskConical, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CATEGORY_COLORS, CATEGORY_ICONS, CategoryIcon } from '../components/common'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
@@ -11,23 +12,27 @@ import type { Category, Rule, RuleMatchMode } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useCategories, useRepo, useRules, useTransactions } from '../state/data'
 import { useUi } from '../state/ui'
+import { GroupsTab } from './GroupsTab'
 
 export default function CategoriesPage() {
-  const [tab, setTab] = useState<'categories' | 'rules'>('categories')
+  const [params, setParams] = useSearchParams()
+  const tab = (['categories', 'groups', 'rules'] as const).find((t) => t === params.get('bolum')) ?? 'categories'
+  const setTab = (t: 'categories' | 'groups' | 'rules') => setParams(t === 'categories' ? {} : { bolum: t }, { replace: true })
   return (
     <div>
-      <PageHeader title="Kategoriler ve kurallar" subtitle="Kurallar yalnızca içe aktarmada öneri üretir; sizin seçtiğiniz kategoriyi asla ezmez." />
+      <PageHeader title="Kategoriler ve gruplar" subtitle="Kurallar yalnızca içe aktarmada öneri üretir; sizin seçtiğiniz kategoriyi asla ezmez." />
       <Segmented
         label="Bölüm"
         value={tab}
         onChange={setTab}
         options={[
           { value: 'categories', label: 'Kategoriler' },
+          { value: 'groups', label: 'Harcama grupları' },
           { value: 'rules', label: 'Eşleştirme kuralları' },
         ]}
-        className="mb-4"
+        className="mb-4 max-w-full overflow-x-auto"
       />
-      {tab === 'categories' ? <CategoriesTab /> : <RulesTab />}
+      {tab === 'categories' ? <CategoriesTab /> : tab === 'groups' ? <GroupsTab /> : <RulesTab />}
     </div>
   )
 }

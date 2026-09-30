@@ -24,7 +24,7 @@ export function trackExternalRequests(page: Page): string[] {
   return external
 }
 
-export async function addExpense(page: Page, o: { amount: string; description: string; category?: string; date?: string }) {
+export async function addExpense(page: Page, o: { amount: string; description: string; category?: string; date?: string; group?: string }) {
   await page.getByRole('button', { name: 'Gider ekle' }).first().click()
   const dialog = page.getByRole('dialog', { name: 'Gider ekle' })
   await expect(dialog).toBeVisible()
@@ -32,6 +32,7 @@ export async function addExpense(page: Page, o: { amount: string; description: s
   if (o.date) await dialog.getByLabel('Tarih').fill(o.date)
   await dialog.getByLabel('Açıklama / iş yeri').fill(o.description)
   if (o.category) await dialog.getByLabel('Kategori').selectOption({ label: o.category })
+  if (o.group) await dialog.getByRole('radiogroup', { name: 'Harcama grubu' }).getByRole('radio', { name: o.group }).click()
   await dialog.getByRole('button', { name: 'Kaydet', exact: true }).click()
   return dialog
 }

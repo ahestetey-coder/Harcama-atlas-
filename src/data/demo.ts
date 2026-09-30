@@ -35,6 +35,8 @@ function rng(seed: number) {
   }
 }
 
+const SHARED_CATEGORIES = new Set(['cat-kira', 'cat-market', 'cat-faturalar', 'cat-bebek'])
+
 export async function seedDemoData(repo: AtlasRepository): Promise<void> {
   const rand = rng(20260930)
   const now = new Date().toISOString()
@@ -51,6 +53,8 @@ export async function seedDemoData(repo: AtlasRepository): Promise<void> {
       normalizedDescription: normalizeText(description),
       categoryId,
       categorySource: 'manual',
+      // Ev giderleri "Ortak", kişisel harcamalar "Bireysel" grubunda
+      groupId: type === 'transfer' ? null : SHARED_CATEGORIES.has(categoryId ?? '') ? 'grp-ortak' : 'grp-bireysel',
       source: 'demo',
       paymentMethod: 'credit',
       accountAlias: 'Demo Kart',

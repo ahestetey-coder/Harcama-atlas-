@@ -138,6 +138,7 @@ export function buildCommit(opts: {
     normalizedDescription: normalizeText(r.description),
     categoryId: r.categoryId,
     categorySource: r.categorySource ?? 'manual',
+    groupId: r.groupId || null,
     source: opts.isDemo ? 'demo' : KIND_SOURCE[opts.file.kind],
     importId: opts.importId,
     installment: r.installment,

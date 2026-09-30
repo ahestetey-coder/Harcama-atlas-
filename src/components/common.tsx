@@ -40,7 +40,7 @@ import {
 import { useState } from 'react'
 import { addMonths, currentMonth, MONTH_NAMES, monthLabel, parseMonthKey } from '../domain/dates'
 import { formatKurus } from '../domain/money'
-import type { Category, MonthKey, TxType } from '../domain/types'
+import type { Category, MonthKey, SpendGroup, TxType } from '../domain/types'
 import { cn } from '../lib/cn'
 import { Modal } from './ui/Modal'
 import { IconButton } from './ui/primitives'
@@ -192,6 +192,97 @@ export function MonthSwitcher({ month, onChange, compact }: { month: MonthKey; o
           Bu aya dön
         </button>
       </Modal>
+    </div>
+  )
+}
+
+/** Harcama grubu rozeti (renkli nokta + ad). */
+export function GroupBadge({ group, className }: { group?: Pick<SpendGroup, 'name' | 'color'> | null; className?: string }) {
+  if (!group) return null
+  return (
+    <span className={cn('inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11.5px] font-medium text-muted', className)}>
+      <span className="size-2 rounded-full" style={{ backgroundColor: group.color }} aria-hidden />
+      {group.name}
+    </span>
+  )
+}
+
+/**
+ * Grup seçici: "Grupsuz" + gruplar, tek dokunuşla seçilen düğmeler.
+ * value '' = grupsuz.
+ */
+export function GroupPicker({
+  groups,
+  value,
+  onChange,
+  label = 'Harcama grubu',
+  size = 'md',
+}: {
+  groups: SpendGroup[]
+  value: string
+  onChange: (id: string) => void
+  label?: string
+  size?: 'sm' | 'md'
+}) {
+  const options = [{ id: '', name: 'Grupsuz', color: 'transparent' }, ...groups]
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+      {options.map((g) => {
+        const on = value === g.id
+        return (
+          <button
+            key={g.id || 'none'}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(g.id)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border font-medium transition-colors',
+              size === 'sm' ? 'px-2.5 py-0.5 text-[12px]' : 'px-3 py-1 text-[13px]',
+              on ? 'border-accent bg-accent-soft text-ink' : 'border-line text-muted hover:text-ink',
+            )}
+          >
+            {g.id && <span className="size-2 rounded-full" style={{ backgroundColor: g.color }} aria-hidden />}
+            {g.name}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** İşlem grup filtresine uyuyor mu? ('' tümü, 'none' grupsuz) */
+export function matchesGroup(t: { groupId?: string | null }, filter: string): boolean {
+  if (!filter) return true
+  if (filter === 'none') return !t.groupId
+  return t.groupId === filter
+}
+
+/** Panel ve işlemler sayfasının üstündeki grup filtresi. Grup yoksa gösterilmez. */
+export function GroupFilterBar({ groups, value, onChange, className }: { groups: SpendGroup[]; value: string; onChange: (v: string) => void; className?: string }) {
+  if (!groups.length) return null
+  const options = [{ id: '', name: 'Tüm gruplar', color: '' }, ...groups, { id: 'none', name: 'Grupsuz', color: '' }]
+  return (
+    <div role="radiogroup" aria-label="Grup filtresi" className={cn('flex flex-wrap items-center gap-1.5', className)}>
+      {options.map((g) => {
+        const on = value === g.id
+        return (
+          <button
+            key={g.id || 'all'}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(g.id)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors',
+              on ? 'border-ink bg-ink text-surface' : 'border-line bg-surface text-muted hover:text-ink',
+            )}
+          >
+            {g.color && <span className="size-2 rounded-full" style={{ backgroundColor: g.color }} aria-hidden />}
+            {g.name}
+          </button>
+        )
+      })}
     </div>
   )
 }

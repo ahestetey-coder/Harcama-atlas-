@@ -33,6 +33,8 @@ export interface Transaction {
   normalizedDescription: string
   categoryId: string | null
   categorySource?: CategorySource
+  /** Kategoriden bağımsız ikinci gruplama (ör. Bireysel, Ortak). Boşsa grupsuz. */
+  groupId?: string | null
   note?: string
   paymentMethod?: PaymentMethod
   accountAlias?: string
@@ -53,6 +55,17 @@ export interface Category {
   order: number
   /** Sistem kategorisi (ör. "Diğer") silinemez. */
   system?: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** Harcama grubu: kategoriden ayrı, kullanıcının tanımladığı gruplama (Bireysel, Ortak, İş…). */
+export interface SpendGroup {
+  id: string
+  name: string
+  color: string
+  archived: boolean
+  order: number
   createdAt: string
   updatedAt: string
 }

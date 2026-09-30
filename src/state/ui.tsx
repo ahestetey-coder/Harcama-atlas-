@@ -16,6 +16,9 @@ interface Toast {
 interface UiCtx {
   month: MonthKey
   setMonth: (m: MonthKey) => void
+  /** Panel ve işlemler için grup filtresi: '' tümü, 'none' grupsuz, aksi halde grup kimliği. */
+  groupFilter: string
+  setGroupFilter: (g: string) => void
   toast: (message: string, opts?: { kind?: ToastKind; action?: Toast['action']; duration?: number }) => void
   /** İşlem formunu açar: yeni kayıt veya düzenleme. */
   openTransactionForm: (tx?: Transaction) => void
@@ -30,6 +33,7 @@ const Ctx = createContext<UiCtx | null>(null)
 
 export function UiProvider({ children }: { children: ReactNode }) {
   const [month, setMonth] = useState<MonthKey>(() => currentMonth())
+  const [groupFilter, setGroupFilter] = useState('')
   const [toasts, setToasts] = useState<Toast[]>([])
   const [formState, setFormState] = useState<{ open: boolean; tx?: Transaction }>({ open: false })
   const [highlightId, setHighlightId] = useState<string | null>(null)
@@ -50,8 +54,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const closeTransactionForm = useCallback(() => setFormState((s) => ({ ...s, open: false })), [])
 
   const value = useMemo(
-    () => ({ month, setMonth, toast, openTransactionForm, formState, closeTransactionForm, highlightId, setHighlightId }),
-    [month, toast, openTransactionForm, formState, closeTransactionForm, highlightId],
+    () => ({ month, setMonth, groupFilter, setGroupFilter, toast, openTransactionForm, formState, closeTransactionForm, highlightId, setHighlightId }),
+    [month, groupFilter, toast, openTransactionForm, formState, closeTransactionForm, highlightId],
   )
 
   return (

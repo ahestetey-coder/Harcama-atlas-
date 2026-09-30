@@ -1,9 +1,9 @@
-import { Download, FileUp, Filter, ListOrdered, Plus, Search, Tags, Trash2, X } from 'lucide-react'
+import { Download, FileUp, Filter, ListOrdered, Plus, Search, Tags, Trash2, Users, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
-import { MonthSwitcher } from '../components/common'
+import { GroupFilterBar, GroupPicker, matchesGroup, MonthSwitcher } from '../components/common'
 import { TransactionList } from '../components/TransactionList'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Select, Skeleton } from '../components/ui/primitives'
@@ -15,7 +15,7 @@ import { PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Tr
 import { downloadBlob } from '../lib/download'
 import { transactionsToCsv } from '../lib/csvExport'
 import { APP_CONFIG } from '../config/app'
-import { useCategories, useCategoryMap, useImports, useRepo, useTransactions } from '../state/data'
+import { useCategories, useCategoryMap, useGroupFilter, useGroupMap, useGroups, useImports, useRepo, useTransactions } from '../state/data'
 import { useUi } from '../state/ui'
 
 type Period = 'month' | 'all' | 'custom'
@@ -26,6 +26,9 @@ export default function TransactionsPage() {
   const catMap = useCategoryMap()
   const imports = useImports()
   const repo = useRepo()
+  const groups = useGroups()
+  const groupMap = useGroupMap()
+  const [groupFilter, setGroupFilter] = useGroupFilter()
   const { month, setMonth, openTransactionForm, toast } = useUi()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -43,6 +46,8 @@ export default function TransactionsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkCatOpen, setBulkCatOpen] = useState(false)
   const [bulkCat, setBulkCat] = useState('')
+  const [bulkGroupOpen, setBulkGroupOpen] = useState(false)
+  const [bulkGroup, setBulkGroup] = useState('')
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -63,6 +68,7 @@ export default function TransactionsPage() {
     return txs.filter((t) => {
       if (range && (t.date < range.start || t.date > range.end)) return false
       if (category === 'none' ? t.categoryId !== null : category && t.categoryId !== category) return false
+      if (!matchesGroup(t, groupFilter)) return false
       if (type && t.type !== type) return false
       if (payment && t.paymentMethod !== payment) return false
       if (source && t.source !== source) return false
@@ -70,7 +76,7 @@ export default function TransactionsPage() {
       if (q && !t.normalizedDescription.includes(q) && !normalizeText(t.note ?? '').includes(q)) return false
       return true
     })
-  }, [txs, query, period, month, from, to, category, type, payment, source, importId])
+  }, [txs, query, period, month, from, to, category, groupFilter, type, payment, source, importId])
 
   // Görünmeyen seçimleri temizle
   useEffect(() => {
@@ -91,10 +97,11 @@ export default function TransactionsPage() {
     return { e, r }
   }, [filtered])
 
-  const activeFilterCount = [category, type, payment, source, importId, period === 'custom' ? 'x' : ''].filter(Boolean).length
+  const activeFilterCount = [category, groupFilter, type, payment, source, importId, period === 'custom' ? 'x' : ''].filter(Boolean).length
 
   const clearFilters = () => {
     setCategory('')
+    setGroupFilter('')
     setType('')
     setPayment('')
     setSource('')
@@ -145,8 +152,22 @@ export default function TransactionsPage() {
     }
   }
 
+  const applyBulkGroup = async () => {
+    setBusy(true)
+    try {
+      const n = await repo.bulkSetGroup([...selected], bulkGroup || null)
+      toast(bulkGroup ? `${n} işlem “${groupMap.get(bulkGroup)?.name}” grubuna alındı.` : `${n} işlemin grubu kaldırıldı.`)
+      setSelected(new Set())
+      setBulkGroupOpen(false)
+    } catch (e) {
+      toast(toUserMessage(e), { kind: 'error' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const exportCsv = () => {
-    const csv = transactionsToCsv(filtered, catMap)
+    const csv = transactionsToCsv(filtered, catMap, groupMap)
     const name = period === 'month' ? month : period === 'all' ? 'tum-kayitlar' : `${from || 'bas'}_${to || 'son'}`
     downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${APP_CONFIG.slug}-islemler-${name}.csv`)
     toast(`${filtered.length} işlem CSV olarak indirildi.`)
@@ -186,6 +207,20 @@ export default function TransactionsPage() {
           ))}
         </Select>
       </Field>
+      {(groups ?? []).length > 0 && (
+        <Field label="Harcama grubu" htmlFor="f-group">
+          <Select id="f-group" value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+            <option value="">Tümü</option>
+            <option value="none">Grupsuz</option>
+            {(groups ?? []).map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+                {g.archived ? ' (arşivde)' : ''}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
       <Field label="İşlem türü" htmlFor="f-type">
         <Select id="f-type" value={type} onChange={(e) => setType(e.target.value as TxType | '')}>
           <option value="">Tümü</option>
@@ -237,6 +272,8 @@ export default function TransactionsPage() {
         }
       />
 
+      <GroupFilterBar groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)} value={groupFilter} onChange={setGroupFilter} className="mb-3" />
+
       <Card className="mb-4 p-3 sm:p-4">
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -281,6 +318,18 @@ export default function TransactionsPage() {
               <Button size="sm" icon={<Tags className="size-4" />} onClick={() => setBulkCatOpen(true)}>
                 Kategori değiştir
               </Button>
+              {(groups ?? []).length > 0 && (
+                <Button
+                  size="sm"
+                  icon={<Users className="size-4" />}
+                  onClick={() => {
+                    setBulkGroup('')
+                    setBulkGroupOpen(true)
+                  }}
+                >
+                  Grup ata
+                </Button>
+              )}
               <Button size="sm" variant="danger" icon={<Trash2 className="size-4" />} onClick={() => setConfirmBulkDelete(true)}>
                 Sil
               </Button>
@@ -375,6 +424,26 @@ export default function TransactionsPage() {
             ))}
           </Select>
         </Field>
+      </Modal>
+
+      <Modal
+        open={bulkGroupOpen}
+        onOpenChange={setBulkGroupOpen}
+        title="Toplu grup ata"
+        description={`${selected.size} işlemin grubu değişecek.`}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setBulkGroupOpen(false)}>
+              Vazgeç
+            </Button>
+            <Button variant="primary" onClick={applyBulkGroup} loading={busy}>
+              Uygula
+            </Button>
+          </>
+        }
+      >
+        <GroupPicker groups={(groups ?? []).filter((g) => !g.archived)} value={bulkGroup} onChange={setBulkGroup} label="Yeni grup" />
       </Modal>
 
       <ConfirmDialog

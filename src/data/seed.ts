@@ -1,5 +1,5 @@
 import { PRIORITY } from '../domain/rules'
-import type { Category, Rule, RuleMatchMode } from '../domain/types'
+import type { Category, Rule, RuleMatchMode, SpendGroup } from '../domain/types'
 
 export const OTHER_CATEGORY_ID = 'cat-diger'
 
@@ -21,6 +21,15 @@ export const DEFAULT_CATEGORIES: SeedCategory[] = [
   { id: 'cat-banka', name: 'Banka Ücreti/Faiz', icon: 'landmark', color: '#475569' },
   { id: OTHER_CATEGORY_ID, name: 'Diğer', icon: 'shapes', color: '#94a3b8', system: true },
 ]
+
+export const DEFAULT_GROUPS: Pick<SpendGroup, 'id' | 'name' | 'color'>[] = [
+  { id: 'grp-bireysel', name: 'Bireysel', color: '#2563eb' },
+  { id: 'grp-ortak', name: 'Ortak', color: '#059669' },
+]
+
+export function buildDefaultGroups(now: string): SpendGroup[] {
+  return DEFAULT_GROUPS.map((g, i) => ({ ...g, archived: false, order: i, createdAt: now, updatedAt: now }))
+}
 
 type SeedRule = [pattern: string, categoryId: string, mode?: RuleMatchMode]
 

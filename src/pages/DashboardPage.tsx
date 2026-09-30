@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, DailyBars, type DonutSlice } from '../components/charts/Charts'
-import { CategoryIcon, Money, MonthSwitcher } from '../components/common'
+import { CategoryIcon, GroupFilterBar, matchesGroup, Money, MonthSwitcher } from '../components/common'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Skeleton } from '../components/ui/primitives'
@@ -12,15 +12,20 @@ import { toUserMessage } from '../data/repository'
 import { addMonths, currentMonth, dayOf, daysInMonth, formatDate, MONTH_NAMES, monthLabel, monthOf, parseMonthKey, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { compareWithPrevious, summarizeMonth, type CategoryTotal } from '../domain/summary'
-import type { Transaction } from '../domain/types'
+import type { SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
-import { useCategoryMap, useData, useRepo, useSettings, useTransactions } from '../state/data'
+import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
 import { useUi } from '../state/ui'
 
 const MAX_SLICES = 7
 
 export default function DashboardPage() {
-  const txs = useTransactions()
+  const allTxs = useTransactions()
+  const groups = useGroups()
+  const groupMap = useGroupMap()
+  const [groupFilter, setGroupFilter] = useGroupFilter()
+  // Bütün panel seçili gruba göre hesaplanır (Tüm gruplar / Bireysel / Ortak / Grupsuz…)
+  const txs = useMemo(() => allTxs?.filter((t) => matchesGroup(t, groupFilter)), [allTxs, groupFilter])
   const categories = useCategoryMap()
   const settings = useSettings()
   const { month, setMonth, openTransactionForm } = useUi()
@@ -38,6 +43,9 @@ export default function DashboardPage() {
   const summary = useMemo(() => (txs ? summarizeMonth(txs, month) : null), [txs, month])
   const comparison = useMemo(() => (txs ? compareWithPrevious(txs, month, addMonths(month, -1), today) : null), [txs, month, today])
   const monthTxs = useMemo(() => (txs ?? []).filter((t) => monthOf(t.date) === month), [txs, month])
+  const groupRows = useMemo(() => groupBreakdown(allTxs ?? [], month, groups ?? []), [allTxs, month, groups])
+  const filterName = groupFilter === 'none' ? 'Grupsuz' : groupFilter ? groupMap.get(groupFilter)?.name : undefined
+  const allMonthCount = useMemo(() => (allTxs ?? []).filter((t) => monthOf(t.date) === month).length, [allTxs, month])
 
   const slices: DonutSlice[] = useMemo(() => {
     if (!summary) return []
@@ -83,13 +91,20 @@ export default function DashboardPage() {
         }
       />
 
+      <GroupFilterBar groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)} value={groupFilter} onChange={setGroupFilter} className="mb-4" />
+
       {!hasData ? (
         <Card>
           <EmptyState
             icon={<Wallet className="size-6" />}
-            title={`${monthLabel(month)} için kayıt yok`}
+            title={filterName ? `${monthLabel(month)} içinde “${filterName}” kaydı yok` : `${monthLabel(month)} için kayıt yok`}
             action={
               <>
+                {filterName && allMonthCount > 0 && (
+                  <Button variant="primary" onClick={() => setGroupFilter('')}>
+                    Tüm grupları göster ({allMonthCount} işlem)
+                  </Button>
+                )}
                 {otherMonth && (
                   <Button variant="primary" onClick={() => setMonth(otherMonth)}>
                     {monthLabel(otherMonth)} kayıtlarını göster
@@ -127,6 +142,7 @@ export default function DashboardPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 id="net-title" className="text-[13px] font-medium uppercase tracking-wider text-white/70">
                   Net gider · {monthLabel(month)}
+                  {filterName && ` · ${filterName}`}
                 </h2>
                 {isCurrent && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80">
@@ -239,6 +255,19 @@ export default function DashboardPage() {
               }
             />
           </Card>
+
+          {/* Gruplara göre (Bireysel / Ortak / …) */}
+          {groupRows.length > 1 && (
+            <Card className="p-5 lg:col-span-7">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="font-display text-base font-semibold">Gruplara göre</h2>
+                <Link to="/kategoriler?bolum=groups" className="text-[13px] font-medium text-accent hover:underline">
+                  Grupları düzenle
+                </Link>
+              </div>
+              <GroupTable rows={groupRows} selected={groupFilter} onSelect={(id) => setGroupFilter(groupFilter === id ? '' : id)} />
+            </Card>
+          )}
         </div>
       )}
 
@@ -447,3 +476,63 @@ function DashboardSkeleton() {
   )
 }
 
+
+interface GroupRow {
+  id: string
+  name: string
+  color: string
+  expenseKurus: number
+  refundKurus: number
+  count: number
+}
+
+/** Seçili aydaki giderlerin gruplara dağılımı (grup filtresinden bağımsız, her zaman tüm işlemler). */
+function groupBreakdown(txs: Transaction[], month: string, groups: SpendGroup[]): GroupRow[] {
+  const rows = new Map<string, GroupRow>()
+  for (const g of groups) rows.set(g.id, { id: g.id, name: g.name, color: g.color, expenseKurus: 0, refundKurus: 0, count: 0 })
+  rows.set('none', { id: 'none', name: 'Grupsuz', color: '#94a3b8', expenseKurus: 0, refundKurus: 0, count: 0 })
+  for (const t of txs) {
+    if (monthOf(t.date) !== month || t.type === 'transfer') continue
+    const r = rows.get(t.groupId && rows.has(t.groupId) ? t.groupId : 'none')!
+    r.count++
+    if (t.type === 'expense') r.expenseKurus += t.amountKurus
+    else r.refundKurus += t.amountKurus
+  }
+  const archived = new Set(groups.filter((g) => g.archived).map((g) => g.id))
+  // Arşivdeki ve boş "Grupsuz" satırları yalnızca kaydı varsa gösterilir
+  return [...rows.values()].filter((r) => r.count > 0 || (r.id !== 'none' && !archived.has(r.id)))
+}
+
+function GroupTable({ rows, selected, onSelect }: { rows: GroupRow[]; selected: string; onSelect: (id: string) => void }) {
+  const total = rows.reduce((s, r) => s + r.expenseKurus - r.refundKurus, 0)
+  return (
+    <ul className="flex flex-col gap-1">
+      {rows.map((r) => {
+        const net = r.expenseKurus - r.refundKurus
+        const pct = total > 0 ? Math.max(0, (net / total) * 100) : 0
+        return (
+          <li key={r.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(r.id)}
+              aria-pressed={selected === r.id}
+              aria-label={`${r.name}: net ${formatKurus(net)}, ${r.count} işlem. Paneli bu gruba göre filtrele`}
+              className={cn('w-full rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-2', selected === r.id && 'bg-surface-2 ring-1 ring-line-strong')}
+            >
+              <div className="flex items-center gap-2 text-[13.5px]">
+                <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} aria-hidden />
+                <span className="min-w-0 flex-1 truncate font-medium text-ink">{r.name}</span>
+                <span className="num text-[12px] text-subtle">{r.count} işlem</span>
+                <span className="num w-28 text-right font-semibold">{formatKurus(net)}</span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: r.color }} />
+              </div>
+            </button>
+          </li>
+        )
+      })}
+      <li className="px-2 pt-1 text-[12px] text-subtle">Net = gider − iade. Bir gruba dokunursanız bütün panel o gruba göre gösterilir.</li>
+    </ul>
+  )
+}
