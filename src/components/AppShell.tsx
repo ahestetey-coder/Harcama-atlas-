@@ -1,10 +1,11 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Moon, Plus, Settings, Sun, Tags, Users } from 'lucide-react'
+import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Moon, Plus, Settings, ShieldCheck, Sun, Tags, Users } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
 import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
+import { useIsAdmin } from '../state/admin'
 import { useFollowCurrentPeriod } from '../state/cycle'
 import { useTheme } from '../state/theme'
 import { useData } from '../state/data'
@@ -22,6 +23,7 @@ const NAV = [
   { to: '/yedekleme', label: 'Yedekleme ve veri', short: 'Yedekleme', icon: Database },
   { to: '/ayarlar', label: 'Ayarlar', icon: Settings },
 ]
+const ADMIN_NAV = { to: '/yonetim', label: 'Yönetici paneli', short: 'Yönetim', icon: ShieldCheck, end: false }
 
 export function Logo({ className }: { className?: string }) {
   // Her logo kendi gradyan kimliğini kullanır; gizli bir kopyaya başvurursa mobilde boş görünür.
@@ -54,6 +56,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
   useFollowCurrentPeriod()
+  const admin = useIsAdmin()
+  const nav = admin ? [...NAV, ADMIN_NAV] : NAV
 
   return (
     <div className="min-h-dvh lg:pl-[272px]">
@@ -70,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           Gider ekle
         </Button>
         <nav aria-label="Ana menü" className="mt-6 flex flex-col gap-0.5">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -172,7 +176,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setMoreOpen(true)}
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-xl pb-2 pt-1 text-[11px] font-medium',
-              ['/kategoriler', '/aktarimlar', '/yedekleme', '/ayarlar'].some((p) => location.pathname.startsWith(p)) ? 'text-accent' : 'text-muted',
+              ['/kategoriler', '/aktarimlar', '/uyeler', '/yedekleme', '/ayarlar', '/yonetim'].some((p) => location.pathname.startsWith(p)) ? 'text-accent' : 'text-muted',
             )}
           >
             <Menu className="size-[22px]" />
@@ -182,7 +186,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
       <Modal open={moreOpen} onOpenChange={setMoreOpen} title="Menü" size="sm">
         <div className="grid grid-cols-2 gap-2 pb-2">
-          {NAV.slice(3).map((n) => (
+          {nav.slice(3).map((n) => (
             <button
               key={n.to}
               type="button"

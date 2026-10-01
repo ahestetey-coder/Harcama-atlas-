@@ -204,3 +204,92 @@ revoke all on function public.ha_create_group(text, text, text), public.ha_creat
 grant execute on function public.ha_create_group(text, text, text), public.ha_create_invite(uuid), public.ha_join_group(text, text),
   public.ha_set_display_name(uuid, text), public.ha_remove_member(uuid, uuid), public.ha_upsert_transactions(jsonb),
   public.ha_delete_transactions(text[]), public.ha_is_member(uuid), public.ha_set_group_cycle(uuid, integer) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------
+-- Yönetici paneli
+--
+-- Yalnızca ha_admins tablosundaki hesaplar kullanıcı listesini görür ve hesap işlemleri yapar.
+-- Yönetici eklemek için (bir kez, SQL Editor'de, kendi e-postanızla):
+--   insert into public.ha_admins (user_id) select id from auth.users where email = 'SIZIN@EPOSTANIZ' on conflict do nothing;
+-- Şifreler Supabase'de geri döndürülemez biçimde (hash) saklanır; kimse göremez. Yönetici yalnızca
+-- şifre yenileme e-postası gönderebilir (uygulama bunu Supabase'in herkese açık uç noktasıyla yapar).
+
+create table if not exists public.ha_admins (
+  user_id uuid primary key,
+  added_at timestamptz not null default now()
+);
+alter table public.ha_admins enable row level security;
+revoke all on public.ha_admins from anon, authenticated;
+
+create or replace function public.ha_is_admin() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null and exists (select 1 from public.ha_admins where user_id = auth.uid())
+$$;
+
+create or replace function public.ha_admin_require() returns void
+  language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.ha_is_admin() then raise exception 'Bu işlem için yönetici yetkisi gerekir'; end if;
+end $$;
+
+create or replace function public.ha_admin_list_users()
+  returns table (id uuid, email text, full_name text, provider text, created_at timestamptz, last_sign_in_at timestamptz,
+                 email_confirmed_at timestamptz, banned_until timestamptz, is_admin boolean, group_count integer, shared_tx_count integer)
+  language plpgsql stable security definer set search_path = public as $$
+#variable_conflict use_column
+begin
+  perform public.ha_admin_require();
+  return query
+    select u.id, u.email::text,
+           coalesce(nullif(u.raw_user_meta_data->>'full_name', ''), nullif(u.raw_user_meta_data->>'name', '')),
+           coalesce(u.raw_app_meta_data->>'provider', 'email'),
+           u.created_at, u.last_sign_in_at, u.email_confirmed_at, u.banned_until,
+           exists (select 1 from public.ha_admins a where a.user_id = u.id),
+           (select count(*)::integer from public.ha_group_members m where m.user_id = u.id),
+           (select count(*)::integer from public.ha_transactions t where t.user_id = u.id and not t.deleted)
+      from auth.users u
+     order by u.created_at desc;
+end $$;
+
+-- Hesabı dondurur (giriş yapamaz, oturumları kapanır) veya açar.
+create or replace function public.ha_admin_set_banned(p_user uuid, p_banned boolean) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  perform public.ha_admin_require();
+  if p_user = auth.uid() then raise exception 'Kendi hesabınızı donduramazsınız'; end if;
+  update auth.users set banned_until = case when p_banned then now() + interval '100 years' else null end where id = p_user;
+  if not found then raise exception 'Kullanıcı bulunamadı'; end if;
+  if p_banned then
+    delete from auth.sessions where user_id = p_user;
+  end if;
+end $$;
+
+-- E-posta doğrulamasını elle tamamlar (doğrulama e-postası ulaşmadıysa).
+create or replace function public.ha_admin_confirm_email(p_user uuid) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  perform public.ha_admin_require();
+  update auth.users set email_confirmed_at = coalesce(email_confirmed_at, now()) where id = p_user;
+  if not found then raise exception 'Kullanıcı bulunamadı'; end if;
+end $$;
+
+-- Hesabı ve buluttaki bütün verisini siler: sahibi olduğu gruplar (üyeleri ve işlemleriyle),
+-- diğer gruplardaki üyeliği ve işlemleri. Cihazlardaki yerel kayıtlar silinmez.
+create or replace function public.ha_admin_delete_user(p_user uuid) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  perform public.ha_admin_require();
+  if p_user = auth.uid() then raise exception 'Kendi hesabınızı buradan silemezsiniz'; end if;
+  if exists (select 1 from public.ha_admins where user_id = p_user) then raise exception 'Yönetici hesabı silinemez'; end if;
+  delete from public.ha_groups where owner_id = p_user;
+  delete from public.ha_transactions where user_id = p_user;
+  delete from public.ha_group_members where user_id = p_user;
+  delete from public.ha_invites where created_by = p_user;
+  delete from auth.users where id = p_user;
+  if not found then raise exception 'Kullanıcı bulunamadı'; end if;
+end $$;
+
+revoke all on function public.ha_is_admin(), public.ha_admin_require(), public.ha_admin_list_users(), public.ha_admin_set_banned(uuid, boolean),
+  public.ha_admin_confirm_email(uuid), public.ha_admin_delete_user(uuid) from public, anon;
+grant execute on function public.ha_is_admin(), public.ha_admin_list_users(), public.ha_admin_set_banned(uuid, boolean),
+  public.ha_admin_confirm_email(uuid), public.ha_admin_delete_user(uuid) to authenticated;

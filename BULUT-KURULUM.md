@@ -78,6 +78,18 @@ Bundan sonra:
 - Panelde grup filtresinden **Ortak** seçilince toplam, kategori dağılımı ve **Kişilere göre** kartı görünür.
 - Üyenin eklediği harcamayı yalnızca o üye değiştirebilir veya silebilir. Siz yalnızca görüntülersiniz.
 
+## Yönetici paneli (isteğe bağlı)
+
+Uygulamada **Yönetici paneli** sayfası yalnızca yönetici olarak işaretlenen hesaba görünür. Kayıtlı hesapları listeler; hesaba şifre yenileme e-postası gönderir, hesabı dondurur veya siler, onaylanmamış e-postayı doğrular.
+
+Şifreler Supabase'de geri çevrilemez biçimde (hash) saklanır; yönetici dahil kimse göremez.
+
+Kurulum: `supabase/schema.sql` dosyasını yeniden çalıştırın (yönetici fonksiyonları eklenir), sonra SQL Editor'de kendi e-postanızla bir kez şunu çalıştırın:
+
+```sql
+insert into public.ha_admins (user_id) select id from auth.users where email = 'SIZIN@EPOSTANIZ' on conflict do nothing;
+```
+
 ## Sınırlar
 
 - Eşitleme için internet gerekir. Çevrimdışı eklenen ortak harcamalar bağlantı gelince gönderilir.

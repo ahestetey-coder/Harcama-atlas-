@@ -21,6 +21,7 @@ const BackupPage = lazy(() => import('./pages/BackupPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const MembersPage = lazy(() => import('./pages/MembersPage'))
 const JoinPage = lazy(() => import('./pages/JoinPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
 
 function Layout() {
   return (
@@ -64,6 +65,7 @@ const router = createHashRouter([
       { path: '/uyeler', element: <MembersPage /> },
       { path: '/katil', element: <JoinPage /> },
       { path: '/ayarlar', element: <SettingsPage /> },
+      { path: '/yonetim', element: <AdminPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

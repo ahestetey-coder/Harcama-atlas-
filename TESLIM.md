@@ -257,3 +257,16 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - Ay seçici mobilde tam genişlikte; İşlemler sayfasındaki CSV düğmesi mobilde yalnızca simge olarak görünür.
 - Hata düzeltmesi: mobilde İşlemler sayfasında "Gider ekle" düğmesi alt menüdeki + düğmesine ek olarak bir de üstte görünüyordu (gizleme sınıfı düğmenin kendi görünürlük sınıfıyla çakışıyordu). Panelde "İçe aktar" düğmesi için de aynısı geçerliydi.
 - Açık/koyu tema: mobil üst çubukta ve masaüstü yan menüde güneş/ay düğmesi eklendi. Ayarlar › Görünüm'de "Sistem" seçeneği de durur. Seçim cihazda hatırlanır.
+
+## 14. Güncelleme (01.10.2026): yönetici paneli
+
+İstek: kayıtlı kullanıcıları görebileceğim, şifrelerini yönetebileceğim bir yönetici paneli.
+
+- **Sayfa:** Yönetici paneli (menüde yalnızca yöneticiye görünür). Özet kutuları (toplam hesap, son 7 günde yeni, son 7 günde giriş, dondurulmuş), arama, durum filtresi (Tümü / Etkin / Dondurulmuş / Onaysız) ve kullanıcı listesi: ad, e-posta, giriş yöntemi (Google / e-posta), son giriş, ortak grup ve harcama sayısı.
+- **Hesap işlemleri:** şifre yenileme e-postası gönderme, e-postayı elle doğrulama, hesabı dondurma (giriş yapamaz, açık oturumları kapanır) veya dondurmayı kaldırma, hesabı silme (sahibi olduğu ortak gruplar ve buluttaki harcamalarıyla). Kendi hesabınız ve yönetici hesapları dondurulamaz ve silinemez.
+- **Şifreler:** Supabase şifreleri geri çevrilemez biçimde (hash) saklar; yönetici dahil kimse göremez. Bu yüzden panel şifre göstermez, şifre yenileme bağlantısı gönderir.
+- **Güvenlik:** Yetki veritabanında denetlenir (`ha_admins` tablosu ve `ha_admin_*` fonksiyonları). Gizli servis anahtarı tarayıcıya konmadı.
+- **Sınır:** Dondurulan hesabın elindeki giriş belgesi en fazla bir saat daha geçerli kalabilir; yenilenemez.
+- **Durum:** Yönetici fonksiyonları canlı veritabanına bu oturumdan eklenemedi (yetki onayı gerekiyor). Kurulum SQL'i paylaşılan klasörde: `harcama-atlasi-kurulum/yonetici-paneli.sql`.
+
+**Testler.** SQL testleri (yönetici olmayan listeyi göremez, hesap silemez, yönetici tablosunu okuyamaz; yönetici dondurur, oturumları kapanır, e-posta doğrular, hesap siler, kendini donduramaz), giriş testlerine yönetici paneli testi eklendi (Supabase taklit edilerek). Gerçek Supabase'de denenmedi.

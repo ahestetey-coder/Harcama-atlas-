@@ -117,4 +117,59 @@ select public.ha_remove_member((select gid from t_ctx), :'ayse');
 select count(*) = 0 as left_ok from public.ha_group_members \gset
 \if :left_ok \else \echo 'HATA: ayrılma' \q \endif
 reset role;
+-- Yönetici paneli: yalnızca yönetici kullanıcıları görür ve hesap işlemleri yapar
+insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
+  (:'osman', 'osman@ornek.test', '{"provider":"google"}', '{"full_name":"Osman"}'),
+  (:'ayse', 'ayse@ornek.test', '{"provider":"email"}', '{}'),
+  (:'yabanci', 'y@ornek.test', null, null);
+insert into auth.sessions (user_id) values (:'yabanci');
+insert into public.ha_admins (user_id) values (:'osman');
+select pg_temp.as_user(:'ayse');
+select public.ha_is_admin() = false as not_admin \gset
+\if :not_admin \else \echo 'HATA: üye yönetici sayıldı' \q \endif
+do $$ begin
+  perform * from public.ha_admin_list_users();
+  raise exception 'HATA: üye kullanıcı listesini gördü';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+do $$ begin
+  perform public.ha_admin_delete_user('33333333-3333-3333-3333-333333333333');
+  raise exception 'HATA: üye hesap sildi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+do $$ begin
+  perform * from public.ha_admins;
+  raise exception 'HATA: yönetici tablosu okunabildi';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
+
+select pg_temp.as_user(:'osman');
+select public.ha_is_admin() as is_admin \gset
+\if :is_admin \else \echo 'HATA: yönetici tanınmadı' \q \endif
+select count(*) = 3 and bool_or(is_admin and provider = 'google' and full_name = 'Osman') as list_ok from public.ha_admin_list_users() \gset
+\if :list_ok \else \echo 'HATA: kullanıcı listesi' \q \endif
+select public.ha_admin_set_banned(:'yabanci', true);
+select public.ha_admin_confirm_email(:'ayse');
+do $$ begin
+  perform public.ha_admin_set_banned('11111111-1111-1111-1111-111111111111', true);
+  raise exception 'HATA: yönetici kendini dondurdu';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+reset role;
+select banned_until > now() + interval '50 years' as banned_ok from auth.users where id = :'yabanci' \gset
+\if :banned_ok \else \echo 'HATA: dondurma' \q \endif
+select count(*) = 0 as sessions_closed from auth.sessions where user_id = :'yabanci' \gset
+\if :sessions_closed \else \echo 'HATA: oturumlar kapanmadı' \q \endif
+select email_confirmed_at is not null as confirm_ok from auth.users where id = :'ayse' \gset
+\if :confirm_ok \else \echo 'HATA: e-posta onayı' \q \endif
+select pg_temp.as_user(:'osman');
+select public.ha_admin_set_banned(:'yabanci', false);
+select public.ha_admin_delete_user(:'yabanci');
+reset role;
+select count(*) = 0 as deleted_ok from auth.users where id = :'yabanci' \gset
+\if :deleted_ok \else \echo 'HATA: hesap silinmedi' \q \endif
 \echo 'TUM SQL TESTLERI GECTI'
