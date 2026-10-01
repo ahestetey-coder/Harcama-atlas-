@@ -29,6 +29,11 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+        env:
+          # Ortak gruplar için Supabase projesi. Bu anahtar tarayıcıya açık (publishable) anahtardır;
+          # erişim veritabanındaki güvenlik kurallarıyla (supabase/schema.sql) sınırlanır.
+          VITE_SUPABASE_URL: https://muonkdoiiuxwmcgshyza.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_x_70OrbW4voTr1-sQAc0jQ_WzsFl56d
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Alert, Badge, Button, Card, Field, Input } from '../components/ui/primitives'
-import { buildInviteLink, validateCloudConfig } from '../cloud/config'
+import { buildInviteLink, envCloudConfig, validateCloudConfig } from '../cloud/config'
 import { cloudErrorMessage } from '../cloud/errors'
 import { leaveGroup, shareGroup } from '../cloud/sync'
 import type { CloudGroup } from '../cloud/types'
@@ -391,12 +391,19 @@ function GroupsCard() {
 function ConfigFooter() {
   const cloud = useCloud()
   const [open, setOpen] = useState(false)
+  // Uygulamayla gelen hazır bulut ayarı kaldırılamaz (kaldırılsa da yeniden okunur).
+  const builtIn = cloud.config?.url === envCloudConfig()?.url
   return (
     <p className="px-1 text-[12.5px] text-subtle">
-      Bulut: {cloud.config ? new URL(cloud.config.url).host : '—'} ·{' '}
-      <button type="button" className="font-medium text-accent hover:underline" onClick={() => setOpen(true)}>
-        Bulut bağlantısını kaldır
-      </button>
+      Bulut: {cloud.config ? new URL(cloud.config.url).host : '—'}
+      {!builtIn && (
+        <>
+          {' · '}
+          <button type="button" className="font-medium text-accent hover:underline" onClick={() => setOpen(true)}>
+            Bulut bağlantısını kaldır
+          </button>
+        </>
+      )}
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}

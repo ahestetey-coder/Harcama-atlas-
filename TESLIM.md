@@ -210,4 +210,5 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - Güvenlik kuralları yerel PostgreSQL 16 üzerinde test edildi (`npm run test:sql`): üye olmayan okuyamaz, başkasının işlemi değiştirilemez, süresi dolan davet reddedilir vb.
 - Eşitleme mantığı bellek içi sahte bulutla iki cihaz senaryosunda test edildi (`src/cloud/sync.test.ts`).
 - 104 birim testi ve 28 uçtan uca test geçti.
-- **Gerçek Supabase ile test edilmedi:** geliştirme ortamının ağı Supabase'e erişemiyor. İlk gerçek kullanımda bir sorun çıkarsa bildirin.
+- Supabase bağlayıcısıyla `harcama-atlasi` projesi oluşturuldu ve şema uygulandı. Gerçek veritabanında geri alınan bir işlem içinde denendi: grup oluşturma, davet, katılma ve işlem ekleme çalıştı; gruba üye olmayan kullanıcı hiçbir işlem göremedi.
+- Uygulamanın tarayıcıdan Supabase'e bağlanması geliştirme ortamından denenemedi (ağ erişimi yok). İlk gerçek kullanımda bir sorun çıkarsa bildirin.

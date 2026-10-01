@@ -56,7 +56,7 @@ create table if not exists public.ha_transactions (
 create index if not exists ha_transactions_group_updated on public.ha_transactions (group_id, updated_at);
 
 -- updated_at her zaman sunucu saatinden gelir (eşitleme imleci buna güvenir)
-create or replace function public.ha_touch() returns trigger language plpgsql as $$
+create or replace function public.ha_touch() returns trigger language plpgsql set search_path = public as $$
 begin
   new.updated_at := clock_timestamp();
   return new;

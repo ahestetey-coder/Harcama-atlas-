@@ -1,5 +1,7 @@
 # Üyelerle paylaşım: bulut kurulumu
 
+> **Yayındaki site için kurulum yapıldı (01.10.2026).** `harcama-atlasi` adlı Supabase projesi oluşturuldu, `supabase/schema.sql` uygulandı ve adres ile herkese açık anahtar GitHub Pages derlemesine eklendi (`.github/workflows/pages.yml`). Yayındaki sitede yalnızca 3. adımdaki giriş ayarlarının yapılması gerekir. Aşağıdaki adımlar uygulamayı kendi projesiyle kurmak isteyenler içindir.
+
 Harcama Atlası normalde bütün verisini yalnızca tarayıcınızda (IndexedDB) tutar. Başka bir kişiyle ortak harcama yapmak için iki cihazın buluşacağı bir yer gerekir. Bunun için sizin açacağınız **ücretsiz bir Supabase projesi** kullanılır. Kurulum bir kez yapılır ve yaklaşık 10 dakika sürer.
 
 ## Buluta ne gider, ne gitmez?
