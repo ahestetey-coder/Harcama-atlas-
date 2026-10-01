@@ -239,3 +239,14 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - Bir dönem, başladığı ayın adıyla anılır: 15 Eyl – 14 Eki dönemi "Eylül" dönemidir.
 
 **Testler.** 111 birim testi, 29 uçtan uca test, 3 giriş testi ve SQL güvenlik testleri geçti. Yeni testler: dönem hesapları, döngüyle aylık özet, yöneticinin döngüyü belirleyip üyeye eşitlenmesi, üyenin değiştirememesi (hem eşitleme katmanında hem SQL'de), ayar ekranından panelin değişmesi.
+
+## 12. Güncelleme (01.10.2026): ekleyen kişi ve kişi filtresi
+
+İstek: panelde ve diğer listelerde ortak gruba eklenen giderlerin kimin eklediği görünsün; kişi bazında filtrelenebilsin.
+
+- **Ekleyen rozeti:** Paylaşılan gruptaki her işlemde ekleyenin adı (kendi kayıtlarınızda "Siz") renkli bir rozetle gösterilir: panelin son işlemleri, işlemler listesi ve panelden açılan ayrıntı pencereleri.
+- **Kişi filtresi:** Ortak bir grupta başka üye varsa, panelde ve işlemler sayfasında grup filtresinin altında "Ekleyen: Herkes / Siz / üyeler" seçenekleri çıkar. Seçilen kişiye göre toplamlar, kategori dağılımı, günlük grafik, gruplar kartı ve liste süzülür. İşlemler sayfasının filtre panelinde de "Ekleyen kişi" seçimi vardır. Seçim iki sayfa arasında korunur.
+- **Kişilere göre kartı:** Bir kişiye dokununca bütün panel o kişiye göre süzülür; tekrar dokununca filtre kalkar.
+- "Siz" seçiliyken grup filtresi "Tüm gruplar" ise kişisel harcamalarınız da görünür; yalnızca ortak harcamalarınızı görmek için grubu da "Ortak" seçin.
+
+**Testler.** 111 birim testi, 29 uçtan uca test ve 3 giriş testi geçti. Üyeler testi; rozetleri, panelde ve işlemler sayfasında kişi filtresini doğrular.

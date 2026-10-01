@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
-import { GroupFilterBar, GroupPicker, matchesGroup, MonthSwitcher } from '../components/common'
+import { GroupFilterBar, GroupPicker, matchesGroup, matchesMember, MonthSwitcher, PersonFilterBar } from '../components/common'
 import { TransactionList } from '../components/TransactionList'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Select, Skeleton } from '../components/ui/primitives'
@@ -15,6 +15,7 @@ import { PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Tr
 import { downloadBlob } from '../lib/download'
 import { transactionsToCsv } from '../lib/csvExport'
 import { APP_CONFIG } from '../config/app'
+import { useMemberFilter } from '../state/cloud'
 import { useCategories, useCategoryMap, useGroupFilter, useGroupMap, useGroups, useImports, useRepo, useTransactions } from '../state/data'
 import { useCycle } from '../state/cycle'
 import { useUi } from '../state/ui'
@@ -30,6 +31,7 @@ export default function TransactionsPage() {
   const groups = useGroups()
   const groupMap = useGroupMap()
   const [groupFilter, setGroupFilter] = useGroupFilter()
+  const person = useMemberFilter()
   const { month, setMonth, openTransactionForm, toast } = useUi()
   const { startDay } = useCycle()
   const navigate = useNavigate()
@@ -71,6 +73,7 @@ export default function TransactionsPage() {
       if (range && (t.date < range.start || t.date > range.end)) return false
       if (category === 'none' ? t.categoryId !== null : category && t.categoryId !== category) return false
       if (!matchesGroup(t, groupFilter)) return false
+      if (!matchesMember(t, person.value, person.selfId)) return false
       if (type && t.type !== type) return false
       if (payment && t.paymentMethod !== payment) return false
       if (source && t.source !== source) return false
@@ -78,7 +81,7 @@ export default function TransactionsPage() {
       if (q && !t.normalizedDescription.includes(q) && !normalizeText(t.note ?? '').includes(q)) return false
       return true
     })
-  }, [txs, query, period, month, from, to, category, groupFilter, type, payment, source, importId, startDay])
+  }, [txs, query, period, month, from, to, category, groupFilter, person.value, person.selfId, type, payment, source, importId, startDay])
 
   // Görünmeyen seçimleri temizle
   useEffect(() => {
@@ -99,11 +102,12 @@ export default function TransactionsPage() {
     return { e, r }
   }, [filtered])
 
-  const activeFilterCount = [category, groupFilter, type, payment, source, importId, period === 'custom' ? 'x' : ''].filter(Boolean).length
+  const activeFilterCount = [category, groupFilter, person.value, type, payment, source, importId, period === 'custom' ? 'x' : ''].filter(Boolean).length
 
   const clearFilters = () => {
     setCategory('')
     setGroupFilter('')
+    person.set('')
     setType('')
     setPayment('')
     setSource('')
@@ -228,6 +232,18 @@ export default function TransactionsPage() {
           </Select>
         </Field>
       )}
+      {person.options.length > 0 && (
+        <Field label="Ekleyen kişi" htmlFor="f-person">
+          <Select id="f-person" value={person.value} onChange={(e) => person.set(e.target.value)}>
+            <option value="">Herkes</option>
+            {person.options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
       <Field label="İşlem türü" htmlFor="f-type">
         <Select id="f-type" value={type} onChange={(e) => setType(e.target.value as TxType | '')}>
           <option value="">Tümü</option>
@@ -279,7 +295,13 @@ export default function TransactionsPage() {
         }
       />
 
-      <GroupFilterBar groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)} value={groupFilter} onChange={setGroupFilter} className="mb-3" />
+      <GroupFilterBar
+        groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)}
+        value={groupFilter}
+        onChange={setGroupFilter}
+        className={person.options.length ? 'mb-2' : 'mb-3'}
+      />
+      <PersonFilterBar options={person.options} value={person.value} onChange={person.set} className="mb-3" />
 
       <Card className="mb-4 p-3 sm:p-4">
         <div className="flex gap-2">

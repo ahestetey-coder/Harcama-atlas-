@@ -48,6 +48,9 @@ geliştirildiği konteynerdeki yol). Kendi makinenizde `npx playwright install c
   (1–28) seçilir; ör. 15 seçilince ay 15'inden sonraki ayın 14'üne kadar sürer. Her grup kendi
   döngüsünü kullanabilir; paylaşılan grubun döngüsünü yalnızca grup yöneticisi belirler ve
   bütün üyelere eşitlenir.
+- **Ekleyen kişi:** Paylaşılan gruptaki her harcamada (panelin son işlemleri, işlemler listesi,
+  ayrıntı pencereleri) harcamayı kimin eklediği görünür. Panelde ve işlemler sayfasında "Ekleyen"
+  filtresiyle yalnızca bir kişinin harcamaları gösterilebilir.
 - **Elle giriş:** Kategori seçmeden gider kaydedilmez. İade ve kart ödemesi/transfer ayrı
   türlerdir. "Bu iş yeri için sonraki işlemlerde de kullan" seçeneği kural oluşturur.
   Çift tıklama iki kayıt oluşturmaz.

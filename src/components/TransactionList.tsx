@@ -25,7 +25,7 @@ interface Props {
   limit?: number
 }
 
-function TxMeta({ t, group, member }: { t: Transaction; group?: SpendGroup; member?: Member }) {
+function TxMeta({ t, group, member }: { t: Transaction; group?: SpendGroup; member?: Pick<Member, 'name' | 'color'> }) {
   return (
     <>
       {member && (
@@ -55,7 +55,12 @@ export function TransactionList({ transactions, categories, selectable, selected
   const { highlightId, setHighlightId } = useUi()
   const groups = useGroupMap()
   const { map: members, selfId } = useMembers()
-  const memberOf = (t: Transaction) => (t.memberId && t.memberId !== selfId ? members.get(t.memberId) : undefined)
+  // Ortak gruptaki her işlemde ekleyen kişi görünür; üyeden gelen işlemlerde her zaman
+  const memberOf = (t: Transaction): Pick<Member, 'name' | 'color'> | undefined => {
+    if (t.memberId && t.memberId !== selfId) return members.get(t.memberId) ?? { name: 'Grup üyesi', color: '#94a3b8' }
+    if (t.groupId && groups.get(t.groupId)?.cloudId) return { name: 'Siz', color: (selfId && members.get(selfId)?.color) || '#94a3b8' }
+    return undefined
+  }
   const shown = transactions.slice(0, limit)
   const allSelected = selectable && shown.length > 0 && shown.every((t) => selected?.has(t.id))
   const flashRef = useRef<string | null>(null)

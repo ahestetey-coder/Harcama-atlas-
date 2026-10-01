@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, DailyBars, type DonutSlice } from '../components/charts/Charts'
-import { CategoryIcon, GroupFilterBar, matchesGroup, Money, MonthSwitcher } from '../components/common'
+import { CategoryIcon, GroupFilterBar, matchesGroup, matchesMember, Money, MonthSwitcher, PersonFilterBar } from '../components/common'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Skeleton } from '../components/ui/primitives'
@@ -15,7 +15,7 @@ import { compareWithPrevious, summarizeMonth, type CategoryTotal } from '../doma
 import type { Member, SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
-import { useMembers } from '../state/cloud'
+import { useMemberFilter, useMembers } from '../state/cloud'
 import { useCycle } from '../state/cycle'
 import { useUi } from '../state/ui'
 
@@ -27,8 +27,11 @@ export default function DashboardPage() {
   const groupMap = useGroupMap()
   const [groupFilter, setGroupFilter] = useGroupFilter()
   const { startDay, groupName: cycleGroup } = useCycle()
-  // Bütün panel seçili gruba göre hesaplanır (Tüm gruplar / Bireysel / Ortak / Grupsuz…)
-  const txs = useMemo(() => allTxs?.filter((t) => matchesGroup(t, groupFilter)), [allTxs, groupFilter])
+  const person = useMemberFilter()
+  // Bütün panel seçili gruba ve kişiye göre hesaplanır (Tüm gruplar / Bireysel / Ortak / Grupsuz…)
+  const groupTxs = useMemo(() => allTxs?.filter((t) => matchesGroup(t, groupFilter)), [allTxs, groupFilter])
+  const txs = useMemo(() => groupTxs?.filter((t) => matchesMember(t, person.value, person.selfId)), [groupTxs, person.value, person.selfId])
+  const personTxs = useMemo(() => allTxs?.filter((t) => matchesMember(t, person.value, person.selfId)), [allTxs, person.value, person.selfId])
   const categories = useCategoryMap()
   const settings = useSettings()
   const { month, setMonth, openTransactionForm } = useUi()
@@ -46,10 +49,13 @@ export default function DashboardPage() {
   const summary = useMemo(() => (txs ? summarizeMonth(txs, month, undefined, startDay) : null), [txs, month, startDay])
   const comparison = useMemo(() => (txs ? compareWithPrevious(txs, month, addMonths(month, -1), today, startDay) : null), [txs, month, today, startDay])
   const monthTxs = useMemo(() => (txs ?? []).filter((t) => periodOf(t.date, startDay) === month), [txs, month, startDay])
-  const groupRows = useMemo(() => groupBreakdown(allTxs ?? [], month, groups ?? [], startDay), [allTxs, month, groups, startDay])
+  const groupRows = useMemo(() => groupBreakdown(personTxs ?? [], month, groups ?? [], startDay), [personTxs, month, groups, startDay])
   const filterName = groupFilter === 'none' ? 'Grupsuz' : groupFilter ? groupMap.get(groupFilter)?.name : undefined
   const { map: memberMap, selfId } = useMembers()
-  const personRows = useMemo(() => personBreakdown(monthTxs, memberMap, selfId), [monthTxs, memberMap, selfId])
+  // Kişi kartı, kişi filtresinden bağımsız olarak seçili gruptaki herkesi gösterir
+  const groupMonthTxs = useMemo(() => (groupTxs ?? []).filter((t) => periodOf(t.date, startDay) === month), [groupTxs, month, startDay])
+  const personRows = useMemo(() => personBreakdown(groupMonthTxs, memberMap, selfId), [groupMonthTxs, memberMap, selfId])
+  const personName = person.value ? person.options.find((o) => o.id === person.value)?.name : undefined
   const allMonthCount = useMemo(() => (allTxs ?? []).filter((t) => periodOf(t.date, startDay) === month).length, [allTxs, month, startDay])
 
   const slices: DonutSlice[] = useMemo(() => {
@@ -96,15 +102,32 @@ export default function DashboardPage() {
         }
       />
 
-      <GroupFilterBar groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)} value={groupFilter} onChange={setGroupFilter} className="mb-4" />
+      <GroupFilterBar
+        groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)}
+        value={groupFilter}
+        onChange={setGroupFilter}
+        className={person.options.length ? 'mb-2' : 'mb-4'}
+      />
+      <PersonFilterBar options={person.options} value={person.value} onChange={person.set} className="mb-4" />
 
       {!hasData ? (
         <Card>
           <EmptyState
             icon={<Wallet className="size-6" />}
-            title={filterName ? `${label} içinde “${filterName}” kaydı yok` : `${label} için kayıt yok`}
+            title={
+              personName
+                ? `${label} içinde ${personName === 'Siz' ? 'sizin' : `${personName} adlı üyenin`} kaydı yok`
+                : filterName
+                  ? `${label} içinde “${filterName}” kaydı yok`
+                  : `${label} için kayıt yok`
+            }
             action={
               <>
+                {personName && (
+                  <Button variant="primary" onClick={() => person.set('')}>
+                    Herkesi göster
+                  </Button>
+                )}
                 {filterName && allMonthCount > 0 && (
                   <Button variant="primary" onClick={() => setGroupFilter('')}>
                     Tüm grupları göster ({allMonthCount} işlem)
@@ -148,6 +171,7 @@ export default function DashboardPage() {
                 <h2 id="net-title" className="text-[13px] font-medium uppercase tracking-wider text-white/70">
                   Net gider · {label}
                   {filterName && ` · ${filterName}`}
+                  {personName && ` · ${personName}`}
                 </h2>
                 {startDay > 1 && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80" title={cycleDescription(startDay)}>
@@ -290,13 +314,10 @@ export default function DashboardPage() {
               </div>
               <GroupTable
                 rows={personRows}
-                selected=""
-                actionLabel="Harcamalarını göster"
-                footer="Net = gider − iade. Bir kişiye dokunursanız bu aydaki harcamaları açılır."
-                onSelect={(id) => {
-                  const r = personRows.find((x) => x.id === id)
-                  setDrawer({ title: r?.name ?? '', filter: (t) => (t.memberId ?? selfId ?? 'self') === id })
-                }}
+                selected={person.value}
+                actionLabel="Yalnızca bu kişiyi göster"
+                footer="Net = gider − iade. Bir kişiye dokunursanız bütün panel o kişinin harcamalarına göre süzülür."
+                onSelect={(id) => person.set(person.value === id ? '' : id)}
               />
             </Card>
           )}

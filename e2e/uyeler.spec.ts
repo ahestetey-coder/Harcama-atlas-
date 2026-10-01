@@ -14,7 +14,10 @@ async function injectSharedTx(page: Page) {
         req.onerror = () => reject(req.error)
         req.onsuccess = () => {
           const db = req.result
-          const tx = db.transaction(['members', 'transactions'], 'readwrite')
+          const tx = db.transaction(['members', 'transactions', 'groups'], 'readwrite')
+          const groups = tx.objectStore('groups')
+          const g = groups.get('grp-ortak')
+          g.onsuccess = () => groups.put({ ...g.result, cloudId: 'bulut-ortak', cloudOwnerId: 'uye-ayse' })
           const now = new Date().toISOString()
           const d = new Date()
           const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
@@ -78,8 +81,23 @@ test('üyenin harcaması panelde kişilere göre görünür ve salt okunurdur', 
   await expect(people.getByRole('button', { name: /Siz: net 300,00 ₺, 1 işlem/ })).toBeVisible()
   await expect(people.getByRole('button', { name: /Ayşe: net 200,00 ₺, 1 işlem/ })).toBeVisible()
 
+  // Son işlemlerde ekleyen kişi görünür
+  const recent = page.getByRole('heading', { name: 'Son işlemler' }).locator('xpath=ancestor::section[1]')
+  await expect(recent.locator('[title="Ayşe ekledi"]').filter({ visible: true }).first()).toBeVisible()
+  await expect(recent.locator('[title="Siz ekledi"]').filter({ visible: true }).first()).toBeVisible()
+
+  // Kişi filtresi bütün paneli süzer
+  const persons = page.getByRole('radiogroup', { name: 'Kişi filtresi' })
+  await persons.getByRole('radio', { name: 'Ayşe' }).click()
+  await expect(page.getByRole('heading', { name: /Net gider .* · Ortak · Ayşe/ })).toBeVisible()
+  await expect(page.getByText('Ortak Market')).toHaveCount(0)
+  await persons.getByRole('radio', { name: 'Herkes' }).click()
+
   await open(page, 'islemler')
   await expect(page.getByText(/^2 işlem · Gider 500,00 ₺/)).toBeVisible()
+  await page.getByRole('radiogroup', { name: 'Kişi filtresi' }).getByRole('radio', { name: 'Siz' }).click()
+  await expect(page.getByText(/^1 işlem · Gider 300,00 ₺/)).toBeVisible()
+  await page.getByRole('radiogroup', { name: 'Kişi filtresi' }).getByRole('radio', { name: 'Herkes' }).click()
   await expect(page.getByRole('button', { name: 'Ayşe Fatura sil' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Ayşe Fatura düzenle' }).first().click()
   const dlg = page.getByRole('dialog', { name: 'Üyenin harcaması' })

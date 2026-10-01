@@ -294,6 +294,51 @@ export function GroupFilterBar({ groups, value, onChange, className }: { groups:
   )
 }
 
+/** İşlem kişi filtresine uyuyor mu? Üye bilgisi olmayan kayıtlar cihaz sahibinindir. */
+export function matchesMember(t: { memberId?: string | null }, filter: string, selfId: string | null): boolean {
+  return !filter || (t.memberId ?? selfId) === filter
+}
+
+/** Ortak grupta başka üye varsa gösterilen kişi filtresi. */
+export function PersonFilterBar({
+  options,
+  value,
+  onChange,
+  className,
+}: {
+  options: { id: string; name: string; color: string }[]
+  value: string
+  onChange: (v: string) => void
+  className?: string
+}) {
+  if (!options.length) return null
+  const all = [{ id: '', name: 'Herkes', color: '' }, ...options]
+  return (
+    <div role="radiogroup" aria-label="Kişi filtresi" className={cn('flex flex-wrap items-center gap-1.5', className)}>
+      <span className="mr-1 text-[12.5px] font-medium text-subtle">Ekleyen:</span>
+      {all.map((p) => {
+        const on = value === p.id
+        return (
+          <button
+            key={p.id || 'all'}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(p.id)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors',
+              on ? 'border-ink bg-ink text-surface' : 'border-line bg-surface text-muted hover:text-ink',
+            )}
+          >
+            {p.color && <span className="size-2 rounded-full" style={{ backgroundColor: p.color }} aria-hidden />}
+            {p.name}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 /**
  * Ay döngüsü başlangıç günü seçimi (1–28). `inheritLabel` verilirse boş seçenek "kişisel ayarı
  * kullan" anlamına gelir (değer null).

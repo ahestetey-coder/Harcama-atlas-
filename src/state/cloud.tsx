@@ -7,6 +7,7 @@ import { adoptCloudIdentity, setDefaultSelfName, syncAll, type SyncReport } from
 import { UserFacingError } from '../data/repository'
 import { useAuth } from './auth'
 import { useData } from './data'
+import { useUi } from './ui'
 
 export type CloudStatus = 'off' | 'loading' | 'signed-out' | 'idle' | 'syncing' | 'error'
 
@@ -225,4 +226,30 @@ export function useMembers() {
   const members = useLiveQuery(() => repo.db.members.toArray(), [repo])
   const settings = useLiveQuery(() => repo.getSettings(), [repo])
   return useMemo(() => ({ members: members ?? [], map: new Map((members ?? []).map((m) => [m.id, m])), selfId: settings?.selfMemberId ?? null }), [members, settings])
+}
+
+export interface PersonOption {
+  id: string
+  name: string
+  color: string
+}
+
+/**
+ * Kişi filtresi ve seçenekleri. Seçenekler yalnızca ortak bir grupta başka üye varsa vardır
+ * (ilk seçenek cihaz sahibi, "Siz"). Filtre artık olmayan bir üyeye işaret ediyorsa "herkes"e döner.
+ */
+export function useMemberFilter(): { value: string; set: (m: string) => void; options: PersonOption[]; selfId: string | null } {
+  const { memberFilter, setMemberFilter } = useUi()
+  const { members, map, selfId } = useMembers()
+  const options = useMemo(() => {
+    const others = members.filter((m) => m.id !== selfId && m.groupIds.length > 0).sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+    if (!others.length || !selfId) return []
+    const self = map.get(selfId)
+    return [{ id: selfId, name: 'Siz', color: self?.color ?? '#94a3b8' }, ...others.map((m) => ({ id: m.id, name: m.name, color: m.color }))]
+  }, [members, map, selfId])
+  const valid = !memberFilter || options.some((o) => o.id === memberFilter)
+  useEffect(() => {
+    if (!valid && options.length) setMemberFilter('')
+  }, [valid, options.length, setMemberFilter])
+  return { value: valid ? memberFilter : '', set: setMemberFilter, options, selfId }
 }
