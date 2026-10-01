@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Plus, Settings, Tags, Users } from 'lucide-react'
+import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Moon, Plus, Settings, Sun, Tags, Users } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
 import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
 import { useFollowCurrentPeriod } from '../state/cycle'
+import { useTheme } from '../state/theme'
 import { useData } from '../state/data'
 import { useUi } from '../state/ui'
 import { Modal } from './ui/Modal'
@@ -61,7 +62,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
       {/* Masaüstü yan menü */}
       <aside className="glass fixed inset-y-0 left-0 z-30 hidden w-[272px] flex-col border-r border-line px-4 py-5 lg:flex">
-        <Logo className="px-2" />
+        <div className="flex items-center justify-between gap-2 pl-2">
+          <Logo className="min-w-0" />
+          <ThemeToggle />
+        </div>
         <Button variant="primary" size="lg" className="mt-6 w-full" icon={<Plus className="size-5" />} onClick={() => openTransactionForm()}>
           Gider ekle
         </Button>
@@ -110,11 +114,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobil üst çubuk */}
       <header className="glass sticky top-0 z-30 flex items-center justify-between border-b border-line px-4 py-2.5 lg:hidden">
         <Logo />
-        {isDemo && (
-          <button type="button" onClick={() => setDemo(false)} className="rounded-full bg-warning-soft px-2.5 py-1 text-[12px] font-semibold text-warning">
-            Demo · kapat
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isDemo && (
+            <button type="button" onClick={() => setDemo(false)} className="rounded-full bg-warning-soft px-2.5 py-1 text-[12px] font-semibold text-warning">
+              Demo · kapat
+            </button>
+          )}
+          <ThemeToggle />
+        </div>
       </header>
 
       {isDemo && (
@@ -196,6 +203,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   )
 }
 
+/** Açık/koyu tema arasında geçiş (Ayarlar'da "sistem" seçeneği de var). */
+function ThemeToggle() {
+  const { resolved, setPreference } = useTheme()
+  const dark = resolved === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={() => setPreference(dark ? 'light' : 'dark')}
+      aria-label={dark ? 'Açık temaya geç' : 'Koyu temaya geç'}
+      title={dark ? 'Açık tema' : 'Koyu tema'}
+      className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-surface text-muted shadow-card transition-colors hover:text-ink"
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={dark ? 'moon' : 'sun'}
+          initial={{ y: 12, opacity: 0, rotate: -40 }}
+          animate={{ y: 0, opacity: 1, rotate: 0 }}
+          exit={{ y: -12, opacity: 0, rotate: 40 }}
+          transition={{ duration: 0.2 }}
+          className="grid place-items-center"
+        >
+          {dark ? <Moon className="size-[18px]" /> : <Sun className="size-[18px]" />}
+        </motion.span>
+      </AnimatePresence>
+    </button>
+  )
+}
+
 /** Giriş yapılan hesap ve çıkış düğmesi (hesapla giriş açıksa). */
 function AccountBox({ className }: { className?: string }) {
   const auth = useAuth()
@@ -244,10 +279,10 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between lg:mb-7">
       <div className="min-w-0">
-        <h1 className="text-[26px] font-bold leading-tight text-ink lg:text-[30px]">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-ink lg:text-[30px]">{title}</h1>
+        {subtitle && <p className="mt-1 text-[13.5px] leading-snug text-muted sm:text-sm">{subtitle}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 max-sm:w-full">{actions}</div>}
     </div>
   )
 }

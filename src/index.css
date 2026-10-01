@@ -163,6 +163,12 @@
   .scrollbar-thin {
     scrollbar-width: thin;
   }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }

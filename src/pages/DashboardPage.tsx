@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, DailyBars, type DonutSlice } from '../components/charts/Charts'
-import { CategoryIcon, GroupFilterBar, matchesGroup, matchesMember, Money, MonthSwitcher, PersonFilterBar } from '../components/common'
+import { CategoryIcon, FilterStrip, matchesGroup, matchesMember, Money, MonthSwitcher } from '../components/common'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Skeleton } from '../components/ui/primitives'
@@ -94,21 +94,23 @@ export default function DashboardPage() {
         subtitle={isCurrent ? `Bugün ${formatDate(today, 'weekday')}` : isFuture ? 'Gelecek bir ay seçili' : `${label} özeti`}
         actions={
           <>
-            <MonthSwitcher month={month} onChange={setMonth} />
-            <Button className="hidden sm:inline-flex" icon={<FileUp className="size-4" />} onClick={() => navigate('/ice-aktar')}>
+            <MonthSwitcher month={month} onChange={setMonth} className="max-sm:flex-1" />
+            <Button className="max-sm:hidden" icon={<FileUp className="size-4" />} onClick={() => navigate('/ice-aktar')}>
               İçe aktar
             </Button>
           </>
         }
       />
 
-      <GroupFilterBar
+      <FilterStrip
         groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)}
-        value={groupFilter}
-        onChange={setGroupFilter}
-        className={person.options.length ? 'mb-2' : 'mb-4'}
+        group={groupFilter}
+        onGroup={setGroupFilter}
+        persons={person.options}
+        person={person.value}
+        onPerson={person.set}
+        className="mb-4"
       />
-      <PersonFilterBar options={person.options} value={person.value} onChange={person.set} className="mb-4" />
 
       {!hasData ? (
         <Card>

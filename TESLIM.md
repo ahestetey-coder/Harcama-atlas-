@@ -250,3 +250,10 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - "Siz" seçiliyken grup filtresi "Tüm gruplar" ise kişisel harcamalarınız da görünür; yalnızca ortak harcamalarınızı görmek için grubu da "Ortak" seçin.
 
 **Testler.** 111 birim testi, 29 uçtan uca test ve 3 giriş testi geçti. Üyeler testi; rozetleri, panelde ve işlemler sayfasında kişi filtresini doğrular.
+
+## 13. Güncelleme (01.10.2026): üst alan düzeni ve tema düğmesi
+
+- Panel ve İşlemler sayfalarında grup ve "Ekleyen" filtreleri tek bir şeritte, etiketli iki satır olarak toplandı. Mobilde satırlar alt satıra kaymaz; seçenekler yana kaydırılır ve sağ kenar yumuşakça solar.
+- Ay seçici mobilde tam genişlikte; İşlemler sayfasındaki CSV düğmesi mobilde yalnızca simge olarak görünür.
+- Hata düzeltmesi: mobilde İşlemler sayfasında "Gider ekle" düğmesi alt menüdeki + düğmesine ek olarak bir de üstte görünüyordu (gizleme sınıfı düğmenin kendi görünürlük sınıfıyla çakışıyordu). Panelde "İçe aktar" düğmesi için de aynısı geçerliydi.
+- Açık/koyu tema: mobil üst çubukta ve masaüstü yan menüde güneş/ay düğmesi eklendi. Ayarlar › Görünüm'de "Sistem" seçeneği de durur. Seçim cihazda hatırlanır.

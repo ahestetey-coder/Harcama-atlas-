@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
-import { GroupFilterBar, GroupPicker, matchesGroup, matchesMember, MonthSwitcher, PersonFilterBar } from '../components/common'
+import { FilterStrip, GroupPicker, matchesGroup, matchesMember, MonthSwitcher } from '../components/common'
 import { TransactionList } from '../components/TransactionList'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Select, Skeleton } from '../components/ui/primitives'
@@ -284,24 +284,26 @@ export default function TransactionsPage() {
         subtitle="Arayın, filtreleyin, düzenleyin. Silinen kayıtlar birkaç saniye içinde geri alınabilir."
         actions={
           <>
-            {period === 'month' && <MonthSwitcher month={month} onChange={setMonth} />}
-            <Button icon={<Download className="size-4" />} onClick={exportCsv} disabled={!filtered.length}>
-              CSV
+            {period === 'month' && <MonthSwitcher month={month} onChange={setMonth} className="max-sm:flex-1" />}
+            <Button icon={<Download className="size-4" />} onClick={exportCsv} disabled={!filtered.length} className="max-sm:w-10 max-sm:px-0" title="CSV olarak indir">
+              <span className="max-sm:sr-only">CSV</span>
             </Button>
-            <Button variant="primary" className="hidden lg:inline-flex" icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
+            <Button variant="primary" className="max-lg:hidden" icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
               Gider ekle
             </Button>
           </>
         }
       />
 
-      <GroupFilterBar
+      <FilterStrip
         groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)}
-        value={groupFilter}
-        onChange={setGroupFilter}
-        className={person.options.length ? 'mb-2' : 'mb-3'}
+        group={groupFilter}
+        onGroup={setGroupFilter}
+        persons={person.options}
+        person={person.value}
+        onPerson={person.set}
+        className="mb-3"
       />
-      <PersonFilterBar options={person.options} value={person.value} onChange={person.set} className="mb-3" />
 
       <Card className="mb-4 p-3 sm:p-4">
         <div className="flex gap-2">

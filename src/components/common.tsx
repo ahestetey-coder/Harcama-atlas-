@@ -132,14 +132,14 @@ export function Money({ kurus, type = 'expense', className, plain }: { kurus: nu
   )
 }
 
-export function MonthSwitcher({ month, onChange, compact }: { month: MonthKey; onChange: (m: MonthKey) => void; compact?: boolean }) {
+export function MonthSwitcher({ month, onChange, compact, className }: { month: MonthKey; onChange: (m: MonthKey) => void; compact?: boolean; className?: string }) {
   const [open, setOpen] = useState(false)
   const [year, setYear] = useState(() => parseMonthKey(month).year)
   const { startDay } = useCycle()
   const cur = currentPeriod(startDay)
   const label = periodLabel(month, startDay)
   return (
-    <div className="flex items-center gap-0.5 rounded-2xl border border-line bg-surface p-1 shadow-card">
+    <div className={cn('flex h-10 items-center gap-0.5 rounded-xl border border-line bg-surface px-1 shadow-card', className)}>
       <IconButton label="Önceki ay" size="sm" onClick={() => onChange(addMonths(month, -1))}>
         <ChevronLeft className="size-[18px]" />
       </IconButton>
@@ -150,7 +150,7 @@ export function MonthSwitcher({ month, onChange, compact }: { month: MonthKey; o
           setOpen(true)
         }}
         className={cn(
-          'num rounded-lg px-2 py-1 text-center font-display font-semibold text-ink transition-colors hover:bg-surface-2',
+          'num flex-1 whitespace-nowrap rounded-lg px-2 py-1 text-center font-display font-semibold text-ink transition-colors hover:bg-surface-2',
           startDay > 1 ? 'text-[13.5px]' : 'text-[14.5px]',
           compact ? 'min-w-[112px]' : 'min-w-[132px]',
         )}
@@ -265,76 +265,86 @@ export function matchesGroup(t: { groupId?: string | null }, filter: string): bo
   return t.groupId === filter
 }
 
-/** Panel ve işlemler sayfasının üstündeki grup filtresi. Grup yoksa gösterilmez. */
-export function GroupFilterBar({ groups, value, onChange, className }: { groups: SpendGroup[]; value: string; onChange: (v: string) => void; className?: string }) {
-  if (!groups.length) return null
-  const options = [{ id: '', name: 'Tüm gruplar', color: '' }, ...groups, { id: 'none', name: 'Grupsuz', color: '' }]
-  return (
-    <div role="radiogroup" aria-label="Grup filtresi" className={cn('flex flex-wrap items-center gap-1.5', className)}>
-      {options.map((g) => {
-        const on = value === g.id
-        return (
-          <button
-            key={g.id || 'all'}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            onClick={() => onChange(g.id)}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors',
-              on ? 'border-ink bg-ink text-surface' : 'border-line bg-surface text-muted hover:text-ink',
-            )}
-          >
-            {g.color && <span className="size-2 rounded-full" style={{ backgroundColor: g.color }} aria-hidden />}
-            {g.name}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 /** İşlem kişi filtresine uyuyor mu? Üye bilgisi olmayan kayıtlar cihaz sahibinindir. */
 export function matchesMember(t: { memberId?: string | null }, filter: string, selfId: string | null): boolean {
   return !filter || (t.memberId ?? selfId) === filter
 }
 
-/** Ortak grupta başka üye varsa gösterilen kişi filtresi. */
-export function PersonFilterBar({
-  options,
-  value,
-  onChange,
+interface ChipOption {
+  id: string
+  name: string
+  color?: string
+}
+
+/** Filtre şeridinde etiketli bir seçim satırı; mobilde yatay kayar, taşmaz. */
+function ChipRow({ label, ariaLabel, options, value, onChange }: { label: string; ariaLabel: string; options: ChipOption[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="w-[62px] shrink-0 pl-1.5 text-[10.5px] sm:w-[64px] sm:pl-2 sm:text-[11px] font-semibold uppercase tracking-[0.06em] text-subtle">{label}</span>
+      <div role="radiogroup" aria-label={ariaLabel} className="no-scrollbar -my-1 flex min-w-0 flex-1 gap-1 overflow-x-auto py-1 pr-6 [mask-image:linear-gradient(to_right,#000_calc(100%-28px),transparent)] sm:pr-1 sm:[mask-image:none]">
+        {options.map((o) => {
+          const on = value === o.id
+          return (
+            <button
+              key={o.id || 'all'}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChange(o.id)}
+              className={cn(
+                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-colors duration-150',
+                on ? 'bg-ink text-surface shadow-sm dark:bg-surface-3 dark:text-ink dark:ring-1 dark:ring-line-strong' : 'text-muted hover:bg-surface-2 hover:text-ink',
+              )}
+            >
+              {o.color && <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: o.color }} aria-hidden />}
+              <span className="max-w-[160px] truncate">{o.name}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Panel ve işlemler sayfasının üstündeki filtre şeridi: grup ve (ortak grupta başka üye varsa)
+ * ekleyen kişi. Grup yoksa ve kişi seçeneği yoksa gösterilmez.
+ */
+export function FilterStrip({
+  groups,
+  group,
+  onGroup,
+  persons = [],
+  person = '',
+  onPerson,
   className,
 }: {
-  options: { id: string; name: string; color: string }[]
-  value: string
-  onChange: (v: string) => void
+  groups: SpendGroup[]
+  group: string
+  onGroup: (v: string) => void
+  persons?: ChipOption[]
+  person?: string
+  onPerson?: (v: string) => void
   className?: string
 }) {
-  if (!options.length) return null
-  const all = [{ id: '', name: 'Herkes', color: '' }, ...options]
+  const showPersons = persons.length > 0 && !!onPerson
+  if (!groups.length && !showPersons) return null
   return (
-    <div role="radiogroup" aria-label="Kişi filtresi" className={cn('flex flex-wrap items-center gap-1.5', className)}>
-      <span className="mr-1 text-[12.5px] font-medium text-subtle">Ekleyen:</span>
-      {all.map((p) => {
-        const on = value === p.id
-        return (
-          <button
-            key={p.id || 'all'}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            onClick={() => onChange(p.id)}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors',
-              on ? 'border-ink bg-ink text-surface' : 'border-line bg-surface text-muted hover:text-ink',
-            )}
-          >
-            {p.color && <span className="size-2 rounded-full" style={{ backgroundColor: p.color }} aria-hidden />}
-            {p.name}
-          </button>
-        )
-      })}
+    <div className={cn('rounded-2xl border border-line bg-surface p-1.5 shadow-card', className)}>
+      {groups.length > 0 && (
+        <ChipRow
+          label="Grup"
+          ariaLabel="Grup filtresi"
+          options={[{ id: '', name: 'Tümü' }, ...groups, { id: 'none', name: 'Grupsuz' }]}
+          value={group}
+          onChange={onGroup}
+        />
+      )}
+      {showPersons && (
+        <div className={cn(groups.length > 0 && 'mt-1.5 border-t border-line pt-1.5')}>
+          <ChipRow label="Ekleyen" ariaLabel="Kişi filtresi" options={[{ id: '', name: 'Herkes' }, ...persons]} value={person} onChange={onPerson} />
+        </div>
+      )}
     </div>
   )
 }
