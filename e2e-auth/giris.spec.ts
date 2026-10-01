@@ -91,7 +91,7 @@ test('her hesap kendi kayıtlarını görür; çıkış ve tekrar giriş', async
   await page.goto('./')
   await signIn(page, 'osman@ornek.com')
   await expect(page.getByRole('navigation', { name: 'Ana menü' })).toBeVisible()
-  await expect(page.getByText('osman@ornek.com')).toBeVisible()
+  await expect(page.getByText('osman@ornek.com').filter({ visible: true }).first()).toBeVisible()
 
   await page.getByRole('button', { name: 'Gider ekle' }).first().click()
   const dialog = page.getByRole('dialog', { name: 'Gider ekle' })
@@ -108,7 +108,7 @@ test('her hesap kendi kayıtlarını görür; çıkış ve tekrar giriş', async
 
   await signOut(page)
   await signIn(page, 'ayse@ornek.com')
-  await expect(page.getByText('ayse@ornek.com')).toBeVisible()
+  await expect(page.getByText('ayse@ornek.com').filter({ visible: true }).first()).toBeVisible()
   await page.goto('./#/islemler')
   await expect(page.getByText('Osmanın marketi').filter({ visible: true })).toHaveCount(0)
 
