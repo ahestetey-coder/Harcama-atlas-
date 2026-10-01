@@ -56,8 +56,13 @@ export class MemoryCloud {
       async setDisplayName(groupId, name) {
         for (const m of c.members) if (m.group_id === groupId && m.user_id === userId) m.display_name = name
       },
+      async setGroupCycle(groupId, startDay) {
+        const g = c.groups.get(groupId)
+        if (!g || g.owner_id !== userId) throw new Error('Ay döngüsünü yalnızca grup yöneticisi değiştirebilir')
+        g.cycle_start_day = startDay
+      },
       async listGroups() {
-        return [...c.groups.values()].filter((g) => c.isMember(g.id, userId))
+        return [...c.groups.values()].filter((g) => c.isMember(g.id, userId)).map((g) => ({ ...g }))
       },
       async listMembers(groupIds) {
         return c.members.filter((m) => groupIds.includes(m.group_id) && c.isMember(m.group_id, userId)).map((m) => ({ ...m }))

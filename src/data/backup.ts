@@ -51,6 +51,8 @@ const groupSchema = z.object({
   name: z.string().min(1),
   color: z.string(),
   cloudId: z.string().optional(),
+  cloudOwnerId: z.string().optional(),
+  cycleStartDay: z.number().int().min(1).max(28).nullable().optional(),
   archived: z.boolean(),
   order: z.number(),
   createdAt: z.string(),
@@ -100,6 +102,7 @@ const settingsSchema = z.object({
   monthlyBudgetKurus: kurus.nullable(),
   defaultPaymentMethod: z.enum(['cash', 'debit', 'credit']).optional(),
   selfMemberId: z.string().optional(),
+  cycleStartDay: z.number().int().min(1).max(28).optional(),
   updatedAt: z.string(),
 })
 

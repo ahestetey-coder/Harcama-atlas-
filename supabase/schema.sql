@@ -18,6 +18,9 @@ create table if not exists public.ha_groups (
   created_at timestamptz not null default now()
 );
 
+-- Ay döngüsü: grubun dönemi her ayın bu gününde başlar (boşsa takvim ayı). Yalnızca yönetici değiştirir.
+alter table public.ha_groups add column if not exists cycle_start_day smallint check (cycle_start_day between 1 and 28);
+
 create table if not exists public.ha_group_members (
   group_id uuid not null references public.ha_groups(id) on delete cascade,
   user_id uuid not null,
@@ -134,6 +137,16 @@ begin
   update public.ha_group_members set display_name = trim(p_display_name) where group_id = p_group and user_id = auth.uid();
 end $$;
 
+-- Grubun ay döngüsü başlangıç gününü değiştirir. Yalnızca grup yöneticisi (sahibi).
+create or replace function public.ha_set_group_cycle(p_group uuid, p_day integer) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Giriş yapılmamış'; end if;
+  if p_day is not null and (p_day < 1 or p_day > 28) then raise exception 'Ay döngüsü günü 1 ile 28 arasında olmalı'; end if;
+  update public.ha_groups set cycle_start_day = nullif(p_day, 1) where id = p_group and owner_id = auth.uid();
+  if not found then raise exception 'Ay döngüsünü yalnızca grup yöneticisi değiştirebilir'; end if;
+end $$;
+
 -- Gruptan ayrılır; sahibi başka bir üyeyi çıkarabilir. Çıkan üyenin işlemleri silinir.
 create or replace function public.ha_remove_member(p_group uuid, p_user uuid) returns void
   language plpgsql security definer set search_path = public as $$
@@ -187,7 +200,7 @@ end $$;
 
 revoke all on function public.ha_create_group(text, text, text), public.ha_create_invite(uuid), public.ha_join_group(text, text),
   public.ha_set_display_name(uuid, text), public.ha_remove_member(uuid, uuid), public.ha_upsert_transactions(jsonb),
-  public.ha_delete_transactions(text[]), public.ha_is_member(uuid) from public, anon;
+  public.ha_delete_transactions(text[]), public.ha_is_member(uuid), public.ha_set_group_cycle(uuid, integer) from public, anon;
 grant execute on function public.ha_create_group(text, text, text), public.ha_create_invite(uuid), public.ha_join_group(text, text),
   public.ha_set_display_name(uuid, text), public.ha_remove_member(uuid, uuid), public.ha_upsert_transactions(jsonb),
-  public.ha_delete_transactions(text[]), public.ha_is_member(uuid) to authenticated;
+  public.ha_delete_transactions(text[]), public.ha_is_member(uuid), public.ha_set_group_cycle(uuid, integer) to authenticated;

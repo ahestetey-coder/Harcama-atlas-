@@ -43,8 +43,12 @@ export class SupabaseBackend implements CloudBackend {
     await this.rpc('ha_set_display_name', { p_group: groupId, p_display_name: displayName })
   }
 
+  async setGroupCycle(groupId: string, startDay: number | null) {
+    await this.rpc('ha_set_group_cycle', { p_group: groupId, p_day: startDay })
+  }
+
   async listGroups(): Promise<CloudGroup[]> {
-    const { data, error } = await this.client.from('ha_groups').select('id, name, color, owner_id')
+    const { data, error } = await this.client.from('ha_groups').select('id, name, color, owner_id, cycle_start_day')
     if (error) throw error
     return data ?? []
   }

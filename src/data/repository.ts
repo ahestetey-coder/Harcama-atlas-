@@ -234,7 +234,7 @@ export class AtlasRepository {
     return group
   }
 
-  async updateGroup(id: string, patch: Partial<Pick<SpendGroup, 'name' | 'color' | 'archived'>>): Promise<void> {
+  async updateGroup(id: string, patch: Partial<Pick<SpendGroup, 'name' | 'color' | 'archived' | 'cycleStartDay'>>): Promise<void> {
     if (!(await this.db.groups.get(id))) throw new UserFacingError('Grup bulunamadı.')
     if (patch.name !== undefined) {
       const name = patch.name.trim()

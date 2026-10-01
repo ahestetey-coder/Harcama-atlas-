@@ -1,11 +1,13 @@
 import { Archive, ArchiveRestore, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { CATEGORY_COLORS } from '../components/common'
+import { CATEGORY_COLORS, CycleSelect } from '../components/common'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, IconButton, Input } from '../components/ui/primitives'
+import { setGroupCycle } from '../cloud/sync'
 import { toUserMessage } from '../data/repository'
 import type { SpendGroup } from '../domain/types'
 import { cn } from '../lib/cn'
+import { useCloud, useMembers } from '../state/cloud'
 import { useGroups, useRepo, useTransactions } from '../state/data'
 import { useUi } from '../state/ui'
 
@@ -45,7 +47,11 @@ export function GroupsTab() {
       <span className="size-4 shrink-0 rounded-full" style={{ backgroundColor: g.color }} aria-hidden />
       <div className="min-w-0 flex-1">
         <div className="truncate font-medium">{g.name}</div>
-        <div className="num text-[12.5px] text-subtle">{usage.get(g.id) ?? 0} işlem</div>
+        <div className="num text-[12.5px] text-subtle">
+          {usage.get(g.id) ?? 0} işlem
+          {g.cycleStartDay ? ` · ${g.cycleStartDay}. gün döngüsü` : ''}
+          {g.cloudId ? ' · paylaşılan' : ''}
+        </div>
       </div>
       <IconButton label={`${g.name} düzenle`} size="sm" onClick={() => setEdit(g)}>
         <Pencil className="size-4" />
@@ -123,10 +129,13 @@ export function GroupsTab() {
 
 function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onClose: () => void }) {
   const repo = useRepo()
+  const cloud = useCloud()
+  const { map, selfId } = useMembers()
   const { toast } = useUi()
   const group = value && value !== 'new' ? value : null
   const [name, setName] = useState('')
   const [color, setColor] = useState(CATEGORY_COLORS[4])
+  const [cycle, setCycle] = useState<number | null>(null)
   const [error, setError] = useState<string>()
   const [lastKey, setLastKey] = useState<string | null>(null)
   const key = value === 'new' ? 'new' : (value?.id ?? null)
@@ -134,12 +143,18 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
     setLastKey(key)
     setName(group?.name ?? '')
     setColor(group?.color ?? CATEGORY_COLORS[4])
+    setCycle(group?.cycleStartDay ?? null)
     setError(undefined)
   }
+  // Paylaşılan grubun döngüsünü yalnızca grubu paylaşıma açan (yönetici) değiştirebilir
+  const owner = group?.cloudId && group.cloudOwnerId ? group.cloudOwnerId : null
+  const canSetCycle = !owner || owner === selfId
+  const ownerName = owner ? map.get(owner)?.name : undefined
   const save = async () => {
     try {
       if (group) await repo.updateGroup(group.id, { name, color })
-      else await repo.addGroup({ name, color })
+      const saved = group ?? (await repo.addGroup({ name, color }))
+      if (canSetCycle && (cycle ?? null) !== (saved.cycleStartDay ?? null)) await setGroupCycle(repo, cloud.backend, saved.id, cycle)
       toast(group ? 'Grup güncellendi.' : 'Grup eklendi.')
       onClose()
     } catch (e) {
@@ -188,6 +203,19 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
             ))}
           </div>
         </fieldset>
+        <Field
+          label="Ay döngüsü"
+          htmlFor="group-cycle"
+          hint={
+            !canSetCycle
+              ? `Bu paylaşılan grubun döngüsünü yalnızca grup yöneticisi${ownerName ? ` (${ownerName})` : ''} değiştirebilir.`
+              : group?.cloudId
+                ? 'Gruptaki bütün üyelerin panelinde bu döngü kullanılır.'
+                : 'Panelde bu grup seçiliyken aylar bu güne göre hesaplanır.'
+          }
+        >
+          <CycleSelect id="group-cycle" value={cycle} onChange={setCycle} inheritLabel="Kişisel ayarı kullan" disabled={!canSetCycle} />
+        </Field>
       </form>
     </Modal>
   )

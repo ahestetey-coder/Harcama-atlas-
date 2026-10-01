@@ -8,7 +8,7 @@ import { TransactionList } from '../components/TransactionList'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Select, Skeleton } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
-import { monthLabel, monthRange } from '../domain/dates'
+import { periodLabel, periodRange } from '../domain/dates'
 import { formatKurus } from '../domain/money'
 import { normalizeText } from '../domain/normalize'
 import { PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Transaction, type TxSource, type TxType } from '../domain/types'
@@ -16,6 +16,7 @@ import { downloadBlob } from '../lib/download'
 import { transactionsToCsv } from '../lib/csvExport'
 import { APP_CONFIG } from '../config/app'
 import { useCategories, useCategoryMap, useGroupFilter, useGroupMap, useGroups, useImports, useRepo, useTransactions } from '../state/data'
+import { useCycle } from '../state/cycle'
 import { useUi } from '../state/ui'
 
 type Period = 'month' | 'all' | 'custom'
@@ -30,6 +31,7 @@ export default function TransactionsPage() {
   const groupMap = useGroupMap()
   const [groupFilter, setGroupFilter] = useGroupFilter()
   const { month, setMonth, openTransactionForm, toast } = useUi()
+  const { startDay } = useCycle()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
 
@@ -64,7 +66,7 @@ export default function TransactionsPage() {
   const filtered = useMemo(() => {
     if (!txs) return []
     const q = normalizeText(query)
-    const range = period === 'month' ? monthRange(month) : period === 'custom' ? { start: from || '0000-01-01', end: to || '9999-12-31' } : null
+    const range = period === 'month' ? periodRange(month, startDay) : period === 'custom' ? { start: from || '0000-01-01', end: to || '9999-12-31' } : null
     return txs.filter((t) => {
       if (range && (t.date < range.start || t.date > range.end)) return false
       if (category === 'none' ? t.categoryId !== null : category && t.categoryId !== category) return false
@@ -76,7 +78,7 @@ export default function TransactionsPage() {
       if (q && !t.normalizedDescription.includes(q) && !normalizeText(t.note ?? '').includes(q)) return false
       return true
     })
-  }, [txs, query, period, month, from, to, category, groupFilter, type, payment, source, importId])
+  }, [txs, query, period, month, from, to, category, groupFilter, type, payment, source, importId, startDay])
 
   // Görünmeyen seçimleri temizle
   useEffect(() => {
@@ -185,7 +187,7 @@ export default function TransactionsPage() {
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <Field label="Dönem" htmlFor="f-period">
         <Select id="f-period" value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-          <option value="month">Seçili ay ({monthLabel(month)})</option>
+          <option value="month">Seçili ay ({periodLabel(month, startDay)})</option>
           <option value="all">Tüm tarihler</option>
           <option value="custom">Tarih aralığı</option>
         </Select>
@@ -372,7 +374,7 @@ export default function TransactionsPage() {
           </EmptyState>
         ) : filtered.length === 0 ? (
           <EmptyState icon={<Search className="size-6" />} title="Bu filtrelerle işlem bulunamadı" action={<Button onClick={clearFilters}>Filtreleri temizle</Button>}>
-            {period === 'month' ? `${monthLabel(month)} içinde eşleşen kayıt yok. Dönemi “Tüm tarihler” yapmayı deneyin.` : 'Arama veya filtreleri değiştirin.'}
+            {period === 'month' ? `${periodLabel(month, startDay)} içinde eşleşen kayıt yok. Dönemi “Tüm tarihler” yapmayı deneyin.` : 'Arama veya filtreleri değiştirin.'}
           </EmptyState>
         ) : (
           <TransactionList

@@ -1,6 +1,7 @@
-import { CloudOff, Download, FlaskConical, Monitor, Moon, RotateCcw, ScanText, Sun, Target } from 'lucide-react'
+import { CloudOff, Download, FlaskConical, Monitor, Moon, Repeat, RotateCcw, ScanText, Sun, Target } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
+import { CycleSelect } from '../components/common'
 import { ConfirmDialog } from '../components/ui/Modal'
 import { Alert, Badge, Button, Card, Field, Input, Segmented, Select, Switch } from '../components/ui/primitives'
 import { APP_CONFIG } from '../config/app'
@@ -95,6 +96,26 @@ export default function SettingsPage() {
               </Select>
             </Field>
           </div>
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+            <Repeat className="size-5 text-accent" /> Ay döngüsü
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Ayınız hangi gün başlıyor? Ör. maaşınız ayın 15’inde yatıyorsa 15 seçin; panel 15’inden sonraki ayın 14’üne kadar olan harcamaları bir ay olarak gösterir.
+          </p>
+          <Field label="Kişisel ay döngünüz" htmlFor="set-cycle" className="mt-4">
+            <CycleSelect
+              id="set-cycle"
+              value={settings?.cycleStartDay ?? 1}
+              onChange={async (d) => {
+                await repo.saveSettings({ cycleStartDay: d && d > 1 ? d : undefined })
+                toast(d && d > 1 ? `Ay döngünüz her ayın ${d}’i olarak ayarlandı.` : 'Takvim ayına dönüldü.')
+              }}
+            />
+          </Field>
+          <p className="mt-2 text-[12.5px] text-subtle">Gruplar kendi döngüsünü kullanabilir (Kategoriler ve gruplar › Harcama grupları). Paylaşılan grubun döngüsünü grup yöneticisi belirler.</p>
         </Card>
 
         <Card className="p-5">

@@ -4,6 +4,8 @@ export interface CloudGroup {
   name: string
   color: string
   owner_id: string
+  /** Grubun ay döngüsünün başlangıç günü (1–28); yalnızca yönetici değiştirir. */
+  cycle_start_day?: number | null
 }
 
 export interface CloudMember {
@@ -45,6 +47,8 @@ export interface CloudBackend {
   joinGroup(code: string, displayName: string): Promise<CloudGroup>
   removeMember(groupId: string, userId: string): Promise<void>
   setDisplayName(groupId: string, displayName: string): Promise<void>
+  /** Yalnızca grup yöneticisi (sahibi) çağırabilir; null takvim ayına döner. */
+  setGroupCycle(groupId: string, startDay: number | null): Promise<void>
   listGroups(): Promise<CloudGroup[]>
   listMembers(groupIds: string[]): Promise<CloudMember[]>
   upsert(rows: CloudTxInput[]): Promise<void>

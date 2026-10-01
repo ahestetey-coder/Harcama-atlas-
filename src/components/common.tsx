@@ -38,12 +38,13 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
-import { addMonths, currentMonth, MONTH_NAMES, monthLabel, parseMonthKey } from '../domain/dates'
+import { addMonths, currentPeriod, MAX_CYCLE_START_DAY, MONTH_NAMES, parseMonthKey, periodLabel } from '../domain/dates'
 import { formatKurus } from '../domain/money'
 import type { Category, MonthKey, SpendGroup, TxType } from '../domain/types'
 import { cn } from '../lib/cn'
+import { useCycle } from '../state/cycle'
 import { Modal } from './ui/Modal'
-import { IconButton } from './ui/primitives'
+import { IconButton, Select } from './ui/primitives'
 
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   'shopping-cart': ShoppingCart,
@@ -134,7 +135,9 @@ export function Money({ kurus, type = 'expense', className, plain }: { kurus: nu
 export function MonthSwitcher({ month, onChange, compact }: { month: MonthKey; onChange: (m: MonthKey) => void; compact?: boolean }) {
   const [open, setOpen] = useState(false)
   const [year, setYear] = useState(() => parseMonthKey(month).year)
-  const cur = currentMonth()
+  const { startDay } = useCycle()
+  const cur = currentPeriod(startDay)
+  const label = periodLabel(month, startDay)
   return (
     <div className="flex items-center gap-0.5 rounded-2xl border border-line bg-surface p-1 shadow-card">
       <IconButton label="Önceki ay" size="sm" onClick={() => onChange(addMonths(month, -1))}>
@@ -146,15 +149,19 @@ export function MonthSwitcher({ month, onChange, compact }: { month: MonthKey; o
           setYear(parseMonthKey(month).year)
           setOpen(true)
         }}
-        className={cn('num rounded-lg px-2 py-1 text-center font-display text-[14.5px] font-semibold text-ink transition-colors hover:bg-surface-2', compact ? 'min-w-[112px]' : 'min-w-[132px]')}
-        aria-label={`Ay seç, seçili: ${monthLabel(month)}`}
+        className={cn(
+          'num rounded-lg px-2 py-1 text-center font-display font-semibold text-ink transition-colors hover:bg-surface-2',
+          startDay > 1 ? 'text-[13.5px]' : 'text-[14.5px]',
+          compact ? 'min-w-[112px]' : 'min-w-[132px]',
+        )}
+        aria-label={`Ay seç, seçili: ${label}`}
       >
-        {monthLabel(month)}
+        {label}
       </button>
       <IconButton label="Sonraki ay" size="sm" onClick={() => onChange(addMonths(month, 1))}>
         <ChevronRight className="size-[18px]" />
       </IconButton>
-      <Modal open={open} onOpenChange={setOpen} title="Ay seçin" size="sm">
+      <Modal open={open} onOpenChange={setOpen} title="Ay seçin" description={startDay > 1 ? `Ay döngüsü her ayın ${startDay}. günü başlar.` : undefined} size="sm">
         <div className="mb-3 flex items-center justify-between">
           <IconButton label="Önceki yıl" onClick={() => setYear((y) => y - 1)}>
             <ChevronLeft className="size-5" />
@@ -189,7 +196,7 @@ export function MonthSwitcher({ month, onChange, compact }: { month: MonthKey; o
           })}
         </div>
         <button type="button" className="mt-4 w-full rounded-xl py-2 text-sm font-medium text-accent hover:bg-accent-soft" onClick={() => { onChange(cur); setOpen(false) }}>
-          Bu aya dön
+          {startDay > 1 ? 'İçinde bulunulan döneme dön' : 'Bu aya dön'}
         </button>
       </Modal>
     </div>
@@ -284,5 +291,34 @@ export function GroupFilterBar({ groups, value, onChange, className }: { groups:
         )
       })}
     </div>
+  )
+}
+
+/**
+ * Ay döngüsü başlangıç günü seçimi (1–28). `inheritLabel` verilirse boş seçenek "kişisel ayarı
+ * kullan" anlamına gelir (değer null).
+ */
+export function CycleSelect({
+  id,
+  value,
+  onChange,
+  inheritLabel,
+  disabled,
+}: {
+  id: string
+  value: number | null
+  onChange: (day: number | null) => void
+  inheritLabel?: string
+  disabled?: boolean
+}) {
+  return (
+    <Select id={id} value={value ?? (inheritLabel ? '' : 1)} disabled={disabled} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
+      {inheritLabel && <option value="">{inheritLabel}</option>}
+      {Array.from({ length: MAX_CYCLE_START_DAY }, (_, i) => i + 1).map((d) => (
+        <option key={d} value={d}>
+          {d === 1 ? 'Ayın 1’i – ay sonu (takvim ayı)' : `Ayın ${d}’i – sonraki ayın ${d - 1}’i`}
+        </option>
+      ))}
+    </Select>
   )
 }

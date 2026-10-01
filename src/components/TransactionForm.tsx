@@ -2,12 +2,13 @@ import { Cloud, Lightbulb, Lock } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { hasErrors, type TxFieldErrors } from '../data/validation'
 import { SHARED_READONLY, toUserMessage } from '../data/repository'
-import { formatDate, isIsoDate, todayIso, monthOf } from '../domain/dates'
+import { formatDate, isIsoDate, periodLabel, periodOf, todayIso } from '../domain/dates'
 import { formatKurusPlain, parseUserAmount } from '../domain/money'
 import { merchantKey, normalizeText } from '../domain/normalize'
 import { evaluateRules } from '../domain/rules'
 import { PAYMENT_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Transaction, type TxType } from '../domain/types'
 import { useMembers } from '../state/cloud'
+import { useCycle } from '../state/cycle'
 import { useCategories, useCategoryMap, useGroupMap, useGroups, useRepo, useRules, useSettings } from '../state/data'
 import { useUi } from '../state/ui'
 import { cn } from '../lib/cn'
@@ -73,6 +74,7 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
   const groups = useGroups()
   const activeGroups = useMemo(() => (groups ?? []).filter((g) => !g.archived || g.id === tx?.groupId), [groups, tx])
   const { toast, setHighlightId, setMonth, month } = useUi()
+  const { startDay } = useCycle()
   const [s, setS] = useState<FormState>(() => initialState(tx))
   const [errors, setErrors] = useState<TxFieldErrors>({})
   const [saving, setSaving] = useState(false)
@@ -143,9 +145,10 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
       } else {
         const saved = await repo.addTransaction(input, learn)
         setHighlightId(saved.id)
-        const other = monthOf(saved.date) !== month
-        toast(other ? `Kaydedildi. İşlem ${saved.date.slice(0, 7)} ayında.` : 'Gider kaydedildi.', {
-          action: other ? { label: 'O aya git', onClick: () => setMonth(monthOf(saved.date)) } : undefined,
+        const savedPeriod = periodOf(saved.date, startDay)
+        const other = savedPeriod !== month
+        toast(other ? `Kaydedildi. İşlem ${periodLabel(savedPeriod, startDay)} döneminde.` : 'Gider kaydedildi.', {
+          action: other ? { label: 'O aya git', onClick: () => setMonth(savedPeriod) } : undefined,
         })
       }
       onDone()

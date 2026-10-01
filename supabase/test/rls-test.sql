@@ -52,6 +52,23 @@ exception when insufficient_privilege then null;
 end $$;
 reset role;
 
+-- Ay döngüsünü yalnızca yönetici değiştirir; üye değiştiremez ama okur
+select pg_temp.as_user(:'ayse');
+do $$ begin
+  perform public.ha_set_group_cycle((select gid from t_ctx), 15);
+  raise exception 'HATA: üye ay döngüsünü değiştirdi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+reset role;
+select pg_temp.as_user(:'osman');
+select public.ha_set_group_cycle((select gid from t_ctx), 15);
+reset role;
+select pg_temp.as_user(:'ayse');
+select cycle_start_day = 15 as cycle_ok from public.ha_groups \gset
+\if :cycle_ok \else \echo 'HATA: ay döngüsü' \q \endif
+reset role;
+
 -- Yabancı hiçbir şey göremez, gruba yazamaz, geçersiz kodla katılamaz
 select pg_temp.as_user(:'yabanci');
 select (select count(*) from public.ha_transactions) + (select count(*) from public.ha_groups) + (select count(*) from public.ha_group_members) = 0 as stranger_blind \gset

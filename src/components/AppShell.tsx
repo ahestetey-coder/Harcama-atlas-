@@ -5,6 +5,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
 import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
+import { useFollowCurrentPeriod } from '../state/cycle'
 import { useData } from '../state/data'
 import { useUi } from '../state/ui'
 import { Modal } from './ui/Modal'
@@ -51,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  useFollowCurrentPeriod()
 
   return (
     <div className="min-h-dvh lg:pl-[272px]">

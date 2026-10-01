@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addMonths, inferDateOrder, monthLabel, parseDate, todayIso } from './dates'
+import { addMonths, currentPeriod, inferDateOrder, monthLabel, normalizeStartDay, parseDate, periodLabel, periodLength, periodOf, periodRange, todayIso } from './dates'
 
 describe('Türkçe tarih ayrıştırma', () => {
   const d = (s: unknown, o?: Parameters<typeof parseDate>[1]) => {
@@ -44,5 +44,31 @@ describe('Türkçe tarih ayrıştırma', () => {
     expect(addMonths('2026-01', -1)).toBe('2025-12')
     expect(addMonths('2026-12', 1)).toBe('2027-01')
     expect(monthLabel('2026-09')).toBe('Eylül 2026')
+  })
+})
+
+describe('ay döngüsü (başlangıç günü)', () => {
+  it('başlangıç gününden önceki günler önceki döneme sayılır', () => {
+    expect(periodOf('2026-10-14', 15)).toBe('2026-09')
+    expect(periodOf('2026-10-15', 15)).toBe('2026-10')
+    expect(periodOf('2026-01-03', 5)).toBe('2025-12')
+    expect(periodOf('2026-10-01', 1)).toBe('2026-10')
+  })
+  it('dönem başlangıç gününden sonraki ayın bir önceki gününe kadar sürer', () => {
+    expect(periodRange('2026-09', 15)).toEqual({ start: '2026-09-15', end: '2026-10-14' })
+    expect(periodRange('2026-12', 15)).toEqual({ start: '2026-12-15', end: '2027-01-14' })
+    expect(periodRange('2026-01', 28)).toEqual({ start: '2026-01-28', end: '2026-02-27' })
+    expect(periodRange('2026-02', 1)).toEqual({ start: '2026-02-01', end: '2026-02-28' })
+    expect(periodLength('2026-09', 15)).toBe(30)
+    expect(periodLength('2026-01', 15)).toBe(31)
+  })
+  it('içinde bulunulan dönemi ve etiketi verir; geçersiz gün 1 sayılır', () => {
+    expect(currentPeriod(15, new Date(2026, 9, 1))).toBe('2026-09')
+    expect(currentPeriod(1, new Date(2026, 9, 1))).toBe('2026-10')
+    expect(periodLabel('2026-09', 15)).toBe('15 Eyl – 14 Eki 2026')
+    expect(periodLabel('2026-09', 1)).toBe(monthLabel('2026-09'))
+    expect(normalizeStartDay(31)).toBe(1)
+    expect(normalizeStartDay(undefined)).toBe(1)
+    expect(normalizeStartDay(0)).toBe(1)
   })
 })

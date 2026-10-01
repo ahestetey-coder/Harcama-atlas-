@@ -44,6 +44,10 @@ geliştirildiği konteynerdeki yol). Kendi makinenizde `npx playwright install c
   ayın aynı gün aralığıyla kıyaslanır ve bu açıkça yazılır. Kategori halkası yalnızca brüt
   giderlerden çizilir (iadeler ayrı gösterilir). Günlük gider grafiği, son işlemler, isteğe bağlı
   aylık bütçe. Dilime/kategoriye/güne tıklayınca ilgili işlemler açılır.
+- **Ay döngüsü:** Ay her zaman 1'inde başlamak zorunda değil. Ayarlar'dan kişisel başlangıç günü
+  (1–28) seçilir; ör. 15 seçilince ay 15'inden sonraki ayın 14'üne kadar sürer. Her grup kendi
+  döngüsünü kullanabilir; paylaşılan grubun döngüsünü yalnızca grup yöneticisi belirler ve
+  bütün üyelere eşitlenir.
 - **Elle giriş:** Kategori seçmeden gider kaydedilmez. İade ve kart ödemesi/transfer ayrı
   türlerdir. "Bu iş yeri için sonraki işlemlerde de kullan" seçeneği kural oluşturur.
   Çift tıklama iki kayıt oluşturmaz.

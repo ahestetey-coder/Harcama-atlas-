@@ -6,13 +6,14 @@ import { PageHeader } from '../../components/AppShell'
 import { Alert, Button, Card, Field, Input, Select } from '../../components/ui/primitives'
 import { IMPORT_LIMITS } from '../../config/app'
 import { toUserMessage } from '../../data/repository'
-import { formatDate, monthLabel, monthOf } from '../../domain/dates'
+import { formatDate, periodLabel, periodOf } from '../../domain/dates'
 import { formatKurus } from '../../domain/money'
 import { PAYMENT_LABEL, type PaymentMethod } from '../../domain/types'
 import { buildCommit } from '../../import/enrich'
 import { cn } from '../../lib/cn'
 import { useCategories, useData } from '../../state/data'
 import { useUi } from '../../state/ui'
+import { useCycle } from '../../state/cycle'
 import { ImageStep } from './ImageStep'
 import { MappingStep } from './MappingStep'
 import { ReviewStep } from './ReviewStep'
@@ -26,6 +27,7 @@ export default function ImportPage() {
   const { repo, isDemo } = useData()
   const categories = useCategories()
   const { toast, setMonth } = useUi()
+  const cycle = useCycle().startDay
   const navigate = useNavigate()
   const [payment, setPayment] = useState<PaymentMethod | ''>('credit')
   const [saving, setSaving] = useState(false)
@@ -54,7 +56,7 @@ export default function ImportPage() {
       // İşlemler hangi aylara düştü? Panel, en çok işlemin olduğu aya geçer
       // (ekstre geçen aya aitse panel bu ayı boş gösterirdi).
       const byMonth = new Map<string, number>()
-      for (const t of commit.transactions) byMonth.set(monthOf(t.date), (byMonth.get(monthOf(t.date)) ?? 0) + 1)
+      for (const t of commit.transactions) byMonth.set(periodOf(t.date, cycle), (byMonth.get(periodOf(t.date, cycle)) ?? 0) + 1)
       const months = [...byMonth].map(([month, count]) => ({ month, count })).sort((a, b) => b.count - a.count || b.month.localeCompare(a.month))
       if (months[0]) setMonth(months[0].month)
       // Geçici veriler (dosya, satırlar) bellekten bırakılır
@@ -214,7 +216,7 @@ export default function ImportPage() {
                     }}
                     className="num rounded-full border border-line-strong px-3 py-1 text-[13px] text-muted hover:text-ink"
                   >
-                    {monthLabel(m.month)}: {m.count} işlem
+                    {periodLabel(m.month, cycle)}: {m.count} işlem
                   </button>
                 ))}
               </div>
@@ -222,7 +224,7 @@ export default function ImportPage() {
             <p className="mt-3 text-[12.5px] text-subtle">Yüklenen dosya saklanmadı; yalnızca onayladığınız işlemler kaydedildi.</p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               <Button variant="primary" onClick={() => navigate('/')}>
-                {stage.months[0] ? `Panele git (${monthLabel(stage.months[0].month)})` : 'Panele git'}
+                {stage.months[0] ? `Panele git (${periodLabel(stage.months[0].month, cycle)})` : 'Panele git'}
               </Button>
               <Button onClick={() => navigate(`/islemler?aktarim=${stage.importId}`)}>Aktarılan işlemler</Button>
               <Button variant="ghost" icon={<FileUp className="size-4" />} onClick={flow.reset}>

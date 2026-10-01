@@ -4,7 +4,7 @@ import { createDb, type AtlasDb } from '../data/db'
 import { AtlasRepository, UserFacingError } from '../data/repository'
 import { buildInviteLink, parseInvite } from './config'
 import { MemoryCloud } from './memoryBackend'
-import { adoptCloudIdentity, joinWithInvite, leaveGroup, shareGroup, syncAll } from './sync'
+import { adoptCloudIdentity, joinWithInvite, leaveGroup, setGroupCycle, shareGroup, syncAll } from './sync'
 
 const OSMAN = '11111111-1111-1111-1111-111111111111'
 const AYSE = '22222222-2222-2222-2222-222222222222'
@@ -144,6 +144,36 @@ describe('bulut eşitleme', () => {
     expect(await ayse.bulkSetCategory([t.id], 'cat-diger')).toBe(0)
     expect((await ayse.db.transactions.get(t.id))?.groupId).toBe('grp-ortak')
     await expect(ayse.deleteGroup('grp-ortak')).rejects.toThrow(UserFacingError)
+  })
+
+  it('ay döngüsünü yalnızca grup yöneticisi belirler, üyelere eşitlenir', async () => {
+    const { osman, ayse, oCloud, aCloud } = await setup()
+    expect((await ayse.db.groups.get('grp-ortak'))?.cloudOwnerId).toBe(OSMAN)
+    await expect(setGroupCycle(ayse, aCloud, 'grp-ortak', 10)).rejects.toThrow(UserFacingError)
+    await setGroupCycle(osman, oCloud, 'grp-ortak', 15)
+    expect((await osman.db.groups.get('grp-ortak'))?.cycleStartDay).toBe(15)
+    await syncAll(ayse, aCloud)
+    expect((await ayse.db.groups.get('grp-ortak'))?.cycleStartDay).toBe(15)
+    // Takvim ayına dönüş
+    await setGroupCycle(osman, oCloud, 'grp-ortak', 1)
+    await syncAll(ayse, aCloud)
+    expect((await ayse.db.groups.get('grp-ortak'))?.cycleStartDay ?? null).toBeNull()
+    // Paylaşılmayan grupta herkes kendi döngüsünü seçer
+    await setGroupCycle(ayse, aCloud, 'grp-bireysel', 20)
+    expect((await ayse.db.groups.get('grp-bireysel'))?.cycleStartDay).toBe(20)
+  })
+
+  it('paylaşıma açılırken grubun döngüsü buluta taşınır, katılan üye alır', async () => {
+    const osman = await device('Osman')
+    const ayse = await device('Ayşe')
+    const oCloud = cloud.as(OSMAN)
+    const aCloud = cloud.as(AYSE)
+    await adoptCloudIdentity(osman, OSMAN)
+    await adoptCloudIdentity(ayse, AYSE)
+    await setGroupCycle(osman, null, 'grp-ortak', 25)
+    const shared = await shareGroup(osman, oCloud, 'grp-ortak')
+    const joined = await joinWithInvite(ayse, aCloud, await oCloud.createInvite(shared.cloudId!))
+    expect(joined.cycleStartDay).toBe(25)
   })
 
   it('adı yazılmadan grup paylaşılamaz', async () => {

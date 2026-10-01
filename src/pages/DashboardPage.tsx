@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, CalendarClock, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Target, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Repeat, Target, Wallet } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -9,13 +9,14 @@ import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Skeleton } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
-import { addMonths, currentMonth, dayOf, daysInMonth, formatDate, MONTH_NAMES, monthLabel, monthOf, parseMonthKey, todayIso } from '../domain/dates'
+import { addMonths, currentPeriod, cycleDescription, dayOf, diffDays, formatDate, periodLabel, periodLength, periodOf, periodRange, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { compareWithPrevious, summarizeMonth, type CategoryTotal } from '../domain/summary'
 import type { Member, SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
 import { useMembers } from '../state/cloud'
+import { useCycle } from '../state/cycle'
 import { useUi } from '../state/ui'
 
 const MAX_SLICES = 7
@@ -25,6 +26,7 @@ export default function DashboardPage() {
   const groups = useGroups()
   const groupMap = useGroupMap()
   const [groupFilter, setGroupFilter] = useGroupFilter()
+  const { startDay, groupName: cycleGroup } = useCycle()
   // Bütün panel seçili gruba göre hesaplanır (Tüm gruplar / Bireysel / Ortak / Grupsuz…)
   const txs = useMemo(() => allTxs?.filter((t) => matchesGroup(t, groupFilter)), [allTxs, groupFilter])
   const categories = useCategoryMap()
@@ -37,18 +39,18 @@ export default function DashboardPage() {
   const today = todayIso()
   // Seçili ay boşsa kayıtlı en yakın ay (ör. geçen ayın ekstresi yüklendiyse)
   const otherMonth = useMemo(() => {
-    const months = [...new Set((txs ?? []).map((t) => monthOf(t.date)))].filter((m) => m !== month).sort()
+    const months = [...new Set((txs ?? []).map((t) => periodOf(t.date, startDay)))].filter((m) => m !== month).sort()
     return months.filter((m) => m < month).pop() ?? months[0] ?? null
-  }, [txs, month])
+  }, [txs, month, startDay])
 
-  const summary = useMemo(() => (txs ? summarizeMonth(txs, month) : null), [txs, month])
-  const comparison = useMemo(() => (txs ? compareWithPrevious(txs, month, addMonths(month, -1), today) : null), [txs, month, today])
-  const monthTxs = useMemo(() => (txs ?? []).filter((t) => monthOf(t.date) === month), [txs, month])
-  const groupRows = useMemo(() => groupBreakdown(allTxs ?? [], month, groups ?? []), [allTxs, month, groups])
+  const summary = useMemo(() => (txs ? summarizeMonth(txs, month, undefined, startDay) : null), [txs, month, startDay])
+  const comparison = useMemo(() => (txs ? compareWithPrevious(txs, month, addMonths(month, -1), today, startDay) : null), [txs, month, today, startDay])
+  const monthTxs = useMemo(() => (txs ?? []).filter((t) => periodOf(t.date, startDay) === month), [txs, month, startDay])
+  const groupRows = useMemo(() => groupBreakdown(allTxs ?? [], month, groups ?? [], startDay), [allTxs, month, groups, startDay])
   const filterName = groupFilter === 'none' ? 'Grupsuz' : groupFilter ? groupMap.get(groupFilter)?.name : undefined
   const { map: memberMap, selfId } = useMembers()
   const personRows = useMemo(() => personBreakdown(monthTxs, memberMap, selfId), [monthTxs, memberMap, selfId])
-  const allMonthCount = useMemo(() => (allTxs ?? []).filter((t) => monthOf(t.date) === month).length, [allTxs, month])
+  const allMonthCount = useMemo(() => (allTxs ?? []).filter((t) => periodOf(t.date, startDay) === month).length, [allTxs, month, startDay])
 
   const slices: DonutSlice[] = useMemo(() => {
     if (!summary) return []
@@ -66,9 +68,9 @@ export default function DashboardPage() {
 
   if (!txs || !summary || !comparison) return <DashboardSkeleton />
 
-  const isCurrent = month === currentMonth()
-  const isFuture = month > currentMonth()
-  const { year, month: m } = parseMonthKey(month)
+  const isCurrent = month === currentPeriod(startDay)
+  const isFuture = month > currentPeriod(startDay)
+  const label = periodLabel(month, startDay)
   const topCat = summary.topCategory?.categoryId ? categories.get(summary.topCategory.categoryId) : undefined
   const budget = settings?.monthlyBudgetKurus ?? null
   const openCategory = (c: CategoryTotal) => {
@@ -76,14 +78,14 @@ export default function DashboardPage() {
     setDrawer({ title: cat?.name ?? 'Kategorisiz', categoryId: c.categoryId, filter: (t) => t.type !== 'transfer' && (t.categoryId ?? null) === c.categoryId })
   }
 
-  const daily = summary.daily.map((d) => ({ ...d, label: `${d.day} ${MONTH_NAMES[m - 1]} ${year}` }))
+  const daily = summary.daily.map((d) => ({ ...d, label: formatDate(d.date, 'long') }))
   const hasData = monthTxs.length > 0
 
   return (
     <div>
       <PageHeader
         title="Panel"
-        subtitle={isCurrent ? `Bugün ${formatDate(today, 'weekday')}` : isFuture ? 'Gelecek bir ay seçili' : `${monthLabel(month)} özeti`}
+        subtitle={isCurrent ? `Bugün ${formatDate(today, 'weekday')}` : isFuture ? 'Gelecek bir ay seçili' : `${label} özeti`}
         actions={
           <>
             <MonthSwitcher month={month} onChange={setMonth} />
@@ -100,7 +102,7 @@ export default function DashboardPage() {
         <Card>
           <EmptyState
             icon={<Wallet className="size-6" />}
-            title={filterName ? `${monthLabel(month)} içinde “${filterName}” kaydı yok` : `${monthLabel(month)} için kayıt yok`}
+            title={filterName ? `${label} içinde “${filterName}” kaydı yok` : `${label} için kayıt yok`}
             action={
               <>
                 {filterName && allMonthCount > 0 && (
@@ -110,7 +112,7 @@ export default function DashboardPage() {
                 )}
                 {otherMonth && (
                   <Button variant="primary" onClick={() => setMonth(otherMonth)}>
-                    {monthLabel(otherMonth)} kayıtlarını göster
+                    {periodLabel(otherMonth, startDay)} kayıtlarını göster
                   </Button>
                 )}
                 <Button variant={otherMonth ? 'secondary' : 'primary'} icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
@@ -144,12 +146,17 @@ export default function DashboardPage() {
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 id="net-title" className="text-[13px] font-medium uppercase tracking-wider text-white/70">
-                  Net gider · {monthLabel(month)}
+                  Net gider · {label}
                   {filterName && ` · ${filterName}`}
                 </h2>
+                {startDay > 1 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80" title={cycleDescription(startDay)}>
+                    <Repeat className="size-3.5" /> {startDay}. gün döngüsü{cycleGroup ? ` · ${cycleGroup}` : ''}
+                  </span>
+                )}
                 {isCurrent && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80">
-                    <CalendarClock className="size-3.5" /> Ay devam ediyor ({dayOf(today)}/{daysInMonth(year, m)} gün)
+                    <CalendarClock className="size-3.5" /> {startDay > 1 ? 'Dönem' : 'Ay'} devam ediyor ({diffDays(today, periodRange(month, startDay).start) + 1}/{periodLength(month, startDay)} gün)
                   </span>
                 )}
               </div>
@@ -251,7 +258,7 @@ export default function DashboardPage() {
               data={daily}
               onSelect={(day) =>
                 setDrawer({
-                  title: `${day} ${MONTH_NAMES[m - 1]} ${year}`,
+                  title: formatDate(daily.find((d) => d.day === day)?.date ?? today, 'long'),
                   day,
                   filter: (t) => dayOf(t.date) === day,
                 })
@@ -296,7 +303,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <Modal open={!!drawer} onOpenChange={(o) => !o && setDrawer(null)} title={drawer?.title ?? ''} description={monthLabel(month)} side size="lg">
+      <Modal open={!!drawer} onOpenChange={(o) => !o && setDrawer(null)} title={drawer?.title ?? ''} description={periodLabel(month, startDay)} side size="lg">
         {drawer && (
           <DrawerBody
             txs={monthTxs.filter(drawer.filter)}
@@ -512,12 +519,12 @@ interface GroupRow {
 }
 
 /** Seçili aydaki giderlerin gruplara dağılımı (grup filtresinden bağımsız, her zaman tüm işlemler). */
-function groupBreakdown(txs: Transaction[], month: string, groups: SpendGroup[]): GroupRow[] {
+function groupBreakdown(txs: Transaction[], month: string, groups: SpendGroup[], startDay: number): GroupRow[] {
   const rows = new Map<string, GroupRow>()
   for (const g of groups) rows.set(g.id, { id: g.id, name: g.name, color: g.color, expenseKurus: 0, refundKurus: 0, count: 0 })
   rows.set('none', { id: 'none', name: 'Grupsuz', color: '#94a3b8', expenseKurus: 0, refundKurus: 0, count: 0 })
   for (const t of txs) {
-    if (monthOf(t.date) !== month || t.type === 'transfer') continue
+    if (periodOf(t.date, startDay) !== month || t.type === 'transfer') continue
     const r = rows.get(t.groupId && rows.has(t.groupId) ? t.groupId : 'none')!
     r.count++
     if (t.type === 'expense') r.expenseKurus += t.amountKurus

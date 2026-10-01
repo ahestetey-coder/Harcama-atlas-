@@ -227,3 +227,15 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - 104 birim testi ve 28 uçtan uca test geçti.
 - Giriş ekranı için 3 yeni uçtan uca test geçti (`npm run test:e2e:auth`): yanlış şifre, kayıt, şifre sıfırlama, Google düğmesi, iki hesabın verilerinin ayrı kalması ve çıkış. Bu testlerde Supabase taklit edilir.
 - Gerçek Supabase ile tarayıcıdan giriş bu ortamdan denenemedi.
+
+## 11. Güncelleme (01.10.2026): ay döngüsü
+
+İstek: ayın başlangıç ve bitiş gününü kullanıcı ve grubun yöneticisi belirleyebilsin.
+
+- **Kişisel döngü:** Ayarlar › Ay döngüsü. Başlangıç günü 1–28 arasında seçilir; bitiş günü sonraki ayın bir önceki günüdür (ör. 15 → 15 Eyl – 14 Eki). 29–31 seçilemez, çünkü her ayda bulunmaz.
+- **Grup döngüsü:** Kategoriler ve gruplar › Harcama grupları › düzenle › Ay döngüsü. Boş bırakılırsa kişisel ayar kullanılır. Panelde o grup seçiliyken dönemler grubun döngüsüne göre hesaplanır.
+- **Paylaşılan grup:** Döngüyü yalnızca grubu paylaşıma açan kişi (grup yöneticisi) değiştirebilir. Bu kural veritabanında da zorlanır (`ha_set_group_cycle`). Değişiklik eşitlemeyle bütün üyelere gelir; diğer üyelerde alan kilitli görünür.
+- **Etkilenen ekranlar:** panel (toplamlar, günlük grafik, önceki dönemle karşılaştırma), ay seçici, işlemler listesindeki dönem filtresi, içe aktarma özeti ve kayıt bildirimi.
+- Bir dönem, başladığı ayın adıyla anılır: 15 Eyl – 14 Eki dönemi "Eylül" dönemidir.
+
+**Testler.** 111 birim testi, 29 uçtan uca test, 3 giriş testi ve SQL güvenlik testleri geçti. Yeni testler: dönem hesapları, döngüyle aylık özet, yöneticinin döngüyü belirleyip üyeye eşitlenmesi, üyenin değiştirememesi (hem eşitleme katmanında hem SQL'de), ayar ekranından panelin değişmesi.

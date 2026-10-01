@@ -85,6 +85,22 @@ async function selfName(repo: AtlasRepository): Promise<string> {
   return name
 }
 
+/**
+ * Grubun ay döngüsünü değiştirir. Paylaşılan grupta yalnızca yönetici değiştirebilir ve
+ * değişiklik buluta yazılır; diğer üyelere eşitlemeyle gelir.
+ */
+export async function setGroupCycle(repo: AtlasRepository, backend: CloudBackend | null, groupId: string, startDay: number | null): Promise<void> {
+  const g = await repo.db.groups.get(groupId)
+  if (!g) throw new UserFacingError('Grup bulunamadı.')
+  const day = startDay && startDay > 1 ? Math.min(28, Math.trunc(startDay)) : null
+  if (g.cloudId) {
+    if (!backend?.userId()) throw new UserFacingError('Paylaşılan grubun ayarını değiştirmek için giriş yapın.')
+    if (g.cloudOwnerId && g.cloudOwnerId !== backend.userId()) throw new UserFacingError('Bu grubun ay döngüsünü yalnızca grup yöneticisi değiştirebilir.')
+    await backend.setGroupCycle(g.cloudId, day)
+  }
+  await repo.updateGroup(groupId, { cycleStartDay: day })
+}
+
 /** Kendi adınız henüz yazılmadıysa ("Ben") hesaptaki adı kullanır. */
 export async function setDefaultSelfName(repo: AtlasRepository, name: string): Promise<void> {
   const id = await selfMemberId(repo)
@@ -99,7 +115,8 @@ export async function shareGroup(repo: AtlasRepository, backend: CloudBackend, g
   if (!g) throw new UserFacingError('Grup bulunamadı.')
   if (g.cloudId) return g
   const cloud = await backend.createGroup(g.name, g.color, await selfName(repo))
-  const updated = { ...g, cloudId: cloud.id, updatedAt: new Date().toISOString() }
+  if (g.cycleStartDay) await backend.setGroupCycle(cloud.id, g.cycleStartDay)
+  const updated = { ...g, cloudId: cloud.id, cloudOwnerId: cloud.owner_id, updatedAt: new Date().toISOString() }
   await repo.db.groups.put(updated)
   return updated
 }
@@ -117,9 +134,10 @@ export async function joinWithInvite(repo: AtlasRepository, backend: CloudBacken
     const linked = all.find((g) => g.cloudId === cloud.id)
     if (linked) return linked
     const sameName = all.find((g) => !g.cloudId && normalizeText(g.name) === normalizeText(cloud.name))
+    const shared = { cloudId: cloud.id, cloudOwnerId: cloud.owner_id, cycleStartDay: cloud.cycle_start_day ?? null }
     const group: SpendGroup = sameName
-      ? { ...sameName, cloudId: cloud.id, archived: false, updatedAt: now }
-      : { id: cloud.id, name: cloud.name, color: cloud.color, cloudId: cloud.id, archived: false, order: Math.max(-1, ...all.map((g) => g.order)) + 1, createdAt: now, updatedAt: now }
+      ? { ...sameName, ...shared, archived: false, updatedAt: now }
+      : { id: cloud.id, name: cloud.name, color: cloud.color, ...shared, archived: false, order: Math.max(-1, ...all.map((g) => g.order)) + 1, createdAt: now, updatedAt: now }
     await db.groups.put(group)
     return group
   })
@@ -198,6 +216,15 @@ export async function syncAll(repo: AtlasRepository, backend: CloudBackend): Pro
   for (const g of linked.filter((g) => !cloudGroups.has(g.cloudId!))) await unlinkGroup(repo, g)
   const active = linked.filter((g) => cloudGroups.has(g.cloudId!))
   if (!active.length) return report
+  // Yöneticinin belirlediği ay döngüsü ve yönetici bilgisi buluttan gelir
+  for (const g of active) {
+    const cg = cloudGroups.get(g.cloudId!)!
+    const cycle = cg.cycle_start_day ?? null
+    if ((g.cycleStartDay ?? null) !== cycle || g.cloudOwnerId !== cg.owner_id) {
+      await db.groups.update(g.id, { cycleStartDay: cycle, cloudOwnerId: cg.owner_id })
+      Object.assign(g, { cycleStartDay: cycle, cloudOwnerId: cg.owner_id })
+    }
+  }
 
   const categories = await db.categories.toArray()
   const catById = new Map(categories.map((c) => [c.id, c]))

@@ -59,6 +59,29 @@ describe('aylık özet', () => {
   })
 })
 
+describe('ay döngüsüyle özet', () => {
+  const data = [
+    tx('2026-09-14', 700, 'expense', 'market'),
+    tx('2026-09-15', 100, 'expense', 'market'),
+    tx('2026-09-30', 50, 'expense', 'market'),
+    tx('2026-10-14', 25, 'expense', 'restoran'),
+    tx('2026-10-15', 900, 'expense', 'market'),
+  ]
+  it('dönemi başlangıç gününden sonraki ayın bir önceki gününe kadar sayar', () => {
+    const s = summarizeMonth(data, '2026-09', undefined, 15)
+    expect(s.expenseKurus).toBe(17500)
+    expect(s.count).toBe(3)
+    expect(s.daily.length).toBe(30)
+    expect(s.daily[0]).toMatchObject({ date: '2026-09-15', day: 15, expenseKurus: 10000 })
+    expect(s.daily[29]).toMatchObject({ date: '2026-10-14', day: 14, expenseKurus: 2500 })
+  })
+  it('önceki dönemle aynı gün sayısına kadar karşılaştırır', () => {
+    const c = compareWithPrevious(data, '2026-10', '2026-09', '2026-10-15', 15)
+    // 15 Ekim dönemin 1. günü: önceki dönemin yalnızca ilk günü (15 Eylül) sayılır
+    expect(c).toMatchObject({ kind: 'ok', previousNetKurus: 10000, diffKurus: 80000, partial: true })
+  })
+})
+
 describe('önceki ay karşılaştırması', () => {
   it('önceki ayda veri yoksa yüzde üretmez', () => {
     const c = compareWithPrevious([tx('2026-09-01', 10, 'expense')], '2026-09', '2026-08', '2026-10-15')

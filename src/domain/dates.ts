@@ -194,3 +194,55 @@ export function inferDateOrder(samples: string[]): { order: 'dmy' | 'mdy'; evide
 /** Tarih benzeri token: satır başında işlem tarihi aramak için. */
 export const DATE_TOKEN_RE =
   /^(\d{1,2}[./-]\d{1,2}[./-](?:\d{4}|\d{2})|\d{4}-\d{2}-\d{2}|\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık|Oca|Şub|Mar|Nis|May|Haz|Tem|Ağu|Eyl|Eki|Kas|Ara|OCAK|ŞUBAT|MART|NİSAN|MAYIS|HAZİRAN|TEMMUZ|AĞUSTOS|EYLÜL|EKİM|KASIM|ARALIK|OCA|ŞUB|MAR|NİS|MAY|HAZ|TEM|AĞU|EYL|EKİ|KAS|ARA)\.?\s+\d{2,4})/
+
+// ---------- Ay döngüsü (dönem) ----------
+// Dönem, her ayın `startDay` gününde başlar ve sonraki ayın bir önceki gününde biter
+// (ör. 15 → 15 Eylül – 14 Ekim). Dönem anahtarı başladığı ayın anahtarıdır ("2026-09").
+// startDay = 1 takvim ayıdır; mevcut davranış aynen korunur.
+
+export const MAX_CYCLE_START_DAY = 28
+
+export function normalizeStartDay(day: number | null | undefined): number {
+  const d = Math.trunc(Number(day))
+  return d >= 1 && d <= MAX_CYCLE_START_DAY ? d : 1
+}
+
+export function periodOf(date: IsoDate, startDay = 1): MonthKey {
+  const s = normalizeStartDay(startDay)
+  const m = monthOf(date)
+  return s > 1 && dayOf(date) < s ? addMonths(m, -1) : m
+}
+
+export function currentPeriod(startDay = 1, now: Date = new Date()): MonthKey {
+  return periodOf(todayIso(now), startDay)
+}
+
+export function periodRange(key: MonthKey, startDay = 1): { start: IsoDate; end: IsoDate } {
+  const s = normalizeStartDay(startDay)
+  if (s === 1) return monthRange(key)
+  const { year, month } = parseMonthKey(key)
+  const next = parseMonthKey(addMonths(key, 1))
+  return { start: toIsoDate(year, month, s), end: addDays(toIsoDate(next.year, next.month, s), -1) }
+}
+
+/** Dönemdeki gün sayısı. */
+export function periodLength(key: MonthKey, startDay = 1): number {
+  const r = periodRange(key, startDay)
+  return diffDays(r.end, r.start) + 1
+}
+
+/** Dönemin ekranda görünen adı: takvim ayıysa "Eylül 2026", değilse "15 Eyl – 14 Eki 2026". */
+export function periodLabel(key: MonthKey, startDay = 1): string {
+  const s = normalizeStartDay(startDay)
+  if (s === 1) return monthLabel(key)
+  const { start, end } = periodRange(key, s)
+  const [y1, m1, d1] = start.split('-').map(Number)
+  const [y2, m2, d2] = end.split('-').map(Number)
+  return y1 === y2 ? `${d1} ${MONTH_SHORT[m1 - 1]} – ${d2} ${MONTH_SHORT[m2 - 1]} ${y2}` : `${d1} ${MONTH_SHORT[m1 - 1]} ${y1} – ${d2} ${MONTH_SHORT[m2 - 1]} ${y2}`
+}
+
+/** "Her ayın 15'i – sonraki ayın 14'ü" gibi kısa açıklama. */
+export function cycleDescription(startDay = 1): string {
+  const s = normalizeStartDay(startDay)
+  return s === 1 ? 'Takvim ayı (1 – ay sonu)' : `Her ayın ${s}. günü – sonraki ayın ${s - 1}. günü`
+}

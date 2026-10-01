@@ -68,6 +68,10 @@ export interface SpendGroup {
   color: string
   /** Bulutta paylaşılan grubun kimliği. Varsa gruptaki işlemler grup üyeleriyle eşitlenir. */
   cloudId?: string
+  /** Paylaşılan grubun yöneticisinin (sahibinin) kimliği. */
+  cloudOwnerId?: string
+  /** Grubun ay döngüsünün başlangıç günü (1–28). Boşsa kişisel ayar kullanılır. */
+  cycleStartDay?: number | null
   archived: boolean
   order: number
   createdAt: string
@@ -133,6 +137,8 @@ export interface Settings {
   defaultPaymentMethod?: PaymentMethod
   /** Bu cihazın sahibinin üye kimliği. */
   selfMemberId?: string
+  /** Kişisel ay döngüsünün başlangıç günü (1–28). Boşsa takvim ayı. */
+  cycleStartDay?: number
   updatedAt: string
 }
 
