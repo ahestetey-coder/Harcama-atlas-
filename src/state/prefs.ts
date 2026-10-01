@@ -5,6 +5,8 @@
 const KEYS = {
   theme: 'ha:theme',
   demo: 'ha:demo',
+  /** Bu cihazdaki ana veritabanını ilk kullanan hesabın kimliği (finansal veri değildir). */
+  dbOwner: 'ha:db-owner',
 } as const
 
 export function readPref(key: keyof typeof KEYS): string | null {

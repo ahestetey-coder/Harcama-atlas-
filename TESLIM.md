@@ -212,3 +212,18 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - 104 birim testi ve 28 uçtan uca test geçti.
 - Supabase bağlayıcısıyla `harcama-atlasi` projesi oluşturuldu ve şema uygulandı. Gerçek veritabanında geri alınan bir işlem içinde denendi: grup oluşturma, davet, katılma ve işlem ekleme çalıştı; gruba üye olmayan kullanıcı hiçbir işlem göremedi.
 - Uygulamanın tarayıcıdan Supabase'e bağlanması geliştirme ortamından denenemedi (ağ erişimi yok). İlk gerçek kullanımda bir sorun çıkarsa bildirin.
+
+## 10. Güncelleme (01.10.2026): giriş ekranı ve hesaplar
+
+İstek: herkesin kendi hesabıyla girdiği, kolay kayıt ve giriş ekranları; Google ile giriş.
+
+- **Giriş zorunlu:** Yayındaki sitede uygulama açılmadan önce giriş ekranı gelir. Sekmeler "Giriş yap" ve "Kayıt ol"; ayrıca şifre göster/gizle, "Şifremi unuttum" (e-postayla yenileme bağlantısı) ve yeni şifre belirleme ekranı var.
+- **Google ile giriş:** "Google ile devam et" düğmesi, Supabase'de Google girişi açıldığında kendiliğinden görünür. Açmak için Google Cloud'da bir OAuth istemcisi gerekir; adımlar `BULUT-KURULUM.md` dosyasında.
+- **Hesaba göre ayrı veri:** Bir cihazdaki mevcut kayıtlar o cihazda ilk giriş yapan hesaba ait olur. Aynı cihazda başka bir hesap girerse ona ayrı ve boş bir veritabanı açılır. Çıkış yapınca kayıtlar silinmez.
+- **Ad:** Kayıtta yazılan ad (veya Google hesabındaki ad), grup üyelerinin gördüğü ad olarak kullanılır.
+- **Sınır:** Kişisel harcamalar hâlâ yalnızca cihazda tutulur; başka bir cihazda aynı hesapla girildiğinde yalnızca paylaşılan gruplar gelir.
+
+**Testler.**
+- 104 birim testi ve 28 uçtan uca test geçti.
+- Giriş ekranı için 3 yeni uçtan uca test geçti (`npm run test:e2e:auth`): yanlış şifre, kayıt, şifre sıfırlama, Google düğmesi, iki hesabın verilerinin ayrı kalması ve çıkış. Bu testlerde Supabase taklit edilir.
+- Gerçek Supabase ile tarayıcıdan giriş bu ortamdan denenemedi.

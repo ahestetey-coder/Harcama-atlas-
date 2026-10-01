@@ -65,6 +65,11 @@ geliştirildiği konteynerdeki yol). Kendi makinenizde `npx playwright install c
   "Ayrı işlem olarak ekle" seçer.
 - **Tema:** Açık, koyu ve sistem; seçim hatırlanır. Animasyonlar 150–250 ms ve
   `prefers-reduced-motion` desteklenir.
+- **Hesapla giriş:** Uygulama bir Supabase adresiyle derlendiyse (yayındaki site) giriş ekranı açılır:
+  e-posta ve şifreyle kayıt veya giriş, şifre sıfırlama ve (Supabase'de açıldıysa) Google ile giriş.
+  Her hesabın kayıtları aynı cihazda bile ayrı veritabanında tutulur. Adres verilmeden yapılan
+  derlemelerde (yerel geliştirme) giriş istenmez. Giriş testleri: `npm run test:e2e:auth`
+  (Supabase taklit edilir).
 - **Üyeler ve paylaşım (isteğe bağlı):** Bir grubu (ör. Ortak) paylaşıma açıp davet
   bağlantısıyla üye eklenir. Herkes kendi harcamasını ekler; grubun toplamı, kategori dağılımı
   ve kişilere göre dağılımı panelde görünür. Kendi Supabase projeniz gerekir; kurulum:

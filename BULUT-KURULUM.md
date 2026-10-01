@@ -45,6 +45,17 @@ Supabase yeni hesaplar için varsayılan olarak e-posta doğrulaması ister. Do�
 
 İsterseniz **Authentication** > **Sign In / Providers** > **Email** altında **Confirm email** seçeneğini kapatabilirsiniz. Bu durumda hesap hemen açılır. Supabase'in ücretsiz e-posta gönderimi saatte birkaç e-postayla sınırlı olduğu için bu seçenek küçük bir aile grubunda işinizi kolaylaştırır.
 
+### Google ile giriş (isteğe bağlı)
+
+Giriş ekranındaki **Google ile devam et** düğmesi, Supabase'de Google girişi açıldığında kendiliğinden görünür.
+
+1. <https://console.cloud.google.com/apis/credentials> adresinde bir proje seçin veya oluşturun.
+2. **OAuth consent screen** (OAuth izin ekranı) bölümünde uygulama adını (Harcama Atlası) ve e-postanızı girin. Kullanıcı türü **External** olsun, sonra **Publish app** deyin.
+3. **Credentials** > **Create credentials** > **OAuth client ID** > **Web application** seçin.
+   - **Authorized JavaScript origins**: `https://ahestetey-coder.github.io`
+   - **Authorized redirect URIs**: `https://<proje-kodu>.supabase.co/auth/v1/callback`. Yayındaki site için bu adres `https://muonkdoiiuxwmcgshyza.supabase.co/auth/v1/callback`.
+4. Oluşan **Client ID** ve **Client secret** değerlerini Supabase'de **Authentication** > **Sign In / Providers** > **Google** altına yapıştırın ve **Enable** deyin.
+
 ## 4. Uygulamayı projeye bağlayın
 
 1. Supabase'de **Project Settings** > **API** (veya **Data API**) sayfasını açın.

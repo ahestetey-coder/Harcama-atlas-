@@ -85,6 +85,14 @@ async function selfName(repo: AtlasRepository): Promise<string> {
   return name
 }
 
+/** Kendi adınız henüz yazılmadıysa ("Ben") hesaptaki adı kullanır. */
+export async function setDefaultSelfName(repo: AtlasRepository, name: string): Promise<void> {
+  const id = await selfMemberId(repo)
+  const m = id ? await repo.db.members.get(id) : undefined
+  const n = name.trim().slice(0, 40)
+  if (m && n && (!m.name.trim() || m.name === 'Ben')) await repo.db.members.update(m.id, { name: n, updatedAt: new Date().toISOString() })
+}
+
 /** Yerel bir grubu bulutta paylaşıma açar. Gruptaki kendi işlemleriniz ilk eşitlemede gönderilir. */
 export async function shareGroup(repo: AtlasRepository, backend: CloudBackend, groupId: string): Promise<SpendGroup> {
   const g = await repo.db.groups.get(groupId)

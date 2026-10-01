@@ -6,7 +6,7 @@ export class SupabaseBackend implements CloudBackend {
   private uid: string | null = null
 
   constructor(url: string, anonKey: string) {
-    this.client = createClient(url, anonKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'harcama-atlasi-bulut-oturum' } })
+    this.client = createClient(url, anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce', storageKey: 'harcama-atlasi-bulut-oturum' } })
   }
 
   setUserId(id: string | null) {

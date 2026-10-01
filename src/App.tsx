@@ -5,6 +5,8 @@ import { AppShell } from './components/AppShell'
 import { TransactionFormHost } from './components/TransactionForm'
 import { Spinner } from './components/ui/primitives'
 import DashboardPage from './pages/DashboardPage'
+import { AuthScreen, AuthSplash, NewPasswordScreen } from './pages/AuthScreen'
+import { AuthProvider, useAuth } from './state/auth'
 import { CloudProvider } from './state/cloud'
 import { DataProvider } from './state/data'
 import { ThemeProvider } from './state/theme'
@@ -67,17 +69,30 @@ const router = createHashRouter([
   },
 ])
 
+/** Hesapla giriş açıksa oturum açılmadan uygulama gösterilmez; her hesabın kayıtları ayrıdır. */
+function AuthGate() {
+  const auth = useAuth()
+  if (!auth.ready) return <AuthSplash />
+  if (auth.enabled && !auth.user) return <AuthScreen />
+  if (auth.recovery) return <NewPasswordScreen />
+  return (
+    <DataProvider key={auth.user?.id ?? 'local'} userId={auth.user?.id}>
+      <UiProvider>
+        <CloudProvider>
+          <RouterProvider router={router} />
+        </CloudProvider>
+      </UiProvider>
+    </DataProvider>
+  )
+}
+
 export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <ThemeProvider>
-        <DataProvider>
-          <UiProvider>
-            <CloudProvider>
-              <RouterProvider router={router} />
-            </CloudProvider>
-          </UiProvider>
-        </DataProvider>
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
       </ThemeProvider>
     </MotionConfig>
   )

@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, Menu, Plus, Settings, Tags, Users } from 'lucide-react'
+import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Plus, Settings, Tags, Users } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
 import { cn } from '../lib/cn'
+import { useAuth } from '../state/auth'
 import { useData } from '../state/data'
 import { useUi } from '../state/ui'
 import { Modal } from './ui/Modal'
@@ -99,6 +100,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
           )}
+          <AccountBox />
           <p className="px-2 text-[11.5px] leading-relaxed text-subtle">Veriler bu tarayıcıda saklanır. Yalnızca paylaşıma açtığınız gruptaki harcamalar üyelerle eşitlenir.</p>
         </div>
       </aside>
@@ -185,6 +187,38 @@ export function AppShell({ children }: { children: ReactNode }) {
               {n.label}
             </button>
           ))}
+        </div>
+        <AccountBox className="mt-2 mb-2" />
+      </Modal>
+    </div>
+  )
+}
+
+/** Giriş yapılan hesap ve çıkış düğmesi (hesapla giriş açıksa). */
+function AccountBox({ className }: { className?: string }) {
+  const auth = useAuth()
+  const [confirm, setConfirm] = useState(false)
+  if (!auth.enabled || !auth.user) return null
+  return (
+    <div className={cn('flex items-center gap-2 rounded-2xl border border-line bg-surface-2 py-2 pl-3 pr-1.5', className)}>
+      <div className="min-w-0 flex-1 text-[12.5px]">
+        <div className="truncate font-semibold text-ink">{auth.user.name ?? 'Hesabım'}</div>
+        <div className="truncate text-subtle">{auth.user.email}</div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setConfirm(true)}
+        className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-[12.5px] font-semibold text-muted hover:bg-surface hover:text-ink"
+      >
+        <LogOut className="size-4" /> Çıkış
+      </button>
+      <Modal open={confirm} onOpenChange={setConfirm} title="Çıkış yapılsın mı?" size="sm">
+        <p className="text-sm text-muted">Kayıtlarınız bu cihazda kalır; aynı hesapla tekrar girdiğinizde kaldığınız yerden devam edersiniz.</p>
+        <div className="mt-5 flex justify-end gap-2 pb-1">
+          <Button onClick={() => setConfirm(false)}>Vazgeç</Button>
+          <Button variant="primary" icon={<LogOut className="size-4" />} onClick={() => void auth.signOut()}>
+            Çıkış yap
+          </Button>
         </div>
       </Modal>
     </div>

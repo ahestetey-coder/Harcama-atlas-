@@ -15,7 +15,25 @@ interface DataCtx {
 
 const Ctx = createContext<DataCtx | null>(null)
 
-const realRepo = new AtlasRepository(createDb(REAL_DB_NAME), false)
+const realRepos = new Map<string, AtlasRepository>()
+function getRealRepo(name: string) {
+  let r = realRepos.get(name)
+  if (!r) realRepos.set(name, (r = new AtlasRepository(createDb(name), false)))
+  return r
+}
+
+/**
+ * Hesapla girişte her hesabın kayıtları ayrı veritabanındadır. Cihazdaki ana veritabanı (girişten
+ * önceki kayıtlar dahil) ilk giren hesaba aittir; aynı cihazda başka biri girerse ona boş, ayrı bir
+ * veritabanı açılır.
+ */
+export function realDbNameFor(userId: string | undefined): string {
+  if (!userId) return REAL_DB_NAME
+  const owner = readPref('dbOwner')
+  if (!owner) writePref('dbOwner', userId)
+  return !owner || owner === userId ? REAL_DB_NAME : `${REAL_DB_NAME}-${userId}`
+}
+
 let demoRepo: AtlasRepository | null = null
 function getDemoRepo() {
   demoRepo ??= new AtlasRepository(createDb(DEMO_DB_NAME), true)
@@ -26,10 +44,11 @@ function getDemoRepo() {
  * Gerçek veriler ve demo verileri ayrı IndexedDB veritabanlarındadır; demo modu açılınca
  * bütün ekranlar demo deposuna bağlanır, gerçek kayıtlara dokunulmaz.
  */
-export function DataProvider({ children }: { children: ReactNode }) {
+export function DataProvider({ children, userId }: { children: ReactNode; userId?: string }) {
   const [isDemo, setIsDemo] = useState(() => readPref('demo') === '1')
   const [dbError, setDbError] = useState<string | null>(null)
-  const repo = isDemo ? getDemoRepo() : realRepo
+  const realName = useMemo(() => realDbNameFor(userId), [userId])
+  const repo = isDemo ? getDemoRepo() : getRealRepo(realName)
 
   useEffect(() => {
     let alive = true

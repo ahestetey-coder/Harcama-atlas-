@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { readCloudConfig, writeCloudConfig, type CloudConfig } from '../cloud/config'
+import { envCloudConfig, readCloudConfig, writeCloudConfig, type CloudConfig } from '../cloud/config'
 import { cloudErrorMessage } from '../cloud/errors'
 import type { SupabaseBackend } from '../cloud/supabaseBackend'
-import { adoptCloudIdentity, syncAll, type SyncReport } from '../cloud/sync'
+import { adoptCloudIdentity, setDefaultSelfName, syncAll, type SyncReport } from '../cloud/sync'
 import { UserFacingError } from '../data/repository'
+import { useAuth } from './auth'
 import { useData } from './data'
 
 export type CloudStatus = 'off' | 'loading' | 'signed-out' | 'idle' | 'syncing' | 'error'
@@ -35,6 +36,9 @@ const AUTO_SYNC_MS = 60_000
  */
 export function CloudProvider({ children }: { children: ReactNode }) {
   const { repo, isDemo } = useData()
+  const auth = useAuth()
+  // Hesapla giriş açıksa (yayındaki site) istemci ve oturum AuthProvider'dan gelir.
+  const managed = auth.enabled
   const [config, setConfig] = useState<CloudConfig | null | undefined>(undefined)
   const [email, setEmail] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
@@ -51,17 +55,22 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       setConfig(null)
       return
     }
+    if (managed) {
+      setConfig(envCloudConfig())
+      return
+    }
     readCloudConfig(repo).then((c) => alive && setConfig(c))
     return () => {
       alive = false
     }
-  }, [repo, isDemo])
+  }, [repo, isDemo, managed])
 
   // Supabase istemcisi yalnızca bulut ayarı varsa (ayrı parça olarak) yüklenir.
-  const [backend, setBackend] = useState<SupabaseBackend | null>(null)
+  const [ownBackend, setBackend] = useState<SupabaseBackend | null>(null)
+  const backend = managed ? (isDemo ? null : auth.backend) : ownBackend
   useEffect(() => {
     let alive = true
-    if (!config || isDemo) {
+    if (!config || isDemo || managed) {
       setBackend(null)
       return
     }
@@ -69,10 +78,20 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false
     }
-  }, [config, isDemo])
+  }, [config, isDemo, managed])
 
-  // Oturum
+  // Oturum (hesapla giriş açıksa AuthProvider'dan)
+  const authUser = auth.user
   useEffect(() => {
+    if (!managed) return
+    setUserId(authUser?.id ?? null)
+    setEmail(authUser?.email ?? null)
+    setSessionChecked(auth.ready)
+    if (authUser && !isDemo) void adoptCloudIdentity(repo, authUser.id).then(() => (authUser.name ? setDefaultSelfName(repo, authUser.name) : undefined))
+  }, [managed, authUser, auth.ready, repo, isDemo])
+
+  useEffect(() => {
+    if (managed) return
     setSessionChecked(false)
     if (!backend) {
       setEmail(null)
@@ -92,7 +111,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       .catch(() => apply(null))
     const { data } = backend.client.auth.onAuthStateChange((_e, session) => apply(session))
     return () => data.subscription.unsubscribe()
-  }, [backend, repo])
+  }, [backend, repo, managed])
 
   const sync = useCallback(async (): Promise<SyncReport | null> => {
     if (!backend || !backend.userId()) return null
@@ -179,9 +198,11 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     [backend],
   )
 
+  const authSignOut = auth.signOut
   const signOut = useCallback(async () => {
-    await backend?.client.auth.signOut()
-  }, [backend])
+    if (managed) await authSignOut()
+    else await backend?.client.auth.signOut()
+  }, [backend, managed, authSignOut])
 
   const status: CloudStatus = !config || isDemo ? 'off' : !backend || !sessionChecked ? 'loading' : !userId ? 'signed-out' : syncing ? 'syncing' : lastError ? 'error' : 'idle'
 

@@ -15,7 +15,8 @@
     "bench": "node scripts/bench/run.mjs",
     "test:sql": "bash scripts/test-sql.sh",
     "copy-assets": "node scripts/copy-assets.mjs",
-    "postinstall": "node scripts/copy-assets.mjs"
+    "postinstall": "node scripts/copy-assets.mjs",
+    "test:e2e:auth": "playwright test -c playwright.auth.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
