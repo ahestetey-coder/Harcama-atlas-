@@ -207,7 +207,7 @@ test('yönetici paneli yalnızca yöneticiye görünür; kullanıcılar listelen
   await expect(page.getByRole('dialog', { name: 'Osman' }).getByRole('button', { name: 'Hesabı sil' })).toBeDisabled()
 })
 
-test('ortak grubun yöneticisi gideri paylaştırır ve geri alır; Tümü yalnızca payını sayar', async ({ page }) => {
+test('ortak grubun yöneticisi gideri paylaştırır ve geri alır; Tümü toplamına alacak satırı eklenir', async ({ page }) => {
   const calls = await mockSupabase(page, { sharedGroup: true })
   await page.goto('./')
   await signIn(page, 'osman@ornek.com')
@@ -239,8 +239,10 @@ test('ortak grubun yöneticisi gideri paylaştırır ve geri alır; Tümü yaln�
   })
   await page.keyboard.press('Escape')
 
+  // Tümü: kendi 300 ₺ gideriniz yerinde kalır, 50 ₺ alacak eklenir → 250
   await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Tümü' }).click()
   await expect(hero).toContainText('250,00')
+  await expect(page.getByText('Ortak paylaşımı · alacak').filter({ visible: true }).first()).toBeVisible()
   await expect(page.getByRole('region', { name: 'Ortak grupların dönemi' })).toContainText('Ortak giderini paylaştırdınız')
 
   // Geri alınınca Tümü yine kendi eklediğiniz tutarı sayar

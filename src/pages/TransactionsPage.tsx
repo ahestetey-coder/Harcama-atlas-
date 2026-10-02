@@ -19,6 +19,7 @@ import { useMemberFilter } from '../state/cloud'
 import { useCategories, useCategoryMap, useGroupFilter, useGroupMap, useGroups, useImports, useRepo, useTransactions } from '../state/data'
 import { useCycle } from '../state/cycle'
 import { usePersonalTransactions } from '../state/personal'
+import { isCounted } from '../domain/personal'
 import { useUi } from '../state/ui'
 
 type Period = 'month' | 'all' | 'custom'
@@ -36,7 +37,7 @@ export default function TransactionsPage() {
   const [groupFilter, setGroupFilter] = useGroupFilter()
   const memberFilter = useMemberFilter()
   const person = groupFilter ? memberFilter : { ...memberFilter, value: '', options: [] }
-  const txs = groupFilter ? allTxs : personal
+  const txs = groupFilter ? allTxs : personal?.list
   const { month, setMonth, openTransactionForm, toast } = useUi()
   const { startDay } = useCycle()
   const navigate = useNavigate()
@@ -101,11 +102,13 @@ export default function TransactionsPage() {
     let e = 0
     let r = 0
     for (const t of filtered) {
+      // Tümü'de üyelerin ortak giderleri listede görünür ama toplama girmez
+      if (!groupFilter && !isCounted(t)) continue
       if (t.type === 'expense') e += t.amountKurus
       else if (t.type === 'refund') r += t.amountKurus
     }
     return { e, r }
-  }, [filtered])
+  }, [filtered, groupFilter])
 
   const activeFilterCount = [category, groupFilter, person.value, type, payment, source, importId, period === 'custom' ? 'x' : ''].filter(Boolean).length
 
@@ -408,6 +411,7 @@ export default function TransactionsPage() {
         ) : (
           <TransactionList
             transactions={filtered}
+            markUncounted={!groupFilter}
             categories={catMap}
             selectable
             selected={selected}

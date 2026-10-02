@@ -312,3 +312,10 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 **Kurulum:** Sunucuya yeni tablo ve iki fonksiyon gerekir (supabase/schema.sql'de; ayrıca gider-paylasimi.sql). Kurulmadan önce uygulama eskisi gibi eşitlenir, yalnızca paylaştırma "Bulut veritabanı kurulmamış" uyarısı verir.
 
 **Testler:** 122 birim testi (yeni: Tümü hesabı, paylaşımın eşitlenmesi, yalnızca yöneticinin paylaştırması, paylaşım okunamazsa eşitlemenin sürmesi), 30 uçtan uca test (üye görünümü), 5 giriş testi (yöneticinin paylaştırıp geri alması) ve SQL güvenlik testleri geçti.
+
+### 17a. Düzeltme (02.10.2026)
+
+- **Dönem ayarı:** 17. bölümde ortak grup yöneticinin dönemine sabitlenmişti; bu yüzden kişisel dönem ayarı etkilemiyordu. Eski haline döndü: grup için dönem ayarlanmışsa o, yoksa herkesin kendi dönemi geçerli.
+- **Tümü listesi:** Üyelerin ortak giderleri Tümü listesinde de görünür ("Toplama girmez" etiketiyle) ama toplamlara girmez.
+- **Paylaşım farkı:** Paylaştırılınca kendi giderleriniz yerinde kalır; ödediğinizle payınız arasındaki fark eklenir. Fazla ödeyene "<Grup> paylaşımı · alacak" (gelir), az ödeyene "<Grup> paylaşımı · borç" (gider). Fark, paylaşımdan sonra eklenen kendi giderlerinize göre de güncel kalır.
+- Paylaşım, görüntülenen dönemle çakışan paylaşımı bulur; yönetici sonradan dönem ayarını değiştirirse eski paylaşım gösterilir ve geri alınabilir.

@@ -21,11 +21,13 @@ interface Props {
   onEdit?: (t: Transaction) => void
   onDelete?: (t: Transaction) => void
   compact?: boolean
+  /** "Tümü" görünümü: üyelerin ortak giderleri toplamlara girmez; bu satırlar işaretlenir. */
+  markUncounted?: boolean
   /** Görüntülenecek en fazla satır (performans). */
   limit?: number
 }
 
-function TxMeta({ t, group, member }: { t: Transaction; group?: SpendGroup; member?: Pick<Member, 'name' | 'color'> }) {
+function TxMeta({ t, group, member, uncounted }: { t: Transaction; group?: SpendGroup; member?: Pick<Member, 'name' | 'color'>; uncounted?: boolean }) {
   return (
     <>
       {member && (
@@ -35,7 +37,8 @@ function TxMeta({ t, group, member }: { t: Transaction; group?: SpendGroup; memb
         </span>
       )}
       <GroupBadge group={group} />
-      {t.type !== 'expense' && <Badge tone={t.type === 'refund' ? 'accent' : 'neutral'}>{TX_TYPE_LABEL[t.type]}</Badge>}
+      {uncounted && t.source === 'shared' && <Badge tone="warning">Toplama girmez</Badge>}
+      {t.type !== 'expense' && t.source !== 'settlement' && <Badge tone={t.type === 'refund' ? 'accent' : 'neutral'}>{TX_TYPE_LABEL[t.type]}</Badge>}
       {t.installment && (
         <Badge tone="info" className="num">
           Taksit {t.installment.current}/{t.installment.total || '?'}
@@ -51,7 +54,7 @@ function TxMeta({ t, group, member }: { t: Transaction; group?: SpendGroup; memb
   )
 }
 
-export function TransactionList({ transactions, categories, selectable, selected, onToggle, onToggleAll, onEdit, onDelete, compact, limit = 500 }: Props) {
+export function TransactionList({ transactions, categories, selectable, selected, onToggle, onToggleAll, onEdit, onDelete, compact, markUncounted, limit = 500 }: Props) {
   const { highlightId, setHighlightId } = useUi()
   const groups = useGroupMap()
   const { map: members, selfId } = useMembers()
@@ -122,7 +125,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                         {t.description}
                       </div>
                       <div className="mt-0.5 flex flex-wrap gap-1 empty:hidden">
-                        <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} />
+                        <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} uncounted={markUncounted} />
                       </div>
                     </td>
                     <td className="border-b border-line py-2.5 pl-3">
@@ -197,7 +200,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-subtle">
                       <span className="num whitespace-nowrap">{formatDate(t.date)}</span>
                       <span className={cn('whitespace-nowrap font-medium', cat || t.type === 'transfer' ? 'text-muted' : 'text-warning')}>{cat?.name ?? (t.type === 'transfer' ? 'Transfer' : 'Kategorisiz')}</span>
-                      <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} />
+                      <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} uncounted={markUncounted} />
                     </div>
                   </button>
                   <div className="shrink-0 text-right text-[14px] font-semibold">

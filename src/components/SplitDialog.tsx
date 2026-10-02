@@ -5,7 +5,7 @@ import { cloudErrorMessage } from '../cloud/errors'
 import { UserFacingError } from '../data/repository'
 import { formatDate } from '../domain/dates'
 import { formatKurus } from '../domain/money'
-import { findSettlement } from '../domain/personal'
+import { findSettlement, settlementRangeText } from '../domain/personal'
 import { splitEqually, type SplitMember, type SplitResult } from '../domain/split'
 import type { GroupSettlement, SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
@@ -156,7 +156,7 @@ export function SplitDialog({
         </section>
 
         <p className="text-[12.5px] leading-relaxed text-subtle">
-          Gider, gruptaki {result.people.length} kişiye eşit bölündü. Kart ödemeleri sayılmaz, iadeler ödeyenin harcamasından düşer. Paylaştırma kayıtları silmez veya değiştirmez; yalnızca herkesin “Tümü” görünümüne kendi payının yansımasını sağlar.
+          Gider, gruptaki {result.people.length} kişiye eşit bölündü. Kart ödemeleri sayılmaz, iadeler ödeyenin harcamasından düşer. Paylaştırma kayıtları silmez veya değiştirmez; herkesin “Tümü” görünümüne ödediğiyle payı arasındaki fark alacak veya borç olarak eklenir.
         </p>
       </div>
     </Modal>
@@ -179,9 +179,11 @@ function SettleStatus({ group, period, result, selfId }: { group: SpendGroup; pe
   const { toast } = useUi()
   const [busy, setBusy] = useState(false)
   const [confirmUndo, setConfirmUndo] = useState(false)
-  const settlement = findSettlement(group, period.start)
+  const settlement = findSettlement(group, period)
+  // Yönetici paylaştırdıktan sonra dönem ayarı değiştiyse paylaşım bu dönemle tam örtüşmeyebilir
+  const sameRange = !!settlement && settlement.start === period.start && settlement.end === period.end
   const isOwner = !!selfId && group.cloudOwnerId === selfId
-  const matches = settlement ? settlementMatches(settlement, result) : false
+  const matches = settlement && sameRange ? settlementMatches(settlement, result) : false
   const myShare = settlement && selfId ? (settlement.shares[selfId] ?? 0) : 0
 
   const run = async (fn: () => Promise<void>, ok: string) => {
@@ -201,7 +203,7 @@ function SettleStatus({ group, period, result, selfId }: { group: SpendGroup; pe
       () => settleGroupPeriod(repo, backend, group.id, { start: period.start, end: period.end, totalKurus: result.totalKurus, shares: sharesOf(result) }),
       settlement ? 'Paylaşım güncellendi.' : 'Gider paylaştırıldı. Üyeler eşitlemeden sonra kendi paylarını görür.',
     )
-  const undo = () => run(() => unsettleGroupPeriod(repo, backend, group.id, period.start), 'Paylaşım geri alındı.')
+  const undo = () => run(() => unsettleGroupPeriod(repo, backend, group.id, settlement!.start), 'Paylaşım geri alındı.')
 
   if (!settlement) {
     return (
@@ -209,8 +211,8 @@ function SettleStatus({ group, period, result, selfId }: { group: SpendGroup; pe
         <p className="font-semibold text-ink">Bu dönem henüz paylaştırılmadı</p>
         <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
           {isOwner
-            ? 'Paylaştırdığınızda her üyenin “Tümü” görünümüne yalnızca kendi payı yansır. İstediğiniz zaman geri alabilirsiniz.'
-            : 'Paylaşımı grup yöneticisi yapar. Paylaştırılana kadar “Tümü” görünümünüzde yalnızca kendi eklediğiniz giderler sayılır.'}
+            ? 'Paylaştırdığınızda payından fazla ödeyenin “Tümü” görünümüne alacak, az ödeyenin borç satırı eklenir; ortak gider herkese payı kadar yansır. İstediğiniz zaman geri alabilirsiniz.'
+            : 'Paylaşımı grup yöneticisi yapar. Paylaştırılana kadar “Tümü” toplamınıza yalnızca kendi eklediğiniz giderler girer.'}
         </p>
         {isOwner && (
           <Button variant="primary" size="sm" className="mt-3" icon={<Scale className="size-4" />} loading={busy} disabled={result.totalKurus <= 0} onClick={() => void settle()}>
@@ -231,14 +233,19 @@ function SettleStatus({ group, period, result, selfId }: { group: SpendGroup; pe
         {formatDate(settlement.createdAt.slice(0, 10), 'long')} · toplam {formatKurus(settlement.totalKurus)}
         {myShare > 0 && <> · payınız <span className="font-semibold text-ink">{formatKurus(myShare)}</span></>}
       </p>
-      {!matches && (
+      {!sameRange && (
+        <p className="mt-1.5 text-[13px] leading-relaxed text-ink">
+          Paylaşım {settlementRangeText(settlement)} dönemi için yapıldı; bu ekrandaki dönemden farklı.
+        </p>
+      )}
+      {sameRange && !matches && (
         <p className="mt-1.5 text-[13px] leading-relaxed text-ink">
           Paylaştırıldıktan sonra grubun giderleri değişti. {isOwner ? 'Paylaşımı güncelleyerek yeni tutarları yansıtabilirsiniz.' : 'Yönetici paylaşımı güncelleyene kadar kayıtlı paylar geçerlidir.'}
         </p>
       )}
       {isOwner && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {!matches && (
+          {sameRange && !matches && (
             <Button variant="primary" size="sm" icon={<Scale className="size-4" />} loading={busy} disabled={result.totalKurus <= 0} onClick={() => void settle()}>
               Paylaşımı güncelle
             </Button>

@@ -18,7 +18,7 @@ import type { Member, SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
 import { useMemberFilter, useMembers } from '../state/cloud'
-import { groupCycleDay, useCycle } from '../state/cycle'
+import { usePersonalCycle, useCycle } from '../state/cycle'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 
@@ -31,15 +31,15 @@ export default function DashboardPage() {
   const [groupFilter, setGroupFilter] = useGroupFilter()
   const { startDay, groupName: cycleGroup } = useCycle()
   const memberFilter = useMemberFilter()
-  // "Tümü" kişiseldir: üyelerin ortak giderleri sayılmaz, paylaştırılan dönemde yalnızca payınız sayılır.
-  // Kişi filtresi bu yüzden yalnızca bir grup seçiliyken vardır.
+  // "Tümü" kişiseldir: toplamlara yalnızca kendi giderleriniz ve paylaşım fark satırları girer; üyelerin
+  // ortak giderleri yalnızca listede görünür. Kişi filtresi bu yüzden yalnızca bir grup seçiliyken vardır.
   const personal = usePersonalTransactions()
   const person = groupFilter ? memberFilter : { ...memberFilter, value: '', options: [] }
   // Bütün panel seçili gruba ve kişiye göre hesaplanır (Tümü / Bireysel / Ortak / Grupsuz…)
-  const groupTxs = useMemo(() => (groupFilter ? allTxs?.filter((t) => matchesGroup(t, groupFilter)) : personal), [allTxs, personal, groupFilter])
+  const groupTxs = useMemo(() => (groupFilter ? allTxs?.filter((t) => matchesGroup(t, groupFilter)) : personal?.counted), [allTxs, personal, groupFilter])
   const txs = useMemo(() => groupTxs?.filter((t) => matchesMember(t, person.value, person.selfId)), [groupTxs, person.value, person.selfId])
   const personTxs = useMemo(
-    () => (groupFilter ? allTxs?.filter((t) => matchesMember(t, person.value, person.selfId)) : personal),
+    () => (groupFilter ? allTxs?.filter((t) => matchesMember(t, person.value, person.selfId)) : personal?.counted),
     [groupFilter, allTxs, personal, person.value, person.selfId],
   )
   const categories = useCategoryMap()
@@ -59,6 +59,11 @@ export default function DashboardPage() {
   const summary = useMemo(() => (txs ? summarizeMonth(txs, month, undefined, startDay) : null), [txs, month, startDay])
   const comparison = useMemo(() => (txs ? compareWithPrevious(txs, month, addMonths(month, -1), today, startDay) : null), [txs, month, today, startDay])
   const monthTxs = useMemo(() => (txs ?? []).filter((t) => periodOf(t.date, startDay) === month), [txs, month, startDay])
+  // Listede görünenler: Tümü'de üyelerin ortak giderleri de (toplamlara girmeden)
+  const listMonthTxs = useMemo(
+    () => (groupFilter ? monthTxs : (personal?.list ?? []).filter((t) => periodOf(t.date, startDay) === month)),
+    [groupFilter, monthTxs, personal, month, startDay],
+  )
   const groupRows = useMemo(() => groupBreakdown(personTxs ?? [], month, groups ?? [], startDay), [personTxs, month, groups, startDay])
   const filterName = groupFilter === 'none' ? 'Grupsuz' : groupFilter ? groupMap.get(groupFilter)?.name : undefined
   const { members, map: memberMap, selfId } = useMembers()
@@ -70,7 +75,7 @@ export default function DashboardPage() {
   )
   const canSplit = splitMembers.length > 1
   const groupPeriod = sharedGroup ? periodRange(month, startDay) : null
-  const groupSettlement = sharedGroup && groupPeriod ? findSettlement(sharedGroup, groupPeriod.start) : undefined
+  const groupSettlement = sharedGroup && groupPeriod ? findSettlement(sharedGroup, groupPeriod) : undefined
   const isGroupOwner = !!sharedGroup && !!selfId && sharedGroup.cloudOwnerId === selfId
   const [splitOpen, setSplitOpen] = useState(false)
   // Kişi kartı, kişi filtresinden bağımsız olarak seçili gruptaki herkesi gösterir
@@ -107,7 +112,7 @@ export default function DashboardPage() {
   }
 
   const daily = summary.daily.map((d) => ({ ...d, label: formatDate(d.date, 'long') }))
-  const hasData = monthTxs.length > 0
+  const hasData = listMonthTxs.length > 0
 
   return (
     <div>
@@ -139,7 +144,7 @@ export default function DashboardPage() {
           groups={groups ?? []}
           members={members}
           selfId={selfId}
-          viewEnd={periodRange(month, startDay).end}
+          view={periodRange(month, startDay)}
           onOpen={(g, key) => {
             setGroupFilter(g.id)
             setMonth(key)
@@ -330,10 +335,10 @@ export default function DashboardPage() {
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-display text-base font-semibold">Son işlemler</h2>
               <Link to={`/islemler?ay=${month}`} className="text-[13px] font-medium text-accent hover:underline">
-                Tümü ({monthTxs.length})
+                Tümü ({listMonthTxs.length})
               </Link>
             </div>
-            <TransactionList transactions={monthTxs.slice(0, 10)} categories={categories} compact onEdit={openTransactionForm} />
+            <TransactionList transactions={listMonthTxs.slice(0, 10)} categories={categories} compact onEdit={openTransactionForm} markUncounted={!groupFilter} />
           </Card>
 
           {/* Günlük gider */}
@@ -705,32 +710,34 @@ function GroupTable({
 }
 
 /**
- * "Tümü" görünümünde ortak grupların hatırlatması: yöneticinin belirlediği grup dönemi ve o dönemin
- * paylaştırılıp paylaştırılmadığı (paylaştırıldıysa payınız).
+ * "Tümü" görünümünde ortak grupların hatırlatması: görüntülenen döneme denk gelen paylaşım (yöneticinin
+ * dönemiyle) veya henüz paylaştırılmadığı; grubun yöneticinin belirlediği bir dönemi varsa o dönem.
  */
 function SharedPeriodNotes({
   groups,
   members,
   selfId,
-  viewEnd,
+  view,
   onOpen,
 }: {
   groups: SpendGroup[]
   members: Member[]
   selfId: string | null
-  /** Görüntülenen kişisel dönemin son günü. */
-  viewEnd: string
+  /** Görüntülenen kişisel dönem. */
+  view: { start: string; end: string }
   onOpen: (g: SpendGroup, periodKey: string) => void
 }) {
+  const personalDay = usePersonalCycle()
   const today = todayIso()
-  const ref = viewEnd < today ? viewEnd : today
+  const ref = view.end < today ? view.end : today
   const rows = groups
     .filter((g) => g.cloudId && !g.archived && members.filter((m) => m.groupIds.includes(g.id)).length > 1)
     .map((g) => {
-      const day = groupCycleDay(g)
-      const key = periodOf(ref, day)
-      const range = periodRange(key, day)
-      const settlement = findSettlement(g, range.start)
+      const settlement = findSettlement(g, view)
+      // Grubun dönemi: paylaşımın dönemi, yoksa yöneticinin grup için belirlediği dönem
+      const day = g.cycleStartDay || personalDay
+      const range = settlement ?? (g.cycleStartDay ? periodRange(periodOf(ref, day), day) : null)
+      const key = periodOf(settlement ? settlement.start : ref, day)
       const owner = !!selfId && g.cloudOwnerId === selfId
       const share = settlement && selfId ? (settlement.shares[selfId] ?? 0) : 0
       return { g, key, range, settlement, owner, share }
@@ -754,15 +761,11 @@ function SharedPeriodNotes({
                 ? owner
                   ? `${g.name} giderini paylaştırdınız`
                   : `Yönetici ${g.name} giderini sizinle paylaştı`
-                : `${g.name} · ${owner ? 'dönem henüz paylaştırılmadı' : 'yöneticinin dönemi'}`}
+                : `${g.name} · bu dönem henüz paylaştırılmadı`}
             </span>
             <span className="num block text-[12.5px] leading-snug text-muted">
-              {settlementRangeText(range)}
-              {settlement
-                ? ` · payınız ${formatKurus(share)}`
-                : owner
-                  ? ' · paylaştırana kadar kendi eklediğiniz giderler sayılır'
-                  : ' · henüz paylaştırılmadı; kendi eklediğiniz giderler sayılır'}
+              {range && `${owner || settlement ? '' : 'Yöneticinin dönemi: '}${settlementRangeText(range)} · `}
+              {settlement ? `payınız ${formatKurus(share)}` : 'üyelerin giderleri listede görünür, toplamınıza girmez'}
             </span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-subtle" aria-hidden />

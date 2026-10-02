@@ -53,7 +53,7 @@ export function TransactionFormHost() {
     <Modal
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
-      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'settlement' ? 'Ortak gider payınız' : formState.tx ? 'İşlemi düzenle' : 'Gider ekle'}
+      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : 'Gider ekle'}
       description={formState.tx ? undefined : 'Kategorisini siz seçersiniz. Paylaşılan bir gruba eklemediğiniz sürece kayıt yalnızca bu cihazda tutulur.'}
       size="md"
       side
@@ -309,7 +309,7 @@ function SharedTxView({ tx }: { tx: Transaction }) {
       <p className="flex items-start gap-2 rounded-2xl border border-line bg-surface-2 p-3 text-sm text-muted">
         <Lock className="mt-0.5 size-4 shrink-0" />{' '}
         {tx.source === 'settlement'
-          ? `Grup yöneticisi bu dönemin ${group?.name ?? 'ortak'} giderini üyelere paylaştırdı. “Tümü” görünümünde bu dönem için grubun giderleri yerine yalnızca size düşen pay sayılır. Giderlerin ayrıntısını grubu seçerek görebilirsiniz.`
+          ? `Grup yöneticisi bu dönemin ${group?.name ?? 'ortak'} giderini üyelere paylaştırdı. Ödediğinizle payınız arasındaki fark “Tümü” toplamınıza ${tx.type === 'refund' ? 'alacak' : 'borç'} olarak eklendi; böylece ortak gider size payınız kadar yansır.`
           : SHARED_READONLY}
       </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
