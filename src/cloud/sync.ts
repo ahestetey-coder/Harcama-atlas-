@@ -1,8 +1,8 @@
 import type { AtlasRepository } from '../data/repository'
 import { UserFacingError } from '../data/repository'
 import { normalizeText } from '../domain/normalize'
-import type { Category, Member, SpendGroup, Transaction } from '../domain/types'
-import type { CloudBackend, CloudGroup, CloudTxInput, CloudTxRow } from './types'
+import type { Category, GroupSettlement, Member, SpendGroup, Transaction } from '../domain/types'
+import type { CloudBackend, CloudGroup, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 /**
  * Ortak grupların bulutla eşitlenmesi.
@@ -101,6 +101,45 @@ export async function setGroupCycle(repo: AtlasRepository, backend: CloudBackend
   await repo.updateGroup(groupId, { cycleStartDay: day })
 }
 
+/**
+ * Paylaşılan grubun bir dönemini üyelere paylaştırır (aynı dönem yeniden paylaştırılırsa güncellenir).
+ * Yalnızca grup yöneticisi yapabilir; üyelere eşitlemeyle gelir.
+ */
+export async function settleGroupPeriod(
+  repo: AtlasRepository,
+  backend: CloudBackend | null,
+  groupId: string,
+  input: Pick<GroupSettlement, 'start' | 'end' | 'totalKurus' | 'shares'>,
+): Promise<void> {
+  const { g, cloudId, uid } = await ownedSharedGroup(repo, backend, groupId, 'Gideri yalnızca grup yöneticisi paylaştırabilir.')
+  await backend!.settlePeriod(cloudId, input.start, input.end, input.totalKurus, input.shares)
+  const entry: GroupSettlement = { ...input, shares: { ...input.shares }, createdBy: uid, createdAt: new Date().toISOString() }
+  const list = [...(g.settlements ?? []).filter((x) => x.start !== input.start), entry].sort((a, b) => a.start.localeCompare(b.start))
+  await repo.db.groups.update(groupId, { settlements: list })
+}
+
+/** Dönemin paylaşımını geri alır. Yalnızca grup yöneticisi. */
+export async function unsettleGroupPeriod(repo: AtlasRepository, backend: CloudBackend | null, groupId: string, start: string): Promise<void> {
+  const { g, cloudId } = await ownedSharedGroup(repo, backend, groupId, 'Paylaşımı yalnızca grup yöneticisi geri alabilir.')
+  await backend!.unsettlePeriod(cloudId, start)
+  await repo.db.groups.update(groupId, { settlements: (g.settlements ?? []).filter((x) => x.start !== start) })
+}
+
+async function ownedSharedGroup(repo: AtlasRepository, backend: CloudBackend | null, groupId: string, notOwner: string) {
+  const g = await repo.db.groups.get(groupId)
+  if (!g?.cloudId) throw new UserFacingError('Gider yalnızca paylaşılan gruplarda paylaştırılabilir.')
+  const uid = backend?.userId()
+  if (!backend || !uid) throw new UserFacingError('Bu işlem için giriş yapın.')
+  if (g.cloudOwnerId !== uid) throw new UserFacingError(notOwner)
+  return { g, cloudId: g.cloudId, uid }
+}
+
+function fromCloudSettlement(s: CloudSettlement): GroupSettlement {
+  const shares: Record<string, number> = {}
+  for (const [k, v] of Object.entries(s.shares ?? {})) if (Number.isSafeInteger(v) && v >= 0) shares[k] = v
+  return { start: s.period_start.slice(0, 10), end: s.period_end.slice(0, 10), totalKurus: Number(s.total_kurus), shares, createdBy: s.created_by, createdAt: s.created_at }
+}
+
 /** Kendi adınız henüz yazılmadıysa ("Ben") hesaptaki adı kullanır. */
 export async function setDefaultSelfName(repo: AtlasRepository, name: string): Promise<void> {
   const id = await selfMemberId(repo)
@@ -168,8 +207,9 @@ async function unlinkGroup(repo: AtlasRepository, g: SpendGroup): Promise<void> 
       .equals(g.id)
       .filter((t) => t.source === 'shared')
       .delete()
-    const { cloudId: _drop, ...rest } = g
+    const { cloudId: _drop, settlements: _settled, ...rest } = g
     void _drop
+    void _settled
     await db.groups.put({ ...rest, updatedAt: new Date().toISOString() })
     await db.meta.bulkDelete([CURSOR(g.id), PUSHED(g.id)])
     const selfId = (await repo.getSettings()).selfMemberId
@@ -236,6 +276,23 @@ export async function syncAll(repo: AtlasRepository, backend: CloudBackend): Pro
       await db.groups.update(g.id, { cycleStartDay: cycle, cloudOwnerId: cg.owner_id })
       Object.assign(g, { cycleStartDay: cycle, cloudOwnerId: cg.owner_id })
     }
+  }
+  // Yöneticinin paylaştırdığı dönemler. Okunamazsa (ör. sunucu şeması henüz güncellenmediyse)
+  // eşitlemenin geri kalanı yine çalışır, eldeki paylaşımlar korunur.
+  try {
+    const settlements = await backend.listSettlements(active.map((g) => g.cloudId!))
+    for (const g of active) {
+      const list = settlements
+        .filter((x) => x.group_id === g.cloudId)
+        .map(fromCloudSettlement)
+        .sort((a, b) => a.start.localeCompare(b.start))
+      if (JSON.stringify(g.settlements ?? []) !== JSON.stringify(list)) {
+        await db.groups.update(g.id, { settlements: list })
+        g.settlements = list
+      }
+    }
+  } catch {
+    /* paylaşımlar bir sonraki eşitlemede denenir */
   }
 
   const categories = await db.categories.toArray()

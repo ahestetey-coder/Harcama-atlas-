@@ -6,7 +6,8 @@ export type MonthKey = string
 /** gider, iade, kart ödemesi/transfer */
 export type TxType = 'expense' | 'refund' | 'transfer'
 export type PaymentMethod = 'cash' | 'debit' | 'credit'
-export type TxSource = 'manual' | 'pdf' | 'csv' | 'xlsx' | 'image' | 'demo' | 'shared'
+/** settlement: ortak grup paylaşımında size düşen pay; kaydedilmez, "Tümü" görünümünde hesaplanır. */
+export type TxSource = 'manual' | 'pdf' | 'csv' | 'xlsx' | 'image' | 'demo' | 'shared' | 'settlement'
 export type CategorySource = 'manual' | 'rule' | 'file' | 'confirmed-other'
 
 export interface Installment {
@@ -72,10 +73,24 @@ export interface SpendGroup {
   cloudOwnerId?: string
   /** Grubun ay döngüsünün başlangıç günü (1–28). Boşsa kişisel ayar kullanılır. */
   cycleStartDay?: number | null
+  /** Yöneticinin paylaştırdığı dönemler (buluttan eşitlenir). */
+  settlements?: GroupSettlement[]
   archived: boolean
   order: number
   createdAt: string
   updatedAt: string
+}
+
+/** Ortak grubun bir döneminin gideri üyelere paylaştırıldı; her üyenin payı (kuruş) saklanır. */
+export interface GroupSettlement {
+  /** Dönemin ilk ve son günü (YYYY-MM-DD). */
+  start: string
+  end: string
+  totalKurus: number
+  /** Üye kimliği → pay (kuruş). */
+  shares: Record<string, number>
+  createdBy: string
+  createdAt: string
 }
 
 /**
@@ -162,4 +177,10 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   image: 'Görsel',
   demo: 'Demo',
   shared: 'Üyeden',
+  settlement: 'Paylaşım',
+}
+
+/** Bu cihazda değiştirilemeyen işlem: üyenin harcaması veya paylaşımdaki payınız. */
+export function isReadOnlyTx(t: Pick<Transaction, 'source'>): boolean {
+  return t.source === 'shared' || t.source === 'settlement'
 }

@@ -1,4 +1,4 @@
-import type { CloudBackend, CloudGroup, CloudMember, CloudTxInput, CloudTxRow } from './types'
+import type { CloudBackend, CloudGroup, CloudMember, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 /**
  * Testler için bellek içi bulut. supabase/schema.sql'deki kuralların aynısını uygular
@@ -9,6 +9,7 @@ export class MemoryCloud {
   members: CloudMember[] = []
   invites = new Map<string, string>()
   rows = new Map<string, CloudTxRow>()
+  settlements: CloudSettlement[] = []
   private clock = Date.parse('2026-10-01T00:00:00Z')
 
   now(): string {
@@ -60,6 +61,21 @@ export class MemoryCloud {
         const g = c.groups.get(groupId)
         if (!g || g.owner_id !== userId) throw new Error('Ay döngüsünü yalnızca grup yöneticisi değiştirebilir')
         g.cycle_start_day = startDay
+      },
+      async settlePeriod(groupId, start, end, totalKurus, shares) {
+        const g = c.groups.get(groupId)
+        if (!g || g.owner_id !== userId) throw new Error('Gideri yalnızca grup yöneticisi paylaştırabilir')
+        for (const k of Object.keys(shares)) if (!c.isMember(groupId, k)) throw new Error('Paylar yalnızca grup üyelerine verilebilir')
+        c.settlements = c.settlements.filter((s) => !(s.group_id === groupId && s.period_start === start))
+        c.settlements.push({ group_id: groupId, period_start: start, period_end: end, total_kurus: totalKurus, shares: { ...shares }, created_by: userId, created_at: c.now() })
+      },
+      async unsettlePeriod(groupId, start) {
+        const g = c.groups.get(groupId)
+        if (!g || g.owner_id !== userId) throw new Error('Paylaşımı yalnızca grup yöneticisi geri alabilir')
+        c.settlements = c.settlements.filter((s) => !(s.group_id === groupId && s.period_start === start))
+      },
+      async listSettlements(groupIds) {
+        return c.settlements.filter((s) => groupIds.includes(s.group_id) && c.isMember(s.group_id, userId)).map((s) => ({ ...s, shares: { ...s.shares } }))
       },
       async listGroups() {
         return [...c.groups.values()].filter((g) => c.isMember(g.id, userId)).map((g) => ({ ...g }))

@@ -3,7 +3,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { formatDate } from '../domain/dates'
 import { formatKurus } from '../domain/money'
-import { PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type Category, type Member, type SpendGroup, type Transaction } from '../domain/types'
+import { isReadOnlyTx, PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type Category, type Member, type SpendGroup, type Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useMembers } from '../state/cloud'
 import { useGroupMap } from '../state/data'
@@ -46,7 +46,7 @@ function TxMeta({ t, group, member }: { t: Transaction; group?: SpendGroup; memb
           {(t.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {t.foreign.currency}
         </Badge>
       )}
-      {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge>{SOURCE_LABEL[t.source]}</Badge>}
+      {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge tone={t.source === 'settlement' ? 'accent' : undefined}>{SOURCE_LABEL[t.source]}</Badge>}
     </>
   )
 }
@@ -150,7 +150,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                               <Pencil className="size-4" />
                             </IconButton>
                           )}
-                          {onDelete && t.source !== 'shared' && (
+                          {onDelete && !isReadOnlyTx(t) && (
                             <IconButton label={`${t.description} sil`} size="sm" onClick={() => onDelete(t)} className="hover:text-danger">
                               <Trash2 className="size-4" />
                             </IconButton>
@@ -203,7 +203,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                   <div className="shrink-0 text-right text-[14px] font-semibold">
                     <Money kurus={t.amountKurus} type={t.type} />
                   </div>
-                  {onDelete && !compact && t.source !== 'shared' && (
+                  {onDelete && !compact && !isReadOnlyTx(t) && (
                     <IconButton label={`${t.description} sil`} size="sm" onClick={() => onDelete(t)} className="-mr-1 hover:text-danger">
                       <Trash2 className="size-4" />
                     </IconButton>

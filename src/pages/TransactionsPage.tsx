@@ -18,12 +18,15 @@ import { APP_CONFIG } from '../config/app'
 import { useMemberFilter } from '../state/cloud'
 import { useCategories, useCategoryMap, useGroupFilter, useGroupMap, useGroups, useImports, useRepo, useTransactions } from '../state/data'
 import { useCycle } from '../state/cycle'
+import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 
 type Period = 'month' | 'all' | 'custom'
 
 export default function TransactionsPage() {
-  const txs = useTransactions()
+  const allTxs = useTransactions()
+  // "Tümü" kişiseldir (src/domain/personal.ts); bir grup seçilince grubun bütün işlemleri görünür
+  const personal = usePersonalTransactions()
   const categories = useCategories()
   const catMap = useCategoryMap()
   const imports = useImports()
@@ -31,7 +34,9 @@ export default function TransactionsPage() {
   const groups = useGroups()
   const groupMap = useGroupMap()
   const [groupFilter, setGroupFilter] = useGroupFilter()
-  const person = useMemberFilter()
+  const memberFilter = useMemberFilter()
+  const person = groupFilter ? memberFilter : { ...memberFilter, value: '', options: [] }
+  const txs = groupFilter ? allTxs : personal
   const { month, setMonth, openTransactionForm, toast } = useUi()
   const { startDay } = useCycle()
   const navigate = useNavigate()

@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, CalendarClock, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Repeat, Scale, Target, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Repeat, Scale, Target, Wallet } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -13,11 +13,13 @@ import { toUserMessage } from '../data/repository'
 import { addMonths, currentPeriod, cycleDescription, dayOf, diffDays, formatDate, periodLabel, periodLength, periodOf, periodRange, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { compareWithPrevious, summarizeMonth, type CategoryTotal } from '../domain/summary'
+import { findSettlement, settlementRangeText } from '../domain/personal'
 import type { Member, SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
 import { useMemberFilter, useMembers } from '../state/cloud'
-import { useCycle } from '../state/cycle'
+import { groupCycleDay, useCycle } from '../state/cycle'
+import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 
 const MAX_SLICES = 7
@@ -28,11 +30,18 @@ export default function DashboardPage() {
   const groupMap = useGroupMap()
   const [groupFilter, setGroupFilter] = useGroupFilter()
   const { startDay, groupName: cycleGroup } = useCycle()
-  const person = useMemberFilter()
-  // Bütün panel seçili gruba ve kişiye göre hesaplanır (Tüm gruplar / Bireysel / Ortak / Grupsuz…)
-  const groupTxs = useMemo(() => allTxs?.filter((t) => matchesGroup(t, groupFilter)), [allTxs, groupFilter])
+  const memberFilter = useMemberFilter()
+  // "Tümü" kişiseldir: üyelerin ortak giderleri sayılmaz, paylaştırılan dönemde yalnızca payınız sayılır.
+  // Kişi filtresi bu yüzden yalnızca bir grup seçiliyken vardır.
+  const personal = usePersonalTransactions()
+  const person = groupFilter ? memberFilter : { ...memberFilter, value: '', options: [] }
+  // Bütün panel seçili gruba ve kişiye göre hesaplanır (Tümü / Bireysel / Ortak / Grupsuz…)
+  const groupTxs = useMemo(() => (groupFilter ? allTxs?.filter((t) => matchesGroup(t, groupFilter)) : personal), [allTxs, personal, groupFilter])
   const txs = useMemo(() => groupTxs?.filter((t) => matchesMember(t, person.value, person.selfId)), [groupTxs, person.value, person.selfId])
-  const personTxs = useMemo(() => allTxs?.filter((t) => matchesMember(t, person.value, person.selfId)), [allTxs, person.value, person.selfId])
+  const personTxs = useMemo(
+    () => (groupFilter ? allTxs?.filter((t) => matchesMember(t, person.value, person.selfId)) : personal),
+    [groupFilter, allTxs, personal, person.value, person.selfId],
+  )
   const categories = useCategoryMap()
   const settings = useSettings()
   const { month, setMonth, openTransactionForm } = useUi()
@@ -60,6 +69,9 @@ export default function DashboardPage() {
     [sharedGroup, members, selfId],
   )
   const canSplit = splitMembers.length > 1
+  const groupPeriod = sharedGroup ? periodRange(month, startDay) : null
+  const groupSettlement = sharedGroup && groupPeriod ? findSettlement(sharedGroup, groupPeriod.start) : undefined
+  const isGroupOwner = !!sharedGroup && !!selfId && sharedGroup.cloudOwnerId === selfId
   const [splitOpen, setSplitOpen] = useState(false)
   // Kişi kartı, kişi filtresinden bağımsız olarak seçili gruptaki herkesi gösterir
   const groupMonthTxs = useMemo(() => (groupTxs ?? []).filter((t) => periodOf(t.date, startDay) === month), [groupTxs, month, startDay])
@@ -122,21 +134,42 @@ export default function DashboardPage() {
         className="mb-4"
       />
 
+      {!groupFilter && (
+        <SharedPeriodNotes
+          groups={groups ?? []}
+          members={members}
+          selfId={selfId}
+          viewEnd={periodRange(month, startDay).end}
+          onOpen={(g, key) => {
+            setGroupFilter(g.id)
+            setMonth(key)
+          }}
+        />
+      )}
+
       {canSplit && sharedGroup && (
         <div className="mb-4 flex items-center gap-3 rounded-2xl border border-accent/25 bg-accent-soft px-4 py-3">
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface text-accent shadow-card">
             <Scale className="size-[18px]" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-ink">
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-ink">
               {sharedGroup.name} · {splitMembers.length} üye
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                  groupSettlement ? 'bg-surface text-accent-strong dark:text-accent' : 'bg-surface/70 text-muted',
+                )}
+              >
+                {groupSettlement ? 'Paylaştırıldı' : 'Paylaştırılmadı'}
+              </span>
             </p>
             <p className="num text-[12.5px] leading-snug text-muted">
-              {formatKurus(groupNet)} · kişi başı {formatKurus(Math.floor(groupNet / splitMembers.length))}
+              {settlementRangeText(groupPeriod!)} · {formatKurus(groupNet)} · kişi başı {formatKurus(Math.floor(groupNet / splitMembers.length))}
             </p>
           </div>
           <Button variant="primary" size="sm" onClick={() => setSplitOpen(true)} className="shrink-0">
-            Gideri paylaştır
+            {isGroupOwner ? (groupSettlement ? 'Paylaşımı yönet' : 'Gideri paylaştır') : 'Paylaşımı gör'}
           </Button>
         </div>
       )}
@@ -378,7 +411,8 @@ export default function DashboardPage() {
         <SplitDialog
           open={splitOpen && canSplit}
           onOpenChange={setSplitOpen}
-          groupName={sharedGroup.name}
+          group={sharedGroup}
+          period={periodRange(month, startDay)}
           periodText={periodLabel(month, startDay)}
           members={splitMembers}
           transactions={groupMonthTxs}
@@ -667,5 +701,73 @@ function GroupTable({
       })}
       <li className="px-2 pt-1 text-[12px] text-subtle">{footer}</li>
     </ul>
+  )
+}
+
+/**
+ * "Tümü" görünümünde ortak grupların hatırlatması: yöneticinin belirlediği grup dönemi ve o dönemin
+ * paylaştırılıp paylaştırılmadığı (paylaştırıldıysa payınız).
+ */
+function SharedPeriodNotes({
+  groups,
+  members,
+  selfId,
+  viewEnd,
+  onOpen,
+}: {
+  groups: SpendGroup[]
+  members: Member[]
+  selfId: string | null
+  /** Görüntülenen kişisel dönemin son günü. */
+  viewEnd: string
+  onOpen: (g: SpendGroup, periodKey: string) => void
+}) {
+  const today = todayIso()
+  const ref = viewEnd < today ? viewEnd : today
+  const rows = groups
+    .filter((g) => g.cloudId && !g.archived && members.filter((m) => m.groupIds.includes(g.id)).length > 1)
+    .map((g) => {
+      const day = groupCycleDay(g)
+      const key = periodOf(ref, day)
+      const range = periodRange(key, day)
+      const settlement = findSettlement(g, range.start)
+      const owner = !!selfId && g.cloudOwnerId === selfId
+      const share = settlement && selfId ? (settlement.shares[selfId] ?? 0) : 0
+      return { g, key, range, settlement, owner, share }
+    })
+  if (!rows.length) return null
+  return (
+    <section aria-label="Ortak grupların dönemi" className="mb-4 flex flex-col gap-2">
+      {rows.map(({ g, key, range, settlement, owner, share }) => (
+        <button
+          key={g.id}
+          type="button"
+          onClick={() => onOpen(g, key)}
+          className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left shadow-card transition-colors hover:bg-surface-2"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl text-white" style={{ backgroundColor: g.color }}>
+            <Users className="size-[18px]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-ink">
+              {settlement
+                ? owner
+                  ? `${g.name} giderini paylaştırdınız`
+                  : `Yönetici ${g.name} giderini sizinle paylaştı`
+                : `${g.name} · ${owner ? 'dönem henüz paylaştırılmadı' : 'yöneticinin dönemi'}`}
+            </span>
+            <span className="num block text-[12.5px] leading-snug text-muted">
+              {settlementRangeText(range)}
+              {settlement
+                ? ` · payınız ${formatKurus(share)}`
+                : owner
+                  ? ' · paylaştırana kadar kendi eklediğiniz giderler sayılır'
+                  : ' · henüz paylaştırılmadı; kendi eklediğiniz giderler sayılır'}
+            </span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-subtle" aria-hidden />
+        </button>
+      ))}
+    </section>
   )
 }

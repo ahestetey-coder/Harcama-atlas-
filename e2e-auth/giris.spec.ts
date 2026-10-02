@@ -25,8 +25,12 @@ const ADMIN_USERS = [
 ]
 
 /** Supabase kimlik ve veri API'sini taklit eder. */
-async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?: boolean; admin?: boolean } = {}) {
+async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?: boolean; admin?: boolean; sharedGroup?: boolean } = {}) {
   const calls: string[] = []
+  const bodies: Record<string, unknown> = {}
+  let settlements: Record<string, unknown>[] = []
+  const d = new Date()
+  const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   await page.route(`${SUPABASE}/**`, async (route) => {
     const req = route.request()
     const url = new URL(req.url())
@@ -47,10 +51,37 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
     if (url.pathname === '/rest/v1/rpc/ha_is_admin') return json(!!opts.admin)
     if (url.pathname === '/rest/v1/rpc/ha_admin_list_users') return opts.admin ? json(ADMIN_USERS) : json({ message: 'Bu işlem için yönetici yetkisi gerekir' }, 400)
     if (url.pathname.startsWith('/rest/v1/rpc/ha_admin_')) return opts.admin ? route.fulfill({ status: 204 }) : json({ message: 'yetki yok' }, 400)
+    if (opts.sharedGroup) {
+      const osman = USERS['osman@ornek.com'].id
+      const ayse = USERS['ayse@ornek.com'].id
+      if (req.method() === 'POST') bodies[url.pathname] = req.postDataJSON()
+      if (url.pathname === '/rest/v1/ha_groups') return json([{ id: 'bulut-ortak', name: 'Ortak', color: '#059669', owner_id: osman, cycle_start_day: null }])
+      if (url.pathname === '/rest/v1/ha_group_members')
+        return json([
+          { group_id: 'bulut-ortak', user_id: osman, display_name: 'Osman', color: '#0f766e' },
+          { group_id: 'bulut-ortak', user_id: ayse, display_name: 'Ayşe', color: '#7c3aed' },
+        ])
+      if (url.pathname === '/rest/v1/ha_transactions')
+        return json(
+          url.searchParams.has('updated_at')
+            ? []
+            : [{ id: 'tx-ayse', group_id: 'bulut-ortak', user_id: ayse, date: `${ym}-01`, amount_kurus: 20000, type: 'expense', description: 'Ayşe Fatura', category_name: 'Faturalar', category_icon: 'receipt', category_color: '#0891b2', note: null, installment: null, deleted: false, updated_at: '2026-10-01T10:00:00Z' }],
+        )
+      if (url.pathname === '/rest/v1/ha_settlements') return json(settlements)
+      if (url.pathname === '/rest/v1/rpc/ha_settle_period') {
+        const b = req.postDataJSON() as { p_group: string; p_start: string; p_end: string; p_total: number; p_shares: Record<string, number> }
+        settlements = [{ group_id: b.p_group, period_start: b.p_start, period_end: b.p_end, total_kurus: b.p_total, shares: b.p_shares, created_by: osman, created_at: new Date().toISOString() }]
+        return route.fulfill({ status: 204 })
+      }
+      if (url.pathname === '/rest/v1/rpc/ha_unsettle_period') {
+        settlements = []
+        return route.fulfill({ status: 204 })
+      }
+    }
     if (url.pathname.startsWith('/rest/v1/')) return json([])
     return json({}, 404)
   })
-  return calls
+  return Object.assign(calls, { bodies })
 }
 
 async function signIn(page: Page, email: string, password = 'gizli123') {
@@ -174,4 +205,51 @@ test('yönetici paneli yalnızca yöneticiye görünür; kullanıcılar listelen
   await page.getByLabel('Ad veya e-postada ara').fill('osman')
   await list.getByRole('button', { name: 'Osman ayrıntıları' }).click()
   await expect(page.getByRole('dialog', { name: 'Osman' }).getByRole('button', { name: 'Hesabı sil' })).toBeDisabled()
+})
+
+test('ortak grubun yöneticisi gideri paylaştırır ve geri alır; Tümü yalnızca payını sayar', async ({ page }) => {
+  const calls = await mockSupabase(page, { sharedGroup: true })
+  await page.goto('./')
+  await signIn(page, 'osman@ornek.com')
+  await expect(page.getByRole('navigation', { name: 'Ana menü' })).toBeVisible()
+  await expect.poll(() => calls.some((c) => c.startsWith('GET /rest/v1/ha_settlements'))).toBe(true)
+
+  await page.getByRole('button', { name: 'Gider ekle' }).first().click()
+  const form = page.getByRole('dialog', { name: 'Gider ekle' })
+  await form.getByLabel('Tutar (TL)').fill('300')
+  await form.getByLabel('Açıklama / iş yeri').fill('Ortak Market')
+  await form.getByLabel('Kategori').selectOption({ label: 'Market' })
+  await form.getByRole('radiogroup', { name: 'Harcama grubu' }).getByRole('radio', { name: 'Ortak' }).click()
+  await form.getByRole('button', { name: 'Kaydet', exact: true }).click()
+  await expect(form).toBeHidden()
+
+  const hero = page.locator('section[aria-labelledby="net-title"]')
+  await expect(hero).toContainText('300,00')
+  await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Ortak' }).click()
+  await expect(hero).toContainText('500,00')
+  await page.getByRole('button', { name: 'Gideri paylaştır' }).click()
+  const split = page.getByRole('dialog', { name: 'Gideri paylaştır' })
+  await split.getByRole('button', { name: 'Gideri paylaştır' }).click()
+  await expect(split).toContainText('Bu dönem paylaştırıldı')
+  await expect(split).toContainText('payınız 250,00 ₺')
+  expect(calls.bodies['/rest/v1/rpc/ha_settle_period']).toMatchObject({
+    p_group: 'bulut-ortak',
+    p_total: 50000,
+    p_shares: { [USERS['osman@ornek.com'].id]: 25000, [USERS['ayse@ornek.com'].id]: 25000 },
+  })
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Tümü' }).click()
+  await expect(hero).toContainText('250,00')
+  await expect(page.getByRole('region', { name: 'Ortak grupların dönemi' })).toContainText('Ortak giderini paylaştırdınız')
+
+  // Geri alınınca Tümü yine kendi eklediğiniz tutarı sayar
+  await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Ortak' }).click()
+  await page.getByRole('button', { name: 'Paylaşımı yönet' }).click()
+  await split.getByRole('button', { name: 'Paylaşımı geri al' }).click()
+  await split.getByRole('button', { name: 'Evet, geri al' }).click()
+  await expect(split).toContainText('Bu dönem henüz paylaştırılmadı')
+  await page.keyboard.press('Escape')
+  await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Tümü' }).click()
+  await expect(hero).toContainText('300,00')
 })

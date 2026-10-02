@@ -15,6 +15,16 @@ export interface CloudMember {
   color: string
 }
 
+export interface CloudSettlement {
+  group_id: string
+  period_start: string
+  period_end: string
+  total_kurus: number
+  shares: Record<string, number>
+  created_by: string
+  created_at: string
+}
+
 export interface CloudTxInput {
   id: string
   group_id: string
@@ -49,6 +59,11 @@ export interface CloudBackend {
   setDisplayName(groupId: string, displayName: string): Promise<void>
   /** Yalnızca grup yöneticisi (sahibi) çağırabilir; null takvim ayına döner. */
   setGroupCycle(groupId: string, startDay: number | null): Promise<void>
+  /** Dönemin giderini paylaştırır (varsa günceller); yalnızca yönetici. */
+  settlePeriod(groupId: string, start: string, end: string, totalKurus: number, shares: Record<string, number>): Promise<void>
+  /** Paylaşımı geri alır; yalnızca yönetici. */
+  unsettlePeriod(groupId: string, start: string): Promise<void>
+  listSettlements(groupIds: string[]): Promise<CloudSettlement[]>
   listGroups(): Promise<CloudGroup[]>
   listMembers(groupIds: string[]): Promise<CloudMember[]>
   upsert(rows: CloudTxInput[]): Promise<void>

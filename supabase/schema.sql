@@ -206,6 +206,68 @@ grant execute on function public.ha_create_group(text, text, text), public.ha_cr
   public.ha_delete_transactions(text[]), public.ha_is_member(uuid), public.ha_set_group_cycle(uuid, integer) to authenticated;
 
 -- ---------------------------------------------------------------------------------------------
+-- Gider paylaşımı (hesaplaşma)
+--
+-- Yönetici bir dönemin ortak giderini üyelere paylaştırır; her üyenin payı burada saklanır.
+-- Üyelerin "Tümü" görünümünde bu dönem için yalnızca kendi payları sayılır. Yönetici geri alabilir.
+
+create table if not exists public.ha_settlements (
+  group_id uuid not null references public.ha_groups(id) on delete cascade,
+  period_start date not null,
+  period_end date not null check (period_end >= period_start),
+  total_kurus bigint not null check (total_kurus >= 0),
+  -- { "<user_id>": <pay_kuruş>, ... }
+  shares jsonb not null check (jsonb_typeof(shares) = 'object'),
+  created_by uuid not null,
+  created_at timestamptz not null default now(),
+  primary key (group_id, period_start)
+);
+
+alter table public.ha_settlements enable row level security;
+drop policy if exists ha_settlements_read on public.ha_settlements;
+create policy ha_settlements_read on public.ha_settlements for select to authenticated using (public.ha_is_member(group_id));
+revoke all on public.ha_settlements from anon, authenticated;
+grant select on public.ha_settlements to authenticated;
+
+-- Dönemi paylaştırır (varsa günceller). Yalnızca grup yöneticisi.
+create or replace function public.ha_settle_period(p_group uuid, p_start date, p_end date, p_total bigint, p_shares jsonb) returns void
+  language plpgsql security definer set search_path = public as $$
+declare
+  k text;
+begin
+  if auth.uid() is null then raise exception 'Giriş yapılmamış'; end if;
+  if not exists (select 1 from public.ha_groups where id = p_group and owner_id = auth.uid()) then
+    raise exception 'Gideri yalnızca grup yöneticisi paylaştırabilir';
+  end if;
+  if jsonb_typeof(p_shares) <> 'object' then raise exception 'Paylar geçersiz'; end if;
+  for k in select jsonb_object_keys(p_shares) loop
+    if not exists (select 1 from public.ha_group_members where group_id = p_group and user_id::text = k) then
+      raise exception 'Paylar yalnızca grup üyelerine verilebilir';
+    end if;
+    if jsonb_typeof(p_shares->k) <> 'number' or (p_shares->>k)::bigint < 0 then raise exception 'Paylar geçersiz'; end if;
+  end loop;
+  insert into public.ha_settlements (group_id, period_start, period_end, total_kurus, shares, created_by)
+  values (p_group, p_start, p_end, p_total, p_shares, auth.uid())
+  on conflict (group_id, period_start) do update set
+    period_end = excluded.period_end, total_kurus = excluded.total_kurus, shares = excluded.shares,
+    created_by = excluded.created_by, created_at = now();
+end $$;
+
+-- Paylaşımı geri alır. Yalnızca grup yöneticisi.
+create or replace function public.ha_unsettle_period(p_group uuid, p_start date) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Giriş yapılmamış'; end if;
+  if not exists (select 1 from public.ha_groups where id = p_group and owner_id = auth.uid()) then
+    raise exception 'Paylaşımı yalnızca grup yöneticisi geri alabilir';
+  end if;
+  delete from public.ha_settlements where group_id = p_group and period_start = p_start;
+end $$;
+
+revoke all on function public.ha_settle_period(uuid, date, date, bigint, jsonb), public.ha_unsettle_period(uuid, date) from public, anon;
+grant execute on function public.ha_settle_period(uuid, date, date, bigint, jsonb), public.ha_unsettle_period(uuid, date) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------
 -- Yönetici paneli
 --
 -- Yalnızca ha_admins tablosundaki hesaplar kullanıcı listesini görür ve hesap işlemleri yapar.

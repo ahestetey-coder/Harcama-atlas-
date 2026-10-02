@@ -26,7 +26,7 @@ const transactionSchema = z.object({
   note: z.string().optional(),
   paymentMethod: z.enum(['cash', 'debit', 'credit']).optional(),
   accountAlias: z.string().optional(),
-  source: z.enum(['manual', 'pdf', 'csv', 'xlsx', 'image', 'demo', 'shared']),
+  source: z.enum(['manual', 'pdf', 'csv', 'xlsx', 'image', 'demo', 'shared', 'settlement']),
   importId: z.string().optional(),
   installment: z.object({ current: z.number().int(), total: z.number().int(), purchaseTotalKurus: kurus.optional() }).optional(),
   foreign: z.object({ currency: z.string(), amountMinor: z.number().int() }).optional(),

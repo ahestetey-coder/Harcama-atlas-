@@ -69,9 +69,47 @@ select cycle_start_day = 15 as cycle_ok from public.ha_groups \gset
 \if :cycle_ok \else \echo 'HATA: ay döngüsü' \q \endif
 reset role;
 
+-- Gider paylaşımını yalnızca yönetici yapar ve geri alır; üye okur
+select pg_temp.as_user(:'ayse');
+do $$ begin
+  perform public.ha_settle_period((select gid from t_ctx), '2026-09-15', '2026-10-14', 100, '{}'::jsonb);
+  raise exception 'HATA: üye paylaştırdı';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+reset role;
+select pg_temp.as_user(:'osman');
+do $$ begin
+  perform public.ha_settle_period((select gid from t_ctx), '2026-09-15', '2026-10-14', 100, '{"33333333-3333-3333-3333-333333333333": 50}'::jsonb);
+  raise exception 'HATA: üye olmayana pay verildi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+select public.ha_settle_period((select gid from t_ctx), '2026-09-15', '2026-10-14', 100,
+  jsonb_build_object(:'osman', 50, :'ayse', 50));
+select public.ha_settle_period((select gid from t_ctx), '2026-09-15', '2026-10-14', 200,
+  jsonb_build_object(:'osman', 100, :'ayse', 100));
+reset role;
+select pg_temp.as_user(:'ayse');
+select count(*) = 1 and min(total_kurus) = 200 and min((shares->>'22222222-2222-2222-2222-222222222222')::bigint) = 100 as settle_ok from public.ha_settlements \gset
+\if :settle_ok \else \echo 'HATA: paylaşım' \q \endif
+do $$ begin
+  perform public.ha_unsettle_period((select gid from t_ctx), '2026-09-15');
+  raise exception 'HATA: üye paylaşımı geri aldı';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+reset role;
+select pg_temp.as_user(:'osman');
+select public.ha_unsettle_period((select gid from t_ctx), '2026-09-15');
+select count(*) = 0 as unsettle_ok from public.ha_settlements \gset
+\if :unsettle_ok \else \echo 'HATA: paylaşım geri alınmadı' \q \endif
+select public.ha_settle_period((select gid from t_ctx), '2026-09-15', '2026-10-14', 100, jsonb_build_object(:'osman', 50, :'ayse', 50));
+reset role;
+
 -- Yabancı hiçbir şey göremez, gruba yazamaz, geçersiz kodla katılamaz
 select pg_temp.as_user(:'yabanci');
-select (select count(*) from public.ha_transactions) + (select count(*) from public.ha_groups) + (select count(*) from public.ha_group_members) = 0 as stranger_blind \gset
+select (select count(*) from public.ha_transactions) + (select count(*) from public.ha_groups) + (select count(*) from public.ha_group_members) + (select count(*) from public.ha_settlements) = 0 as stranger_blind \gset
 \if :stranger_blind \else \echo 'HATA: yabancı veri görüyor' \q \endif
 do $$ begin
   perform public.ha_upsert_transactions(jsonb_build_array(jsonb_build_object('id', 'tx-y', 'group_id', (select gid from t_ctx), 'date', '2026-09-10', 'amount_kurus', 1, 'type', 'expense', 'description', 'X')));

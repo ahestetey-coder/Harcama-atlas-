@@ -6,7 +6,7 @@ import { formatDate, isIsoDate, periodLabel, periodOf, todayIso } from '../domai
 import { formatKurusPlain, parseUserAmount } from '../domain/money'
 import { merchantKey, normalizeText } from '../domain/normalize'
 import { evaluateRules } from '../domain/rules'
-import { PAYMENT_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Transaction, type TxType } from '../domain/types'
+import { isReadOnlyTx, PAYMENT_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Transaction, type TxType } from '../domain/types'
 import { useMembers } from '../state/cloud'
 import { useCycle } from '../state/cycle'
 import { useCategories, useCategoryMap, useGroupMap, useGroups, useRepo, useRules, useSettings } from '../state/data'
@@ -53,12 +53,12 @@ export function TransactionFormHost() {
     <Modal
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
-      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx ? 'İşlemi düzenle' : 'Gider ekle'}
+      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'settlement' ? 'Ortak gider payınız' : formState.tx ? 'İşlemi düzenle' : 'Gider ekle'}
       description={formState.tx ? undefined : 'Kategorisini siz seçersiniz. Paylaşılan bir gruba eklemediğiniz sürece kayıt yalnızca bu cihazda tutulur.'}
       size="md"
       side
     >
-      {formState.tx?.source === 'shared' ? (
+      {formState.tx && isReadOnlyTx(formState.tx) ? (
         <SharedTxView tx={formState.tx} />
       ) : (
         <TransactionForm key={formState.tx?.id ?? 'new'} tx={formState.tx} onDone={closeTransactionForm} />
@@ -307,11 +307,18 @@ function SharedTxView({ tx }: { tx: Transaction }) {
   return (
     <div className="flex flex-col gap-4 pt-1">
       <p className="flex items-start gap-2 rounded-2xl border border-line bg-surface-2 p-3 text-sm text-muted">
-        <Lock className="mt-0.5 size-4 shrink-0" /> {SHARED_READONLY}
+        <Lock className="mt-0.5 size-4 shrink-0" />{' '}
+        {tx.source === 'settlement'
+          ? `Grup yöneticisi bu dönemin ${group?.name ?? 'ortak'} giderini üyelere paylaştırdı. “Tümü” görünümünde bu dönem için grubun giderleri yerine yalnızca size düşen pay sayılır. Giderlerin ayrıntısını grubu seçerek görebilirsiniz.`
+          : SHARED_READONLY}
       </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
-        <dt className="text-muted">Ekleyen</dt>
-        <dd className="font-medium text-ink">{member?.name ?? 'Grup üyesi'}</dd>
+        {tx.source === 'shared' && (
+          <>
+            <dt className="text-muted">Ekleyen</dt>
+            <dd className="font-medium text-ink">{member?.name ?? 'Grup üyesi'}</dd>
+          </>
+        )}
         <dt className="text-muted">Tutar</dt>
         <dd>
           <Money kurus={tx.amountKurus} type={tx.type} />
@@ -320,16 +327,20 @@ function SharedTxView({ tx }: { tx: Transaction }) {
         <dd className="text-ink">{formatDate(tx.date, 'long')}</dd>
         <dt className="text-muted">Açıklama</dt>
         <dd className="break-words text-ink">{tx.description}</dd>
-        <dt className="text-muted">Kategori</dt>
-        <dd className="flex items-center gap-2 text-ink">
-          {cat ? (
-            <>
-              <CategoryIcon category={cat} size="sm" /> {cat.name}
-            </>
-          ) : (
-            'Kategorisiz'
-          )}
-        </dd>
+        {tx.source === 'shared' && (
+          <>
+            <dt className="text-muted">Kategori</dt>
+            <dd className="flex items-center gap-2 text-ink">
+              {cat ? (
+                <>
+                  <CategoryIcon category={cat} size="sm" /> {cat.name}
+                </>
+              ) : (
+                'Kategorisiz'
+              )}
+            </dd>
+          </>
+        )}
         <dt className="text-muted">Grup</dt>
         <dd>{group ? <GroupBadge group={group} /> : '—'}</dd>
         {tx.note && (

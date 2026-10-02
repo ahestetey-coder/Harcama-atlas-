@@ -86,9 +86,13 @@ test('üyenin harcaması panelde kişilere göre görünür ve salt okunurdur', 
   await expect(people.getByRole('button', { name: /Siz: net 300,00 ₺, 1 işlem/ })).toBeVisible()
   await expect(people.getByRole('button', { name: /Ayşe: net 200,00 ₺, 1 işlem/ })).toBeVisible()
 
-  // Gider üye sayısına bölünür: 500 ₺ / 2 = 250 ₺; Ayşe 50 ₺ öder
-  await page.getByRole('button', { name: 'Gideri paylaştır' }).click()
+  // Gider üye sayısına bölünür: 500 ₺ / 2 = 250 ₺; Ayşe 50 ₺ öder. Paylaştırmayı yalnızca yönetici (Ayşe) yapar.
+  await expect(page.getByText('Paylaştırılmadı', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Paylaşımı gör' }).click()
   const split = page.getByRole('dialog', { name: 'Gideri paylaştır' })
+  await expect(split).toContainText('Bu dönem henüz paylaştırılmadı')
+  await expect(split).toContainText('Paylaşımı grup yöneticisi yapar')
+  await expect(split.getByRole('button', { name: 'Gideri paylaştır' })).toHaveCount(0)
   await expect(split).toContainText('500,00 ₺')
   await expect(split).toContainText('250,00 ₺')
   await expect(split.getByRole('list', { name: 'Yapılacak ödemeler' }).getByRole('listitem')).toHaveText(/Ayşe.*Siz.*50,00 ₺/)
@@ -118,4 +122,85 @@ test('üyenin harcaması panelde kişilere göre görünür ve salt okunurdur', 
   await expect(dlg).toContainText('yalnızca o değiştirebilir')
   await expect(dlg).toContainText('Ayşe')
   await expect(dlg.getByRole('button', { name: /kaydet/i })).toHaveCount(0)
+})
+
+/** Yöneticinin bu ayı paylaştırdığını (eşitlemeden gelmiş gibi) ekler: 500 ₺, kişi başı 250 ₺. */
+async function injectSettlement(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open('harcama-atlasi')
+        req.onerror = () => reject(req.error)
+        req.onsuccess = () => {
+          const db = req.result
+          const tx = db.transaction(['groups', 'settings'], 'readwrite')
+          const d = new Date()
+          const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+          const st = tx.objectStore('settings').get('settings')
+          st.onsuccess = () => {
+            const self = st.result.selfMemberId as string
+            const groups = tx.objectStore('groups')
+            const g = groups.get('grp-ortak')
+            g.onsuccess = () =>
+              groups.put({
+                ...g.result,
+                settlements: [
+                  { start: `${ym}-01`, end: `${ym}-${last}`, totalKurus: 50000, shares: { [self]: 25000, 'uye-ayse': 25000 }, createdBy: 'uye-ayse', createdAt: new Date().toISOString() },
+                ],
+              })
+          }
+          tx.oncomplete = () => {
+            db.close()
+            resolve()
+          }
+          tx.onerror = () => reject(tx.error)
+        }
+      }),
+  )
+}
+
+test('Tümü kişiseldir: üyenin ortak gideri sayılmaz, paylaştırılınca yalnızca payınız sayılır', async ({ page }) => {
+  await open(page)
+  await addExpense(page, { amount: '300', description: 'Ortak Market', category: 'Market', group: 'Ortak' })
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await addExpense(page, { amount: '40', description: 'Kendi Kahvem', category: 'Restoran/Kafe' })
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await injectSharedTx(page)
+  await page.reload()
+  await open(page)
+
+  // Paylaşım yokken: kendi eklediğiniz 300 + 40; Ayşe'nin 200'ü sayılmaz
+  const hero = page.locator('section[aria-labelledby="net-title"]')
+  await expect(hero).toContainText('340,00')
+  await expect(page.getByRole('radiogroup', { name: 'Kişi filtresi' })).toHaveCount(0)
+  const notes = page.getByRole('region', { name: 'Ortak grupların dönemi' })
+  await expect(notes).toContainText('Ortak · yöneticinin dönemi')
+  await expect(notes).toContainText('henüz paylaştırılmadı')
+
+  // Yönetici paylaştırınca: grubun giderleri yerine pay (250) + kendi kahveniz (40)
+  await injectSettlement(page)
+  await page.reload()
+  await open(page)
+  await expect(hero).toContainText('290,00')
+  await expect(notes).toContainText('Yönetici Ortak giderini sizinle paylaştı')
+  await expect(notes).toContainText('payınız 250,00 ₺')
+
+  await open(page, 'islemler')
+  await expect(page.getByText(/^2 işlem · Gider 290,00 ₺/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ortak payı sil' })).toHaveCount(0)
+  await page.getByRole('button', { name: /Ortak payı.*düzenle/ }).first().click()
+  const dlg = page.getByRole('dialog', { name: 'Ortak gider payınız' })
+  await expect(dlg).toContainText('yalnızca size düşen pay sayılır')
+  await page.keyboard.press('Escape')
+
+  // Grup seçilince grubun bütün giderleri ve paylaşım durumu görünür
+  await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Ortak' }).click()
+  await expect(page.getByText(/^2 işlem · Gider 500,00 ₺/)).toBeVisible()
+  await open(page)
+  await expect(page.getByText('Paylaştırıldı', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Paylaşımı gör' }).click()
+  const split = page.getByRole('dialog', { name: 'Gideri paylaştır' })
+  await expect(split).toContainText('Yönetici bu dönemin giderini sizinle paylaştı')
+  await expect(split.getByRole('button', { name: 'Paylaşımı geri al' })).toHaveCount(0)
 })

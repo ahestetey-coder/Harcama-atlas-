@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { CloudBackend, CloudGroup, CloudMember, CloudTxInput, CloudTxRow } from './types'
+import type { CloudBackend, CloudGroup, CloudMember, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 export class SupabaseBackend implements CloudBackend {
   readonly client: SupabaseClient
@@ -45,6 +45,24 @@ export class SupabaseBackend implements CloudBackend {
 
   async setGroupCycle(groupId: string, startDay: number | null) {
     await this.rpc('ha_set_group_cycle', { p_group: groupId, p_day: startDay })
+  }
+
+  async settlePeriod(groupId: string, start: string, end: string, totalKurus: number, shares: Record<string, number>) {
+    await this.rpc('ha_settle_period', { p_group: groupId, p_start: start, p_end: end, p_total: totalKurus, p_shares: shares })
+  }
+
+  async unsettlePeriod(groupId: string, start: string) {
+    await this.rpc('ha_unsettle_period', { p_group: groupId, p_start: start })
+  }
+
+  async listSettlements(groupIds: string[]): Promise<CloudSettlement[]> {
+    if (!groupIds.length) return []
+    const { data, error } = await this.client
+      .from('ha_settlements')
+      .select('group_id, period_start, period_end, total_kurus, shares, created_by, created_at')
+      .in('group_id', groupIds)
+    if (error) throw error
+    return data ?? []
   }
 
   async listGroups(): Promise<CloudGroup[]> {

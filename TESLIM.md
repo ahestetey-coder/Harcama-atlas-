@@ -292,3 +292,23 @@ Düzeltme: Eşitleme sırasında hesabın üyesi olduğu bütün bulut grupları
 Test: aynı hesabın ikinci cihazı davetsiz eşitlenir, diğer üyenin harcamasını alır ve kendi harcamasını gönderir.
 
 Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başlıyordu; bu yüzden ilk düzeltme yeni cihazda hiç çalışmıyordu (Supabase kayıtlarında Kariyer hesabından girişten sonra hiç grup isteği gelmediği görüldü). Artık oturum açıkken her zaman eşitlenir. Giriş testine "girişten sonra grup listesi istenir" kontrolü eklendi.
+
+## 17. Ortak gider paylaşımı ve kişisel "Tümü" görünümü (02.10.2026)
+
+**"Tümü" artık kişiseldir** (panel ve İşlemler):
+- Ortak gruba başka üyelerin eklediği giderler sayılmaz; kendi eklediğiniz giderler, ortak grupta olsa da sayılır. Bu kural yönetici ve üyeler için aynıdır.
+- Yönetici bir dönemi paylaştırdıysa o dönem için grubun giderleri yerine yalnızca size düşen pay sayılır ("Ortak payı" satırı, salt okunur).
+- Ortak grup seçildiğinde grubun bütün giderleri, ekleyen kişiyle birlikte eskisi gibi görünür. Kişi filtresi yalnızca bir grup seçiliyken çıkar.
+
+**Paylaştırma:**
+- Yalnızca grup yöneticisi "Gideri paylaştır" ile dönemi paylaştırır, günceller veya geri alır. Paylaşım buluta (ha_settlements) kaydedilir ve üyelere eşitlenir; kayıtlar silinmez veya değişmez.
+- Paylaştırıldıktan sonra grubun giderleri değişirse pencere bunu gösterir; yönetici "Paylaşımı güncelle" ile yeni tutarları yansıtır.
+- Üye paylaşımı yalnızca görür ("Paylaşımı gör").
+
+**Dönemler:**
+- Herkes kendi dönemini Ayarlar'dan belirler; "Tümü" bu döneme göre hesaplanır.
+- Paylaşılan grubun dönemi her zaman yöneticinin belirlediği dönemdir (belirlenmediyse takvim ayı). "Tümü" ekranında her ortak grup için yöneticinin dönemi ve o dönemin paylaştırılıp paylaştırılmadığı hatırlatılır ("Yönetici Ortak giderini sizinle paylaştı · payınız …").
+
+**Kurulum:** Sunucuya yeni tablo ve iki fonksiyon gerekir (supabase/schema.sql'de; ayrıca gider-paylasimi.sql). Kurulmadan önce uygulama eskisi gibi eşitlenir, yalnızca paylaştırma "Bulut veritabanı kurulmamış" uyarısı verir.
+
+**Testler:** 122 birim testi (yeni: Tümü hesabı, paylaşımın eşitlenmesi, yalnızca yöneticinin paylaştırması, paylaşım okunamazsa eşitlemenin sürmesi), 30 uçtan uca test (üye görünümü), 5 giriş testi (yöneticinin paylaştırıp geri alması) ve SQL güvenlik testleri geçti.

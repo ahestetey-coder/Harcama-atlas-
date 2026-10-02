@@ -1,17 +1,41 @@
-import { ArrowRight, Check, Copy, Scale, Share2 } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Check, CheckCircle2, Copy, Scale, Share2, Undo2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { settleGroupPeriod, unsettleGroupPeriod } from '../cloud/sync'
+import { cloudErrorMessage } from '../cloud/errors'
+import { UserFacingError } from '../data/repository'
+import { formatDate } from '../domain/dates'
 import { formatKurus } from '../domain/money'
-import { splitEqually, type SplitMember } from '../domain/split'
-import type { Transaction } from '../domain/types'
+import { findSettlement } from '../domain/personal'
+import { splitEqually, type SplitMember, type SplitResult } from '../domain/split'
+import type { GroupSettlement, SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
+import { useCloud } from '../state/cloud'
+import { useRepo } from '../state/data'
+import { useUi } from '../state/ui'
 import { Modal } from './ui/Modal'
 import { Button } from './ui/primitives'
 
-/** Ortak grubun dönem giderini üyelere eşit böler; kimin kime ne ödeyeceğini gösterir. Kayıtları değiştirmez. */
+/** Paylaşımdaki pay listesi (üye → kuruş). */
+export function sharesOf(result: SplitResult): Record<string, number> {
+  return Object.fromEntries(result.people.map((p) => [p.id, p.shareKurus]))
+}
+
+/** Kayıtlı paylaşım, grubun şimdiki giderleriyle aynı mı? */
+export function settlementMatches(s: GroupSettlement, result: SplitResult): boolean {
+  const now = sharesOf(result)
+  const keys = new Set([...Object.keys(now), ...Object.keys(s.shares)])
+  return s.totalKurus === result.totalKurus && [...keys].every((k) => (now[k] ?? 0) === (s.shares[k] ?? 0))
+}
+
+/**
+ * Ortak grubun dönem giderini üyelere eşit böler; kimin kime ne ödeyeceğini gösterir. Grup yöneticisi
+ * dönemi "paylaştırır": her üyenin "Tümü" görünümüne yalnızca kendi payı yansır. Yönetici geri alabilir.
+ */
 export function SplitDialog({
   open,
   onOpenChange,
-  groupName,
+  group,
+  period,
   periodText,
   members,
   transactions,
@@ -19,12 +43,15 @@ export function SplitDialog({
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
-  groupName: string
+  group: SpendGroup
+  /** Grubun dönemi (yöneticinin ay döngüsüne göre). */
+  period: { start: string; end: string }
   periodText: string
   members: SplitMember[]
   transactions: Transaction[]
   selfId: string | null
 }) {
+  const groupName = group.name
   const result = useMemo(() => splitEqually(members, transactions, selfId), [members, transactions, selfId])
   const nameOf = (id: string) => result.people.find((p) => p.id === id)?.name ?? 'Grup üyesi'
   const [copied, setCopied] = useState(false)
@@ -71,6 +98,8 @@ export function SplitDialog({
       }
     >
       <div className="flex flex-col gap-4 pb-1">
+        <SettleStatus group={group} period={period} result={result} selfId={selfId} />
+
         <div className="hero-gradient grid grid-cols-3 gap-3 rounded-2xl p-4 text-white">
           <Figure label="Toplam gider" value={formatKurus(result.totalKurus)} />
           <Figure label="Üye" value={String(result.people.length)} />
@@ -127,7 +156,7 @@ export function SplitDialog({
         </section>
 
         <p className="text-[12.5px] leading-relaxed text-subtle">
-          Gider, gruptaki {result.people.length} kişiye eşit bölündü. Kart ödemeleri sayılmaz, iadeler ödeyenin harcamasından düşer. Bu bir hesaplaşma özetidir; kayıtlarınız değişmez.
+          Gider, gruptaki {result.people.length} kişiye eşit bölündü. Kart ödemeleri sayılmaz, iadeler ödeyenin harcamasından düşer. Paylaştırma kayıtları silmez veya değiştirmez; yalnızca herkesin “Tümü” görünümüne kendi payının yansımasını sağlar.
         </p>
       </div>
     </Modal>
@@ -139,6 +168,97 @@ function Figure({ label, value }: { label: string; value: string }) {
     <div className="min-w-0">
       <div className="text-[11px] font-medium uppercase tracking-wider text-white/65">{label}</div>
       <div className="num mt-1 truncate font-display text-[17px] font-bold sm:text-[19px]">{value}</div>
+    </div>
+  )
+}
+
+/** Dönemin paylaşım durumu; yönetici paylaştırır, günceller veya geri alır. */
+function SettleStatus({ group, period, result, selfId }: { group: SpendGroup; period: { start: string; end: string }; result: SplitResult; selfId: string | null }) {
+  const repo = useRepo()
+  const { backend } = useCloud()
+  const { toast } = useUi()
+  const [busy, setBusy] = useState(false)
+  const [confirmUndo, setConfirmUndo] = useState(false)
+  const settlement = findSettlement(group, period.start)
+  const isOwner = !!selfId && group.cloudOwnerId === selfId
+  const matches = settlement ? settlementMatches(settlement, result) : false
+  const myShare = settlement && selfId ? (settlement.shares[selfId] ?? 0) : 0
+
+  const run = async (fn: () => Promise<void>, ok: string) => {
+    setBusy(true)
+    try {
+      await fn()
+      toast(ok)
+      setConfirmUndo(false)
+    } catch (e) {
+      toast(e instanceof UserFacingError ? e.message : cloudErrorMessage(e), { kind: 'error' })
+    } finally {
+      setBusy(false)
+    }
+  }
+  const settle = () =>
+    run(
+      () => settleGroupPeriod(repo, backend, group.id, { start: period.start, end: period.end, totalKurus: result.totalKurus, shares: sharesOf(result) }),
+      settlement ? 'Paylaşım güncellendi.' : 'Gider paylaştırıldı. Üyeler eşitlemeden sonra kendi paylarını görür.',
+    )
+  const undo = () => run(() => unsettleGroupPeriod(repo, backend, group.id, period.start), 'Paylaşım geri alındı.')
+
+  if (!settlement) {
+    return (
+      <div className="rounded-2xl border border-line bg-surface-2 p-3.5 text-sm" role="status">
+        <p className="font-semibold text-ink">Bu dönem henüz paylaştırılmadı</p>
+        <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
+          {isOwner
+            ? 'Paylaştırdığınızda her üyenin “Tümü” görünümüne yalnızca kendi payı yansır. İstediğiniz zaman geri alabilirsiniz.'
+            : 'Paylaşımı grup yöneticisi yapar. Paylaştırılana kadar “Tümü” görünümünüzde yalnızca kendi eklediğiniz giderler sayılır.'}
+        </p>
+        {isOwner && (
+          <Button variant="primary" size="sm" className="mt-3" icon={<Scale className="size-4" />} loading={busy} disabled={result.totalKurus <= 0} onClick={() => void settle()}>
+            Gideri paylaştır
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('rounded-2xl border p-3.5 text-sm', matches ? 'border-accent/30 bg-accent-soft' : 'border-warning/40 bg-warning-soft')} role="status">
+      <p className="flex items-center gap-2 font-semibold text-ink">
+        {matches ? <CheckCircle2 className="size-4 shrink-0 text-accent" /> : <AlertTriangle className="size-4 shrink-0 text-warning" />}
+        {isOwner ? 'Bu dönem paylaştırıldı' : 'Yönetici bu dönemin giderini sizinle paylaştı'}
+      </p>
+      <p className="num mt-0.5 text-[13px] leading-relaxed text-muted">
+        {formatDate(settlement.createdAt.slice(0, 10), 'long')} · toplam {formatKurus(settlement.totalKurus)}
+        {myShare > 0 && <> · payınız <span className="font-semibold text-ink">{formatKurus(myShare)}</span></>}
+      </p>
+      {!matches && (
+        <p className="mt-1.5 text-[13px] leading-relaxed text-ink">
+          Paylaştırıldıktan sonra grubun giderleri değişti. {isOwner ? 'Paylaşımı güncelleyerek yeni tutarları yansıtabilirsiniz.' : 'Yönetici paylaşımı güncelleyene kadar kayıtlı paylar geçerlidir.'}
+        </p>
+      )}
+      {isOwner && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {!matches && (
+            <Button variant="primary" size="sm" icon={<Scale className="size-4" />} loading={busy} disabled={result.totalKurus <= 0} onClick={() => void settle()}>
+              Paylaşımı güncelle
+            </Button>
+          )}
+          {confirmUndo ? (
+            <>
+              <Button variant="danger" size="sm" loading={busy} onClick={() => void undo()}>
+                Evet, geri al
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmUndo(false)}>
+                Vazgeç
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" icon={<Undo2 className="size-4" />} onClick={() => setConfirmUndo(true)}>
+              Paylaşımı geri al
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

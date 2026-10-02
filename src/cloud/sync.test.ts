@@ -4,7 +4,7 @@ import { createDb, type AtlasDb } from '../data/db'
 import { AtlasRepository, UserFacingError } from '../data/repository'
 import { buildInviteLink, parseInvite } from './config'
 import { MemoryCloud } from './memoryBackend'
-import { adoptCloudIdentity, joinWithInvite, leaveGroup, setGroupCycle, shareGroup, syncAll } from './sync'
+import { adoptCloudIdentity, joinWithInvite, leaveGroup, setGroupCycle, settleGroupPeriod, shareGroup, syncAll, unsettleGroupPeriod } from './sync'
 
 const OSMAN = '11111111-1111-1111-1111-111111111111'
 const AYSE = '22222222-2222-2222-2222-222222222222'
@@ -207,5 +207,38 @@ describe('davet bağlantısı', () => {
     expect(parseInvite(d)).toMatchObject({ code: 'kod123', group: 'Ortak', from: 'Osman', url: 'https://abcd.supabase.co' })
     expect(parseInvite('bozuk')).toBeNull()
     expect(parseInvite(null)).toBeNull()
+  })
+
+  it('gider paylaşımını yalnızca yönetici yapar; üyeye eşitlenir ve geri alınabilir', async () => {
+    const { osman, ayse, oCloud, aCloud } = await setup()
+    await syncAll(ayse, aCloud)
+    const shares = { [OSMAN]: 5000, [AYSE]: 5000 }
+    const input = { start: '2026-09-01', end: '2026-09-30', totalKurus: 10000, shares }
+    await expect(settleGroupPeriod(ayse, aCloud, 'grp-ortak', input)).rejects.toBeInstanceOf(UserFacingError)
+    await settleGroupPeriod(osman, oCloud, 'grp-ortak', input)
+    expect((await osman.db.groups.get('grp-ortak'))?.settlements).toMatchObject([{ start: '2026-09-01', totalKurus: 10000, shares }])
+    await syncAll(ayse, aCloud)
+    expect((await ayse.db.groups.get('grp-ortak'))?.settlements).toMatchObject([{ start: '2026-09-01', end: '2026-09-30', shares, createdBy: OSMAN }])
+    // Yeniden paylaştırma aynı dönemi günceller
+    await settleGroupPeriod(osman, oCloud, 'grp-ortak', { ...input, totalKurus: 20000, shares: { [OSMAN]: 10000, [AYSE]: 10000 } })
+    await syncAll(ayse, aCloud)
+    expect((await ayse.db.groups.get('grp-ortak'))?.settlements?.map((x) => x.totalKurus)).toEqual([20000])
+    await expect(unsettleGroupPeriod(ayse, aCloud, 'grp-ortak', '2026-09-01')).rejects.toBeInstanceOf(UserFacingError)
+    await unsettleGroupPeriod(osman, oCloud, 'grp-ortak', '2026-09-01')
+    await syncAll(ayse, aCloud)
+    expect((await ayse.db.groups.get('grp-ortak'))?.settlements).toEqual([])
+    // Gruptan ayrılınca paylaşımlar da kalkar
+    await settleGroupPeriod(osman, oCloud, 'grp-ortak', input)
+    await syncAll(ayse, aCloud)
+    await leaveGroup(ayse, aCloud, 'grp-ortak')
+    expect((await ayse.db.groups.get('grp-ortak'))?.settlements).toBeUndefined()
+  })
+
+  it('paylaşımlar okunamazsa eşitlemenin geri kalanı çalışır', async () => {
+    const { osman, ayse, oCloud, aCloud } = await setup()
+    await osman.addTransaction({ date: '2026-09-10', amountKurus: 30000, type: 'expense', description: 'Migros', categoryId: 'cat-market', groupId: 'grp-ortak' })
+    await syncAll(osman, oCloud)
+    const broken = { ...aCloud, listSettlements: async () => Promise.reject(new Error('relation does not exist')) }
+    expect((await syncAll(ayse, broken)).received).toBe(1)
   })
 })
