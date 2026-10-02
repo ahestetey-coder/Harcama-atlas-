@@ -270,3 +270,15 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - **Durum:** Yönetici fonksiyonları canlı veritabanına bu oturumdan eklenemedi (yetki onayı gerekiyor). Kurulum SQL'i paylaşılan klasörde: `harcama-atlasi-kurulum/yonetici-paneli.sql`.
 
 **Testler.** SQL testleri (yönetici olmayan listeyi göremez, hesap silemez, yönetici tablosunu okuyamaz; yönetici dondurur, oturumları kapanır, e-posta doğrular, hesap siler, kendini donduramaz), giriş testlerine yönetici paneli testi eklendi (Supabase taklit edilerek). Gerçek Supabase'de denenmedi.
+
+## 15. Güncelleme (02.10.2026): gideri paylaştır
+
+İstek: ortak grupta birden fazla üye varsa, grubun giderini üye sayısına bölerek paylaştıran bir düğme.
+
+- Panelde paylaşılan bir grup seçiliyken ve grupta en az iki üye varken grup filtresinin altında "Gideri paylaştır" kutusu çıkar (dönem toplamı ve kişi başı tutarla). "Kişilere göre" kartında da "Paylaştır" bağlantısı vardır.
+- Açılan pencere seçili dönemin grup giderini gruptaki bütün üyelere eşit böler: her kişinin ödediği, alacağı veya borcu ve denkleşmek için en az sayıda ödeme ("Mert → Siz 130,00 ₺"). Hiç harcaması olmayan üye de payını öder.
+- Kart ödemesi/transfer sayılmaz; iadeler ödeyenin harcamasından düşer. Kuruş artığı kaybolmaz, birer kuruş olarak dağıtılır.
+- "Özeti paylaş" telefonda paylaşım menüsünü açar (WhatsApp vb.), bilgisayarda özeti panoya kopyalar.
+- Bu bir hesaplaşma özetidir; kayıtlar değişmez, yeni işlem oluşturulmaz.
+
+**Testler.** 115 birim testi (4 yeni: eşit bölme, harcamasız üye, transfer/iade, kuruş artığı) ve 29 uçtan uca test geçti; üyeler testi paylaştırma penceresini de doğrular.

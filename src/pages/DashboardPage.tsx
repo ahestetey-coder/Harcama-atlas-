@@ -1,10 +1,11 @@
-import { ArrowDownRight, ArrowUpRight, CalendarClock, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Repeat, Target, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Repeat, Scale, Target, Wallet } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, DailyBars, type DonutSlice } from '../components/charts/Charts'
 import { CategoryIcon, FilterStrip, matchesGroup, matchesMember, Money, MonthSwitcher } from '../components/common'
+import { SplitDialog } from '../components/SplitDialog'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Skeleton } from '../components/ui/primitives'
@@ -51,9 +52,18 @@ export default function DashboardPage() {
   const monthTxs = useMemo(() => (txs ?? []).filter((t) => periodOf(t.date, startDay) === month), [txs, month, startDay])
   const groupRows = useMemo(() => groupBreakdown(personTxs ?? [], month, groups ?? [], startDay), [personTxs, month, groups, startDay])
   const filterName = groupFilter === 'none' ? 'Grupsuz' : groupFilter ? groupMap.get(groupFilter)?.name : undefined
-  const { map: memberMap, selfId } = useMembers()
+  const { members, map: memberMap, selfId } = useMembers()
+  // Paylaşılan grupta birden fazla üye varsa gider eşit paylaştırılabilir
+  const sharedGroup = groupFilter && groupFilter !== 'none' && groupMap.get(groupFilter)?.cloudId ? groupMap.get(groupFilter) : undefined
+  const splitMembers = useMemo(
+    () => (sharedGroup ? members.filter((m) => m.groupIds.includes(sharedGroup.id)).map((m) => ({ id: m.id, name: m.id === selfId ? 'Siz' : m.name, color: m.color })) : []),
+    [sharedGroup, members, selfId],
+  )
+  const canSplit = splitMembers.length > 1
+  const [splitOpen, setSplitOpen] = useState(false)
   // Kişi kartı, kişi filtresinden bağımsız olarak seçili gruptaki herkesi gösterir
   const groupMonthTxs = useMemo(() => (groupTxs ?? []).filter((t) => periodOf(t.date, startDay) === month), [groupTxs, month, startDay])
+  const groupNet = useMemo(() => groupMonthTxs.reduce((s, t) => s + (t.type === 'expense' ? t.amountKurus : t.type === 'refund' ? -t.amountKurus : 0), 0), [groupMonthTxs])
   const personRows = useMemo(() => personBreakdown(groupMonthTxs, memberMap, selfId), [groupMonthTxs, memberMap, selfId])
   const personName = person.value ? person.options.find((o) => o.id === person.value)?.name : undefined
   const allMonthCount = useMemo(() => (allTxs ?? []).filter((t) => periodOf(t.date, startDay) === month).length, [allTxs, month, startDay])
@@ -111,6 +121,25 @@ export default function DashboardPage() {
         onPerson={person.set}
         className="mb-4"
       />
+
+      {canSplit && sharedGroup && (
+        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-accent/25 bg-accent-soft px-4 py-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface text-accent shadow-card">
+            <Scale className="size-[18px]" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">
+              {sharedGroup.name} · {splitMembers.length} üye
+            </p>
+            <p className="num text-[12.5px] leading-snug text-muted">
+              {formatKurus(groupNet)} · kişi başı {formatKurus(Math.floor(groupNet / splitMembers.length))}
+            </p>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => setSplitOpen(true)} className="shrink-0">
+            Gideri paylaştır
+          </Button>
+        </div>
+      )}
 
       {!hasData ? (
         <Card>
@@ -310,9 +339,15 @@ export default function DashboardPage() {
             <Card className="p-5 lg:col-span-5">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="font-display text-base font-semibold">Kişilere göre{filterName ? ` · ${filterName}` : ''}</h2>
-                <Link to="/uyeler" className="text-[13px] font-medium text-accent hover:underline">
-                  Üyeler
-                </Link>
+                {canSplit ? (
+                  <button type="button" onClick={() => setSplitOpen(true)} className="text-[13px] font-medium text-accent hover:underline">
+                    Paylaştır
+                  </button>
+                ) : (
+                  <Link to="/uyeler" className="text-[13px] font-medium text-accent hover:underline">
+                    Üyeler
+                  </Link>
+                )}
               </div>
               <GroupTable
                 rows={personRows}
@@ -339,6 +374,17 @@ export default function DashboardPage() {
           />
         )}
       </Modal>
+      {sharedGroup && (
+        <SplitDialog
+          open={splitOpen && canSplit}
+          onOpenChange={setSplitOpen}
+          groupName={sharedGroup.name}
+          periodText={periodLabel(month, startDay)}
+          members={splitMembers}
+          transactions={groupMonthTxs}
+          selfId={selfId}
+        />
+      )}
       <BudgetModal open={budgetOpen} onOpenChange={setBudgetOpen} current={budget} />
     </div>
   )

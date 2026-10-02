@@ -18,6 +18,11 @@ async function injectSharedTx(page: Page) {
           const groups = tx.objectStore('groups')
           const g = groups.get('grp-ortak')
           g.onsuccess = () => groups.put({ ...g.result, cloudId: 'bulut-ortak', cloudOwnerId: 'uye-ayse' })
+          // Eşitlemede olduğu gibi cihaz sahibi de grubun üyesidir
+          const ms = tx.objectStore('members').getAll()
+          ms.onsuccess = () => {
+            for (const m of ms.result) tx.objectStore('members').put({ ...m, groupIds: [...new Set([...(m.groupIds ?? []), 'grp-ortak'])] })
+          }
           const now = new Date().toISOString()
           const d = new Date()
           const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
@@ -80,6 +85,15 @@ test('üyenin harcaması panelde kişilere göre görünür ve salt okunurdur', 
   const people = page.getByRole('heading', { name: /Kişilere göre/ }).locator('xpath=ancestor::section[1]')
   await expect(people.getByRole('button', { name: /Siz: net 300,00 ₺, 1 işlem/ })).toBeVisible()
   await expect(people.getByRole('button', { name: /Ayşe: net 200,00 ₺, 1 işlem/ })).toBeVisible()
+
+  // Gider üye sayısına bölünür: 500 ₺ / 2 = 250 ₺; Ayşe 50 ₺ öder
+  await page.getByRole('button', { name: 'Gideri paylaştır' }).click()
+  const split = page.getByRole('dialog', { name: 'Gideri paylaştır' })
+  await expect(split).toContainText('500,00 ₺')
+  await expect(split).toContainText('250,00 ₺')
+  await expect(split.getByRole('list', { name: 'Yapılacak ödemeler' }).getByRole('listitem')).toHaveText(/Ayşe.*Siz.*50,00 ₺/)
+  await page.keyboard.press('Escape')
+  await expect(split).toBeHidden()
 
   // Son işlemlerde ekleyen kişi görünür
   const recent = page.getByRole('heading', { name: 'Son işlemler' }).locator('xpath=ancestor::section[1]')
