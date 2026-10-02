@@ -99,10 +99,12 @@ test('Google ile giriş düğmesi Supabase ayarı açıkken görünür', async (
 })
 
 test('her hesap kendi kayıtlarını görür; çıkış ve tekrar giriş', async ({ page }) => {
-  await mockSupabase(page)
+  const calls = await mockSupabase(page)
   await page.goto('./')
   await signIn(page, 'osman@ornek.com')
   await expect(page.getByRole('navigation', { name: 'Ana menü' })).toBeVisible()
+  // Bu cihazda bağlı grup olmasa da girişten sonra eşitlenir (hesabın grupları kendiliğinden bağlanır)
+  await expect.poll(() => calls.some((c) => c.startsWith('GET /rest/v1/ha_groups'))).toBe(true)
   await expect(page.getByText('osman@ornek.com').filter({ visible: true }).first()).toBeVisible()
 
   await page.getByRole('button', { name: 'Gider ekle' }).first().click()

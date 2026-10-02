@@ -290,3 +290,5 @@ Sorun: Bir hesap ortak gruba bir tarayıcıda davetle katıldıktan sonra başka
 Düzeltme: Eşitleme sırasında hesabın üyesi olduğu bütün bulut grupları bu cihazdaki aynı adlı gruba (yoksa yeni bir gruba) kendiliğinden bağlanır. Bağlanınca o cihazda daha önce "Ortak" seçilmiş harcamalar da gönderilir.
 
 Test: aynı hesabın ikinci cihazı davetsiz eşitlenir, diğer üyenin harcamasını alır ve kendi harcamasını gönderir.
+
+Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başlıyordu; bu yüzden ilk düzeltme yeni cihazda hiç çalışmıyordu (Supabase kayıtlarında Kariyer hesabından girişten sonra hiç grup isteği gelmediği görüldü). Artık oturum açıkken her zaman eşitlenir. Giriş testine "girişten sonra grup listesi istenir" kontrolü eklendi.

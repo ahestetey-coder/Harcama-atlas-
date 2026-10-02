@@ -147,7 +147,9 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     return `${groups.map((g) => g.cloudId).join(',')}|${own.map((t) => t.id + t.updatedAt).join(',')}|${(await repo.db.transactions.count())}`
   }, [repo])
 
-  const active = !!userId && !!linkedSignature
+  // Oturum açıksa her zaman eşitlenir: bu cihazda henüz bağlı grup olmasa da hesabın üyesi olduğu
+  // gruplar (yeni cihaz, ana ekran uygulaması) ilk eşitlemede bağlanır.
+  const active = !!userId && linkedSignature !== undefined
   useEffect(() => {
     if (!active) return
     const t = window.setTimeout(() => void sync(), 1500)
