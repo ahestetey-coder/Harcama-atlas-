@@ -90,9 +90,12 @@ test('giriş yapılmadan uygulama açılmaz; hatalı şifre, kayıt ve şifre s�
 })
 
 test('Google ile giriş düğmesi Supabase ayarı açıkken görünür', async ({ page }) => {
-  await mockSupabase(page, { google: true })
+  const calls = await mockSupabase(page, { google: true })
   await page.goto('./')
   await expect(page.getByRole('button', { name: 'Google ile devam et' })).toBeVisible()
+  // Her seferinde Google hesap seçimi istenir
+  await page.getByRole('button', { name: 'Google ile devam et' }).click()
+  await expect.poll(() => calls.find((c) => c.includes('/auth/v1/authorize'))).toMatch(/provider=google.*prompt=select_account/)
 })
 
 test('her hesap kendi kayıtlarını görür; çıkış ve tekrar giriş', async ({ page }) => {

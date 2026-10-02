@@ -155,7 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* yok sayılır */
     }
-    const { error } = await need().client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: appBaseUrl() } })
+    // select_account: Google her seferinde hesap seçtirir (ana ekrana eklenen uygulamada tek hesaba kilitlenmesin)
+    const { error } = await need()
+      .client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: appBaseUrl(), queryParams: { prompt: 'select_account' } } })
     if (error) fail(error)
   }, [need])
 
