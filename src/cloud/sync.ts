@@ -2,7 +2,7 @@ import type { AtlasRepository } from '../data/repository'
 import { UserFacingError } from '../data/repository'
 import { normalizeText } from '../domain/normalize'
 import type { Category, Member, SpendGroup, Transaction } from '../domain/types'
-import type { CloudBackend, CloudTxInput, CloudTxRow } from './types'
+import type { CloudBackend, CloudGroup, CloudTxInput, CloudTxRow } from './types'
 
 /**
  * Ortak grupların bulutla eşitlenmesi.
@@ -127,6 +127,14 @@ export async function shareGroup(repo: AtlasRepository, backend: CloudBackend, g
  */
 export async function joinWithInvite(repo: AtlasRepository, backend: CloudBackend, code: string): Promise<SpendGroup> {
   const cloud = await backend.joinGroup(code, await selfName(repo))
+  return linkCloudGroup(repo, cloud)
+}
+
+/**
+ * Buluttaki bir grubu bu cihazdaki gruba bağlar: aynı adlı (bağlanmamış) grup varsa o kullanılır,
+ * yoksa yeni grup oluşturulur. Zaten bağlıysa olduğu gibi döner.
+ */
+async function linkCloudGroup(repo: AtlasRepository, cloud: CloudGroup): Promise<SpendGroup> {
   const db = repo.db
   return db.transaction('rw', db.groups, async () => {
     const all = await db.groups.toArray()
@@ -211,6 +219,10 @@ export async function syncAll(repo: AtlasRepository, backend: CloudBackend): Pro
   const db = repo.db
 
   const cloudGroups = new Map((await backend.listGroups()).map((g) => [g.id, g]))
+  // Hesabın üyesi olduğu ama bu cihazda bağlı olmayan gruplar (yeni cihaz, ana ekrana eklenen
+  // uygulama, başka tarayıcı) kendiliğinden bağlanır; davet bağlantısını yeniden açmak gerekmez.
+  const linkedIds = new Set((await db.groups.toArray()).map((g) => g.cloudId).filter(Boolean))
+  for (const cg of cloudGroups.values()) if (!linkedIds.has(cg.id)) await linkCloudGroup(repo, cg)
   const linked = (await db.groups.toArray()).filter((g) => g.cloudId)
   // Buluttan çıkarılmış (veya silinmiş) gruplar yerelde de ayrılır
   for (const g of linked.filter((g) => !cloudGroups.has(g.cloudId!))) await unlinkGroup(repo, g)

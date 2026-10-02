@@ -282,3 +282,11 @@ Gerçek bir mobil banka dökümünde görülen hatalar üzerine yapıldı. Belge
 - Bu bir hesaplaşma özetidir; kayıtlar değişmez, yeni işlem oluşturulmaz.
 
 **Testler.** 115 birim testi (4 yeni: eşit bölme, harcamasız üye, transfer/iade, kuruş artığı) ve 29 uçtan uca test geçti; üyeler testi paylaştırma penceresini de doğrular.
+
+## 16. Düzeltme (02.10.2026): yeni cihazda ortak grup eşitlenmiyordu
+
+Sorun: Bir hesap ortak gruba bir tarayıcıda davetle katıldıktan sonra başka bir yerde (ana ekrana eklenen uygulama, başka tarayıcı veya telefon) açıldığında, oradaki "Ortak" grubu buluttaki gruba bağlı olmadığı için hiçbir şey eşitlenmiyordu: ne diğer üyelerin harcamaları geliyor ne de orada "Ortak" seçilen harcamalar gönderiliyordu. (iPhone'da ana ekrana eklenen uygulamanın verisi Safari'den ayrıdır.)
+
+Düzeltme: Eşitleme sırasında hesabın üyesi olduğu bütün bulut grupları bu cihazdaki aynı adlı gruba (yoksa yeni bir gruba) kendiliğinden bağlanır. Bağlanınca o cihazda daha önce "Ortak" seçilmiş harcamalar da gönderilir.
+
+Test: aynı hesabın ikinci cihazı davetsiz eşitlenir, diğer üyenin harcamasını alır ve kendi harcamasını gönderir.

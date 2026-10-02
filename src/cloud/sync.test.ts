@@ -120,6 +120,23 @@ describe('bulut eşitleme', () => {
     expect(await osman.db.members.get(AYSE)).toBeUndefined()
   })
 
+  it('aynı hesap yeni bir cihazda (ör. ana ekrana eklenen uygulama) davetsiz eşitlenir', async () => {
+    const { osman, oCloud, aCloud } = await setup()
+    await osman.addTransaction({ date: '2026-09-10', amountKurus: 30000, type: 'expense', description: 'Migros', categoryId: 'cat-market', groupId: 'grp-ortak' })
+    await syncAll(osman, oCloud)
+    // Ayşe'nin ikinci cihazı: boş veritabanı, "Ortak" grubu bağlı değil
+    const ayse2 = await device('Ayşe')
+    await adoptCloudIdentity(ayse2, AYSE)
+    await ayse2.addTransaction({ date: '2026-09-11', amountKurus: 5000, type: 'expense', description: 'Fırın', categoryId: 'cat-market', groupId: 'grp-ortak' })
+    const r = await syncAll(ayse2, aCloud)
+    expect(r).toMatchObject({ received: 1, pushed: 1 })
+    const g = await ayse2.db.groups.get('grp-ortak')
+    expect(g?.cloudId).toBeTruthy()
+    expect((await ayse2.db.transactions.where('groupId').equals('grp-ortak').toArray()).map((t) => t.description).sort()).toEqual(['Fırın', 'Migros'])
+    await syncAll(osman, oCloud)
+    expect((await osman.db.transactions.where('groupId').equals('grp-ortak').toArray()).map((t) => t.description).sort()).toEqual(['Fırın', 'Migros'])
+  })
+
   it('bulut kimliği alınınca eski yerel "Ben" kayıtları yeni kimliğe taşınır', async () => {
     const repo = await device('Osman')
     const old = (await repo.getSettings()).selfMemberId!
