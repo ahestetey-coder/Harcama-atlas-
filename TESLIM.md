@@ -319,3 +319,11 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **Tümü listesi:** Üyelerin ortak giderleri Tümü listesinde de görünür ("Toplama girmez" etiketiyle) ama toplamlara girmez.
 - **Paylaşım farkı:** Paylaştırılınca kendi giderleriniz yerinde kalır; ödediğinizle payınız arasındaki fark eklenir. Fazla ödeyene "<Grup> paylaşımı · alacak" (gelir), az ödeyene "<Grup> paylaşımı · borç" (gider). Fark, paylaşımdan sonra eklenen kendi giderlerinize göre de güncel kalır.
 - Paylaşım, görüntülenen dönemle çakışan paylaşımı bulur; yönetici sonradan dönem ayarını değiştirirse eski paylaşım gösterilir ve geri alınabilir.
+
+## 18. Mobil düzen, hız ve "+" menüsü (03.10.2026)
+
+- **Klavye:** Giriş alanları mobilde 16 px (iOS odaklanınca sayfayı büyütmez). Alttan açılan pencereler klavyenin üstünde kalır (visualViewport ile `--kb`/`--vvh`), odaklanan alan görünür alana kaydırılır, klavye açıkken alt menü gizlenir. Görünüm etiketine `interactive-widget=resizes-content` eklendi.
+- **Sığma:** Yatay taşma engellendi (`overflow-x: clip`), çentik/alt çubuk için güvenli alan boşlukları eklendi; formun yapışkan "Kaydet" alt çubuğu altında içerik görünmüyor. 390 px genişlikte tüm sayfalarda taşma yok (Chromium öykünmesi).
+- **Hız:** Sayfa geçişindeki bekleyen çıkış animasyonu kaldırıldı (kısa giriş animasyonu kaldı). İşlem, kategori, grup, ayar ve üye verileri tek seferde okunup tüm sayfalarca paylaşılıyor; her geçişte IndexedDB yeniden okunmuyor. Sayfa kodları boşta önceden yükleniyor. Sabit arka plan yalnızca masaüstünde.
+- **"+" menüsü:** Ortadaki düğme artık "Ne eklemek istersiniz?" menüsünü açar: Gider, İade, Kart ödemesi; Ekstre yükle (PDF/CSV/Excel), Ekran görüntüsü, Fotoğraf çek; Kategori, Grup, Üye davet et. Seçilen belge doğrudan İçe aktar akışına gider ve yine yalnızca cihazda okunur. Masaüstünde "Gider ekle" yanındaki düğmeden aynı menü açılır.
+- **Sınır:** Gerçek iOS/Android klavye davranışı bu ortamda test edilemedi; Chromium mobil öykünmesiyle doğrulandı. Gerçek telefonda kontrol edilmeli.

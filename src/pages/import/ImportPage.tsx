@@ -1,6 +1,6 @@
 import { CircleCheck, FileSpreadsheet, FileText, FileUp, Image as ImageIcon, KeyRound, Loader2, RotateCw, ShieldCheck, TriangleAlert, Undo2, X } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../../components/AppShell'
 import { Alert, Button, Card, Field, Input, Select } from '../../components/ui/primitives'
@@ -26,7 +26,16 @@ export default function ImportPage() {
   const { stage, info, review } = flow
   const { repo, isDemo } = useData()
   const categories = useCategories()
-  const { toast, setMonth } = useUi()
+  const { toast, setMonth, pendingImport, setPendingImport } = useUi()
+  // "+" menüsünden seçilen dosya: sayfa açılınca doğrudan okunur
+  const { selectFile } = flow
+  useEffect(() => {
+    if (!pendingImport || stage.k !== 'select') return
+    setPendingImport(null)
+    void selectFile(pendingImport).then((err) => {
+      if (err) toast(err, { kind: 'error' })
+    })
+  }, [pendingImport, stage.k, selectFile, setPendingImport, toast])
   const cycle = useCycle().startDay
   const navigate = useNavigate()
   const [payment, setPayment] = useState<PaymentMethod | ''>('credit')

@@ -344,7 +344,7 @@ function GroupsCard() {
           </>
         }
       >
-        <textarea readOnly value={invite?.link ?? ''} aria-label="Davet bağlantısı" className="h-28 w-full resize-none rounded-xl border border-line bg-surface-2 p-3 font-mono text-[12px] text-ink" onFocus={(e) => e.currentTarget.select()} />
+        <textarea readOnly value={invite?.link ?? ''} aria-label="Davet bağlantısı" className="h-28 w-full resize-none rounded-xl border border-line bg-surface-2 p-3 font-mono text-base text-ink sm:text-[12px]" onFocus={(e) => e.currentTarget.select()} />
         <p className="mt-2 text-[12.5px] text-subtle">Bağlantıda harcama bilgisi yoktur; yalnızca bulut adresi, grup adı ve tek kullanımlık olmayan bir davet kodu vardır.</p>
       </Modal>
 

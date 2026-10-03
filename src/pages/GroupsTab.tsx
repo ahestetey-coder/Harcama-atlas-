@@ -7,6 +7,7 @@ import { setGroupCycle } from '../cloud/sync'
 import { toUserMessage } from '../data/repository'
 import type { SpendGroup } from '../domain/types'
 import { cn } from '../lib/cn'
+import { useStartNew } from '../lib/useStartNew'
 import { useCloud, useMembers } from '../state/cloud'
 import { useGroups, useRepo, useTransactions } from '../state/data'
 import { useUi } from '../state/ui'
@@ -21,6 +22,7 @@ export function GroupsTab() {
   const repo = useRepo()
   const { toast } = useUi()
   const [edit, setEdit] = useState<SpendGroup | 'new' | null>(null)
+  useStartNew(() => setEdit('new'))
   const [del, setDel] = useState<SpendGroup | null>(null)
   const usage = useMemo(() => {
     const m = new Map<string, number>()

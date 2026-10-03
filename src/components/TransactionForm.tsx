@@ -30,11 +30,11 @@ interface FormState {
   learnPattern: string
 }
 
-function initialState(tx?: Transaction): FormState {
+function initialState(tx?: Transaction, type?: Transaction['type']): FormState {
   return {
     date: tx?.date ?? todayIso(),
     amount: tx ? formatKurusPlain(tx.amountKurus) : '',
-    type: tx?.type ?? 'expense',
+    type: tx?.type ?? type ?? 'expense',
     description: tx?.description ?? '',
     categoryId: tx?.categoryId ?? '',
     groupId: tx?.groupId ?? '',
@@ -53,7 +53,7 @@ export function TransactionFormHost() {
     <Modal
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
-      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : 'Gider ekle'}
+      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
       description={formState.tx ? undefined : 'Kategorisini siz seçersiniz. Paylaşılan bir gruba eklemediğiniz sürece kayıt yalnızca bu cihazda tutulur.'}
       size="md"
       side
@@ -61,13 +61,13 @@ export function TransactionFormHost() {
       {formState.tx && isReadOnlyTx(formState.tx) ? (
         <SharedTxView tx={formState.tx} />
       ) : (
-        <TransactionForm key={formState.tx?.id ?? 'new'} tx={formState.tx} onDone={closeTransactionForm} />
+        <TransactionForm key={formState.tx?.id ?? `new-${formState.type ?? 'expense'}`} tx={formState.tx} type={formState.type} onDone={closeTransactionForm} />
       )}
     </Modal>
   )
 }
 
-function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void }) {
+function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transaction['type']; onDone: () => void }) {
   const repo = useRepo()
   const categories = useCategories()
   const rules = useRules()
@@ -75,7 +75,7 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
   const activeGroups = useMemo(() => (groups ?? []).filter((g) => !g.archived || g.id === tx?.groupId), [groups, tx])
   const { toast, setHighlightId, setMonth, month } = useUi()
   const { startDay } = useCycle()
-  const [s, setS] = useState<FormState>(() => initialState(tx))
+  const [s, setS] = useState<FormState>(() => initialState(tx, type))
   const [errors, setErrors] = useState<TxFieldErrors>({})
   const [saving, setSaving] = useState(false)
   const submitting = useRef(false)
@@ -255,7 +255,7 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
           />
           {s.learn && (
             <div className="mt-2 pl-7">
-              <Input aria-label="Eşleşecek iş yeri ifadesi" value={s.learnPattern} onChange={(e) => set('learnPattern', e.target.value)} className="h-9 text-sm" />
+              <Input aria-label="Eşleşecek iş yeri ifadesi" value={s.learnPattern} onChange={(e) => set('learnPattern', e.target.value)} className="h-10 sm:h-9 sm:text-sm" />
               <p className="mt-1 text-[12px] text-subtle">Açıklamada bu kelimeler tam olarak geçtiğinde eşleşir.</p>
             </div>
           )}
@@ -286,7 +286,7 @@ function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () => void 
         </div>
       </details>
 
-      <div className={cn('sticky bottom-0 -mx-5 mt-1 flex gap-2 border-t border-line bg-surface px-5 pb-1 pt-3 sm:-mx-6 sm:px-6')}>
+      <div className={cn('safe-bottom-pad sticky z-10 -mx-5 mt-1 flex -bottom-[calc(1.25rem+env(safe-area-inset-bottom))] -mb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:-bottom-5 lg:-mb-5 lg:pb-3 gap-2 border-t border-line bg-surface px-5 pt-3 sm:-mx-6 sm:px-6')}>
         <Button variant="ghost" onClick={onDone} className="flex-1 sm:flex-none">
           Vazgeç
         </Button>

@@ -13,6 +13,7 @@ import { cn } from '../lib/cn'
 import { useCategories, useRepo, useRules, useTransactions } from '../state/data'
 import { useUi } from '../state/ui'
 import { GroupsTab } from './GroupsTab'
+import { useStartNew } from '../lib/useStartNew'
 
 export default function CategoriesPage() {
   const [params, setParams] = useSearchParams()
@@ -44,6 +45,7 @@ function CategoriesTab() {
   const repo = useRepo()
   const { toast } = useUi()
   const [edit, setEdit] = useState<Category | 'new' | null>(null)
+  useStartNew(() => setEdit('new'))
   const [del, setDel] = useState<Category | null>(null)
   const [target, setTarget] = useState('')
   const usage = useMemo(() => {

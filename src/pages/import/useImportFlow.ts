@@ -47,7 +47,7 @@ export type Stage =
   | { k: 'done'; importId: string; count: number; skipped: number; expenseKurus: number; refundKurus: number; months: { month: MonthKey; count: number }[] }
   | { k: 'error'; message: string; canRetry: boolean }
 
-export const ACCEPT = '.pdf,.csv,.txt,.xlsx,.png,.jpg,.jpeg,application/pdf,text/csv,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+export { ACCEPT } from './acceptTypes'
 
 export function detectKind(file: File): ImportFileKind | null {
   const n = file.name.toLowerCase()

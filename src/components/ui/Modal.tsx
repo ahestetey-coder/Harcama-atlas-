@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 import { useIsDesktop } from '../../lib/hooks'
+import { revealOnFocus } from '../../lib/viewport'
 import { Button, IconButton } from './primitives'
 
 const ease = [0.2, 0.8, 0.2, 1] as const
@@ -90,7 +91,7 @@ export function Modal({
                     ? 'inset-y-3 right-3 w-[min(520px,calc(100vw-24px))] rounded-3xl'
                     : desktop
                       ? cn('left-1/2 top-[8vh] max-h-[84vh] w-[calc(100vw-32px)] rounded-3xl', widths[size])
-                      : 'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-3xl',
+                      : 'sheet-mobile inset-x-0 rounded-t-3xl',
                 )}
                 style={desktop && !asDrawer ? { translateX: '-50%' } : undefined}
               >
@@ -110,8 +111,10 @@ export function Modal({
                     </IconButton>
                   </Dialog.Close>
                 </div>
-                <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-5 pb-5 sm:px-6">{children}</div>
-                {footer && <div className="safe-bottom flex shrink-0 flex-wrap justify-end gap-2 border-t border-line px-5 py-3.5 sm:px-6">{footer}</div>}
+                <div className={cn('scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 sm:px-6', !desktop && !footer && 'pb-[calc(1.25rem+env(safe-area-inset-bottom))]')} onFocus={desktop ? undefined : revealOnFocus}>
+                  {children}
+                </div>
+                {footer && <div className="safe-bottom-pad flex shrink-0 flex-wrap justify-end gap-2 border-t border-line px-5 pt-3.5 sm:px-6">{footer}</div>}
               </motion.div>
             </Dialog.Content>
           </Dialog.Portal>

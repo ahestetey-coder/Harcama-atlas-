@@ -93,7 +93,7 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: 'neutr
 }
 
 const fieldBase =
-  'w-full rounded-xl border border-line-strong bg-surface px-3 text-[15px] text-ink placeholder:text-subtle transition-[border-color,box-shadow] duration-150 focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent-soft disabled:opacity-60 aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger-soft sm:text-sm'
+  'w-full rounded-xl border border-line-strong bg-surface px-3 text-base text-ink placeholder:text-subtle transition-[border-color,box-shadow] duration-150 focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent-soft disabled:opacity-60 aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger-soft sm:text-sm'
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...rest }, ref) {
   return <input ref={ref} className={cn(fieldBase, 'h-11 sm:h-10', className)} {...rest} />

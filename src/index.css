@@ -96,11 +96,14 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    overflow-x: clip;
+    overscroll-behavior-y: none;
   }
   body {
     background-color: var(--bg);
     background-image: var(--bg-accent);
-    background-attachment: fixed;
+    background-repeat: no-repeat;
+    overflow-x: clip;
     color: var(--text);
     font-family: var(--font-sans);
     font-feature-settings: 'cv11', 'ss01';
@@ -171,6 +174,48 @@
   }
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-bottom-pad {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+  /* Klavye açıkken: alttan açılan pencere klavyenin üstünde, alt menü gizli */
+  .sheet-mobile {
+    bottom: var(--kb, 0px);
+    max-height: min(92dvh, calc(var(--vvh, 100dvh) - 12px));
+    transition: bottom 0.2s ease-out;
+  }
+  html[data-kb] .hide-on-kb {
+    display: none;
+  }
+  html[data-kb] .safe-bottom,
+  html[data-kb] .safe-bottom-pad {
+    padding-bottom: 0.75rem;
+  }
+  .page-in {
+    animation: page-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .pressable {
+    transition: transform 0.12s ease-out;
+  }
+  .pressable:active {
+    transform: scale(0.97);
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    background-attachment: fixed;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

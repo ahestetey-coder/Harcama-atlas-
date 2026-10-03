@@ -1,5 +1,5 @@
 import { MotionConfig } from 'motion/react'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { createHashRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { TransactionFormHost } from './components/TransactionForm'
@@ -13,17 +13,45 @@ import { ThemeProvider } from './state/theme'
 import { UiProvider } from './state/ui'
 import { UpdatePrompt } from './components/UpdatePrompt'
 
-const TransactionsPage = lazy(() => import('./pages/TransactionsPage'))
-const ImportPage = lazy(() => import('./pages/import/ImportPage'))
-const CategoriesPage = lazy(() => import('./pages/CategoriesPage'))
-const ImportHistoryPage = lazy(() => import('./pages/ImportHistoryPage'))
-const BackupPage = lazy(() => import('./pages/BackupPage'))
-const SettingsPage = lazy(() => import('./pages/SettingsPage'))
-const MembersPage = lazy(() => import('./pages/MembersPage'))
-const JoinPage = lazy(() => import('./pages/JoinPage'))
-const AdminPage = lazy(() => import('./pages/AdminPage'))
+const loaders = {
+  transactions: () => import('./pages/TransactionsPage'),
+  import: () => import('./pages/import/ImportPage'),
+  categories: () => import('./pages/CategoriesPage'),
+  history: () => import('./pages/ImportHistoryPage'),
+  backup: () => import('./pages/BackupPage'),
+  settings: () => import('./pages/SettingsPage'),
+  members: () => import('./pages/MembersPage'),
+  join: () => import('./pages/JoinPage'),
+  admin: () => import('./pages/AdminPage'),
+}
+const TransactionsPage = lazy(loaders.transactions)
+const ImportPage = lazy(loaders.import)
+const CategoriesPage = lazy(loaders.categories)
+const ImportHistoryPage = lazy(loaders.history)
+const BackupPage = lazy(loaders.backup)
+const SettingsPage = lazy(loaders.settings)
+const MembersPage = lazy(loaders.members)
+const JoinPage = lazy(loaders.join)
+const AdminPage = lazy(loaders.admin)
+
+/** Uygulama açıldıktan sonra boşta kalınca bütün sayfalar önceden yüklenir; geçişte bekleme olmaz. */
+function usePrefetchPages() {
+  useEffect(() => {
+    const run = () => {
+      for (const load of Object.values(loaders)) void load().catch(() => {})
+    }
+    // Safari'de requestIdleCallback yok
+    if (typeof window.requestIdleCallback !== 'function') {
+      const t = setTimeout(run, 1200)
+      return () => clearTimeout(t)
+    }
+    const id = window.requestIdleCallback(run, { timeout: 2500 })
+    return () => window.cancelIdleCallback(id)
+  }, [])
+}
 
 function Layout() {
+  usePrefetchPages()
   return (
     <AppShell>
       <Suspense

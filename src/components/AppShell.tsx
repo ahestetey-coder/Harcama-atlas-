@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Database, FileUp, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Moon, Plus, Settings, ShieldCheck, Sun, Tags, Users } from 'lucide-react'
+import { Database, FileUp, FlaskConical, History, LayoutDashboard, LayoutGrid, ListOrdered, LogOut, Menu, Moon, Plus, Settings, ShieldCheck, Sun, Tags, Users } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -10,8 +10,9 @@ import { useFollowCurrentPeriod } from '../state/cycle'
 import { useTheme } from '../state/theme'
 import { useData } from '../state/data'
 import { useUi } from '../state/ui'
+import { QuickAddSheet } from './QuickAdd'
 import { Modal } from './ui/Modal'
-import { Alert, Button } from './ui/primitives'
+import { Alert, Button, IconButton } from './ui/primitives'
 
 const NAV = [
   { to: '/', label: 'Panel', icon: LayoutDashboard, end: true },
@@ -55,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   useFollowCurrentPeriod()
   const admin = useIsAdmin()
   const nav = admin ? [...NAV, ADMIN_NAV] : NAV
@@ -70,9 +72,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Logo className="min-w-0" />
           <ThemeToggle />
         </div>
-        <Button variant="primary" size="lg" className="mt-6 w-full" icon={<Plus className="size-5" />} onClick={() => openTransactionForm()}>
-          Gider ekle
-        </Button>
+        <div className="mt-6 flex gap-2">
+          <Button variant="primary" size="lg" className="flex-1" icon={<Plus className="size-5" />} onClick={() => openTransactionForm()}>
+            Gider ekle
+          </Button>
+          <IconButton label="Diğer ekleme seçenekleri" className="size-12 rounded-xl border border-line bg-surface shadow-card" onClick={() => setAddOpen(true)}>
+            <LayoutGrid className="size-5" />
+          </IconButton>
+        </div>
         <nav aria-label="Ana menü" className="mt-6 flex flex-col gap-0.5">
           {nav.map((n) => (
             <NavLink
@@ -116,7 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobil üst çubuk */}
-      <header className="glass sticky top-0 z-30 flex items-center justify-between border-b border-line px-4 py-2.5 lg:hidden">
+      <header className="glass sticky top-0 z-30 flex items-center justify-between border-b border-line px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] lg:hidden">
         <Logo />
         <div className="flex items-center gap-2">
           {isDemo && (
@@ -141,49 +148,48 @@ export function AppShell({ children }: { children: ReactNode }) {
             {dbError}
           </Alert>
         )}
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        {/* Yeni sayfa beklemeden açılır; yalnızca kısa bir giriş animasyonu (çıkış beklenmez) */}
+        <div key={location.pathname} className="page-in">
+          {children}
+        </div>
       </main>
 
       {/* Mobil alt gezinme */}
-      <nav aria-label="Alt menü" className="glass safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line lg:hidden">
+      <nav aria-label="Alt menü" className="glass safe-bottom hide-on-kb fixed inset-x-0 bottom-0 z-40 border-t border-line lg:hidden">
         <div className="relative mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-1.5">
           {[NAV[0], NAV[1]].map((n) => (
             <MobileTab key={n.to} to={n.to} end={n.end} icon={<n.icon className="size-[22px]" />} label={n.short ?? n.label} />
           ))}
           <div className="flex justify-center">
-            <button
+            <motion.button
               type="button"
-              onClick={() => openTransactionForm()}
-              aria-label="Gider ekle"
-              className="-mt-6 grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_12px_28px_-8px_rgb(5_150_105/0.8)] ring-4 ring-bg transition-transform duration-150 active:scale-95"
+              onClick={() => setAddOpen(true)}
+              aria-label="Ekle"
+              aria-haspopup="dialog"
+              whileTap={{ scale: 0.92 }}
+              animate={{ rotate: addOpen ? 45 : 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+              className="-mt-6 grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_12px_28px_-8px_rgb(5_150_105/0.8)] ring-4 ring-bg"
             >
               <Plus className="size-7" />
-            </button>
+            </motion.button>
           </div>
           <MobileTab to="/ice-aktar" icon={<FileUp className="size-[22px]" />} label="İçe aktar" />
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
             className={cn(
-              'flex flex-col items-center gap-0.5 rounded-xl pb-2 pt-1 text-[11px] font-medium',
+              'pressable relative flex flex-col items-center gap-0.5 rounded-xl pb-2 pt-1 text-[11px] font-medium',
               ['/kategoriler', '/aktarimlar', '/uyeler', '/yedekleme', '/ayarlar', '/yonetim'].some((p) => location.pathname.startsWith(p)) ? 'text-accent' : 'text-muted',
             )}
           >
+            {['/kategoriler', '/aktarimlar', '/uyeler', '/yedekleme', '/ayarlar', '/yonetim'].some((p) => location.pathname.startsWith(p)) && <TabIndicator />}
             <Menu className="size-[22px]" />
             Daha fazla
           </button>
         </div>
       </nav>
+      <QuickAddSheet open={addOpen} onOpenChange={setAddOpen} />
       <Modal open={moreOpen} onOpenChange={setMoreOpen} title="Menü" size="sm">
         <div className="grid grid-cols-2 gap-2 pb-2">
           {nav.slice(3).map((n) => (
@@ -194,7 +200,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 setMoreOpen(false)
                 navigate(n.to)
               }}
-              className="flex flex-col items-start gap-3 rounded-2xl border border-line bg-surface-2 p-4 text-left text-sm font-medium text-ink transition-colors hover:border-line-strong"
+              className="pressable flex flex-col items-start gap-3 rounded-2xl border border-line bg-surface-2 p-4 text-left text-sm font-medium text-ink transition-colors hover:border-line-strong"
             >
               <n.icon className="size-5 text-accent" />
               {n.label}
@@ -271,10 +277,15 @@ function MobileTab({ to, end, icon, label }: { to: string; end?: boolean; icon: 
     <NavLink
       to={to}
       end={end}
-      className={({ isActive }) => cn('flex flex-col items-center gap-0.5 rounded-xl pb-2 pt-1 text-[11px] font-medium transition-colors', isActive ? 'text-accent' : 'text-muted')}
+      className={({ isActive }) => cn('pressable relative flex flex-col items-center gap-0.5 rounded-xl pb-2 pt-1 text-[11px] font-medium transition-colors', isActive ? 'text-accent' : 'text-muted')}
     >
-      {icon}
-      {label}
+      {({ isActive }) => (
+        <>
+          {isActive && <TabIndicator />}
+          {icon}
+          {label}
+        </>
+      )}
     </NavLink>
   )
 }
@@ -288,5 +299,17 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2 max-sm:w-full">{actions}</div>}
     </div>
+  )
+}
+
+/** Alt menüde etkin sekmenin üstündeki çizgi; sekmeler arasında kayarak geçer. */
+function TabIndicator() {
+  return (
+    <motion.span
+      layoutId="tab-active"
+      className="absolute -top-1.5 left-1/2 h-[3px] w-7 -translate-x-1/2 rounded-full bg-accent"
+      transition={{ type: 'spring', stiffness: 520, damping: 38 }}
+      aria-hidden
+    />
   )
 }

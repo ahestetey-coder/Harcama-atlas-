@@ -6,7 +6,7 @@ import type { SupabaseBackend } from '../cloud/supabaseBackend'
 import { adoptCloudIdentity, setDefaultSelfName, syncAll, type SyncReport } from '../cloud/sync'
 import { UserFacingError } from '../data/repository'
 import { useAuth } from './auth'
-import { useData } from './data'
+import { useData, useMemberList, useSettings } from './data'
 import { useUi } from './ui'
 
 export type CloudStatus = 'off' | 'loading' | 'signed-out' | 'idle' | 'syncing' | 'error'
@@ -224,9 +224,8 @@ export function useCloud(): CloudCtx {
 
 /** Üyeler (id → üye) ve bu cihazın sahibinin kimliği. */
 export function useMembers() {
-  const { repo } = useData()
-  const members = useLiveQuery(() => repo.db.members.toArray(), [repo])
-  const settings = useLiveQuery(() => repo.getSettings(), [repo])
+  const members = useMemberList()
+  const settings = useSettings()
   return useMemo(() => ({ members: members ?? [], map: new Map((members ?? []).map((m) => [m.id, m])), selfId: settings?.selfMemberId ?? null }), [members, settings])
 }
 

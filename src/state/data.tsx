@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createDb, DEMO_DB_NAME, REAL_DB_NAME } from '../data/db'
 import { AtlasRepository } from '../data/repository'
-import type { Category, ImportRecord, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
+import type { Category, ImportRecord, Member, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
 import { readPref, writePref } from './prefs'
 import { useUi } from './ui'
 
@@ -80,7 +80,40 @@ export function DataProvider({ children, userId }: { children: ReactNode; userId
   }, [])
 
   const value = useMemo(() => ({ repo, isDemo, setDemo, dbError }), [repo, isDemo, setDemo, dbError])
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+  return (
+    <Ctx.Provider value={value}>
+      <LiveProvider repo={repo}>{children}</LiveProvider>
+    </Ctx.Provider>
+  )
+}
+
+interface LiveData {
+  transactions?: Transaction[]
+  categories?: Category[]
+  groups?: SpendGroup[]
+  settings?: Settings
+  members?: Member[]
+}
+
+const LiveCtx = createContext<LiveData>({})
+
+/**
+ * Sık kullanılan kayıtlar bir kez okunur ve bütün sayfalar aynı canlı sonucu paylaşır: sayfa
+ * değiştirirken veritabanı yeniden okunmaz, sayfa iskelet göstermeden hemen açılır.
+ */
+function LiveProvider({ repo, children }: { repo: AtlasRepository; children: ReactNode }) {
+  const transactions = useLiveQuery(() => repo.allTransactions(), [repo])
+  const categories = useLiveQuery(() => repo.db.categories.orderBy('order').toArray(), [repo])
+  const groups = useLiveQuery(() => repo.db.groups.orderBy('order').toArray(), [repo])
+  const settings = useLiveQuery(() => repo.getSettings(), [repo])
+  const members = useLiveQuery(() => repo.db.members.toArray(), [repo])
+  const value = useMemo(() => ({ transactions, categories, groups, settings, members }), [transactions, categories, groups, settings, members])
+  return <LiveCtx.Provider value={value}>{children}</LiveCtx.Provider>
+}
+
+/** Üyeler (canlı, paylaşılan). */
+export function useMemberList(): Member[] | undefined {
+  return useContext(LiveCtx).members
 }
 
 export function useData(): DataCtx {
@@ -95,18 +128,15 @@ export function useRepo(): AtlasRepository {
 
 /** Bütün işlemler (tarihe göre yeniden eskiye). Yükleniyorken undefined. */
 export function useTransactions(): Transaction[] | undefined {
-  const repo = useRepo()
-  return useLiveQuery(() => repo.allTransactions(), [repo])
+  return useContext(LiveCtx).transactions
 }
 
 export function useCategories(): Category[] | undefined {
-  const repo = useRepo()
-  return useLiveQuery(() => repo.db.categories.orderBy('order').toArray(), [repo])
+  return useContext(LiveCtx).categories
 }
 
 export function useGroups(): SpendGroup[] | undefined {
-  const repo = useRepo()
-  return useLiveQuery(() => repo.db.groups.orderBy('order').toArray(), [repo])
+  return useContext(LiveCtx).groups
 }
 
 export function useGroupMap(): Map<string, SpendGroup> {
@@ -125,8 +155,7 @@ export function useImports(): ImportRecord[] | undefined {
 }
 
 export function useSettings(): Settings | undefined {
-  const repo = useRepo()
-  return useLiveQuery(() => repo.getSettings(), [repo])
+  return useContext(LiveCtx).settings
 }
 
 export function useCategoryMap(): Map<string, Category> {
