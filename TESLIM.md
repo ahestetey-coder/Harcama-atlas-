@@ -336,3 +336,9 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - `.github/workflows/mobile.yml` her gönderimde Android hata ayıklama APK'sını derler (Artifacts'tan indirilebilir) ve iOS'u simülatör için imzasız derler.
 - Komutlar: `npm run mobile:sync`, `npm run mobile:android` (Android Studio), `npm run mobile:ios` (Mac + Xcode).
 - **Sınır:** Bu ortamda Android SDK indirilemediği için derleme yalnızca GitHub Actions'ta doğrulanır. Mağaza için imzalı sürüm, geliştirici hesapları açılınca eklenecek.
+
+## 20. Mağaza şartları: hesap silme, gizlilik, giriş (06.10.2026)
+
+- **Hesabımı sil:** Ayarlar'da yeni "Hesap" kartı (e-posta, Çıkış yap, Hesabımı sil). Silme "SİL" yazılarak onaylanır; `ha_delete_my_account()` hesabı, yöneticisi olunan ortak grupları, diğer gruplara eklenen harcamaları, üyelikleri ve davetleri buluttan siler. İsteğe bağlı olarak (varsayılan açık) bu cihazdaki kayıtlar da silinir. SQL testi ve uçtan uca test eklendi. Canlı veritabanına `harcama-atlasi-kurulum/hesap-silme.sql` dosyasının bir kez çalıştırılması gerekir.
+- **Gizlilik politikası:** `public/gizlilik.html` (yayında `/gizlilik.html`). Giriş ekranından ve Ayarlar'dan bağlantı verildi; mağaza kayıtlarında bu adres kullanılacak. Ayarlar'daki eski "senkronizasyon yoktur" metni güncel duruma göre düzeltildi.
+- **Giriş:** Mobil uygulamada Google ile giriş düğmesi gösterilmez (yalnızca e-posta). Web sürümünde değişiklik yok. Mobil uygulamadaki doğrulama ve şifre yenileme e-postaları web adresine döner.

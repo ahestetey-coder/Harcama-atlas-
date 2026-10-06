@@ -173,3 +173,9 @@ export function useGroupFilter(): [string, (g: string) => void] {
   }, [valid, setGroupFilter])
   return [valid ? groupFilter : '', setGroupFilter]
 }
+
+/** Hesap silinince bu cihazdaki o hesaba ait yerel kayıtları da siler. */
+export async function clearLocalAccountData(userId: string): Promise<void> {
+  await getRealRepo(realDbNameFor(userId)).clearAll()
+  if (readPref('dbOwner') === userId) writePref('dbOwner', null)
+}

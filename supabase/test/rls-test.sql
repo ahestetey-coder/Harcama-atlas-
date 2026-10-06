@@ -210,4 +210,19 @@ select public.ha_admin_delete_user(:'yabanci');
 reset role;
 select count(*) = 0 as deleted_ok from auth.users where id = :'yabanci' \gset
 \if :deleted_ok \else \echo 'HATA: hesap silinmedi' \q \endif
+-- Hesabımı sil: kişi yalnızca kendi hesabını siler
+select pg_temp.as_user(:'ayse');
+select public.ha_delete_my_account();
+reset role;
+select count(*) = 0 as self_deleted from auth.users where id = :'ayse' \gset
+\if :self_deleted \else \echo 'HATA: kendi hesabı silinmedi' \q \endif
+select count(*) = 1 as osman_kept from auth.users where id = :'osman' \gset
+\if :osman_kept \else \echo 'HATA: başka hesap silindi' \q \endif
+set role anon;
+do $$ begin
+  perform public.ha_delete_my_account();
+  raise exception 'HATA: girişsiz hesap silme';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
 \echo 'TUM SQL TESTLERI GECTI'

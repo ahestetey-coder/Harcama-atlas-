@@ -1,5 +1,6 @@
 import { CloudOff, Download, FlaskConical, Monitor, Moon, Repeat, RotateCcw, ScanText, Sun, Target } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { AccountCard } from '../components/AccountCard'
 import { PageHeader } from '../components/AppShell'
 import { CycleSelect } from '../components/common'
 import { ConfirmDialog } from '../components/ui/Modal'
@@ -54,6 +55,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader title="Ayarlar" subtitle={`${APP_CONFIG.name} · sürüm 1.0`} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AccountCard />
         <Card className="p-5">
           <h2 className="font-display text-base font-semibold">Görünüm</h2>
           <p className="mt-1 text-sm text-muted">Tema seçiminiz bu cihazda hatırlanır.</p>
@@ -175,16 +177,19 @@ export default function SettingsPage() {
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
             <CloudOff className="size-5 text-accent" /> Senkronizasyon ve gizlilik
           </h2>
-          <Alert tone="info" className="mt-3" title="Bu sürümde cihazlar arasında otomatik senkronizasyon yoktur">
-            Kayıtlarınız yalnızca şu an kullandığınız tarayıcıda saklanır. Telefonda girdiğiniz bir gider bilgisayarınızda görünmez. Verileri başka bir cihaza taşımak için “Yedekleme ve veri” sayfasından JSON yedeği alıp diğer cihazda geri
-            yükleyin.
+          <Alert tone="info" className="mt-3" title="Kayıtlarınız bu cihazda tutulur">
+            Yalnızca üyelerle paylaştığınız ortak gruplara eklediğiniz harcamalar buluta gönderilir; diğer bütün kayıtlar bu cihazda kalır. Başka bir cihaza
+            taşımak için “Yedekleme ve veri” sayfasından JSON yedeği alıp diğer cihazda geri yükleyin.
           </Alert>
           <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted">
-            <li>Hesap, sunucu veya API anahtarı gerekmez; yapay zekâ servisi kullanılmaz.</li>
+            <li>Yapay zekâ servisi, reklam veya izleme kullanılmaz.</li>
             <li>PDF, Excel, CSV ve görseller cihazınızda okunur; içerikleri uzak sunuculara gönderilmez ve kalıcı saklanmaz.</li>
             <li>Tam kart numarası, CVV veya banka parolası istenmez. PDF parolası yalnızca o okuma için kullanılır.</li>
             <li>Uygulama ilk açılıştan sonra çevrimdışı çalışır.</li>
           </ul>
+          <a href={APP_CONFIG.privacyUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[13px] font-medium text-accent hover:underline">
+            Gizlilik politikasının tamamı
+          </a>
         </Card>
       </div>
       <ConfirmDialog

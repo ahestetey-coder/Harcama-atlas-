@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gizlilik Politikası · Harcama Atlası</title>
+    <meta name="description" content="Harcama Atlası uygulamasının hangi verileri nerede tuttuğu ve nasıl silebileceğiniz." />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --bg: #f6f5f0;
+        --surface: #ffffff;
+        --ink: #0f172a;
+        --muted: #475569;
+        --line: #e2e8f0;
+        --accent: #059669;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #080d18;
+          --surface: #0f1726;
+          --ink: #e7ecf3;
+          --muted: #9aa7b8;
+          --line: #1e293b;
+          --accent: #34d399;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 40px 16px 64px;
+      }
+      header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+      header img { width: 40px; height: 40px; }
+      h1 { font-size: 28px; line-height: 1.2; margin: 0; }
+      h2 { font-size: 19px; margin: 32px 0 8px; }
+      p, li { color: var(--muted); }
+      strong { color: var(--ink); }
+      ul { padding-left: 20px; }
+      li { margin: 4px 0; }
+      .meta { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+      .box {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px 20px;
+      }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="favicon.svg" alt="" />
+        <h1>Gizlilik Politikası</h1>
+      </header>
+      <p class="meta">Harcama Atlası · Son güncelleme: 6 Ekim 2026</p>
+
+      <div class="box">
+        <p style="margin: 0">
+          <strong>Kısaca:</strong> Harcamalarınız telefonunuzda veya tarayıcınızda saklanır. Buluta yalnızca hesabınız ve üyelerle paylaştığınız ortak gruplara
+          eklediğiniz harcamalar gider. Yüklediğiniz ekstre, PDF ve ekran görüntüleri cihazınızda okunur, hiçbir sunucuya gönderilmez. Reklam, izleme veya yapay
+          zekâ servisi kullanılmaz. Hesabınızı uygulama içinden istediğiniz an silebilirsiniz.
+        </p>
+      </div>
+
+      <h2>1. Cihazınızda tutulan veriler</h2>
+      <p>
+        Eklediğiniz harcamalar, iadeler, kategoriler, harcama grupları, eşleştirme kuralları, bütçe ve ayarlar cihazınızdaki uygulama veritabanında (IndexedDB)
+        saklanır. Bu veriler bize veya başka birine gönderilmez. Uygulamayı silmek ya da “Yedekleme ve veri” sayfasındaki “Verileri sil” düğmesini kullanmak
+        bu verileri cihazdan kaldırır.
+      </p>
+
+      <h2>2. Belgeler ve kamera</h2>
+      <ul>
+        <li>Ekstre (PDF, Excel, CSV), ekran görüntüsü ve fotoğraflar yalnızca cihazınızda okunur; metin tanıma (OCR) da cihazda çalışır.</li>
+        <li>Belgelerin kendisi varsayılan olarak saklanmaz; yalnızca onayladığınız işlem satırları kaydedilir.</li>
+        <li>Kamera yalnızca “Fotoğraf çek” seçeneğine dokunduğunuzda kullanılır.</li>
+        <li>Tam kart numarası, CVV veya banka parolası istenmez. Parolalı bir PDF için girdiğiniz parola yalnızca o dosyayı açmak için kullanılır ve saklanmaz.</li>
+      </ul>
+
+      <h2>3. Hesap bilgileri</h2>
+      <p>Giriş yapmak için bir hesap oluşturduğunuzda şu bilgiler bulutta saklanır:</p>
+      <ul>
+        <li>E-posta adresiniz ve girdiğiniz ad,</li>
+        <li>Şifreniz (geri döndürülemez biçimde şifrelenmiş olarak; kimse göremez),</li>
+        <li>Web sürümünde Google ile girdiyseniz Google’ın paylaştığı ad ve e-posta,</li>
+        <li>Hesabın oluşturulma ve son giriş zamanı.</li>
+      </ul>
+      <p>Bu bilgiler yalnızca giriş yapmanız, şifre yenileme ve doğrulama e-postaları göndermek ve ortak gruplarda sizi üyelere tanıtmak için kullanılır.</p>
+
+      <h2>4. Ortak gruplar</h2>
+      <p>
+        Bir ortak grup oluşturur veya bir gruba katılırsanız, o gruba eklediğiniz harcamaların tutarı, tarihi, açıklaması, kategorisi ve kimin eklediği bulutta
+        saklanır ve grubun üyeleri tarafından görülür. Grup adı, üye listesi, davetler, dönem ayarı ve yöneticinin yaptığı gider paylaşımları da bulutta tutulur. Ortak
+        gruba eklemediğiniz hiçbir kayıt buluta gönderilmez.
+      </p>
+
+      <h2>5. Hizmet sağlayıcılar</h2>
+      <ul>
+        <li><strong>Supabase</strong> (sunucular Frankfurt, Almanya): hesaplar ve ortak grup verileri.</li>
+        <li><strong>GitHub Pages</strong>: web sürümünün barındırılması. GitHub, siteye erişimde teknik kayıtlar (ör. IP adresi) tutabilir.</li>
+        <li><strong>Google</strong>: yalnızca web sürümünde Google ile girişi seçerseniz.</li>
+      </ul>
+      <p>Verileriniz satılmaz, reklam veya profil çıkarma amacıyla kullanılmaz ve bu sağlayıcılar dışında kimseyle paylaşılmaz.</p>
+
+      <h2>6. Hesabı ve verileri silme</h2>
+      <p>
+        Uygulamada <strong>Ayarlar &gt; Hesap &gt; Hesabımı sil</strong> adımıyla hesabınızı kendiniz silebilirsiniz. Bu işlem hesabınızı, yöneticisi olduğunuz ortak
+        grupları (içindeki harcamalarla), diğer gruplara eklediğiniz harcamaları, üyeliklerinizi ve davetlerinizi buluttan hemen ve kalıcı olarak siler. İsterseniz
+        cihazdaki kayıtlarınız da aynı anda silinir.
+      </p>
+
+      <h2>7. Haklarınız</h2>
+      <p>
+        6698 sayılı Kişisel Verilerin Korunması Kanunu ve ilgili mevzuat kapsamında verilerinize erişme, düzeltilmesini veya silinmesini isteme haklarına sahipsiniz.
+        Verilerinizin çoğu zaten yalnızca sizin cihazınızdadır; buluttaki hesabınızı uygulama içinden silebilirsiniz.
+      </p>
+
+      <h2>8. Çocuklar</h2>
+      <p>Uygulama 13 yaşından küçük çocuklara yönelik değildir.</p>
+
+      <h2>9. Değişiklikler ve iletişim</h2>
+      <p>
+        Bu politika değişirse güncel hali bu sayfada yayımlanır. Sorularınız için
+        <a href="https://github.com/ahestetey-coder/Harcama-atlas-/issues">uygulamanın GitHub sayfası</a> üzerinden bize ulaşabilirsiniz.
+      </p>
+
+      <p style="margin-top: 40px"><a href="./">← Harcama Atlası’na dön</a></p>
+    </main>
+  </body>
+</html>

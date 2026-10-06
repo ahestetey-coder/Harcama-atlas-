@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { envCloudConfig } from '../cloud/config'
 import { cloudErrorMessage } from '../cloud/errors'
 import type { SupabaseBackend } from '../cloud/supabaseBackend'
+import { APP_CONFIG } from '../config/app'
 import { UserFacingError } from '../data/repository'
+import { isNativeApp } from '../lib/native'
 
 export interface AuthUser {
   id: string
@@ -27,6 +29,8 @@ interface AuthCtx {
   sendPasswordReset: (email: string) => Promise<void>
   updatePassword: (password: string) => Promise<void>
   signOut: () => Promise<void>
+  /** Hesabı ve buluttaki verilerini kalıcı olarak siler, sonra oturumu kapatır. */
+  deleteAccount: () => Promise<void>
 }
 
 const Ctx = createContext<AuthCtx | null>(null)
@@ -45,6 +49,8 @@ function restoreAfterLogin() {
 
 /** Giriş/şifre sıfırlama dönüşünde gidilecek adres (hash yönlendirmesinden önceki kısım). */
 export function appBaseUrl(): string {
+  // Mobil uygulamanın kendi adresi (capacitor://, https://localhost) e-postadan açılamaz
+  if (isNativeApp) return APP_CONFIG.webUrl
   return window.location.origin + window.location.pathname
 }
 
@@ -108,8 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             window.history.replaceState(null, '', url.toString())
           }
         })
-      // Google ile giriş Supabase'de açıksa düğme gösterilir
-      fetch(`${config.url}/auth/v1/settings`, { headers: { apikey: config.anonKey } })
+      // Google ile giriş Supabase'de açıksa düğme gösterilir. Mobil uygulamada gösterilmez:
+      // Google uygulama içi tarayıcıda girişe izin vermez, App Store da ayrıca Apple ile giriş ister.
+      if (!isNativeApp) fetch(`${config.url}/auth/v1/settings`, { headers: { apikey: config.anonKey } })
         .then((r) => (r.ok ? r.json() : null))
         .then((s: { external?: { google?: boolean } } | null) => alive && setGoogleEnabled(!!s?.external?.google))
         .catch(() => {})
@@ -183,9 +190,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await backend?.client.auth.signOut().catch(() => {})
   }, [backend])
 
+  const deleteAccount = useCallback(async () => {
+    const { error } = await need().client.rpc('ha_delete_my_account')
+    if (error) {
+      if (/function .* does not exist|Could not find the function/i.test(error.message ?? '') || error.code === 'PGRST202')
+        throw new UserFacingError('Hesap silme veritabanına henüz eklenmemiş. Yöneticiden kurulum SQL’ini çalıştırmasını isteyin.')
+      fail(error)
+    }
+    setRecovery(false)
+    // Hesap artık yok; oturumu yalnızca bu cihazda kapat
+    await backend?.client.auth.signOut({ scope: 'local' }).catch(() => {})
+  }, [need, backend])
+
   const value = useMemo(
-    () => ({ enabled, ready, backend, user, recovery, googleEnabled, signIn, signUp, signInWithGoogle, sendPasswordReset, updatePassword, signOut }),
-    [enabled, ready, backend, user, recovery, googleEnabled, signIn, signUp, signInWithGoogle, sendPasswordReset, updatePassword, signOut],
+    () => ({ enabled, ready, backend, user, recovery, googleEnabled, signIn, signUp, signInWithGoogle, sendPasswordReset, updatePassword, signOut, deleteAccount }),
+    [enabled, ready, backend, user, recovery, googleEnabled, signIn, signUp, signInWithGoogle, sendPasswordReset, updatePassword, signOut, deleteAccount],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

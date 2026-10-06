@@ -6,6 +6,7 @@ import { Button, Field, Input, Spinner } from '../components/ui/primitives'
 import { UserFacingError } from '../data/repository'
 import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
+import { APP_CONFIG } from '../config/app'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
@@ -210,7 +211,12 @@ function AuthFrame({ children }: { children: ReactNode }) {
             className="mt-6 flex items-start justify-center gap-1.5 px-2 text-center text-[12px] leading-relaxed text-subtle"
           >
             <ShieldCheck className="mt-px size-3.5 shrink-0" />
-            Harcamalarınız bu cihazda saklanır. Yalnızca paylaşıma açtığınız gruptaki harcamalar üyelerinizle paylaşılır.
+            <span>
+              Harcamalarınız bu cihazda saklanır. Yalnızca paylaşıma açtığınız gruptaki harcamalar üyelerinizle paylaşılır.{' '}
+              <a href={APP_CONFIG.privacyUrl} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
+                Gizlilik politikası
+              </a>
+            </span>
           </motion.p>
         </div>
       </div>

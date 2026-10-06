@@ -10,6 +10,10 @@ export const APP_CONFIG = {
   slug: 'harcama-atlasi',
   currency: 'TRY',
   locale: 'tr-TR',
+  /** Yayındaki web adresi. Mobil uygulamada e-posta bağlantıları (doğrulama, şifre yenileme) buraya döner. */
+  webUrl: 'https://ahestetey-coder.github.io/Harcama-atlas-/',
+  /** Gizlilik politikası (mağaza kayıtlarında da bu adres verilir). */
+  privacyUrl: 'https://ahestetey-coder.github.io/Harcama-atlas-/gizlilik.html',
 } as const
 
 /** İçe aktarma sınırları. */

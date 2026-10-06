@@ -355,3 +355,27 @@ revoke all on function public.ha_is_admin(), public.ha_admin_require(), public.h
   public.ha_admin_confirm_email(uuid), public.ha_admin_delete_user(uuid) from public, anon;
 grant execute on function public.ha_is_admin(), public.ha_admin_list_users(), public.ha_admin_set_banned(uuid, boolean),
   public.ha_admin_confirm_email(uuid), public.ha_admin_delete_user(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------
+-- Hesabımı sil (App Store şartı: kullanıcı hesabını uygulama içinden silebilmeli)
+--
+-- Giriş yapmış kişi yalnızca kendi hesabını siler: yöneticisi olduğu ortak gruplar (içindeki
+-- herkesin harcamaları ve paylaşımlarıyla), diğer gruplara eklediği harcamalar, üyelikleri,
+-- davetleri ve hesabın kendisi buluttan kalıcı olarak silinir.
+
+create or replace function public.ha_delete_my_account() returns void
+  language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+begin
+  if me is null then raise exception 'Giriş yapılmamış'; end if;
+  delete from public.ha_groups where owner_id = me;
+  delete from public.ha_transactions where user_id = me;
+  delete from public.ha_group_members where user_id = me;
+  delete from public.ha_invites where created_by = me;
+  delete from public.ha_admins where user_id = me;
+  delete from auth.users where id = me;
+end $$;
+
+revoke all on function public.ha_delete_my_account() from public, anon;
+grant execute on function public.ha_delete_my_account() to authenticated;
