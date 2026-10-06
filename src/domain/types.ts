@@ -175,7 +175,19 @@ export interface Settings {
   budgetPlan?: BudgetPlan
   /** Plus+: Finansal Özgürlük Yolculuğum anketi (kullanıcının doğruladığı bilgiler). */
   journey?: JourneyProfile
+  /** Plus+ koç tercihleri. */
+  coach?: CoachSettings
   updatedAt: string
+}
+
+export interface CoachSettings {
+  strategy: 'avalanche' | 'snowball'
+  /** Borç ödemeleri ortalama gidere zaten dahil mi. */
+  debtsInExpenses: boolean
+  /** Okunan/kapatılan koç mesajları. */
+  dismissed: string[]
+  /** Yapay zekâ sohbeti için özet verilerin gönderilmesine izin. */
+  aiConsent: boolean
 }
 
 export type RecurringKind = 'subscription' | 'bill' | 'installment'

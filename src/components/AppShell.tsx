@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpen, ChartColumn, Database, FileUp, FlaskConical, History, LayoutDashboard, LayoutGrid, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Repeat, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet } from 'lucide-react'
+import { BookOpen, Bot, ChartColumn, Database, FileUp, FlaskConical, History, LayoutDashboard, LayoutGrid, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Repeat, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -24,6 +24,7 @@ const NAV = [
   { to: '/hedefler', label: 'Birikim hedefleri', short: 'Hedefler', icon: PiggyBank },
   { to: '/raporlar', label: 'Raporlar', icon: ChartColumn },
   { to: '/varliklar', label: 'Varlıklarım', icon: Wallet },
+  { to: '/koc', label: 'Koçum', icon: Bot },
   { to: '/yolculuk', label: 'Finansal yolculuğum', short: 'Yolculuğum', icon: Mountain },
   { to: '/senaryolar', label: 'Gelecek senaryoları', short: 'Senaryolar', icon: TrendingUp },
   { to: '/ogren', label: 'Finansal bilgi', short: 'Bilgi', icon: BookOpen },

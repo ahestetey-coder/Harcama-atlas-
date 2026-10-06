@@ -1,6 +1,7 @@
 import { Ban, CheckCircle2, KeyRound, Lock, MailCheck, RefreshCw, Search, ShieldCheck, Trash2, UserCheck, Users, UserX } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
+import { NewsSourcesCard } from '../components/NewsSources'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Alert, Badge, Button, Card, EmptyState, Input, Segmented, Skeleton } from '../components/ui/primitives'
 import { AdminNotInstalledError, confirmEmail, deleteUser, isBanned, listUsers, sendPasswordReset, setBanned, type AdminUser } from '../cloud/admin'
@@ -196,6 +197,7 @@ function AdminConsole() {
               </ul>
             )}
           </Card>
+          <NewsSourcesCard />
         </>
       )}
 

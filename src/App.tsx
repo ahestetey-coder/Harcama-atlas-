@@ -33,6 +33,7 @@ const loaders = {
   journey: () => import('./pages/JourneyPage'),
   scenarios: () => import('./pages/ScenariosPage'),
   learning: () => import('./pages/LearningPage'),
+  coach: () => import('./pages/CoachPage'),
 }
 const TransactionsPage = lazy(loaders.transactions)
 const ImportPage = lazy(loaders.import)
@@ -52,6 +53,7 @@ const AssetsPage = lazy(loaders.assets)
 const JourneyPage = lazy(loaders.journey)
 const ScenariosPage = lazy(loaders.scenarios)
 const LearningPage = lazy(loaders.learning)
+const CoachPage = lazy(loaders.coach)
 
 /** Uygulama açıldıktan sonra boşta kalınca bütün sayfalar önceden yüklenir; geçişte bekleme olmaz. */
 function usePrefetchPages() {
@@ -122,6 +124,7 @@ const router = createHashRouter([
       { path: '/yolculuk', element: <JourneyPage /> },
       { path: '/senaryolar', element: <ScenariosPage /> },
       { path: '/ogren', element: <LearningPage /> },
+      { path: '/koc', element: <CoachPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

@@ -449,3 +449,88 @@ end $$;
 
 revoke all on function public.ha_delete_my_account() from public, anon;
 grant execute on function public.ha_delete_my_account() to authenticated;
+
+-- ---------------------------------------------------------------------------------------------
+-- Plus+ koç: günlük ekonomi özeti ve haber kaynakları
+--
+-- Kaynakları (X hesapları ve RSS adresleri) yalnızca yönetici ekler. Günlük özeti "coach-news"
+-- sunucu fonksiyonu yazar (servis anahtarıyla); giriş yapmış herkes okur, uygulama Plus+ olana gösterir.
+-- Her maddede kaynak, bağlantı ve yayın tarihi saklanır; özet yalnızca bu maddelerden yazılır.
+
+create table if not exists public.ha_news_sources (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('x', 'rss')),
+  value text not null check (char_length(value) between 1 and 300),
+  label text check (label is null or char_length(label) <= 80),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (kind, value)
+);
+alter table public.ha_news_sources enable row level security;
+revoke all on public.ha_news_sources from anon, authenticated;
+grant select on public.ha_news_sources to authenticated;
+drop policy if exists "ha_news_sources_admin_read" on public.ha_news_sources;
+create policy "ha_news_sources_admin_read" on public.ha_news_sources for select to authenticated using (public.ha_is_admin());
+
+create table if not exists public.ha_coach_broadcasts (
+  id uuid primary key default gen_random_uuid(),
+  day date not null unique,
+  title text not null,
+  summary text not null,
+  items jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+alter table public.ha_coach_broadcasts enable row level security;
+revoke all on public.ha_coach_broadcasts from anon, authenticated;
+grant select on public.ha_coach_broadcasts to authenticated;
+drop policy if exists "ha_coach_broadcasts_read" on public.ha_coach_broadcasts;
+create policy "ha_coach_broadcasts_read" on public.ha_coach_broadcasts for select to authenticated using (true);
+
+-- Sohbet kullanım sayacı (günlük sınır için). İstemci erişemez; yalnızca sunucu fonksiyonu yazar.
+create table if not exists public.ha_coach_usage (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  day date not null,
+  count integer not null default 0,
+  primary key (user_id, day)
+);
+alter table public.ha_coach_usage enable row level security;
+revoke all on public.ha_coach_usage from anon, authenticated;
+
+create or replace function public.ha_admin_add_news_source(p_kind text, p_value text, p_label text) returns uuid
+  language plpgsql security definer set search_path = public as $$
+declare
+  v text := btrim(p_value);
+  new_id uuid;
+begin
+  perform public.ha_admin_require();
+  if p_kind = 'x' then
+    v := lower(regexp_replace(v, '^(https?://)?(www\.)?(x|twitter)\.com/|^@', '', 'i'));
+    v := split_part(v, '/', 1);
+    if v !~ '^[a-z0-9_]{1,15}$' then raise exception 'Geçerli bir X kullanıcı adı girin'; end if;
+  elsif p_kind = 'rss' then
+    if v !~* '^https://[^ ]+$' then raise exception 'RSS adresi https:// ile başlamalı'; end if;
+  else
+    raise exception 'Bilinmeyen kaynak türü';
+  end if;
+  insert into public.ha_news_sources (kind, value, label) values (p_kind, v, nullif(btrim(coalesce(p_label, '')), ''))
+    on conflict (kind, value) do update set active = true, label = coalesce(excluded.label, ha_news_sources.label)
+    returning id into new_id;
+  return new_id;
+end $$;
+
+create or replace function public.ha_admin_set_news_source(p_id uuid, p_active boolean) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  perform public.ha_admin_require();
+  update public.ha_news_sources set active = p_active where id = p_id;
+end $$;
+
+create or replace function public.ha_admin_delete_news_source(p_id uuid) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  perform public.ha_admin_require();
+  delete from public.ha_news_sources where id = p_id;
+end $$;
+
+revoke all on function public.ha_admin_add_news_source(text, text, text), public.ha_admin_set_news_source(uuid, boolean), public.ha_admin_delete_news_source(uuid) from public, anon;
+grant execute on function public.ha_admin_add_news_source(text, text, text), public.ha_admin_set_news_source(uuid, boolean), public.ha_admin_delete_news_source(uuid) to authenticated;

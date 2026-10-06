@@ -144,6 +144,7 @@ const assetSchema = z.object({
   trades: z.array(z.object({ id: z.string().min(1), date: isoDate, side: z.enum(['buy', 'sell']), quantity: z.number().positive(), unitPriceKurus: z.number().nonnegative() })),
   valuations: z.array(z.object({ date: isoDate, unitPriceKurus: z.number().nonnegative(), source: z.literal('manual') })),
   note: z.string().optional(),
+  debtTerms: z.object({ monthlyRatePct: z.number().min(0).max(100), minPaymentKurus: z.number().int().nonnegative().nullable() }).optional(),
   archived: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -176,6 +177,14 @@ const settingsSchema = z.object({
       withdrawalRatePct: z.number().min(0.5).max(10),
       celebrated: z.array(z.enum(['balance', 'emergency', 'debt', 'saving', 'target'])),
       confirmedAt: z.string(),
+    })
+    .optional(),
+  coach: z
+    .object({
+      strategy: z.enum(['avalanche', 'snowball']),
+      debtsInExpenses: z.boolean(),
+      dismissed: z.array(z.string()),
+      aiConsent: z.boolean(),
     })
     .optional(),
   updatedAt: z.string(),

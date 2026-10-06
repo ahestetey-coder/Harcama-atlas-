@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, CalendarClock, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Repeat, Scale, Target, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Bot, CalendarClock, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Repeat, Scale, Target, Wallet } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -26,6 +26,7 @@ import { useUi } from '../state/ui'
 import { usePlan } from '../state/plan'
 import { PlanBadge } from '../components/PlanGate'
 import { useBudgetStatus, useDuePayments } from '../state/budget'
+import { useCoach } from '../state/coach'
 
 const MAX_SLICES = 7
 
@@ -190,6 +191,7 @@ export default function DashboardPage() {
       )}
 
       <DueBanner />
+      {hasFeature('aiCoach') && <CoachBanner />}
       {!hasData ? (
         <Card>
           <EmptyState
@@ -504,6 +506,29 @@ function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareW
 }
 
 /** Panelde Plus bütçe planına geçiş: Plus'ta uyarı sayısı, Ücretsiz pakette tanıtım. */
+/** Plus+: koçtan okunmamış mesaj varsa panelin üstünde kısa bir haber. */
+function CoachBanner() {
+  const coach = useCoach()
+  const unread = coach?.messages.filter((m) => !m.read) ?? []
+  if (!unread.length) return null
+  const first = unread[0]
+  return (
+    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
+      <Link to="/koc" aria-label="Koç mesajları" className="mb-4 flex items-center gap-3 overflow-hidden rounded-2xl bg-slate-950 px-4 py-3 text-[13px] text-white shadow-card hover:brightness-110">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500">
+          <Bot className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{first.title}</span>
+          <span className="block truncate text-slate-300">{first.body}</span>
+        </span>
+        {unread.length > 1 && <span className="shrink-0 rounded-full bg-white/15 px-2 py-0.5 text-[12px]">+{unread.length - 1}</span>}
+        <ChevronRight className="size-4 shrink-0 text-slate-400" />
+      </Link>
+    </motion.div>
+  )
+}
+
 /** Plus: hatırlatma zamanı gelen düzenli ödemeler (panelin üstünde). */
 function DueBanner() {
   const { has } = usePlan()

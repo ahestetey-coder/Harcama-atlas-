@@ -20,6 +20,7 @@ const READY: Partial<Record<Feature, string>> = {
   journey: '/yolculuk',
   scenarios: '/senaryolar',
   learning: '/ogren',
+  aiCoach: '/koc',
 }
 
 interface Item {
@@ -60,7 +61,7 @@ const PLANS: Array<{ plan: Plan; tagline: string; items: Item[] }> = [
       { text: 'Plus’ın bütün özellikleri' },
       { text: 'Finansal Özgürlük Yolculuğum: mini anket ve animasyonlu hedef rotası', feature: 'journey' },
       { text: 'Gelecek senaryoları: temkinli, orta ve olumlu varsayımlar', feature: 'scenarios' },
-      { text: 'Yapay zekâ harcama koçu, haftalık ve aylık raporlar (isteğe bağlı açılır)', feature: 'aiCoach' },
+      { text: 'Finans koçu: borç kapatma ve yapılandırma planı, yatırıma ayrılacak tutar, kişiye özel mesajlar', feature: 'aiCoach' },
       { text: 'Finansal bilgi ve ekonomi gündemi', feature: 'learning' },
     ],
   },

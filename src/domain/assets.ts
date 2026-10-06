@@ -56,9 +56,18 @@ export interface Asset {
   trades: AssetTrade[]
   valuations: AssetValuation[]
   note?: string
+  /** Yalnızca borçlarda: aylık faiz ve aylık asgari ödeme/taksit (koçun borç planı için). */
+  debtTerms?: DebtTerms
   archived: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface DebtTerms {
+  /** Aylık faiz oranı (%), ör. kredi kartında 4,25. */
+  monthlyRatePct: number
+  /** Aylık asgari ödeme veya taksit (kuruş); bilinmiyorsa null. */
+  minPaymentKurus: number | null
 }
 
 export interface PriceInfo {

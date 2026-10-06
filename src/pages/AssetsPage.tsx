@@ -20,10 +20,11 @@ import {
   valueHistory,
   type Asset,
   type AssetKind,
+  type DebtTerms,
   type HoldingSummary,
 } from '../domain/assets'
 import { diffDays, formatDate, todayIso } from '../domain/dates'
-import { formatKurus, parseUserAmount } from '../domain/money'
+import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { cn } from '../lib/cn'
 import { useInstallmentDebt } from '../state/budget'
 import { useAssets, useRepo } from '../state/data'
@@ -126,7 +127,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
     return (
       <Card className="p-5">
         <EmptyState icon={<Wallet className="size-6" />} title="Henüz varlık eklenmedi" className="py-6">
-          Altın, döviz, fon, hisse veya mevduatınızı ekleyin. Değerleri siz girersiniz; bilgiler yalnızca bu cihazda kalır.
+          Altın, döviz, fon, hisse veya mevduatınızı ve borçlarınızı ekleyin. Değerleri siz girersiniz; bilgiler yalnızca bu cihazda kalır.
         </EmptyState>
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           {ASSET_KINDS.filter((k) => k !== 'other').map((k) => (
@@ -134,6 +135,9 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
               {ASSET_KIND_LABEL[k]}
             </Button>
           ))}
+          <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => onEdit({ kind: 'debt' })}>
+            Borç ekle
+          </Button>
         </div>
       </Card>
     )
@@ -311,6 +315,13 @@ function HoldingRow({ asset, s, onAct, onEdit, onDelete }: { asset: Asset; s: Ho
           </div>
           <div className="text-[12px] text-muted">
             {!balance && s.price && `${formatQuantity(s.quantity)} ${asset.unit} × ${formatUnitPrice(s.price.unitPriceKurus)} · `}
+            {debt && asset.debtTerms ? (
+              <>
+                Aylık %{asset.debtTerms.monthlyRatePct.toLocaleString('tr-TR')} faiz
+                {asset.debtTerms.minPaymentKurus ? ` · aylık ödeme ${formatKurus(asset.debtTerms.minPaymentKurus)}` : ''}
+                {' · '}
+              </>
+            ) : null}
             {priceSourceLabel(s.price, balance)}
           </div>
         </div>
@@ -532,7 +543,7 @@ function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () => void
 function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => void }) {
   const repo = useRepo()
   const { toast } = useUi()
-  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso() })
+  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '' })
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [shown, setShown] = useState<Editing>(null)
@@ -540,7 +551,18 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
     setShown(editing)
     if (editing) {
       const a = editing.asset
-      setF({ kind: editing.kind, name: a?.name ?? '', unit: a?.unit ?? DEFAULT_UNIT[editing.kind], qty: '', price: '', amount: '', date: todayIso() })
+      const t = a?.debtTerms
+      setF({
+        kind: editing.kind,
+        name: a?.name ?? '',
+        unit: a?.unit ?? DEFAULT_UNIT[editing.kind],
+        qty: '',
+        price: '',
+        amount: '',
+        date: todayIso(),
+        rate: t ? String(t.monthlyRatePct).replace('.', ',') : '',
+        minPay: t?.minPaymentKurus ? formatKurusPlain(t.minPaymentKurus) : '',
+      })
       setError(undefined)
     }
   }
@@ -566,9 +588,21 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
         first = { date: f.date, quantity: q, unitPriceKurus: p }
       }
     }
+    let debtTerms: DebtTerms | null | undefined
+    if (debt) {
+      const rate = f.rate.trim() ? Number(f.rate.trim().replace(',', '.')) : null
+      if (rate !== null && (!Number.isFinite(rate) || rate < 0 || rate > 100)) return setError('Aylık faiz oranı 0 ile 100 arasında olmalı.')
+      let minPay: number | null = null
+      if (f.minPay.trim()) {
+        const m = parseUserAmount(f.minPay)
+        if (!m.ok || m.kurus <= 0) return setError('Aylık ödeme için geçerli bir tutar girin.')
+        minPay = m.kurus
+      }
+      debtTerms = rate === null && minPay === null ? null : { monthlyRatePct: rate ?? 0, minPaymentKurus: minPay }
+    }
     setBusy(true)
     try {
-      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit }, first)
+      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms }, first)
       toast(isNew ? `${f.name.trim()} eklendi.` : 'Kaydedildi.')
       onClose()
     } catch (e) {
@@ -642,6 +676,16 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
               </Field>
             </>
           ))}
+        {debt && (
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Aylık faiz (%)" htmlFor="debt-rate" hint="Örn. kartta 4,25">
+              <Input id="debt-rate" inputMode="decimal" value={f.rate} onChange={(e) => set('rate', e.target.value)} placeholder="0" />
+            </Field>
+            <Field label="Aylık ödeme (TL)" htmlFor="debt-min" hint="Asgari ödeme veya taksit">
+              <Input id="debt-min" inputMode="decimal" value={f.minPay} onChange={(e) => set('minPay', e.target.value)} placeholder="0,00" />
+            </Field>
+          </div>
+        )}
         {isNew && (
           <Field label={debt ? 'Tarih' : balance ? 'Yatırma tarihi' : 'Alış tarihi'} htmlFor="asset-first-date">
             <Input id="asset-first-date" type="date" value={f.date} max={todayIso()} onChange={(e) => set('date', e.target.value)} />

@@ -51,6 +51,25 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
     if (url.pathname === '/auth/v1/recover') return json({})
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204 })
     if (url.pathname === '/rest/v1/rpc/ha_is_admin') return json(!!opts.admin)
+    if (url.pathname === '/functions/v1/coach-chat') {
+      bodies.chat = req.postDataJSON()
+      return json({ reply: 'Önce kredi kartı borcunu kapatalım; ardından ayda ayırdığınız tutarı yatırıma yönlendirirsiniz.' })
+    }
+    if (url.pathname === '/rest/v1/ha_coach_broadcasts')
+      return json([
+        {
+          id: 'b1',
+          day: '2026-10-06',
+          title: 'Günün ekonomi özeti',
+          summary: 'Bugün piyasada öne çıkanlar.',
+          created_at: '2026-10-06T05:00:00Z',
+          items: [
+            { kind: 'haber', text: 'Merkez bankası faiz kararını açıkladı.', source: '@ornekhaber', url: 'https://x.com/ornekhaber/status/1', publishedAt: '2026-10-06T04:00:00Z' },
+            { kind: 'tahmin', text: 'Bir ekonomist enflasyonun yavaşlamasını bekliyor.', source: 'Örnek RSS', url: 'https://ornek.test/haber/2', publishedAt: '2026-10-05T20:00:00Z' },
+          ],
+        },
+      ])
+    if (url.pathname === '/rest/v1/ha_news_sources') return json(opts.admin ? [{ id: 's1', kind: 'x', value: 'ornekhaber', label: 'Örnek Haber', active: true }] : [])
     if (url.pathname === '/rest/v1/rpc/ha_delete_my_account') return route.fulfill({ status: 204 })
     if (url.pathname === '/rest/v1/rpc/ha_admin_list_users') return opts.admin ? json(ADMIN_USERS) : json({ message: 'Bu işlem için yönetici yetkisi gerekir' }, 400)
     if (url.pathname.startsWith('/rest/v1/rpc/ha_admin_')) return opts.admin ? route.fulfill({ status: 204 }) : json({ message: 'yetki yok' }, 400)
@@ -358,4 +377,46 @@ test('Ayarlar: hesabımı sil, hesabı ve bu cihazdaki kayıtları siler', async
   await signIn(page, 'osman@ornek.com')
   await page.goto('./#/islemler')
   await expect(page.getByText('Silinecek kayıt').filter({ visible: true })).toHaveCount(0)
+})
+
+test('Plus+ koç: yapay zekâ izniyle sohbet, yalnızca özet bilgi gönderilir; günlük özet kaynaklı görünür', async ({ page }) => {
+  const calls = await mockSupabase(page, { admin: true })
+  await page.goto('./')
+  await signIn(page, 'osman@ornek.com')
+  await expect(page.getByRole('navigation', { name: 'Ana menü' })).toBeVisible()
+  await page.goto('./#/paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
+
+  await page.goto('./#/yolculuk')
+  await page.getByLabel(/Hedefte aylık yaşam gideri/).fill('25.000')
+  await page.getByLabel(/Aylık net gelir/).fill('50.000')
+  await page.getByLabel(/Zorunlu aylık giderler/).fill('20.000')
+  await page.getByRole('button', { name: 'Doğruladım, rotamı oluştur' }).click()
+  await expect(page.getByRole('region', { name: 'Finansal güvence' })).toBeVisible()
+
+  await page.goto('./#/koc')
+  const chat = page.getByRole('region', { name: 'Koç mesajları' })
+  // Günlük özet: madde türü, kaynak ve tarih
+  await expect(chat).toContainText('Günün ekonomi özeti')
+  await expect(chat).toContainText('Tahmin')
+  await expect(chat.getByRole('link', { name: /@ornekhaber/ })).toHaveAttribute('href', 'https://x.com/ornekhaber/status/1')
+
+  // İzin yokken serbest soru kapalı
+  const input = chat.getByLabel('Koça yazın')
+  await expect(input).toBeDisabled()
+  await page.getByRole('region', { name: 'Yapay zekâ sohbeti' }).getByRole('switch').click()
+  await expect(input).toBeEnabled()
+  await input.fill('Borcumu mu kapatayım yatırım mı yapayım?')
+  await chat.getByRole('button', { name: 'Gönder' }).click()
+  await expect(chat).toContainText('Önce kredi kartı borcunu kapatalım')
+  const sent = JSON.stringify(calls.bodies.chat)
+  expect(sent).toContain('aylikGelir')
+  expect(sent).toContain('50000')
+  expect(sent).not.toContain('osman@ornek.com')
+  await chat.getByRole('button', { name: 'Sohbeti sil' }).click()
+  await expect(chat).not.toContainText('Önce kredi kartı borcunu kapatalım')
+
+  // Yönetici haber kaynaklarını görür
+  await page.goto('./#/yonetim')
+  await expect(page.getByRole('list', { name: 'Kaynaklar' })).toContainText('@ornekhaber')
 })

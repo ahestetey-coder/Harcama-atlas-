@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatDate } from '../../domain/dates'
 import { formatKurus, formatKurusCompact } from '../../domain/money'
 import { useReducedMotion } from '../../lib/hooks'
@@ -316,6 +316,54 @@ export function ScenarioLines({ rows, caption }: { rows: ScenarioRow[]; caption:
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+/** Borç bakiyesi: plan ile yalnızca asgari ödeme karşılaştırması (ay ekseni). */
+export function DebtPayoffChart({ plan, minOnly }: { plan: number[]; minOnly: number[] | null }) {
+  const reduced = useReducedMotion()
+  const span = Math.min(Math.max(plan.length, Math.min(minOnly?.length ?? 0, plan.length * 2)), 120)
+  const rows = Array.from({ length: span }, (_, m) => ({ m, plan: plan[m] ?? 0, minOnly: minOnly ? (minOnly[m] ?? 0) : undefined }))
+  return (
+    <div>
+      <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted" aria-hidden>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--asset-1)' }} /> Bu planla
+        </span>
+        {minOnly && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> Yalnızca asgari ödeme
+          </span>
+        )}
+      </div>
+      <div className="mt-2 h-40" aria-hidden>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={rows} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="debt-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--asset-1)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--asset-1)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="m" type="number" domain={[0, span - 1]} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? 'Bugün' : `${v}. ay`)} />
+            <YAxis tickLine={false} axisLine={false} width={64} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => formatKurusCompact(v)} />
+            <Tooltip
+              cursor={{ stroke: 'var(--border-strong)' }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const p = payload[0].payload as (typeof rows)[number]
+                const lines: Array<[string, string]> = [['Bu planla', formatKurus(p.plan)]]
+                if (p.minOnly !== undefined) lines.push(['Yalnızca asgari', formatKurus(p.minOnly)])
+                return <TooltipBox title={p.m === 0 ? 'Bugün' : `${p.m}. ay sonu`} lines={lines} />
+              }}
+            />
+            {minOnly && <Area type="monotone" dataKey="minOnly" stroke="var(--subtle)" strokeWidth={2} strokeDasharray="4 4" fill="none" isAnimationActive={!reduced} />}
+            <Area type="monotone" dataKey="plan" stroke="var(--asset-1)" strokeWidth={2} fill="url(#debt-fill)" isAnimationActive={!reduced} animationDuration={1400} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }

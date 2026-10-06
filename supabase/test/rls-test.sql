@@ -268,4 +268,46 @@ do $$ begin
 exception when insufficient_privilege then null;
 end $$;
 reset role;
+-- Koç: haber kaynaklarını yalnızca yönetici yönetir; günlük özeti giriş yapan herkes okur
+insert into auth.users (id, email) values ('44444444-4444-4444-4444-444444444444', 'z@ornek.test');
+select pg_temp.as_user(:'osman');
+select public.ha_admin_add_news_source('x', 'https://x.com/Ornek_Hesap/status/1', 'Örnek') is not null as added_x \gset
+\if :added_x \else \echo 'HATA: X kaynağı eklenmedi' \q \endif
+select public.ha_admin_add_news_source('rss', 'https://ornek.test/rss', null) is not null as added_rss \gset
+do $$ begin
+  perform public.ha_admin_add_news_source('rss', 'http://guvensiz.test/rss', null);
+  raise exception 'HATA: https olmayan RSS kabul edildi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+select count(*) = 2 and bool_or(value = 'ornek_hesap') as sources_ok from public.ha_news_sources \gset
+\if :sources_ok \else \echo 'HATA: kaynak listesi' \q \endif
+reset role;
+insert into public.ha_coach_broadcasts (day, title, summary, items) values ('2026-10-06', 'Günün özeti', 'Özet', '[]');
+insert into public.ha_coach_usage (user_id, day, count) values ('44444444-4444-4444-4444-444444444444', '2026-10-06', 1);
+select pg_temp.as_user('44444444-4444-4444-4444-444444444444');
+select count(*) = 0 as hidden_sources from public.ha_news_sources \gset
+\if :hidden_sources \else \echo 'HATA: üye kaynakları gördü' \q \endif
+select count(*) = 1 as broadcast_read from public.ha_coach_broadcasts \gset
+\if :broadcast_read \else \echo 'HATA: günlük özet okunamadı' \q \endif
+do $$ begin
+  perform public.ha_admin_add_news_source('x', 'baskasi', null);
+  raise exception 'HATA: üye kaynak ekledi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+do $$ begin
+  insert into public.ha_coach_broadcasts (day, title, summary) values ('2026-10-07', 'Sahte', 'Sahte');
+  raise exception 'HATA: üye özet yazdı';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  perform * from public.ha_coach_usage;
+  raise exception 'HATA: kullanım sayacı okunabildi';
+exception when insufficient_privilege then null;
+end $$;
+select public.ha_delete_my_account();
+reset role;
+select count(*) = 0 as usage_gone from public.ha_coach_usage \gset
+\if :usage_gone \else \echo 'HATA: hesap silinince sayaç kaldı' \q \endif
 \echo 'TUM SQL TESTLERI GECTI'
