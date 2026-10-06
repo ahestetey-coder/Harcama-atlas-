@@ -327,3 +327,12 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **Hız:** Sayfa geçişindeki bekleyen çıkış animasyonu kaldırıldı (kısa giriş animasyonu kaldı). İşlem, kategori, grup, ayar ve üye verileri tek seferde okunup tüm sayfalarca paylaşılıyor; her geçişte IndexedDB yeniden okunmuyor. Sayfa kodları boşta önceden yükleniyor. Sabit arka plan yalnızca masaüstünde.
 - **"+" menüsü:** Ortadaki düğme artık "Ne eklemek istersiniz?" menüsünü açar: Gider, İade, Kart ödemesi; Ekstre yükle (PDF/CSV/Excel), Ekran görüntüsü, Fotoğraf çek; Kategori, Grup, Üye davet et. Seçilen belge doğrudan İçe aktar akışına gider ve yine yalnızca cihazda okunur. Masaüstünde "Gider ekle" yanındaki düğmeden aynı menü açılır.
 - **Sınır:** Gerçek iOS/Android klavye davranışı bu ortamda test edilemedi; Chromium mobil öykünmesiyle doğrulandı. Gerçek telefonda kontrol edilmeli.
+
+## 19. Mobil uygulama altyapısı (06.10.2026)
+
+- Aynı kod Capacitor 8 ile Android (`android/`) ve iOS (`ios/`) projesine çevrildi. Uygulama kimliği `com.harcamaatlasi.app` (mağazada yayınlandıktan sonra değiştirilemez). Web sürümü ve GitHub Pages aynen çalışmaya devam eder.
+- Uygulama simgesi ve açılış ekranı `assets/` içindeki görsellerden üretildi (`npx @capacitor/assets generate`).
+- Uygulama içinde servis çalışanı (PWA güncelleme sorusu) kapalıdır; güncellemeler mağazadan gelir. Durum çubuğu temaya uyar.
+- `.github/workflows/mobile.yml` her gönderimde Android hata ayıklama APK'sını derler (Artifacts'tan indirilebilir) ve iOS'u simülatör için imzasız derler.
+- Komutlar: `npm run mobile:sync`, `npm run mobile:android` (Android Studio), `npm run mobile:ios` (Mac + Xcode).
+- **Sınır:** Bu ortamda Android SDK indirilemediği için derleme yalnızca GitHub Actions'ta doğrulanır. Mağaza için imzalı sürüm, geliştirici hesapları açılınca eklenecek.

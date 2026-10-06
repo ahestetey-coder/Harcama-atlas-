@@ -1,12 +1,14 @@
 import { RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { isNativeApp } from '../lib/native'
 import { Button } from './ui/primitives'
 
 /** Servis çalışanını kaydeder (çevrimdışı kullanım) ve yeni sürüm hazır olduğunda sorar. */
 export function UpdatePrompt() {
   const [update, setUpdate] = useState<null | (() => void)>(null)
   useEffect(() => {
-    if (import.meta.env.DEV || !('serviceWorker' in navigator)) return
+    // Mağaza uygulamasında dosyalar uygulamayla gelir; güncelleme mağazadan yapılır.
+    if (import.meta.env.DEV || isNativeApp || !('serviceWorker' in navigator)) return
     let cancelled = false
     void import('virtual:pwa-register').then(({ registerSW }) => {
       if (cancelled) return

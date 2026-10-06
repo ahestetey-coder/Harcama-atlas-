@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { ThemePreference } from '../domain/types'
 import { readPref, writePref } from './prefs'
+import { syncNativeTheme } from '../lib/native'
 
 interface ThemeCtx {
   preference: ThemePreference
@@ -34,6 +35,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.theme = resolved
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#080d18' : '#f6f5f0')
+    syncNativeTheme(resolved)
   }, [resolved])
 
   const setPreference = useCallback((p: ThemePreference) => {
