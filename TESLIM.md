@@ -359,3 +359,10 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **Öneriler:** Son aylarda her ay benzer gün ve tutarda tekrarlanan harcamalar önerilir; kullanıcı "Ekle" demeden kaydedilmez, "×" ile gizlenen öneri tekrar gösterilmez.
 - **Hatırlatma:** Hatırlatma zamanı gelen ödemeler panelin üstünde ve "Önümüzdeki 30 gün" listesinde gösterilir. Telefon bildirimi (uygulama kapalıyken) henüz yok.
 - **Ay sonu tahmini** artık düzenli ödemeleri tempoya katmıyor; dönem sonuna kadar kalan düzenli ödeme ve taksitleri ayrıca ekliyor.
+
+## 23. Plus: birikim hedefleri ve ayrıntılı raporlar (06.10.2026)
+
+- **Birikim hedefleri** (`#/hedefler`): Tatil, Araç, Acil durum fonu, Ev, Eğitim hazır seçenekleri veya serbest ad; hedef tutar, isteğe bağlı hedef tarihi, simge ve renk. Her hedefte biriken tutar, ilerleme çubuğu, kalan tutar, hedef tarihe yetişmek için aylık gereken tutar, son 3 ayın ortalaması, "bu tempoyla" tahmini tamamlanma ayı ve durum (Yolunda, Geride, Tarihi geçti, Tarihsiz, Tamamlandı). Para ekleme ve çekme kaydedilir (biriken tutardan fazlası çekilemez), hareketler tek tek silinebilir, hedef arşivlenebilir. Yeni tablo `goals` (veritabanı şeması v7), yedeğe dahil. Para ekleme bir kayıttır, banka hesabında işlem yapmaz.
+- **Raporlar** (`#/raporlar`): seçili dönemin toplamı, önceki döneme göre fark ve son 3 dönem ortalaması; kategorilerin ortalamayla veya önceki dönemle karşılaştırması; en çok harcanan iş yerleri (önceki dönem tutarıyla); son 6 dönemin net harcama grafiği (ekran okuyucu için tablo).
+- **Tasarruf uyarıları** cihazda kurallarla hazırlanır: toplam harcama ortalamanın %15 ve 500 TL üstündeyse, bir kategori ortalamanın %30 ve 500 TL üstündeyse (olası tasarruf tutarıyla), daha önce görülmeyen bir iş yerine 2.000 TL ve üstü harcandıysa, bir kategori ortalamanın belirgin altındaysa. Süren dönemde "ortalamanın altında" mesajı verilmez. Hiçbir veri dışarı gönderilmez.
+- **Sınır:** Karşılaştırma için önceki dönemlerde kayıt gerekir; eşikler sabit kurallardır, kişiye göre öğrenmez.

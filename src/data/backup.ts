@@ -113,6 +113,19 @@ const recurringSchema = z.object({
   updatedAt: z.string(),
 })
 
+const goalSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  icon: z.string(),
+  color: z.string(),
+  targetKurus: kurus,
+  targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  contributions: z.array(z.object({ id: z.string().min(1), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), amountKurus: z.number().int() })),
+  archived: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
 const settingsSchema = z.object({
   id: z.literal('settings'),
   monthlyBudgetKurus: kurus.nullable(),
@@ -147,6 +160,8 @@ export const backupSchema = z.object({
     imports: z.array(importSchema),
     /** v6 öncesi yedeklerde yoktur. */
     recurring: z.array(recurringSchema).optional(),
+    /** v7 öncesi yedeklerde yoktur. */
+    goals: z.array(goalSchema).optional(),
     settings: settingsSchema.nullable(),
   }),
 })

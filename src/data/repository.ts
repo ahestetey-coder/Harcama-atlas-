@@ -2,6 +2,7 @@ import Dexie from 'dexie'
 import { APP_CONFIG } from '../config/app'
 import { merchantKey, normalizeText, cleanDescription } from '../domain/normalize'
 import { PRIORITY, validateRulePattern } from '../domain/rules'
+import type { GoalContribution, SavingsGoal } from '../domain/goals'
 import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from './backup'
 import { CURRENT_SCHEMA_VERSION, type AtlasDb } from './db'
@@ -501,10 +502,59 @@ export class AtlasRepository {
     if (!cur.includes(key)) await this.db.meta.put({ key: 'recurring-dismissed', value: [...cur, key] })
   }
 
+  // ---------- Birikim hedefleri (Plus) ----------
+
+  async saveGoal(input: Pick<SavingsGoal, 'name' | 'icon' | 'color' | 'targetKurus' | 'targetDate'> & { id?: string; archived?: boolean }): Promise<SavingsGoal> {
+    const name = input.name.trim().slice(0, 60)
+    if (!name) throw new UserFacingError('Hedefe bir ad verin.')
+    if (!Number.isInteger(input.targetKurus) || input.targetKurus <= 0) throw new UserFacingError('Geçerli bir hedef tutarı girin.')
+    if (input.targetDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.targetDate)) throw new UserFacingError('Geçerli bir tarih seçin.')
+    const now = nowIso()
+    const prev = input.id ? await this.db.goals.get(input.id) : undefined
+    const row: SavingsGoal = {
+      id: prev?.id ?? newId(),
+      name,
+      icon: input.icon,
+      color: input.color,
+      targetKurus: input.targetKurus,
+      targetDate: input.targetDate || null,
+      contributions: prev?.contributions ?? [],
+      archived: input.archived ?? prev?.archived ?? false,
+      createdAt: prev?.createdAt ?? now,
+      updatedAt: now,
+    }
+    await this.db.goals.put(row)
+    return row
+  }
+
+  async deleteGoal(id: string): Promise<void> {
+    await this.db.goals.delete(id)
+  }
+
+  /** Hedefe para ekler (pozitif) veya hedeften çeker (negatif). Birikim eksiye düşemez. */
+  async addGoalContribution(goalId: string, c: Omit<GoalContribution, 'id'>): Promise<void> {
+    if (!Number.isInteger(c.amountKurus) || c.amountKurus === 0) throw new UserFacingError('Geçerli bir tutar girin.')
+    await this.db.transaction('rw', this.db.goals, async () => {
+      const g = await this.db.goals.get(goalId)
+      if (!g) throw new UserFacingError('Hedef bulunamadı.')
+      const saved = g.contributions.reduce((s, x) => s + x.amountKurus, 0)
+      if (saved + c.amountKurus < 0) throw new UserFacingError('Biriktirdiğinizden fazlasını çekemezsiniz.')
+      await this.db.goals.put({ ...g, contributions: [...g.contributions, { ...c, id: newId() }], updatedAt: nowIso() })
+    })
+  }
+
+  async removeGoalContribution(goalId: string, contributionId: string): Promise<void> {
+    await this.db.transaction('rw', this.db.goals, async () => {
+      const g = await this.db.goals.get(goalId)
+      if (!g) return
+      await this.db.goals.put({ ...g, contributions: g.contributions.filter((x) => x.id !== contributionId), updatedAt: nowIso() })
+    })
+  }
+
   // ---------- Yedekleme ----------
 
   async exportBackup(): Promise<Backup> {
-    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring], async () => ({
+    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring, this.db.goals], async () => ({
       format: BACKUP_FORMAT,
       backupVersion: BACKUP_VERSION,
       schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -518,6 +568,7 @@ export class AtlasRepository {
         rules: await this.db.rules.toArray(),
         imports: await this.db.imports.toArray(),
         recurring: await this.db.recurring.toArray(),
+        goals: await this.db.goals.toArray(),
         settings: (await this.db.settings.get('settings')) ?? null,
       },
     }))
@@ -540,7 +591,7 @@ export class AtlasRepository {
    */
   async restoreBackup(backup: Backup, mode: RestoreMode): Promise<RestoreReport> {
     const d = backup.data
-    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring]
+    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring, this.db.goals]
     return this.db.transaction('rw', tables, async () => {
       // Cihazın kendi üye kimliği korunur (bulut hesabı bu cihaza bağlıdır)
       const cur = await this.getSettings()
@@ -564,6 +615,7 @@ export class AtlasRepository {
         await this.db.imports.bulkAdd(d.imports)
         await this.db.transactions.bulkAdd(d.transactions)
         if (d.recurring?.length) await this.db.recurring.bulkAdd(d.recurring)
+        if (d.goals?.length) await this.db.goals.bulkAdd(d.goals)
         const members: Member[] = d.members ?? []
         if (members.length) await this.db.members.bulkPut(members)
         if (selfBefore) await this.db.members.put(selfBefore)
@@ -591,13 +643,17 @@ export class AtlasRepository {
         const existing = new Set((await this.db.recurring.bulkGet(d.recurring.map((r) => r.id))).filter(Boolean).map((r) => r!.id))
         await this.db.recurring.bulkAdd(d.recurring.filter((r) => !existing.has(r.id)))
       }
+      if (d.goals?.length) {
+        const existing = new Set((await this.db.goals.bulkGet(d.goals.map((g) => g.id))).filter(Boolean).map((g) => g!.id))
+        await this.db.goals.bulkAdd(d.goals.filter((g) => !existing.has(g.id)))
+      }
       return report
     })
   }
 
   /** Bütün verileri siler ve başlangıç kategorileri/kurallarıyla yeniden başlatır. */
   async clearAll(): Promise<void> {
-    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.meta, this.db.recurring]
+    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.meta, this.db.recurring, this.db.goals]
     await this.db.transaction('rw', tables, async () => {
       const cur = await this.getSettings()
       const selfBefore = cur.selfMemberId ? await this.db.members.get(cur.selfMemberId) : undefined

@@ -27,6 +27,8 @@ const loaders = {
   budget: () => import('./pages/BudgetPage'),
   plans: () => import('./pages/PlansPage'),
   payments: () => import('./pages/PaymentsPage'),
+  goals: () => import('./pages/GoalsPage'),
+  reports: () => import('./pages/ReportsPage'),
 }
 const TransactionsPage = lazy(loaders.transactions)
 const ImportPage = lazy(loaders.import)
@@ -40,6 +42,8 @@ const AdminPage = lazy(loaders.admin)
 const BudgetPage = lazy(loaders.budget)
 const PlansPage = lazy(loaders.plans)
 const PaymentsPage = lazy(loaders.payments)
+const GoalsPage = lazy(loaders.goals)
+const ReportsPage = lazy(loaders.reports)
 
 /** Uygulama açıldıktan sonra boşta kalınca bütün sayfalar önceden yüklenir; geçişte bekleme olmaz. */
 function usePrefetchPages() {
@@ -104,6 +108,8 @@ const router = createHashRouter([
       { path: '/butce', element: <BudgetPage /> },
       { path: '/paketler', element: <PlansPage /> },
       { path: '/odemeler', element: <PaymentsPage /> },
+      { path: '/hedefler', element: <GoalsPage /> },
+      { path: '/raporlar', element: <ReportsPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

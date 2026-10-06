@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createDb, DEMO_DB_NAME, REAL_DB_NAME } from '../data/db'
 import { AtlasRepository } from '../data/repository'
+import type { SavingsGoal } from '../domain/goals'
 import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
 import { readPref, writePref } from './prefs'
 import { useUi } from './ui'
@@ -94,6 +95,7 @@ interface LiveData {
   settings?: Settings
   members?: Member[]
   recurring?: RecurringPayment[]
+  goals?: SavingsGoal[]
 }
 
 const LiveCtx = createContext<LiveData>({})
@@ -109,8 +111,14 @@ function LiveProvider({ repo, children }: { repo: AtlasRepository; children: Rea
   const settings = useLiveQuery(() => repo.getSettings(), [repo])
   const members = useLiveQuery(() => repo.db.members.toArray(), [repo])
   const recurring = useLiveQuery(() => repo.db.recurring.toArray(), [repo])
-  const value = useMemo(() => ({ transactions, categories, groups, settings, members, recurring }), [transactions, categories, groups, settings, members, recurring])
+  const goals = useLiveQuery(() => repo.db.goals.toArray(), [repo])
+  const value = useMemo(() => ({ transactions, categories, groups, settings, members, recurring, goals }), [transactions, categories, groups, settings, members, recurring, goals])
   return <LiveCtx.Provider value={value}>{children}</LiveCtx.Provider>
+}
+
+/** Plus birikim hedefleri (canlı). */
+export function useGoals(): SavingsGoal[] | undefined {
+  return useContext(LiveCtx).goals
 }
 
 /** Plus düzenli ödemeler (canlı). */

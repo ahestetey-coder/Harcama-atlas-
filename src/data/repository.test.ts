@@ -46,7 +46,7 @@ describe('ilk kurulum ve göç', () => {
     const cats = await db.categories.toArray()
     expect(cats.map((c) => c.name)).toEqual(expect.arrayContaining(['Market', 'Akaryakıt', 'Restoran/Kafe', 'Ulaşım', 'Faturalar', 'Kira/Ev', 'Sağlık', 'Eğitim', 'Giyim', 'Bebek/Çocuk', 'Eğlence', 'Abonelikler', 'Diğer']))
     expect(await db.rules.count()).toBeGreaterThan(20)
-    expect(db.verno).toBe(6)
+    expect(db.verno).toBe(7)
     const selfId = (await repo.getSettings()).selfMemberId
     expect(selfId).toBeTruthy()
     expect((await db.members.get(selfId!))?.name).toBe('Ben')
@@ -167,11 +167,30 @@ describe('kategoriler', () => {
   })
 })
 
+describe('birikim hedefleri', () => {
+  it('para ekler, çeker ve eksiye düşürmez', async () => {
+    const g = await repo.saveGoal({ name: ' Araç ', icon: 'Car', color: '#000', targetKurus: 100000, targetDate: null })
+    expect(g.name).toBe('Araç')
+    await repo.addGoalContribution(g.id, { date: '2026-09-01', amountKurus: 40000 })
+    await repo.addGoalContribution(g.id, { date: '2026-09-02', amountKurus: -10000 })
+    await expect(repo.addGoalContribution(g.id, { date: '2026-09-03', amountKurus: -40000 })).rejects.toBeInstanceOf(UserFacingError)
+    const saved = (await db.goals.get(g.id))!
+    expect(saved.contributions.reduce((s, c) => s + c.amountKurus, 0)).toBe(30000)
+    await repo.removeGoalContribution(g.id, saved.contributions[0].id)
+    expect((await db.goals.get(g.id))!.contributions).toHaveLength(1)
+    await expect(repo.saveGoal({ name: '', icon: 'x', color: '#000', targetKurus: 1, targetDate: null })).rejects.toBeInstanceOf(UserFacingError)
+    await repo.deleteGoal(g.id)
+    expect(await db.goals.count()).toBe(0)
+  })
+})
+
 describe('yedekleme / geri yükleme', () => {
   it('tam yedek alır, doğrular ve değiştirerek geri yükler', async () => {
     await repo.addTransaction({ date: '2026-09-01', amountKurus: 12345, type: 'expense', description: 'A', categoryId: 'cat-market', note: 'not' })
     await repo.saveSettings({ monthlyBudgetKurus: 5000000, budgetPlan: { categoryLimits: { 'cat-market': 100000 }, weeklyKurus: 50000, carryover: true, warnPct: 80 } })
     await repo.saveRecurring({ name: 'Netflix', kind: 'subscription', amountKurus: 22999, categoryId: null, cadence: 'monthly', startDate: '2026-09-15', reminderDays: 3, active: true })
+    const goal = await repo.saveGoal({ name: 'Tatil', icon: 'Plane', color: '#0ea5e9', targetKurus: 3000000, targetDate: '2027-06-30' })
+    await repo.addGoalContribution(goal.id, { date: '2026-09-10', amountKurus: 500000 })
     const backup = await repo.exportBackup()
     const text = JSON.stringify(backup)
     const parsed = parseBackup(text)
@@ -185,6 +204,7 @@ describe('yedekleme / geri yükleme', () => {
     expect((await repo.getSettings()).monthlyBudgetKurus).toBe(5000000)
     expect((await repo.getSettings()).budgetPlan?.categoryLimits['cat-market']).toBe(100000)
     expect(await db.recurring.toArray()).toMatchObject([{ name: 'Netflix', matchKey: 'NETFLIX', amountKurus: 22999 }])
+    expect(await db.goals.toArray()).toMatchObject([{ name: 'Tatil', contributions: [{ amountKurus: 500000 }] }])
   })
   it('birleştirmede mevcut kayıtları ezmez', async () => {
     const t = await repo.addTransaction({ date: '2026-09-01', amountKurus: 100, type: 'expense', description: 'A', categoryId: 'cat-market' })
