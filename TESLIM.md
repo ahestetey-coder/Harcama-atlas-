@@ -350,3 +350,12 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **Paketler sayfası** (`#/paketler`): üç paketin karşılaştırması; hazır olan özellikler işaretli, diğerleri "Yakında".
 - **Plus bütçe planı** (`#/butce`): kategori limitleri, haftalık (Pazartesi–Pazar) bütçe, kullanılmayan bütçenin bir sonraki döneme devri (yalnızca bir dönem, birikmez), %70/%80/%90 uyarı eşiği, uyarı listesi ve günlük ortalamaya dayalı ay sonu tahmini. Hesaplar kişisel (Tümü) net gidere göre yapılır. Ayarlar kaydında (`budgetPlan`) saklanır ve yedeğe dahildir. Panelin bütçe kartında uyarı sayısı görünür.
 - **Sınır:** Ay sonu tahmini henüz abonelik/düzenli ödemeleri ayrıca hesaba katmıyor; o özellik eklenince katılacak. Uyarılar uygulama içinde gösterilir, telefon bildirimi henüz yok.
+
+## 22. Plus: düzenli ödemeler, taksitler ve hatırlatmalar (06.10.2026)
+
+- **Düzenli ödemeler** (`#/odemeler`): abonelik, düzenli ödeme (kira, fatura) veya elle taksit eklenir; haftalık/aylık/yıllık sıklık, ilk ödeme günü, kategori, hatırlatma (ödeme günü, 1, 3 veya 7 gün önce), durdurma. Yeni tablo `recurring` (veritabanı şeması v6), yedeğe dahil.
+- **Taksitler:** İçe aktarılan ekstrelerdeki "5/12 taksit" bilgisinden kalan taksitler, son taksit tarihi ve kalan tutar otomatik çıkarılır; ekstrede görünmeyen taksit elle eklenebilir.
+- **Gelecek dönemlerin ödeme yükü:** önümüzdeki 6 dönem için düzenli ödeme ve taksit toplamı (yığılmış çubuk, ekran okuyucu için tablo).
+- **Öneriler:** Son aylarda her ay benzer gün ve tutarda tekrarlanan harcamalar önerilir; kullanıcı "Ekle" demeden kaydedilmez, "×" ile gizlenen öneri tekrar gösterilmez.
+- **Hatırlatma:** Hatırlatma zamanı gelen ödemeler panelin üstünde ve "Önümüzdeki 30 gün" listesinde gösterilir. Telefon bildirimi (uygulama kapalıyken) henüz yok.
+- **Ay sonu tahmini** artık düzenli ödemeleri tempoya katmıyor; dönem sonuna kadar kalan düzenli ödeme ve taksitleri ayrıca ekliyor.

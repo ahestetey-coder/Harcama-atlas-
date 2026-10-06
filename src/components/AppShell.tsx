@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Database, FileUp, FlaskConical, History, LayoutDashboard, LayoutGrid, ListOrdered, LogOut, Menu, Moon, Plus, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, Users } from 'lucide-react'
+import { Database, FileUp, FlaskConical, History, LayoutDashboard, LayoutGrid, ListOrdered, LogOut, Menu, Moon, Plus, Repeat, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, Users } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -20,6 +20,7 @@ const NAV = [
   { to: '/ice-aktar', label: 'İçe aktar', icon: FileUp },
   { to: '/kategoriler', label: 'Kategoriler ve gruplar', short: 'Kategoriler', icon: Tags },
   { to: '/butce', label: 'Bütçe planı', short: 'Bütçe', icon: Target },
+  { to: '/odemeler', label: 'Düzenli ödemeler', short: 'Ödemeler', icon: Repeat },
   { to: '/aktarimlar', label: 'Aktarım geçmişi', short: 'Aktarımlar', icon: History },
   { to: '/uyeler', label: 'Üyeler ve paylaşım', short: 'Üyeler', icon: Users },
   { to: '/yedekleme', label: 'Yedekleme ve veri', short: 'Yedekleme', icon: Database },

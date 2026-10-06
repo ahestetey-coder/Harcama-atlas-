@@ -97,6 +97,22 @@ const importSchema = z.object({
   accountAlias: z.string().optional(),
 })
 
+const recurringSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  kind: z.enum(['subscription', 'bill', 'installment']),
+  amountKurus: kurus,
+  categoryId: z.string().nullable(),
+  cadence: z.enum(['weekly', 'monthly', 'yearly']),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  occurrences: z.number().int().min(1).max(120).nullable().optional(),
+  reminderDays: z.number().int().min(0).max(14),
+  matchKey: z.string().optional(),
+  active: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
 const settingsSchema = z.object({
   id: z.literal('settings'),
   monthlyBudgetKurus: kurus.nullable(),
@@ -129,6 +145,8 @@ export const backupSchema = z.object({
     members: z.array(memberSchema).optional(),
     rules: z.array(ruleSchema),
     imports: z.array(importSchema),
+    /** v6 öncesi yedeklerde yoktur. */
+    recurring: z.array(recurringSchema).optional(),
     settings: settingsSchema.nullable(),
   }),
 })

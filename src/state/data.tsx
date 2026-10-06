@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createDb, DEMO_DB_NAME, REAL_DB_NAME } from '../data/db'
 import { AtlasRepository } from '../data/repository'
-import type { Category, ImportRecord, Member, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
+import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
 import { readPref, writePref } from './prefs'
 import { useUi } from './ui'
 
@@ -93,6 +93,7 @@ interface LiveData {
   groups?: SpendGroup[]
   settings?: Settings
   members?: Member[]
+  recurring?: RecurringPayment[]
 }
 
 const LiveCtx = createContext<LiveData>({})
@@ -107,8 +108,14 @@ function LiveProvider({ repo, children }: { repo: AtlasRepository; children: Rea
   const groups = useLiveQuery(() => repo.db.groups.orderBy('order').toArray(), [repo])
   const settings = useLiveQuery(() => repo.getSettings(), [repo])
   const members = useLiveQuery(() => repo.db.members.toArray(), [repo])
-  const value = useMemo(() => ({ transactions, categories, groups, settings, members }), [transactions, categories, groups, settings, members])
+  const recurring = useLiveQuery(() => repo.db.recurring.toArray(), [repo])
+  const value = useMemo(() => ({ transactions, categories, groups, settings, members, recurring }), [transactions, categories, groups, settings, members, recurring])
   return <LiveCtx.Provider value={value}>{children}</LiveCtx.Provider>
+}
+
+/** Plus düzenli ödemeler (canlı). */
+export function useRecurring(): RecurringPayment[] | undefined {
+  return useContext(LiveCtx).recurring
 }
 
 /** Üyeler (canlı, paylaşılan). */

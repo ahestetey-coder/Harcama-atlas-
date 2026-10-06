@@ -11,6 +11,8 @@ import { usePlan } from '../state/plan'
 /** Uygulamada kullanılabilir olan Plus/Plus+ özellikleri. Diğerleri "Yakında" gösterilir. */
 const READY: Partial<Record<Feature, string>> = {
   advancedBudget: '/butce',
+  installments: '/odemeler',
+  subscriptions: '/odemeler',
 }
 
 interface Item {

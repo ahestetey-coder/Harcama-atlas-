@@ -1,20 +1,23 @@
 import { AlertTriangle, CalendarRange, Pencil, Plus, Repeat, Target, Trash2, TrendingUp } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { CategoryIcon, MonthSwitcher } from '../components/common'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, IconButton, Input, Segmented, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
-import { budgetStatus, DEFAULT_BUDGET_PLAN, type BudgetPlan, type LimitStatus } from '../domain/budget'
-import { formatDate, periodLabel, todayIso } from '../domain/dates'
+import { DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus, type LimitStatus } from '../domain/budget'
+import { formatDate, periodLabel } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { cn } from '../lib/cn'
 import { usePersonalCycle } from '../state/cycle'
 import { useCategories, useCategoryMap, useRepo, useSettings } from '../state/data'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
+import { useBudgetStatus } from '../state/budget'
+
+const EMPTY_STATUS: BudgetStatus = { total: null, categories: [], week: null, forecast: null, warnings: [] }
 
 type Editing = { kind: 'total' } | { kind: 'week' } | { kind: 'category'; categoryId: string | null } | null
 
@@ -63,11 +66,10 @@ function BudgetContent() {
   const repo = useRepo()
   const { month, toast } = useUi()
   const [editing, setEditing] = useState<Editing>(null)
-  const today = todayIso()
   const plan: BudgetPlan = settings?.budgetPlan ?? DEFAULT_BUDGET_PLAN
   const monthly = settings?.monthlyBudgetKurus ?? null
 
-  const s = useMemo(() => budgetStatus(personal?.counted ?? [], month, startDay, today, monthly, plan), [personal, month, startDay, today, monthly, plan])
+  const s = useBudgetStatus(month) ?? EMPTY_STATUS
 
   const savePlan = async (patch: Partial<BudgetPlan>, msg?: string) => {
     try {
@@ -139,6 +141,7 @@ function BudgetContent() {
             <p className="mt-2 text-[12.5px] text-subtle">
               Dönemin {s.forecast.totalDays} gününün {s.forecast.elapsedDays}. günündesiniz; şimdiye kadar {formatKurus(s.forecast.spentKurus)} harcadınız. Tahmin bugüne kadarki günlük
               ortalamanıza dayanır, kesin değildir.
+              {s.forecast.remainingFixedKurus > 0 && ` Dönem sonuna kadar kalan ${formatKurus(s.forecast.remainingFixedKurus)} düzenli ödeme ve taksit tahmine eklendi.`}
             </p>
           </>
         ) : (

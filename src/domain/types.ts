@@ -160,6 +160,42 @@ export interface Settings {
   updatedAt: string
 }
 
+export type RecurringKind = 'subscription' | 'bill' | 'installment'
+export type RecurringCadence = 'weekly' | 'monthly' | 'yearly'
+
+/** Plus: abonelik, düzenli ödeme (kira, fatura) veya elle eklenen taksitli alışveriş. */
+export interface RecurringPayment {
+  id: string
+  name: string
+  kind: RecurringKind
+  amountKurus: number
+  categoryId: string | null
+  cadence: RecurringCadence
+  /** İlk ödeme günü; sonrakiler buradan sıklığa göre hesaplanır. */
+  startDate: IsoDate
+  /** Toplam ödeme sayısı (taksitte taksit sayısı). Boşsa süresiz. */
+  occurrences?: number | null
+  /** Ödemeden kaç gün önce hatırlatılsın (0 = aynı gün). */
+  reminderDays: number
+  /** Ödendiğini işlemlerden tanımak için iş yeri anahtarı. */
+  matchKey?: string
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export const RECURRING_KIND_LABEL: Record<RecurringKind, string> = {
+  subscription: 'Abonelik',
+  bill: 'Düzenli ödeme',
+  installment: 'Taksit',
+}
+
+export const CADENCE_LABEL: Record<RecurringCadence, string> = {
+  weekly: 'Haftalık',
+  monthly: 'Aylık',
+  yearly: 'Yıllık',
+}
+
 export const TX_TYPE_LABEL: Record<TxType, string> = {
   expense: 'Gider',
   refund: 'İade',

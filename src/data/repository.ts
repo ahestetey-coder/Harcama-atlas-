@@ -2,7 +2,7 @@ import Dexie from 'dexie'
 import { APP_CONFIG } from '../config/app'
 import { merchantKey, normalizeText, cleanDescription } from '../domain/normalize'
 import { PRIORITY, validateRulePattern } from '../domain/rules'
-import type { Category, ImportRecord, Member, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
+import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from './backup'
 import { CURRENT_SCHEMA_VERSION, type AtlasDb } from './db'
 import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, buildSelfMember, OTHER_CATEGORY_ID } from './seed'
@@ -464,10 +464,47 @@ export class AtlasRepository {
     await this.db.settings.put({ ...cur, ...patch, id: 'settings', updatedAt: nowIso() })
   }
 
+  // ---------- Düzenli ödemeler (Plus) ----------
+
+  async saveRecurring(input: Omit<RecurringPayment, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<RecurringPayment> {
+    const name = cleanDescription(input.name).slice(0, 80)
+    if (!name) throw new UserFacingError('Bir ad girin.')
+    if (!Number.isInteger(input.amountKurus) || input.amountKurus <= 0) throw new UserFacingError('Geçerli bir tutar girin.')
+    if (input.occurrences != null && (!Number.isInteger(input.occurrences) || input.occurrences < 1 || input.occurrences > 120))
+      throw new UserFacingError('Taksit sayısı 1 ile 120 arasında olmalı.')
+    const now = nowIso()
+    const prev = input.id ? await this.db.recurring.get(input.id) : undefined
+    const row: RecurringPayment = {
+      ...input,
+      name,
+      id: prev?.id ?? newId(),
+      reminderDays: Math.max(0, Math.min(14, Math.round(input.reminderDays))),
+      matchKey: input.matchKey || merchantKey(name) || undefined,
+      createdAt: prev?.createdAt ?? now,
+      updatedAt: now,
+    }
+    await this.db.recurring.put(row)
+    return row
+  }
+
+  async deleteRecurring(id: string): Promise<void> {
+    await this.db.recurring.delete(id)
+  }
+
+  /** Kullanıcının "önerme" dediği düzenli ödeme önerileri (iş yeri anahtarları). */
+  async dismissedRecurring(): Promise<string[]> {
+    return ((await this.db.meta.get('recurring-dismissed'))?.value as string[] | undefined) ?? []
+  }
+
+  async dismissRecurring(key: string): Promise<void> {
+    const cur = await this.dismissedRecurring()
+    if (!cur.includes(key)) await this.db.meta.put({ key: 'recurring-dismissed', value: [...cur, key] })
+  }
+
   // ---------- Yedekleme ----------
 
   async exportBackup(): Promise<Backup> {
-    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings], async () => ({
+    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring], async () => ({
       format: BACKUP_FORMAT,
       backupVersion: BACKUP_VERSION,
       schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -480,6 +517,7 @@ export class AtlasRepository {
         members: await this.db.members.toArray(),
         rules: await this.db.rules.toArray(),
         imports: await this.db.imports.toArray(),
+        recurring: await this.db.recurring.toArray(),
         settings: (await this.db.settings.get('settings')) ?? null,
       },
     }))
@@ -502,7 +540,7 @@ export class AtlasRepository {
    */
   async restoreBackup(backup: Backup, mode: RestoreMode): Promise<RestoreReport> {
     const d = backup.data
-    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings]
+    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring]
     return this.db.transaction('rw', tables, async () => {
       // Cihazın kendi üye kimliği korunur (bulut hesabı bu cihaza bağlıdır)
       const cur = await this.getSettings()
@@ -525,6 +563,7 @@ export class AtlasRepository {
         await this.db.rules.bulkAdd(d.rules)
         await this.db.imports.bulkAdd(d.imports)
         await this.db.transactions.bulkAdd(d.transactions)
+        if (d.recurring?.length) await this.db.recurring.bulkAdd(d.recurring)
         const members: Member[] = d.members ?? []
         if (members.length) await this.db.members.bulkPut(members)
         if (selfBefore) await this.db.members.put(selfBefore)
@@ -548,13 +587,17 @@ export class AtlasRepository {
       await mergeTable(this.db.rules as unknown as Dexie.Table<Rule, string>, d.rules, 'rules')
       await mergeTable(this.db.imports as unknown as Dexie.Table<ImportRecord, string>, d.imports, 'imports')
       await mergeTable(this.db.transactions as unknown as Dexie.Table<Transaction, string>, d.transactions, 'transactions')
+      if (d.recurring?.length) {
+        const existing = new Set((await this.db.recurring.bulkGet(d.recurring.map((r) => r.id))).filter(Boolean).map((r) => r!.id))
+        await this.db.recurring.bulkAdd(d.recurring.filter((r) => !existing.has(r.id)))
+      }
       return report
     })
   }
 
   /** Bütün verileri siler ve başlangıç kategorileri/kurallarıyla yeniden başlatır. */
   async clearAll(): Promise<void> {
-    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.meta]
+    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.meta, this.db.recurring]
     await this.db.transaction('rw', tables, async () => {
       const cur = await this.getSettings()
       const selfBefore = cur.selfMemberId ? await this.db.members.get(cur.selfMemberId) : undefined

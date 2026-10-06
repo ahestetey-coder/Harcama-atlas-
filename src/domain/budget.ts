@@ -45,8 +45,10 @@ export interface Forecast {
   elapsedDays: number
   totalDays: number
   spentKurus: number
-  /** Bugüne kadarki günlük ortalamayla dönem sonu net gider tahmini. */
+  /** Gerçekleşen + kalan günler için harcama temposu + kalan düzenli ödemeler/taksitler. */
   projectedKurus: number
+  /** Tahmine eklenen, bugünden sonra kalan düzenli ödeme ve taksitler. */
+  remainingFixedKurus: number
   /** Toplam bütçe varsa tahminin bütçeye göre durumu. */
   vsBudgetKurus: number | null
 }
@@ -87,6 +89,7 @@ export function weekStart(date: IsoDate): IsoDate {
 
 /**
  * Seçili dönemin bütçe durumu.
+ * - Ay sonu tahmini = gerçekleşen + (düzenli ödemeler hariç günlük tempo × kalan gün) + kalan düzenli ödemeler.
  * - Harcama net gidere göre ölçülür (iadeler düşülür, kart ödemesi/transfer sayılmaz).
  * - Devir yalnızca bir önceki dönemden gelir ve o dönemde kayıt varsa uygulanır; birikerek büyümez.
  * - Haftalık bütçe ve tahmin yalnızca içinde bulunulan dönem için hesaplanır.
@@ -98,6 +101,7 @@ export function budgetStatus(
   today: IsoDate,
   monthlyBudgetKurus: number | null,
   plan: BudgetPlan,
+  fixed: { fixedSpentKurus: number; remainingKurus: number } = { fixedSpentKurus: 0, remainingKurus: 0 },
 ): BudgetStatus {
   const prev = addMonths(month, -1)
   let spent = 0
@@ -141,8 +145,17 @@ export function budgetStatus(
     const { start } = periodRange(month, startDay)
     const totalDays = periodLength(month, startDay)
     const elapsedDays = Math.min(totalDays, diffDays(today, start) + 1)
-    const projected = Math.round((Math.max(0, spent) / elapsedDays) * totalDays)
-    forecast = { elapsedDays, totalDays, spentKurus: spent, projectedKurus: projected, vsBudgetKurus: total ? projected - total.effectiveKurus : null }
+    // Düzenli ödemeler tempoya katılmaz (bir kez ödenir); kalanları ayrıca eklenir.
+    const variable = Math.max(0, spent - fixed.fixedSpentKurus)
+    const projected = Math.round(spent + (variable / elapsedDays) * (totalDays - elapsedDays) + fixed.remainingKurus)
+    forecast = {
+      elapsedDays,
+      totalDays,
+      spentKurus: spent,
+      projectedKurus: projected,
+      remainingFixedKurus: fixed.remainingKurus,
+      vsBudgetKurus: total ? projected - total.effectiveKurus : null,
+    }
   }
 
   const warnings: BudgetStatus['warnings'] = []

@@ -23,7 +23,7 @@ import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 import { usePlan } from '../state/plan'
 import { PlanBadge } from '../components/PlanGate'
-import { budgetStatus, DEFAULT_BUDGET_PLAN } from '../domain/budget'
+import { useBudgetStatus, useDuePayments } from '../state/budget'
 
 const MAX_SLICES = 7
 
@@ -182,6 +182,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      <DueBanner />
       {!hasData ? (
         <Card>
           <EmptyState
@@ -468,33 +469,47 @@ function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareW
 }
 
 /** Panelde Plus bütçe planına geçiş: Plus'ta uyarı sayısı, Ücretsiz pakette tanıtım. */
+/** Plus: hatırlatma zamanı gelen düzenli ödemeler (panelin üstünde). */
+function DueBanner() {
+  const { has } = usePlan()
+  const due = useDuePayments(has('subscriptions'))
+  if (!due.length) return null
+  return (
+    <Link to="/odemeler" className="mb-4 block rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-[13px] text-ink hover:brightness-105" aria-label="Yaklaşan ödemeler">
+      {due.slice(0, 3).map((d) => (
+        <div key={`${d.id}:${d.date}`} className="flex items-center gap-2 py-0.5">
+          <CalendarClock className="size-4 shrink-0 text-warning" />
+          <span className="min-w-0 flex-1 truncate">
+            <strong className="font-semibold">{d.name}</strong> · {d.date === todayIso() ? 'bugün' : formatDate(d.date, 'long')}
+          </span>
+          <span className="num shrink-0 font-medium">{formatKurus(d.amountKurus)}</span>
+        </div>
+      ))}
+      {due.length > 3 && <div className="mt-0.5 text-subtle">+{due.length - 3} ödeme daha</div>}
+    </Link>
+  )
+}
+
 function BudgetPlanLink() {
   const { has } = usePlan()
-  const personal = usePersonalTransactions()
-  const startDay = usePersonalCycle()
-  const settings = useSettings()
   const { month } = useUi()
   const enabled = has('advancedBudget')
-  const warnings = useMemo(
-    () =>
-      enabled && personal && settings
-        ? budgetStatus(personal.counted, month, startDay, todayIso(), settings.monthlyBudgetKurus, settings.budgetPlan ?? DEFAULT_BUDGET_PLAN).warnings
-        : [],
-    [enabled, personal, settings, month, startDay],
-  )
+  const warnings = useBudgetStatus(month, enabled)?.warnings ?? []
   const over = warnings.some((w) => w.status.state === 'over')
   return (
-    <Link to="/butce" className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-[13px] font-medium text-accent hover:underline">
-      <span className="flex items-center gap-2">
-        {enabled ? 'Bütçe planı' : 'Kategori limitleri ve ay sonu tahmini'}
-        {!enabled && <PlanBadge plan="plus" />}
-      </span>
-      {warnings.length > 0 ? (
-        <span className={cn('rounded-full px-2 py-0.5 text-[11.5px] font-semibold', over ? 'bg-danger-soft text-danger' : 'bg-warning-soft text-warning')}>{warnings.length} uyarı</span>
-      ) : (
-        <ChevronRight className="size-4" />
-      )}
-    </Link>
+    <>
+      <Link to="/butce" className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-[13px] font-medium text-accent hover:underline">
+        <span className="flex items-center gap-2">
+          {enabled ? 'Bütçe planı' : 'Kategori limitleri ve ay sonu tahmini'}
+          {!enabled && <PlanBadge plan="plus" />}
+        </span>
+        {warnings.length > 0 ? (
+          <span className={cn('rounded-full px-2 py-0.5 text-[11.5px] font-semibold', over ? 'bg-danger-soft text-danger' : 'bg-warning-soft text-warning')}>{warnings.length} uyarı</span>
+        ) : (
+          <ChevronRight className="size-4" />
+        )}
+      </Link>
+    </>
   )
 }
 
