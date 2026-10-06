@@ -1,6 +1,9 @@
 import { CloudOff, Download, FlaskConical, Monitor, Moon, Repeat, RotateCcw, ScanText, Sun, Target } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AccountCard } from '../components/AccountCard'
+import { Link } from 'react-router-dom'
+import { PLAN_LABEL } from '../domain/plans'
+import { usePlan } from '../state/plan'
 import { PageHeader } from '../components/AppShell'
 import { CycleSelect } from '../components/common'
 import { ConfirmDialog } from '../components/ui/Modal'
@@ -56,6 +59,7 @@ export default function SettingsPage() {
       <PageHeader title="Ayarlar" subtitle={`${APP_CONFIG.name} · sürüm 1.0`} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AccountCard />
+        <PlanCard />
         <Card className="p-5">
           <h2 className="font-display text-base font-semibold">Görünüm</h2>
           <p className="mt-1 text-sm text-muted">Tema seçiminiz bu cihazda hatırlanır.</p>
@@ -211,5 +215,21 @@ export default function SettingsPage() {
         Demo veritabanı silinip örnek verilerle yeniden doldurulur. Gerçek verilerinize dokunulmaz.
       </ConfirmDialog>
     </div>
+  )
+}
+
+function PlanCard() {
+  const { plan, preview } = usePlan()
+  return (
+    <Card className="p-5">
+      <h2 className="font-display text-base font-semibold">Paket</h2>
+      <p className="mt-1 text-sm text-muted">
+        Kullandığınız paket: <strong className="text-ink">{PLAN_LABEL[plan]}</strong>
+        {preview ? ' (önizleme)' : ''}
+      </p>
+      <Link to="/paketler" className="mt-3 inline-block text-[13px] font-medium text-accent hover:underline">
+        Paketleri karşılaştır
+      </Link>
+    </Card>
   )
 }

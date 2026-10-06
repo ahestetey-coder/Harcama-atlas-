@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Database, FileUp, FlaskConical, History, LayoutDashboard, LayoutGrid, ListOrdered, LogOut, Menu, Moon, Plus, Settings, ShieldCheck, Sun, Tags, Users } from 'lucide-react'
+import { Database, FileUp, FlaskConical, History, LayoutDashboard, LayoutGrid, ListOrdered, LogOut, Menu, Moon, Plus, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, Users } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -19,11 +19,15 @@ const NAV = [
   { to: '/islemler', label: 'İşlemler', icon: ListOrdered },
   { to: '/ice-aktar', label: 'İçe aktar', icon: FileUp },
   { to: '/kategoriler', label: 'Kategoriler ve gruplar', short: 'Kategoriler', icon: Tags },
+  { to: '/butce', label: 'Bütçe planı', short: 'Bütçe', icon: Target },
   { to: '/aktarimlar', label: 'Aktarım geçmişi', short: 'Aktarımlar', icon: History },
   { to: '/uyeler', label: 'Üyeler ve paylaşım', short: 'Üyeler', icon: Users },
   { to: '/yedekleme', label: 'Yedekleme ve veri', short: 'Yedekleme', icon: Database },
   { to: '/ayarlar', label: 'Ayarlar', icon: Settings },
+  { to: '/paketler', label: 'Paketler', icon: Sparkles },
 ]
+/** "Daha fazla" menüsündeki sayfalar (alt menüde sekmesi olmayanlar). */
+const MORE_PATHS = [...NAV.slice(3).map((n) => n.to), '/yonetim']
 const ADMIN_NAV = { to: '/yonetim', label: 'Yönetici paneli', short: 'Yönetim', icon: ShieldCheck, end: false }
 
 export function Logo({ className }: { className?: string }) {
@@ -180,10 +184,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setMoreOpen(true)}
             className={cn(
               'pressable relative flex flex-col items-center gap-0.5 rounded-xl pb-2 pt-1 text-[11px] font-medium',
-              ['/kategoriler', '/aktarimlar', '/uyeler', '/yedekleme', '/ayarlar', '/yonetim'].some((p) => location.pathname.startsWith(p)) ? 'text-accent' : 'text-muted',
+              MORE_PATHS.some((p) => location.pathname.startsWith(p)) ? 'text-accent' : 'text-muted',
             )}
           >
-            {['/kategoriler', '/aktarimlar', '/uyeler', '/yedekleme', '/ayarlar', '/yonetim'].some((p) => location.pathname.startsWith(p)) && <TabIndicator />}
+            {MORE_PATHS.some((p) => location.pathname.startsWith(p)) && <TabIndicator />}
             <Menu className="size-[22px]" />
             Daha fazla
           </button>

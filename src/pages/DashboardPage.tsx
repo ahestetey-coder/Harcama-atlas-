@@ -21,6 +21,9 @@ import { useMemberFilter, useMembers } from '../state/cloud'
 import { usePersonalCycle, useCycle } from '../state/cycle'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
+import { usePlan } from '../state/plan'
+import { PlanBadge } from '../components/PlanGate'
+import { budgetStatus, DEFAULT_BUDGET_PLAN } from '../domain/budget'
 
 const MAX_SLICES = 7
 
@@ -276,6 +279,7 @@ export default function DashboardPage() {
                 </Button>
               </div>
               {budget ? <BudgetBar budget={budget} net={summary.netKurus} /> : <p className="mt-2 text-sm text-muted">İsteğe bağlı: bir bütçe belirlerseniz kalan veya aşılan tutar burada görünür.</p>}
+              <BudgetPlanLink />
             </Card>
             <Card className="p-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
@@ -460,6 +464,37 @@ function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareW
         {comparison.percent === null && ' (önceki net gider sıfır veya eksi; yüzde hesaplanmadı)'}
       </span>
     </div>
+  )
+}
+
+/** Panelde Plus bütçe planına geçiş: Plus'ta uyarı sayısı, Ücretsiz pakette tanıtım. */
+function BudgetPlanLink() {
+  const { has } = usePlan()
+  const personal = usePersonalTransactions()
+  const startDay = usePersonalCycle()
+  const settings = useSettings()
+  const { month } = useUi()
+  const enabled = has('advancedBudget')
+  const warnings = useMemo(
+    () =>
+      enabled && personal && settings
+        ? budgetStatus(personal.counted, month, startDay, todayIso(), settings.monthlyBudgetKurus, settings.budgetPlan ?? DEFAULT_BUDGET_PLAN).warnings
+        : [],
+    [enabled, personal, settings, month, startDay],
+  )
+  const over = warnings.some((w) => w.status.state === 'over')
+  return (
+    <Link to="/butce" className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-[13px] font-medium text-accent hover:underline">
+      <span className="flex items-center gap-2">
+        {enabled ? 'Bütçe planı' : 'Kategori limitleri ve ay sonu tahmini'}
+        {!enabled && <PlanBadge plan="plus" />}
+      </span>
+      {warnings.length > 0 ? (
+        <span className={cn('rounded-full px-2 py-0.5 text-[11.5px] font-semibold', over ? 'bg-danger-soft text-danger' : 'bg-warning-soft text-warning')}>{warnings.length} uyarı</span>
+      ) : (
+        <ChevronRight className="size-4" />
+      )}
+    </Link>
   )
 }
 

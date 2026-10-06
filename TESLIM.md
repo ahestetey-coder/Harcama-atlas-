@@ -342,3 +342,11 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **Hesabımı sil:** Ayarlar'da yeni "Hesap" kartı (e-posta, Çıkış yap, Hesabımı sil). Silme "SİL" yazılarak onaylanır; `ha_delete_my_account()` hesabı, yöneticisi olunan ortak grupları, diğer gruplara eklenen harcamaları, üyelikleri ve davetleri buluttan siler. İsteğe bağlı olarak (varsayılan açık) bu cihazdaki kayıtlar da silinir. SQL testi ve uçtan uca test eklendi. Canlı veritabanına `harcama-atlasi-kurulum/hesap-silme.sql` dosyasının bir kez çalıştırılması gerekir.
 - **Gizlilik politikası:** `public/gizlilik.html` (yayında `/gizlilik.html`). Giriş ekranından ve Ayarlar'dan bağlantı verildi; mağaza kayıtlarında bu adres kullanılacak. Ayarlar'daki eski "senkronizasyon yoktur" metni güncel duruma göre düzeltildi.
 - **Giriş:** Mobil uygulamada Google ile giriş düğmesi gösterilmez (yalnızca e-posta). Web sürümünde değişiklik yok. Mobil uygulamadaki doğrulama ve şifre yenileme e-postaları web adresine döner.
+
+## 21. Paketler (Ücretsiz / Plus / Plus+) ve Plus bütçe planı (06.10.2026)
+
+- **Paket altyapısı:** `src/domain/plans.ts` hangi özelliğin hangi pakette olduğunu tanımlar; `src/state/plan.tsx` geçerli paketi verir, `PlanGate` kilitli özelliklerde tanıtım kartı gösterir. Bugünkü bütün özellikler Ücretsiz pakettedir.
+- **Satın alma henüz yok:** Herkesin satın aldığı paket şimdilik Ücretsiz. Ödeme, uygulama mağazalarda yayımlanınca App Store / Google Play aboneliğiyle bağlanacak. Bu sırada yönetici hesabı, demo modu ve yerel kullanım "Paketler" sayfasından Plus veya Plus+ önizlemesi açabilir (yalnızca bu cihazda, `ha:plan-preview`).
+- **Paketler sayfası** (`#/paketler`): üç paketin karşılaştırması; hazır olan özellikler işaretli, diğerleri "Yakında".
+- **Plus bütçe planı** (`#/butce`): kategori limitleri, haftalık (Pazartesi–Pazar) bütçe, kullanılmayan bütçenin bir sonraki döneme devri (yalnızca bir dönem, birikmez), %70/%80/%90 uyarı eşiği, uyarı listesi ve günlük ortalamaya dayalı ay sonu tahmini. Hesaplar kişisel (Tümü) net gidere göre yapılır. Ayarlar kaydında (`budgetPlan`) saklanır ve yedeğe dahildir. Panelin bütçe kartında uyarı sayısı görünür.
+- **Sınır:** Ay sonu tahmini henüz abonelik/düzenli ödemeleri ayrıca hesaba katmıyor; o özellik eklenince katılacak. Uyarılar uygulama içinde gösterilir, telefon bildirimi henüz yok.

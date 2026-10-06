@@ -1,3 +1,4 @@
+import type { BudgetPlan } from './budget'
 /** Takvim günü: 'YYYY-AA-GG'. Saat dilimi bilgisi taşımaz; gün kayması olmaz. */
 export type IsoDate = string
 /** Takvim ayı: 'YYYY-AA'. */
@@ -154,6 +155,8 @@ export interface Settings {
   selfMemberId?: string
   /** Kişisel ay döngüsünün başlangıç günü (1–28). Boşsa takvim ayı. */
   cycleStartDay?: number
+  /** Plus: kategori limitleri, haftalık bütçe, devir ve uyarı eşiği. */
+  budgetPlan?: BudgetPlan
   updatedAt: string
 }
 

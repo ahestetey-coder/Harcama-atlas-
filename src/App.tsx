@@ -9,6 +9,7 @@ import { AuthScreen, AuthSplash, NewPasswordScreen } from './pages/AuthScreen'
 import { AuthProvider, useAuth } from './state/auth'
 import { CloudProvider } from './state/cloud'
 import { DataProvider } from './state/data'
+import { PlanProvider } from './state/plan'
 import { ThemeProvider } from './state/theme'
 import { UiProvider } from './state/ui'
 import { UpdatePrompt } from './components/UpdatePrompt'
@@ -23,6 +24,8 @@ const loaders = {
   members: () => import('./pages/MembersPage'),
   join: () => import('./pages/JoinPage'),
   admin: () => import('./pages/AdminPage'),
+  budget: () => import('./pages/BudgetPage'),
+  plans: () => import('./pages/PlansPage'),
 }
 const TransactionsPage = lazy(loaders.transactions)
 const ImportPage = lazy(loaders.import)
@@ -33,6 +36,8 @@ const SettingsPage = lazy(loaders.settings)
 const MembersPage = lazy(loaders.members)
 const JoinPage = lazy(loaders.join)
 const AdminPage = lazy(loaders.admin)
+const BudgetPage = lazy(loaders.budget)
+const PlansPage = lazy(loaders.plans)
 
 /** Uygulama açıldıktan sonra boşta kalınca bütün sayfalar önceden yüklenir; geçişte bekleme olmaz. */
 function usePrefetchPages() {
@@ -94,6 +99,8 @@ const router = createHashRouter([
       { path: '/katil', element: <JoinPage /> },
       { path: '/ayarlar', element: <SettingsPage /> },
       { path: '/yonetim', element: <AdminPage /> },
+      { path: '/butce', element: <BudgetPage /> },
+      { path: '/paketler', element: <PlansPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },
@@ -109,7 +116,9 @@ function AuthGate() {
     <DataProvider key={auth.user?.id ?? 'local'} userId={auth.user?.id}>
       <UiProvider>
         <CloudProvider>
-          <RouterProvider router={router} />
+          <PlanProvider>
+            <RouterProvider router={router} />
+          </PlanProvider>
         </CloudProvider>
       </UiProvider>
     </DataProvider>

@@ -103,6 +103,14 @@ const settingsSchema = z.object({
   defaultPaymentMethod: z.enum(['cash', 'debit', 'credit']).optional(),
   selfMemberId: z.string().optional(),
   cycleStartDay: z.number().int().min(1).max(28).optional(),
+  budgetPlan: z
+    .object({
+      categoryLimits: z.record(z.string(), kurus),
+      weeklyKurus: kurus.nullable(),
+      carryover: z.boolean(),
+      warnPct: z.number().int().min(50).max(100),
+    })
+    .optional(),
   updatedAt: z.string(),
 })
 

@@ -7,6 +7,8 @@ const KEYS = {
   demo: 'ha:demo',
   /** Bu cihazdaki ana veritabanını ilk kullanan hesabın kimliği (finansal veri değildir). */
   dbOwner: 'ha:db-owner',
+  /** Ödeme altyapısı hazır olana kadar Plus/Plus+ özelliklerini denemek için önizleme paketi. */
+  planPreview: 'ha:plan-preview',
 } as const
 
 export function readPref(key: keyof typeof KEYS): string | null {
