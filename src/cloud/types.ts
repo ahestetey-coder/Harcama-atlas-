@@ -25,6 +25,17 @@ export interface CloudSettlement {
   created_at: string
 }
 
+/** Paylaştırılmış dönemde "ödendi" işaretlenen ödeme (gelişmiş paylaşım). */
+export interface CloudPayment {
+  group_id: string
+  period_start: string
+  from_user: string
+  to_user: string
+  amount_kurus: number
+  marked_by: string
+  marked_at: string
+}
+
 export interface CloudTxInput {
   id: string
   group_id: string
@@ -64,6 +75,13 @@ export interface CloudBackend {
   /** Paylaşımı geri alır; yalnızca yönetici. */
   unsettlePeriod(groupId: string, start: string): Promise<void>
   listSettlements(groupIds: string[]): Promise<CloudSettlement[]>
+  /** Grup bütçesi; yalnızca yönetici. null kaldırır. */
+  setGroupBudget(groupId: string, budgetKurus: number | null): Promise<void>
+  /** Grup bütçeleri (sunucu şeması eskiyse hata verir; eşitleme bunu yok sayar). */
+  listGroupBudgets(groupIds: string[]): Promise<{ id: string; budget_kurus: number | null }[]>
+  /** Ödemeyi ödendi/ödenmedi işaretler; yönetici veya ödemenin tarafları. */
+  markPayment(groupId: string, start: string, from: string, to: string, amountKurus: number, paid: boolean): Promise<void>
+  listPayments(groupIds: string[]): Promise<CloudPayment[]>
   listGroups(): Promise<CloudGroup[]>
   listMembers(groupIds: string[]): Promise<CloudMember[]>
   upsert(rows: CloudTxInput[]): Promise<void>

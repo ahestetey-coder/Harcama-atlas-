@@ -9,7 +9,7 @@ import { SplitDialog } from '../components/SplitDialog'
 import { TransactionList } from '../components/TransactionList'
 import { Modal } from '../components/ui/Modal'
 import { Button, Card, EmptyState, Field, Input, Skeleton } from '../components/ui/primitives'
-import { toUserMessage } from '../data/repository'
+import { toUserMessage, UserFacingError } from '../data/repository'
 import { addMonths, currentPeriod, cycleDescription, dayOf, diffDays, formatDate, periodLabel, periodLength, periodOf, periodRange, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { compareWithPrevious, summarizeMonth, type CategoryTotal } from '../domain/summary'
@@ -17,7 +17,9 @@ import { findSettlement, settlementRangeText } from '../domain/personal'
 import type { Member, SpendGroup, Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
-import { useMemberFilter, useMembers } from '../state/cloud'
+import { useCloud, useMemberFilter, useMembers } from '../state/cloud'
+import { setGroupBudget } from '../cloud/sync'
+import { cloudErrorMessage } from '../cloud/errors'
 import { usePersonalCycle, useCycle } from '../state/cycle'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
@@ -81,6 +83,11 @@ export default function DashboardPage() {
   const groupSettlement = sharedGroup && groupPeriod ? findSettlement(sharedGroup, groupPeriod) : undefined
   const isGroupOwner = !!sharedGroup && !!selfId && sharedGroup.cloudOwnerId === selfId
   const [splitOpen, setSplitOpen] = useState(false)
+  // Plus: seçili grubun bütçesi (paylaşılan grupta yönetici belirler)
+  const { has: hasFeature } = usePlan()
+  const budgetGroup = hasFeature('advancedSplit') && groupFilter && groupFilter !== 'none' ? groupMap.get(groupFilter) : undefined
+  const canEditGroupBudget = !!budgetGroup && (!budgetGroup.cloudId || (!!selfId && budgetGroup.cloudOwnerId === selfId))
+  const [groupBudgetOpen, setGroupBudgetOpen] = useState(false)
   // Kişi kartı, kişi filtresinden bağımsız olarak seçili gruptaki herkesi gösterir
   const groupMonthTxs = useMemo(() => (groupTxs ?? []).filter((t) => periodOf(t.date, startDay) === month), [groupTxs, month, startDay])
   const groupNet = useMemo(() => groupMonthTxs.reduce((s, t) => s + (t.type === 'expense' ? t.amountKurus : t.type === 'refund' ? -t.amountKurus : 0), 0), [groupMonthTxs])
@@ -270,18 +277,45 @@ export default function DashboardPage() {
 
           {/* Bütçe ve en yüksek kategori */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1 lg:gap-5">
-            <Card className="p-5">
-              <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                  <Target className="size-4 text-accent" /> Aylık bütçe
-                </h2>
-                <Button size="sm" variant="ghost" onClick={() => setBudgetOpen(true)}>
-                  {budget ? 'Düzenle' : 'Belirle'}
-                </Button>
-              </div>
-              {budget ? <BudgetBar budget={budget} net={summary.netKurus} /> : <p className="mt-2 text-sm text-muted">İsteğe bağlı: bir bütçe belirlerseniz kalan veya aşılan tutar burada görünür.</p>}
-              <BudgetPlanLink />
-            </Card>
+            {budgetGroup ? (
+              <Card className="p-5" aria-label="Grup bütçesi">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-ink">
+                    <Target className="size-4 shrink-0 text-accent" /> <span className="truncate">{budgetGroup.name} bütçesi</span> <PlanBadge plan="plus" />
+                  </h2>
+                  {canEditGroupBudget && (
+                    <Button size="sm" variant="ghost" onClick={() => setGroupBudgetOpen(true)}>
+                      {budgetGroup.budgetKurus ? 'Düzenle' : 'Belirle'}
+                    </Button>
+                  )}
+                </div>
+                {budgetGroup.budgetKurus ? (
+                  <BudgetBar budget={budgetGroup.budgetKurus} net={groupNet} />
+                ) : (
+                  <p className="mt-2 text-sm text-muted">
+                    {canEditGroupBudget
+                      ? budgetGroup.cloudId
+                        ? 'Grubun aylık bütçesini belirleyin; bütün üyeler kalan tutarı görür.'
+                        : 'Bu grup için ayrı bir aylık bütçe belirleyebilirsiniz.'
+                      : 'Grup bütçesini grup yöneticisi belirler.'}
+                  </p>
+                )}
+                {budgetGroup.budgetKurus && person.value ? <p className="mt-2 text-[12px] text-subtle">Grup bütçesi, kişi filtresinden bağımsız olarak grubun toplam giderine göre hesaplanır.</p> : null}
+              </Card>
+            ) : (
+              <Card className="p-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <Target className="size-4 text-accent" /> Aylık bütçe
+                  </h2>
+                  <Button size="sm" variant="ghost" onClick={() => setBudgetOpen(true)}>
+                    {budget ? 'Düzenle' : 'Belirle'}
+                  </Button>
+                </div>
+                {budget ? <BudgetBar budget={budget} net={summary.netKurus} /> : <p className="mt-2 text-sm text-muted">İsteğe bağlı: bir bütçe belirlerseniz kalan veya aşılan tutar burada görünür.</p>}
+                <BudgetPlanLink />
+              </Card>
+            )}
             <Card className="p-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
                 <Receipt className="size-4 text-accent" /> En yüksek harcama kategorisi
@@ -430,6 +464,7 @@ export default function DashboardPage() {
         />
       )}
       <BudgetModal open={budgetOpen} onOpenChange={setBudgetOpen} current={budget} />
+      {budgetGroup && <GroupBudgetModal open={groupBudgetOpen} onOpenChange={setGroupBudgetOpen} group={budgetGroup} />}
     </div>
   )
 }
@@ -647,6 +682,63 @@ function BudgetModal({ open, onOpenChange, current }: { open: boolean; onOpenCha
     >
       <Field label="Tutar (TL)" htmlFor="budget" error={error}>
         <Input id="budget" inputMode="decimal" className="num" placeholder="Örn. 30.000" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
+      </Field>
+    </Modal>
+  )
+}
+
+function GroupBudgetModal({ open, onOpenChange, group }: { open: boolean; onOpenChange: (o: boolean) => void; group: SpendGroup }) {
+  const repo = useRepo()
+  const { backend } = useCloud()
+  const { toast } = useUi()
+  const current = group.budgetKurus ?? null
+  const [value, setValue] = useState('')
+  const [error, setError] = useState<string>()
+  const [busy, setBusy] = useState(false)
+  const save = async (clear = false) => {
+    let kurus: number | null = null
+    if (!clear && value.trim()) {
+      const p = parseUserAmount(value)
+      if (!p.ok || p.kurus <= 0) return setError('Geçerli bir tutar girin, örn. 25.000')
+      kurus = p.kurus
+    }
+    setBusy(true)
+    try {
+      await setGroupBudget(repo, backend, group.id, kurus)
+      toast(kurus ? 'Grup bütçesi kaydedildi.' : 'Grup bütçesi kaldırıldı.')
+      onOpenChange(false)
+    } catch (e) {
+      setError(e instanceof UserFacingError ? e.message : group.cloudId ? cloudErrorMessage(e) : toUserMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Modal
+      open={open}
+      onOpenChange={(o) => {
+        if (o) setValue(current ? formatKurusPlain(current) : '')
+        setError(undefined)
+        onOpenChange(o)
+      }}
+      title={`${group.name} bütçesi`}
+      description={group.cloudId ? 'Grubun bütün üyelerinin giderine göre hesaplanır; üyeler de görür.' : 'Bu grubun aylık net giderine göre hesaplanır.'}
+      size="sm"
+      footer={
+        <>
+          {current && (
+            <Button variant="ghost" className="mr-auto text-danger" disabled={busy} onClick={() => save(true)}>
+              Bütçeyi kaldır
+            </Button>
+          )}
+          <Button variant="primary" loading={busy} onClick={() => save()}>
+            Kaydet
+          </Button>
+        </>
+      }
+    >
+      <Field label="Tutar (TL)" htmlFor="group-budget" error={error}>
+        <Input id="group-budget" inputMode="decimal" className="num" placeholder="Örn. 20.000" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
       </Field>
     </Modal>
   )

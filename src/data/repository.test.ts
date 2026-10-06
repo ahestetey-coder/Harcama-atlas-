@@ -167,6 +167,16 @@ describe('kategoriler', () => {
   })
 })
 
+describe('grubun düzenli gideri', () => {
+  it('gider olarak eklenir ve aynı ödeme ikinci kez eklenmez', async () => {
+    const r = await repo.saveRecurring({ name: 'Kira', kind: 'bill', amountKurus: 1500000, categoryId: null, cadence: 'monthly', startDate: '2026-09-05', reminderDays: 3, active: true, groupId: 'grp-ortak' })
+    const t = await repo.recordRecurring(r.id, '2026-09-05')
+    expect(t).toMatchObject({ amountKurus: 1500000, groupId: 'grp-ortak', description: 'Kira', type: 'expense' })
+    expect((await db.recurring.get(r.id))?.recordedThrough).toBe('2026-09-05')
+    await expect(repo.recordRecurring(r.id, '2026-09-05')).rejects.toBeInstanceOf(UserFacingError)
+  })
+})
+
 describe('birikim hedefleri', () => {
   it('para ekler, çeker ve eksiye düşürmez', async () => {
     const g = await repo.saveGoal({ name: ' Araç ', icon: 'Car', color: '#000', targetKurus: 100000, targetDate: null })

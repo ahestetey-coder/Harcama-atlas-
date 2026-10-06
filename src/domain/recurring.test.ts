@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { budgetStatus, DEFAULT_BUDGET_PLAN } from './budget'
 import { normalizeText } from './normalize'
-import { addMonthsClamped, detectRecurring, installmentName, fixedPayments, futureLoad, installmentPlans, occurrencesBetween, progressOf, upcomingPayments } from './recurring'
+import { addMonthsClamped, detectRecurring, groupDueToRecord, installmentName, fixedPayments, futureLoad, installmentPlans, occurrencesBetween, progressOf, upcomingPayments } from './recurring'
 import type { RecurringPayment, Transaction } from './types'
 
 let seq = 0
@@ -102,5 +102,18 @@ describe('ay sonu tahmini düzenli ödemelerle', () => {
     const s = budgetStatus(txs, '2026-09', 1, '2026-09-10', null, DEFAULT_BUDGET_PLAN, fixed)
     // 10.500 + 500/10×20 + 229,99
     expect(s.forecast?.projectedKurus).toBe(1050000 + 100000 + 22999)
+  })
+})
+
+describe('grubun düzenli giderleri', () => {
+  it('ödeme günü gelmiş ve eklenmemiş olanları verir; grupsuzları vermez', () => {
+    const rent = item({ id: 'kira', name: 'Kira', groupId: 'grp-ortak', startDate: '2026-08-05', cadence: 'monthly' })
+    const solo = item({ id: 'net', name: 'Netflix', startDate: '2026-08-05', cadence: 'monthly' })
+    expect(groupDueToRecord([rent, solo], '2026-10-06').map((x) => [x.item.id, x.date])).toEqual([
+      ['kira', '2026-09-05'],
+      ['kira', '2026-10-05'],
+    ])
+    expect(groupDueToRecord([{ ...rent, recordedThrough: '2026-09-05' }], '2026-10-06').map((x) => x.date)).toEqual(['2026-10-05'])
+    expect(groupDueToRecord([{ ...rent, recordedThrough: '2026-10-05' }], '2026-10-06')).toEqual([])
   })
 })

@@ -1,8 +1,8 @@
 import type { AtlasRepository } from '../data/repository'
 import { UserFacingError } from '../data/repository'
 import { normalizeText } from '../domain/normalize'
-import type { Category, GroupSettlement, Member, SpendGroup, Transaction } from '../domain/types'
-import type { CloudBackend, CloudGroup, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
+import type { Category, GroupSettlement, Member, SettlementPayment, SpendGroup, Transaction } from '../domain/types'
+import type { CloudBackend, CloudGroup, CloudPayment, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 /**
  * Ortak grupların bulutla eşitlenmesi.
@@ -118,6 +118,44 @@ export async function settleGroupPeriod(
   await repo.db.groups.update(groupId, { settlements: list })
 }
 
+/**
+ * Plus: grubun aylık bütçesi. Paylaşılan grupta yalnızca yönetici değiştirir ve üyelere eşitlenir;
+ * yerel grupta doğrudan kaydedilir.
+ */
+export async function setGroupBudget(repo: AtlasRepository, backend: CloudBackend | null, groupId: string, budgetKurus: number | null): Promise<void> {
+  const g = await repo.db.groups.get(groupId)
+  if (!g) throw new UserFacingError('Grup bulunamadı.')
+  if (budgetKurus !== null && (!Number.isSafeInteger(budgetKurus) || budgetKurus <= 0)) throw new UserFacingError('Geçerli bir tutar girin.')
+  if (g.cloudId) {
+    const { cloudId } = await ownedSharedGroup(repo, backend, groupId, 'Grup bütçesini yalnızca grup yöneticisi değiştirebilir.')
+    await backend!.setGroupBudget(cloudId, budgetKurus)
+  }
+  await repo.db.groups.update(groupId, { budgetKurus })
+}
+
+/** Plus: paylaştırılmış dönemdeki bir ödemeyi ödendi/ödenmedi işaretler (yönetici veya taraflar). */
+export async function markSettlementPayment(
+  repo: AtlasRepository,
+  backend: CloudBackend | null,
+  groupId: string,
+  start: string,
+  payment: { from: string; to: string; amountKurus: number },
+  paid: boolean,
+): Promise<void> {
+  const g = await repo.db.groups.get(groupId)
+  if (!g?.cloudId) throw new UserFacingError('Ödeme durumu yalnızca paylaşılan gruplarda tutulur.')
+  const uid = backend?.userId()
+  if (!backend || !uid) throw new UserFacingError('Bu işlem için giriş yapın.')
+  if (uid !== payment.from && uid !== payment.to && uid !== g.cloudOwnerId) throw new UserFacingError('Ödemeyi yalnızca yönetici veya ödemenin tarafları işaretleyebilir.')
+  await backend.markPayment(g.cloudId, start, payment.from, payment.to, payment.amountKurus, paid)
+  const settlements = (g.settlements ?? []).map((s) => {
+    if (s.start !== start) return s
+    const rest = (s.payments ?? []).filter((p) => !(p.from === payment.from && p.to === payment.to))
+    return { ...s, payments: paid ? [...rest, { ...payment, markedBy: uid, markedAt: new Date().toISOString() }] : rest }
+  })
+  await repo.db.groups.update(groupId, { settlements })
+}
+
 /** Dönemin paylaşımını geri alır. Yalnızca grup yöneticisi. */
 export async function unsettleGroupPeriod(repo: AtlasRepository, backend: CloudBackend | null, groupId: string, start: string): Promise<void> {
   const { g, cloudId } = await ownedSharedGroup(repo, backend, groupId, 'Paylaşımı yalnızca grup yöneticisi geri alabilir.')
@@ -132,6 +170,10 @@ async function ownedSharedGroup(repo: AtlasRepository, backend: CloudBackend | n
   if (!backend || !uid) throw new UserFacingError('Bu işlem için giriş yapın.')
   if (g.cloudOwnerId !== uid) throw new UserFacingError(notOwner)
   return { g, cloudId: g.cloudId, uid }
+}
+
+function fromCloudPayment(p: CloudPayment): SettlementPayment {
+  return { from: p.from_user, to: p.to_user, amountKurus: Number(p.amount_kurus), markedBy: p.marked_by, markedAt: p.marked_at }
 }
 
 function fromCloudSettlement(s: CloudSettlement): GroupSettlement {
@@ -279,12 +321,28 @@ export async function syncAll(repo: AtlasRepository, backend: CloudBackend): Pro
   }
   // Yöneticinin paylaştırdığı dönemler. Okunamazsa (ör. sunucu şeması henüz güncellenmediyse)
   // eşitlemenin geri kalanı yine çalışır, eldeki paylaşımlar korunur.
+  // Ödeme durumu ve grup bütçesi (gelişmiş paylaşım) ayrı okunur: sunucuya ilgili SQL henüz
+  // kurulmadıysa hata verir ve yok sayılır; paylaşımlar yine eşitlenir.
+  const groupIds = active.map((g) => g.cloudId!)
+  let payments: CloudPayment[] = []
+  let paymentsOk = true
   try {
-    const settlements = await backend.listSettlements(active.map((g) => g.cloudId!))
+    payments = await backend.listPayments(groupIds)
+  } catch {
+    paymentsOk = false
+  }
+  try {
+    const settlements = await backend.listSettlements(groupIds)
     for (const g of active) {
       const list = settlements
         .filter((x) => x.group_id === g.cloudId)
-        .map(fromCloudSettlement)
+        .map((x) => {
+          const s = fromCloudSettlement(x)
+          const own = paymentsOk
+            ? payments.filter((p) => p.group_id === x.group_id && p.period_start.slice(0, 10) === s.start).map(fromCloudPayment)
+            : (g.settlements?.find((y) => y.start === s.start)?.payments ?? [])
+          return own.length ? { ...s, payments: own.sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to)) } : s
+        })
         .sort((a, b) => a.start.localeCompare(b.start))
       if (JSON.stringify(g.settlements ?? []) !== JSON.stringify(list)) {
         await db.groups.update(g.id, { settlements: list })
@@ -293,6 +351,18 @@ export async function syncAll(repo: AtlasRepository, backend: CloudBackend): Pro
     }
   } catch {
     /* paylaşımlar bir sonraki eşitlemede denenir */
+  }
+  try {
+    const budgets = new Map((await backend.listGroupBudgets(groupIds)).map((b) => [b.id, b.budget_kurus == null ? null : Number(b.budget_kurus)]))
+    for (const g of active) {
+      const b = budgets.get(g.cloudId!) ?? null
+      if ((g.budgetKurus ?? null) !== b) {
+        await db.groups.update(g.id, { budgetKurus: b })
+        g.budgetKurus = b
+      }
+    }
+  } catch {
+    /* sunucu şeması eskiyse grup bütçesi yereldeki gibi kalır */
   }
 
   const categories = await db.categories.toArray()

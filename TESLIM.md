@@ -377,3 +377,12 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **Borçlar:** elle eklenen borçlar (kredi kartı, ihtiyaç/konut kredisi…) ve "Düzenli ödemeler"deki kalan taksitlerin otomatik toplamı (net varlığa katılması kapatılabilir).
 - Yeni tablo `assets` (veritabanı şeması v8), yedeğe dahil. Yatırım tavsiyesi verilmez.
 - **Sınır:** Fiyatlar elle girilir; otomatik fiyat kaynağı seçildiğinde eklenecek. Komisyon ve vergi ayrıca tutulmuyor (birim fiyata dahil edilebilir).
+
+## 25. Plus: gelişmiş paylaşım (06.10.2026)
+
+- **Paylaşım yöntemi:** Panelde paylaşılan grup seçiliyken "Gideri paylaştır" penceresinde grup yöneticisi gideri eşit, yüzdeyle (toplam 100 olmalı), ağırlıkla (ör. 2:1) veya kişi başı tutarla bölebilir (tutar yazılmayanlar kalanı eşit böler). Paylaşıma yalnızca seçili üyeler katılır. Kural tutarsızsa uyarı çıkar ve paylaştırma düğmesi kapanır. Paylar kuruşu kuruşuna toplamı korur. Seçilen kural yöneticinin cihazında saklanır; üyeler yöneticinin kaydettiği payları görür.
+- **Ödeme durumu:** Paylaştırılmış dönemde "Denkleşmek için" listesindeki her ödeme, yönetici veya ödemenin tarafları tarafından "Ödendi" işaretlenebilir; tarih ve işaretleyen kişi bütün üyelere görünür. Paylaşım geri alınınca işaretler de silinir.
+- **Ortak bütçe:** Panelde bir grup seçiliyken bütçe kartı o grubun bütçesini gösterir. Paylaşılan grupta bütçeyi yalnızca yönetici belirler, üyeler görür; yerel gruplarda herkes kendi cihazında belirler.
+- **Grubun düzenli giderleri:** Düzenli ödeme bir gruba bağlanabilir (ör. ortak kira). Ödeme günü gelince "Düzenli ödemeler" sayfasında tek dokunuşla o grubun gideri olarak eklenir; aynı ödeme ikinci kez eklenmez.
+- **Kurulum:** Ödeme durumu ve ortak bütçe için canlı veritabanında `harcama-atlasi-kurulum/gelismis-paylasim.sql` bir kez çalıştırılmalı. Çalıştırılmadan önce uygulama bu iki özellik dışında aynen çalışır (eşitleme hata vermez). SQL testleri ve eski şemaya üzerine kurulum denendi.
+- **Sınır:** Plus kontrolü kişinin kendi paketine göredir; ödeme işaretlemek de Plus ister, işaretleri görmek herkese açıktır.

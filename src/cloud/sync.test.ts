@@ -4,7 +4,7 @@ import { createDb, type AtlasDb } from '../data/db'
 import { AtlasRepository, UserFacingError } from '../data/repository'
 import { buildInviteLink, parseInvite } from './config'
 import { MemoryCloud } from './memoryBackend'
-import { adoptCloudIdentity, joinWithInvite, leaveGroup, setGroupCycle, settleGroupPeriod, shareGroup, syncAll, unsettleGroupPeriod } from './sync'
+import { adoptCloudIdentity, joinWithInvite, leaveGroup, markSettlementPayment, setGroupBudget, setGroupCycle, settleGroupPeriod, shareGroup, syncAll, unsettleGroupPeriod } from './sync'
 
 const OSMAN = '11111111-1111-1111-1111-111111111111'
 const AYSE = '22222222-2222-2222-2222-222222222222'
@@ -240,5 +240,34 @@ describe('davet bağlantısı', () => {
     await syncAll(osman, oCloud)
     const broken = { ...aCloud, listSettlements: async () => Promise.reject(new Error('relation does not exist')) }
     expect((await syncAll(ayse, broken)).received).toBe(1)
+  })
+
+  it('Plus: grup bütçesini yönetici belirler; ödeme durumu taraflarca işaretlenir ve eşitlenir', async () => {
+    const { osman, ayse, oCloud, aCloud } = await setup()
+    await syncAll(ayse, aCloud)
+    await expect(setGroupBudget(ayse, aCloud, 'grp-ortak', 100000)).rejects.toBeInstanceOf(UserFacingError)
+    await setGroupBudget(osman, oCloud, 'grp-ortak', 100000)
+    await syncAll(ayse, aCloud)
+    expect((await ayse.db.groups.get('grp-ortak'))?.budgetKurus).toBe(100000)
+    // Yerel (paylaşılmayan) grupta bütçe doğrudan kaydedilir
+    await setGroupBudget(ayse, aCloud, 'grp-bireysel', 5000)
+    expect((await ayse.db.groups.get('grp-bireysel'))?.budgetKurus).toBe(5000)
+
+    await settleGroupPeriod(osman, oCloud, 'grp-ortak', { start: '2026-09-01', end: '2026-09-30', totalKurus: 10000, shares: { [OSMAN]: 5000, [AYSE]: 5000 } })
+    await syncAll(ayse, aCloud)
+    await markSettlementPayment(ayse, aCloud, 'grp-ortak', '2026-09-01', { from: AYSE, to: OSMAN, amountKurus: 5000 }, true)
+    expect((await ayse.db.groups.get('grp-ortak'))?.settlements?.[0].payments).toMatchObject([{ from: AYSE, to: OSMAN, amountKurus: 5000, markedBy: AYSE }])
+    await syncAll(osman, oCloud)
+    expect((await osman.db.groups.get('grp-ortak'))?.settlements?.[0].payments).toMatchObject([{ from: AYSE, to: OSMAN, markedBy: AYSE }])
+    await markSettlementPayment(osman, oCloud, 'grp-ortak', '2026-09-01', { from: AYSE, to: OSMAN, amountKurus: 5000 }, false)
+    await syncAll(ayse, aCloud)
+    expect((await ayse.db.groups.get('grp-ortak'))?.settlements?.[0].payments).toBeUndefined()
+
+    // Sunucuda yeni SQL yoksa: ödeme durumu ve bütçe okunamaz, paylaşımlar yine eşitlenir
+    const old = { ...aCloud, listPayments: async () => Promise.reject(new Error('relation does not exist')), listGroupBudgets: async () => Promise.reject(new Error('column does not exist')) }
+    await settleGroupPeriod(osman, oCloud, 'grp-ortak', { start: '2026-10-01', end: '2026-10-31', totalKurus: 2000, shares: { [OSMAN]: 1000, [AYSE]: 1000 } })
+    await syncAll(ayse, old)
+    expect((await ayse.db.groups.get('grp-ortak'))?.settlements?.map((x) => x.start)).toEqual(['2026-09-01', '2026-10-01'])
+    expect((await ayse.db.groups.get('grp-ortak'))?.budgetKurus).toBe(100000)
   })
 })

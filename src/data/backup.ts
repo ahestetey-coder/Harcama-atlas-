@@ -53,6 +53,14 @@ const groupSchema = z.object({
   cloudId: z.string().optional(),
   cloudOwnerId: z.string().optional(),
   cycleStartDay: z.number().int().min(1).max(28).nullable().optional(),
+  budgetKurus: kurus.nullable().optional(),
+  splitRule: z
+    .object({
+      method: z.enum(['equal', 'percent', 'weights', 'amounts']),
+      participants: z.array(z.string()).nullable(),
+      values: z.record(z.string(), z.number()),
+    })
+    .optional(),
   archived: z.boolean(),
   order: z.number(),
   createdAt: z.string(),
@@ -108,6 +116,8 @@ const recurringSchema = z.object({
   occurrences: z.number().int().min(1).max(120).nullable().optional(),
   reminderDays: z.number().int().min(0).max(14),
   matchKey: z.string().optional(),
+  groupId: z.string().nullable().optional(),
+  recordedThrough: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   active: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),

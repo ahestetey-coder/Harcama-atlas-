@@ -236,7 +236,7 @@ export class AtlasRepository {
     return group
   }
 
-  async updateGroup(id: string, patch: Partial<Pick<SpendGroup, 'name' | 'color' | 'archived' | 'cycleStartDay'>>): Promise<void> {
+  async updateGroup(id: string, patch: Partial<Pick<SpendGroup, 'name' | 'color' | 'archived' | 'cycleStartDay' | 'splitRule'>>): Promise<void> {
     if (!(await this.db.groups.get(id))) throw new UserFacingError('Grup bulunamadı.')
     if (patch.name !== undefined) {
       const name = patch.name.trim()
@@ -487,6 +487,16 @@ export class AtlasRepository {
     }
     await this.db.recurring.put(row)
     return row
+  }
+
+  /** Grubun düzenli giderini o günün gideri olarak ekler ve kaydedildi olarak işaretler. */
+  async recordRecurring(id: string, date: string): Promise<Transaction> {
+    const it = await this.db.recurring.get(id)
+    if (!it) throw new UserFacingError('Düzenli ödeme bulunamadı.')
+    if (it.recordedThrough && date <= it.recordedThrough) throw new UserFacingError('Bu ödeme zaten gider olarak eklendi.')
+    const tx = await this.addTransaction({ date, amountKurus: it.amountKurus, type: 'expense', description: it.name, categoryId: it.categoryId ?? OTHER_CATEGORY_ID, groupId: it.groupId ?? undefined })
+    await this.db.recurring.update(id, { recordedThrough: date, updatedAt: nowIso() })
+    return tx
   }
 
   async deleteRecurring(id: string): Promise<void> {

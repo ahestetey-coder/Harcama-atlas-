@@ -125,6 +125,21 @@ export function upcomingPayments(items: RecurringPayment[], plans: InstallmentPl
   return out.sort((a, b) => a.date.localeCompare(b.date) || b.amountKurus - a.amountKurus)
 }
 
+/**
+ * Grubun düzenli giderlerinden ödeme günü gelmiş ama henüz gider olarak eklenmemiş olanlar
+ * (son `lookbackDays` gün). Grupsuz düzenli ödemeler yalnızca hatırlatılır, burada yer almaz.
+ */
+export function groupDueToRecord(items: RecurringPayment[], today: IsoDate, lookbackDays = 31): { item: RecurringPayment; date: IsoDate }[] {
+  const out: { item: RecurringPayment; date: IsoDate }[] = []
+  for (const it of items) {
+    if (!it.active || !it.groupId) continue
+    let from = addDays(today, -lookbackDays)
+    if (it.recordedThrough && it.recordedThrough >= from) from = addDays(it.recordedThrough, 1)
+    for (const d of occurrencesBetween(it, from, today)) out.push({ item: it, date: d })
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date))
+}
+
 export interface PeriodLoad {
   month: MonthKey
   recurringKurus: number

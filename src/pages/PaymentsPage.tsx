@@ -2,18 +2,18 @@ import { BellRing, CalendarClock, CreditCard, Lightbulb, Pencil, Plus, Repeat, T
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
-import { CategoryIcon } from '../components/common'
+import { CategoryIcon, GroupBadge } from '../components/common'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Badge, Button, Card, EmptyState, Field, IconButton, Input, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import { addDays, currentPeriod, formatDate, MONTH_SHORT, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
-import { detectRecurring, futureLoad, installmentPlans, progressOf, upcomingPayments, type RecurringSuggestion } from '../domain/recurring'
+import { detectRecurring, futureLoad, groupDueToRecord, installmentPlans, progressOf, upcomingPayments, type RecurringSuggestion } from '../domain/recurring'
 import { CADENCE_LABEL, RECURRING_KIND_LABEL, type RecurringCadence, type RecurringKind, type RecurringPayment } from '../domain/types'
 import { cn } from '../lib/cn'
 import { usePersonalCycle } from '../state/cycle'
-import { useCategories, useCategoryMap, useRecurring, useRepo } from '../state/data'
+import { useCategories, useCategoryMap, useGroupMap, useGroups, useRecurring, useRepo } from '../state/data'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 
@@ -66,7 +66,9 @@ function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
   const { toast } = useUi()
   const dismissed = useLiveQuery(() => repo.dismissedRecurring(), [repo])
   const [del, setDel] = useState<RecurringPayment | null>(null)
+  const groupMap = useGroupMap()
   const today = todayIso()
+  const toRecord = useMemo(() => groupDueToRecord(items ?? [], today), [items, today])
 
   const txs = useMemo(() => personal?.counted ?? [], [personal])
   const manualKeys = useMemo(() => new Set((items ?? []).filter((i) => i.kind === 'installment' && i.matchKey).map((i) => i.matchKey!)), [items])
@@ -89,10 +91,46 @@ function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
     }
   }
 
+  const record = async (id: string, date: string, name: string) => {
+    try {
+      await repo.recordRecurring(id, date)
+      toast(`${name} gider olarak eklendi.`)
+    } catch (e) {
+      toast(toUserMessage(e), { kind: 'error' })
+    }
+  }
+
   const monthlyTotal = items.filter((i) => i.active).reduce((s, i) => s + (i.cadence === 'monthly' ? i.amountKurus : i.cadence === 'weekly' ? Math.round((i.amountKurus * 52) / 12) : Math.round(i.amountKurus / 12)), 0)
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {toRecord.length > 0 && (
+        <Card className="p-5 lg:col-span-2" aria-label="Eklenmeyi bekleyen grup giderleri">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+            <BellRing className="size-5 text-warning" /> Ödeme günü gelen grup giderleri
+          </h2>
+          <p className="mt-1 text-[13px] text-muted">Eklediğinizde grubun gideri olur; paylaşılan grupta üyeler de görür.</p>
+          <ul className="mt-3 divide-y divide-line">
+            {toRecord.map(({ item, date }) => (
+              <li key={`${item.id}:${date}`} className="flex flex-wrap items-center gap-3 py-2.5">
+                <CategoryIcon category={item.categoryId ? catMap.get(item.categoryId) : undefined} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium text-ink">{item.name}</span>
+                    <GroupBadge group={item.groupId ? groupMap.get(item.groupId) : undefined} />
+                  </div>
+                  <div className="num text-[12px] text-muted">
+                    {formatDate(date)} · {formatKurus(item.amountKurus)}
+                  </div>
+                </div>
+                <Button size="sm" variant="soft" onClick={() => void record(item.id, date, item.name)}>
+                  Gider olarak ekle
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       {suggestions.length > 0 && (
         <Card className="p-5 lg:col-span-2" aria-label="Önerilen düzenli ödemeler">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
@@ -196,6 +234,7 @@ function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
                       <div className="flex items-center gap-2">
                         <span className="truncate font-medium text-ink">{it.name}</span>
                         <Badge tone={it.kind === 'installment' ? 'info' : 'neutral'}>{RECURRING_KIND_LABEL[it.kind]}</Badge>
+                        {it.groupId && <GroupBadge group={groupMap.get(it.groupId)} />}
                       </div>
                       <div className="text-[12px] text-muted">
                         {CADENCE_LABEL[it.cadence]} · {it.active ? (next ? `sıradaki ${formatDate(next.date)}` : 'bitti') : 'durduruldu'}
@@ -330,8 +369,9 @@ function LoadBars({ rows }: { rows: ReturnType<typeof futureLoad> }) {
 function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClose: () => void }) {
   const repo = useRepo()
   const categories = useCategories()
+  const groups = useGroups()
   const { toast } = useUi()
-  const [f, setF] = useState({ name: '', amount: '', kind: 'subscription' as RecurringKind, cadence: 'monthly' as RecurringCadence, startDate: todayIso(), count: '', categoryId: '', reminderDays: '3', active: true })
+  const [f, setF] = useState({ groupId: '', name: '', amount: '', kind: 'subscription' as RecurringKind, cadence: 'monthly' as RecurringCadence, startDate: todayIso(), count: '', categoryId: '', reminderDays: '3', active: true })
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   // Her açılışta formu doldur
@@ -340,6 +380,7 @@ function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClose: () 
     setShown(draft)
     if (draft) {
       setF({
+        groupId: draft.groupId ?? '',
         name: draft.name ?? '',
         amount: draft.amountKurus ? formatKurusPlain(draft.amountKurus) : '',
         kind: draft.kind,
@@ -377,6 +418,8 @@ function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClose: () 
         occurrences: count,
         reminderDays: Number(f.reminderDays),
         matchKey: draft?.matchKey,
+        groupId: f.groupId || null,
+        recordedThrough: draft?.recordedThrough,
         active: f.active,
       })
       toast(isNew ? 'Eklendi.' : 'Kaydedildi.')
@@ -458,6 +501,18 @@ function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClose: () 
             </Select>
           </Field>
         </div>
+        <Field label="Grup" htmlFor="rec-group" hint={f.groupId ? 'Ödeme günü gelince tek dokunuşla bu grubun gideri olarak eklenir.' : 'Bir gruba bağlarsanız ödeme günü gelince grubun gideri olarak ekleyebilirsiniz.'}>
+          <Select id="rec-group" value={f.groupId} onChange={(e) => set('groupId', e.target.value)}>
+            <option value="">Grup yok (yalnızca hatırlatma)</option>
+            {(groups ?? [])
+              .filter((g) => !g.archived)
+              .map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+          </Select>
+        </Field>
         {!isNew && (
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-ink">Etkin</span>

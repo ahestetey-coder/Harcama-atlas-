@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { splitEqually } from './split'
+import { isEqualShares, splitBy, splitEqually, splitWithShares } from './split'
 import type { Transaction } from './types'
 
 let seq = 0
@@ -50,5 +50,40 @@ describe('gideri eşit paylaştırma', () => {
   it('herkes eşit ödediyse transfer yoktur', () => {
     const r = splitEqually([M('a'), M('b')], [tx(50, 'a'), tx(50, 'b')], null)
     expect(r.transfers).toEqual([])
+  })
+})
+
+describe('gelişmiş paylaşım', () => {
+  const txs = () => [tx(600, 'a'), tx(400, 'b')]
+  it('yüzdeye göre böler', () => {
+    const r = splitBy([M('a'), M('b'), M('c')], txs(), null, { method: 'percent', participants: null, values: { a: 50, b: 30, c: 20 } })
+    expect(Object.fromEntries(r.people.map((p) => [p.id, p.shareKurus]))).toEqual({ a: 50000, b: 30000, c: 20000 })
+    expect(r.transfers).toEqual([
+      { fromId: 'c', toId: 'a', amountKurus: 10000 },
+      { fromId: 'c', toId: 'b', amountKurus: 10000 },
+    ])
+  })
+  it('yüzdeler 100 etmezse uyarır ve eşit böler', () => {
+    const r = splitBy([M('a'), M('b')], txs(), null, { method: 'percent', participants: null, values: { a: 70, b: 20 } })
+    expect(r.error).toContain('100')
+    expect(r.people.every((p) => p.shareKurus === 50000)).toBe(true)
+  })
+  it('ağırlıkla ve yalnızca seçili üyelerle böler; kuruş kaybolmaz', () => {
+    const r = splitBy([M('a'), M('b'), M('c')], [tx(100, 'a')], null, { method: 'weights', participants: ['a', 'b'], values: { a: 2, b: 1 } })
+    const s = Object.fromEntries(r.people.map((p) => [p.id, p.shareKurus]))
+    expect(s).toEqual({ a: 6667, b: 3333, c: 0 })
+    expect(r.people.find((p) => p.id === 'c')!.included).toBe(false)
+  })
+  it('tutarla böler; tutarı girilmeyen kalanı paylaşır', () => {
+    const r = splitBy([M('a'), M('b'), M('c')], txs(), null, { method: 'amounts', participants: null, values: { a: 20000 } })
+    expect(Object.fromEntries(r.people.map((p) => [p.id, p.shareKurus]))).toEqual({ a: 20000, b: 40000, c: 40000 })
+    const bad = splitBy([M('a'), M('b')], txs(), null, { method: 'amounts', participants: null, values: { a: 20000, b: 20000 } })
+    expect(bad.error).toContain('1.000,00')
+  })
+  it('kayıtlı paylarla hesaplar', () => {
+    const r = splitWithShares([M('a'), M('b')], txs(), null, { a: 70000, b: 30000 })
+    expect(r.transfers).toEqual([{ fromId: 'a', toId: 'b', amountKurus: 10000 }])
+    expect(isEqualShares({ a: 50000, b: 50000 })).toBe(true)
+    expect(isEqualShares({ a: 70000, b: 30000 })).toBe(false)
   })
 })

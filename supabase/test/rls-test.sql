@@ -105,11 +105,54 @@ select public.ha_unsettle_period((select gid from t_ctx), '2026-09-15');
 select count(*) = 0 as unsettle_ok from public.ha_settlements \gset
 \if :unsettle_ok \else \echo 'HATA: paylaşım geri alınmadı' \q \endif
 select public.ha_settle_period((select gid from t_ctx), '2026-09-15', '2026-10-14', 100, jsonb_build_object(:'osman', 50, :'ayse', 50));
+-- Grup bütçesi: yalnızca yönetici
+select public.ha_set_group_budget((select gid from t_ctx), 500000);
+select budget_kurus = 500000 as budget_ok from public.ha_groups \gset
+\if :budget_ok \else \echo 'HATA: grup bütçesi' \q \endif
+reset role;
+select pg_temp.as_user(:'ayse');
+do $$ begin
+  perform public.ha_set_group_budget((select gid from t_ctx), 1);
+  raise exception 'HATA: üye grup bütçesini değiştirdi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+-- Ödeme durumu: taraf işaretler, herkes görür; paylaştırılmamış dönem ve yabancı kişi reddedilir
+select public.ha_mark_payment((select gid from t_ctx), '2026-09-15', :'ayse', :'osman', 25, true);
+select count(*) = 1 as paid_ok from public.ha_settlement_payments \gset
+\if :paid_ok \else \echo 'HATA: ödeme işareti' \q \endif
+do $$ begin
+  perform public.ha_mark_payment((select gid from t_ctx), '2026-08-15', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 25, true);
+  raise exception 'HATA: paylaştırılmamış dönem işaretlendi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+do $$ begin
+  perform public.ha_mark_payment((select gid from t_ctx), '2026-09-15', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 25, true);
+  raise exception 'HATA: üye olmayana ödeme işaretlendi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+do $$ begin
+  insert into public.ha_settlement_payments (group_id, period_start, from_user, to_user, amount_kurus, marked_by) values ((select gid from t_ctx), '2026-09-15', auth.uid(), auth.uid(), 1, auth.uid());
+  raise exception 'HATA: ödeme tablosuna doğrudan yazıldı';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
+-- Yönetici geri alır ve yeniden paylaştırır: ödeme kaydı paylaşımla birlikte silinir
+select pg_temp.as_user(:'osman');
+select count(*) = 1 as owner_sees_paid from public.ha_settlement_payments \gset
+\if :owner_sees_paid \else \echo 'HATA: yönetici ödemeyi görmüyor' \q \endif
+select public.ha_unsettle_period((select gid from t_ctx), '2026-09-15');
+select public.ha_settle_period((select gid from t_ctx), '2026-09-15', '2026-10-14', 100, jsonb_build_object(:'osman', 50, :'ayse', 50));
+select count(*) = 0 as paid_cleared from public.ha_settlement_payments \gset
+\if :paid_cleared \else \echo 'HATA: ödeme kaydı paylaşımla silinmedi' \q \endif
+select public.ha_mark_payment((select gid from t_ctx), '2026-09-15', :'ayse', :'osman', 25, true);
 reset role;
 
 -- Yabancı hiçbir şey göremez, gruba yazamaz, geçersiz kodla katılamaz
 select pg_temp.as_user(:'yabanci');
-select (select count(*) from public.ha_transactions) + (select count(*) from public.ha_groups) + (select count(*) from public.ha_group_members) + (select count(*) from public.ha_settlements) = 0 as stranger_blind \gset
+select (select count(*) from public.ha_transactions) + (select count(*) from public.ha_groups) + (select count(*) from public.ha_group_members) + (select count(*) from public.ha_settlements) + (select count(*) from public.ha_settlement_payments) = 0 as stranger_blind \gset
 \if :stranger_blind \else \echo 'HATA: yabancı veri görüyor' \q \endif
 do $$ begin
   perform public.ha_upsert_transactions(jsonb_build_array(jsonb_build_object('id', 'tx-y', 'group_id', (select gid from t_ctx), 'date', '2026-09-10', 'amount_kurus', 1, 'type', 'expense', 'description', 'X')));

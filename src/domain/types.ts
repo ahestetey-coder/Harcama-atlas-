@@ -1,3 +1,4 @@
+import type { SplitRule } from './split'
 import type { BudgetPlan } from './budget'
 /** Takvim günü: 'YYYY-AA-GG'. Saat dilimi bilgisi taşımaz; gün kayması olmaz. */
 export type IsoDate = string
@@ -76,6 +77,10 @@ export interface SpendGroup {
   cycleStartDay?: number | null
   /** Yöneticinin paylaştırdığı dönemler (buluttan eşitlenir). */
   settlements?: GroupSettlement[]
+  /** Plus: grubun aylık bütçesi (paylaşılan grupta yöneticinin belirlediği, buluttan eşitlenir). */
+  budgetKurus?: number | null
+  /** Plus: yöneticinin bu cihazda seçtiği paylaşım kuralı (yalnızca yerel). */
+  splitRule?: SplitRule
   archived: boolean
   order: number
   createdAt: string
@@ -92,6 +97,16 @@ export interface GroupSettlement {
   shares: Record<string, number>
   createdBy: string
   createdAt: string
+  /** Plus: "ödendi" işaretlenen ödemeler (buluttan eşitlenir). */
+  payments?: SettlementPayment[]
+}
+
+export interface SettlementPayment {
+  from: string
+  to: string
+  amountKurus: number
+  markedBy: string
+  markedAt: string
 }
 
 /**
@@ -179,6 +194,10 @@ export interface RecurringPayment {
   reminderDays: number
   /** Ödendiğini işlemlerden tanımak için iş yeri anahtarı. */
   matchKey?: string
+  /** Plus: grubun düzenli gideri; ödeme günü gelince o grubun gideri olarak eklenebilir. */
+  groupId?: string | null
+  /** Gider olarak eklenen son ödeme günü (bu tarih ve öncesi tekrar önerilmez). */
+  recordedThrough?: IsoDate
   active: boolean
   createdAt: string
   updatedAt: string

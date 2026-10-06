@@ -268,6 +268,75 @@ revoke all on function public.ha_settle_period(uuid, date, date, bigint, jsonb),
 grant execute on function public.ha_settle_period(uuid, date, date, bigint, jsonb), public.ha_unsettle_period(uuid, date) to authenticated;
 
 -- ---------------------------------------------------------------------------------------------
+-- Gelişmiş paylaşım (Plus): grup bütçesi ve ödeme durumu
+--
+-- Grup bütçesini yalnızca yönetici belirler. Paylaştırılmış bir dönemdeki "A, B'ye öder" ödemeleri
+-- yönetici veya ödemenin taraflarından biri "ödendi" olarak işaretler; grup üyeleri görür.
+
+alter table public.ha_groups add column if not exists budget_kurus bigint;
+do $$ begin
+  alter table public.ha_groups add constraint ha_groups_budget_check check (budget_kurus is null or budget_kurus > 0);
+exception when duplicate_object then null;
+end $$;
+
+create or replace function public.ha_set_group_budget(p_group uuid, p_budget bigint) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Giriş yapılmamış'; end if;
+  if p_budget is not null and p_budget <= 0 then raise exception 'Bütçe sıfırdan büyük olmalı'; end if;
+  update public.ha_groups set budget_kurus = p_budget where id = p_group and owner_id = auth.uid();
+  if not found then raise exception 'Grup bütçesini yalnızca grup yöneticisi değiştirebilir'; end if;
+end $$;
+
+create table if not exists public.ha_settlement_payments (
+  group_id uuid not null,
+  period_start date not null,
+  from_user uuid not null,
+  to_user uuid not null,
+  amount_kurus bigint not null check (amount_kurus > 0),
+  marked_by uuid not null,
+  marked_at timestamptz not null default now(),
+  primary key (group_id, period_start, from_user, to_user),
+  -- Paylaşım geri alınınca veya grup silinince ödeme kayıtları da silinir
+  foreign key (group_id, period_start) references public.ha_settlements(group_id, period_start) on delete cascade
+);
+
+alter table public.ha_settlement_payments enable row level security;
+drop policy if exists ha_settlement_payments_read on public.ha_settlement_payments;
+create policy ha_settlement_payments_read on public.ha_settlement_payments for select to authenticated using (public.ha_is_member(group_id));
+revoke all on public.ha_settlement_payments from anon, authenticated;
+grant select on public.ha_settlement_payments to authenticated;
+
+create or replace function public.ha_mark_payment(p_group uuid, p_start date, p_from uuid, p_to uuid, p_amount bigint, p_paid boolean) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Giriş yapılmamış'; end if;
+  if not public.ha_is_member(p_group) then raise exception 'Bu grubun üyesi değilsiniz'; end if;
+  if auth.uid() <> p_from and auth.uid() <> p_to
+     and not exists (select 1 from public.ha_groups where id = p_group and owner_id = auth.uid()) then
+    raise exception 'Ödemeyi yalnızca yönetici veya ödemenin tarafları işaretleyebilir';
+  end if;
+  if not exists (select 1 from public.ha_settlements where group_id = p_group and period_start = p_start) then
+    raise exception 'Bu dönem paylaştırılmamış';
+  end if;
+  if not p_paid then
+    delete from public.ha_settlement_payments where group_id = p_group and period_start = p_start and from_user = p_from and to_user = p_to;
+    return;
+  end if;
+  if p_amount is null or p_amount <= 0 then raise exception 'Tutar geçersiz'; end if;
+  if (select count(*) from public.ha_group_members where group_id = p_group and user_id in (p_from, p_to)) <> 2 then
+    raise exception 'Ödeme yalnızca grup üyeleri arasında olabilir';
+  end if;
+  insert into public.ha_settlement_payments (group_id, period_start, from_user, to_user, amount_kurus, marked_by)
+  values (p_group, p_start, p_from, p_to, p_amount, auth.uid())
+  on conflict (group_id, period_start, from_user, to_user) do update set
+    amount_kurus = excluded.amount_kurus, marked_by = excluded.marked_by, marked_at = now();
+end $$;
+
+revoke all on function public.ha_set_group_budget(uuid, bigint), public.ha_mark_payment(uuid, date, uuid, uuid, bigint, boolean) from public, anon;
+grant execute on function public.ha_set_group_budget(uuid, bigint), public.ha_mark_payment(uuid, date, uuid, uuid, bigint, boolean) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------
 -- Yönetici paneli
 --
 -- Yalnızca ha_admins tablosundaki hesaplar kullanıcı listesini görür ve hesap işlemleri yapar.
@@ -371,6 +440,7 @@ begin
   if me is null then raise exception 'Giriş yapılmamış'; end if;
   delete from public.ha_groups where owner_id = me;
   delete from public.ha_transactions where user_id = me;
+  delete from public.ha_settlement_payments where from_user = me or to_user = me or marked_by = me;
   delete from public.ha_group_members where user_id = me;
   delete from public.ha_invites where created_by = me;
   delete from public.ha_admins where user_id = me;

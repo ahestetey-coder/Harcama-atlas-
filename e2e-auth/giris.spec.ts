@@ -29,6 +29,8 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
   const calls: string[] = []
   const bodies: Record<string, unknown> = {}
   let settlements: Record<string, unknown>[] = []
+  let payments: Record<string, unknown>[] = []
+  let budget: number | null = null
   const d = new Date()
   const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   await page.route(`${SUPABASE}/**`, async (route) => {
@@ -56,7 +58,18 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
       const osman = USERS['osman@ornek.com'].id
       const ayse = USERS['ayse@ornek.com'].id
       if (req.method() === 'POST') bodies[url.pathname] = req.postDataJSON()
-      if (url.pathname === '/rest/v1/ha_groups') return json([{ id: 'bulut-ortak', name: 'Ortak', color: '#059669', owner_id: osman, cycle_start_day: null }])
+      if (url.pathname === '/rest/v1/ha_groups') return json([{ id: 'bulut-ortak', name: 'Ortak', color: '#059669', owner_id: osman, cycle_start_day: null, budget_kurus: budget }])
+      if (url.pathname === '/rest/v1/ha_settlement_payments') return json(payments)
+      if (url.pathname === '/rest/v1/rpc/ha_set_group_budget') {
+        budget = (req.postDataJSON() as { p_budget: number | null }).p_budget
+        return route.fulfill({ status: 204 })
+      }
+      if (url.pathname === '/rest/v1/rpc/ha_mark_payment') {
+        const b = req.postDataJSON() as { p_group: string; p_start: string; p_from: string; p_to: string; p_amount: number; p_paid: boolean }
+        payments = payments.filter((p) => !(p.from_user === b.p_from && p.to_user === b.p_to))
+        if (b.p_paid) payments.push({ group_id: b.p_group, period_start: b.p_start, from_user: b.p_from, to_user: b.p_to, amount_kurus: b.p_amount, marked_by: osman, marked_at: new Date().toISOString() })
+        return route.fulfill({ status: 204 })
+      }
       if (url.pathname === '/rest/v1/ha_group_members')
         return json([
           { group_id: 'bulut-ortak', user_id: osman, display_name: 'Osman', color: '#0f766e' },
@@ -255,6 +268,67 @@ test('ortak grubun yöneticisi gideri paylaştırır ve geri alır; Tümü topla
   await page.keyboard.press('Escape')
   await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Tümü' }).click()
   await expect(hero).toContainText('300,00')
+})
+
+test('Plus gelişmiş paylaşım: yüzdeyle paylaştırma, ödeme durumu ve grup bütçesi', async ({ page }) => {
+  const calls = await mockSupabase(page, { sharedGroup: true, admin: true })
+  await page.goto('./')
+  await signIn(page, 'osman@ornek.com')
+  await expect(page.getByRole('navigation', { name: 'Ana menü' })).toBeVisible()
+  await expect.poll(() => calls.some((c) => c.startsWith('GET /rest/v1/ha_settlements'))).toBe(true)
+  const osman = USERS['osman@ornek.com'].id
+  const ayse = USERS['ayse@ornek.com'].id
+
+  // Plus kapalıyken yalnızca eşit paylaşım ve tanıtım görünür
+  await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Ortak' }).click()
+  await page.getByRole('button', { name: 'Gideri paylaştır' }).click()
+  let split = page.getByRole('dialog', { name: 'Gideri paylaştır' })
+  await expect(split).toContainText('Plus pakette')
+  await page.keyboard.press('Escape')
+
+  // Yönetici Plus önizlemesini açar
+  await page.goto('./#/paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
+  await page.goto('./#/')
+
+  // Grup bütçesi
+  const card = page.getByRole('region', { name: 'Grup bütçesi' })
+  await expect(card).toContainText('Ortak bütçesi')
+  await card.getByRole('button', { name: 'Belirle' }).click()
+  const bd = page.getByRole('dialog', { name: 'Ortak bütçesi' })
+  await bd.getByLabel('Tutar (TL)').fill('1.000')
+  await bd.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(bd).toBeHidden()
+  expect(calls.bodies['/rest/v1/rpc/ha_set_group_budget']).toMatchObject({ p_group: 'bulut-ortak', p_budget: 100000 })
+  await expect(card).toContainText('800,00 ₺ kaldı')
+
+  // Yüzdeyle paylaştır: Osman %60, Ayşe %40 (toplam 200 ₺, hepsini Ayşe ödedi)
+  await page.getByRole('button', { name: 'Gideri paylaştır' }).click()
+  split = page.getByRole('dialog', { name: 'Gideri paylaştır' })
+  await split.getByRole('radiogroup', { name: 'Paylaşım yöntemi' }).getByRole('radio', { name: 'Yüzde' }).click()
+  await split.getByLabel('Siz yüzde').fill('70')
+  await expect(split.getByRole('alert')).toContainText('100 olmalı')
+  await expect(split.getByRole('button', { name: 'Gideri paylaştır' })).toBeDisabled()
+  await split.getByLabel('Siz yüzde').fill('60')
+  await split.getByLabel('Ayşe yüzde').fill('40')
+  await split.getByRole('button', { name: 'Gideri paylaştır' }).click()
+  await expect(split).toContainText('Bu dönem paylaştırıldı')
+  expect(calls.bodies['/rest/v1/rpc/ha_settle_period']).toMatchObject({ p_total: 20000, p_shares: { [osman]: 12000, [ayse]: 8000 } })
+  const transfer = split.getByRole('list', { name: 'Yapılacak ödemeler' }).getByRole('listitem')
+  await expect(transfer).toContainText('120,00 ₺')
+  await expect(transfer).toContainText('Ödenmedi')
+  await transfer.getByRole('button', { name: 'Ödendi işaretle' }).click()
+  await expect(transfer).toContainText('Ödendi ·')
+  expect(calls.bodies['/rest/v1/rpc/ha_mark_payment']).toMatchObject({ p_from: osman, p_to: ayse, p_amount: 12000, p_paid: true })
+
+  // Yalnızca seçili üyeler: Ayşe katılmazsa bütün gider Osman'a düşer
+  await split.getByRole('radiogroup', { name: 'Paylaşım yöntemi' }).getByRole('radio', { name: 'Eşit' }).click()
+  await split.getByLabel('Ayşe paylaşıma katılsın').uncheck()
+  await expect(split).toContainText('paylaşıma katılmıyor')
+  await split.getByRole('button', { name: 'Paylaşımı güncelle' }).click()
+  await expect.poll(() => (calls.bodies['/rest/v1/rpc/ha_settle_period'] as { p_shares: Record<string, number> }).p_shares).toEqual({ [osman]: 20000, [ayse]: 0 })
+  // Paylaşım değişince eski ödeme işareti tutarı farklı olduğu için belirtilir
+  await expect(split).toContainText('Bu dönem paylaştırıldı')
 })
 
 test('Ayarlar: hesabımı sil, hesabı ve bu cihazdaki kayıtları siler', async ({ page }) => {

@@ -1,4 +1,4 @@
-import type { CloudBackend, CloudGroup, CloudMember, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
+import type { CloudBackend, CloudGroup, CloudMember, CloudPayment, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 /**
  * Testler için bellek içi bulut. supabase/schema.sql'deki kuralların aynısını uygular
@@ -10,6 +10,8 @@ export class MemoryCloud {
   invites = new Map<string, string>()
   rows = new Map<string, CloudTxRow>()
   settlements: CloudSettlement[] = []
+  payments: CloudPayment[] = []
+  budgets = new Map<string, number | null>()
   private clock = Date.parse('2026-10-01T00:00:00Z')
 
   now(): string {
@@ -73,6 +75,26 @@ export class MemoryCloud {
         const g = c.groups.get(groupId)
         if (!g || g.owner_id !== userId) throw new Error('Paylaşımı yalnızca grup yöneticisi geri alabilir')
         c.settlements = c.settlements.filter((s) => !(s.group_id === groupId && s.period_start === start))
+        c.payments = c.payments.filter((p) => !(p.group_id === groupId && p.period_start === start))
+      },
+      async setGroupBudget(groupId, budgetKurus) {
+        const g = c.groups.get(groupId)
+        if (!g || g.owner_id !== userId) throw new Error('Grup bütçesini yalnızca grup yöneticisi değiştirebilir')
+        c.budgets.set(groupId, budgetKurus)
+      },
+      async listGroupBudgets(groupIds) {
+        return groupIds.filter((id) => c.isMember(id, userId)).map((id) => ({ id, budget_kurus: c.budgets.get(id) ?? null }))
+      },
+      async markPayment(groupId, start, from, to, amountKurus, paid) {
+        const g = c.groups.get(groupId)
+        if (!g || !c.isMember(groupId, userId)) throw new Error('Bu grubun üyesi değilsiniz')
+        if (userId !== from && userId !== to && g.owner_id !== userId) throw new Error('Ödemeyi yalnızca yönetici veya ödemenin tarafları işaretleyebilir')
+        if (!c.settlements.some((s) => s.group_id === groupId && s.period_start === start)) throw new Error('Bu dönem paylaştırılmamış')
+        c.payments = c.payments.filter((p) => !(p.group_id === groupId && p.period_start === start && p.from_user === from && p.to_user === to))
+        if (paid) c.payments.push({ group_id: groupId, period_start: start, from_user: from, to_user: to, amount_kurus: amountKurus, marked_by: userId, marked_at: c.now() })
+      },
+      async listPayments(groupIds) {
+        return c.payments.filter((p) => groupIds.includes(p.group_id) && c.isMember(p.group_id, userId)).map((p) => ({ ...p }))
       },
       async listSettlements(groupIds) {
         return c.settlements.filter((s) => groupIds.includes(s.group_id) && c.isMember(s.group_id, userId)).map((s) => ({ ...s, shares: { ...s.shares } }))

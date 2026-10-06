@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { CloudBackend, CloudGroup, CloudMember, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
+import type { CloudBackend, CloudPayment, CloudGroup, CloudMember, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 export class SupabaseBackend implements CloudBackend {
   readonly client: SupabaseClient
@@ -60,6 +60,31 @@ export class SupabaseBackend implements CloudBackend {
     const { data, error } = await this.client
       .from('ha_settlements')
       .select('group_id, period_start, period_end, total_kurus, shares, created_by, created_at')
+      .in('group_id', groupIds)
+    if (error) throw error
+    return data ?? []
+  }
+
+  async setGroupBudget(groupId: string, budgetKurus: number | null) {
+    await this.rpc('ha_set_group_budget', { p_group: groupId, p_budget: budgetKurus })
+  }
+
+  async listGroupBudgets(groupIds: string[]) {
+    if (!groupIds.length) return []
+    const { data, error } = await this.client.from('ha_groups').select('id, budget_kurus').in('id', groupIds)
+    if (error) throw error
+    return (data ?? []) as { id: string; budget_kurus: number | null }[]
+  }
+
+  async markPayment(groupId: string, start: string, from: string, to: string, amountKurus: number, paid: boolean) {
+    await this.rpc('ha_mark_payment', { p_group: groupId, p_start: start, p_from: from, p_to: to, p_amount: amountKurus, p_paid: paid })
+  }
+
+  async listPayments(groupIds: string[]): Promise<CloudPayment[]> {
+    if (!groupIds.length) return []
+    const { data, error } = await this.client
+      .from('ha_settlement_payments')
+      .select('group_id, period_start, from_user, to_user, amount_kurus, marked_by, marked_at')
       .in('group_id', groupIds)
     if (error) throw error
     return data ?? []
