@@ -29,6 +29,7 @@ const loaders = {
   payments: () => import('./pages/PaymentsPage'),
   goals: () => import('./pages/GoalsPage'),
   reports: () => import('./pages/ReportsPage'),
+  assets: () => import('./pages/AssetsPage'),
 }
 const TransactionsPage = lazy(loaders.transactions)
 const ImportPage = lazy(loaders.import)
@@ -44,6 +45,7 @@ const PlansPage = lazy(loaders.plans)
 const PaymentsPage = lazy(loaders.payments)
 const GoalsPage = lazy(loaders.goals)
 const ReportsPage = lazy(loaders.reports)
+const AssetsPage = lazy(loaders.assets)
 
 /** Uygulama açıldıktan sonra boşta kalınca bütün sayfalar önceden yüklenir; geçişte bekleme olmaz. */
 function usePrefetchPages() {
@@ -110,6 +112,7 @@ const router = createHashRouter([
       { path: '/odemeler', element: <PaymentsPage /> },
       { path: '/hedefler', element: <GoalsPage /> },
       { path: '/raporlar', element: <ReportsPage /> },
+      { path: '/varliklar', element: <AssetsPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

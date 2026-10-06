@@ -2,6 +2,7 @@ import Dexie from 'dexie'
 import { APP_CONFIG } from '../config/app'
 import { merchantKey, normalizeText, cleanDescription } from '../domain/normalize'
 import { PRIORITY, validateRulePattern } from '../domain/rules'
+import { quantityAt, type Asset, type AssetKind, type AssetTrade, type AssetValuation } from '../domain/assets'
 import type { GoalContribution, SavingsGoal } from '../domain/goals'
 import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from './backup'
@@ -551,10 +552,85 @@ export class AtlasRepository {
     })
   }
 
+  // ---------- Varlıklarım (Plus) ----------
+
+  async saveAsset(input: { id?: string; kind: AssetKind; name: string; unit: string; note?: string; archived?: boolean }, firstTrade?: Omit<AssetTrade, 'id' | 'side'>): Promise<Asset> {
+    const name = input.name.trim().slice(0, 60)
+    if (!name) throw new UserFacingError('Bir ad girin.')
+    const unit = input.unit.trim().slice(0, 16) || 'adet'
+    const now = nowIso()
+    const prev = input.id ? await this.db.assets.get(input.id) : undefined
+    if (!prev && firstTrade) assertTrade(firstTrade)
+    const row: Asset = {
+      id: prev?.id ?? newId(),
+      kind: prev?.kind ?? input.kind,
+      name,
+      unit,
+      note: input.note?.trim().slice(0, 200) || undefined,
+      trades: prev?.trades ?? (firstTrade ? [{ ...firstTrade, side: 'buy', id: newId() }] : []),
+      valuations: prev?.valuations ?? [],
+      archived: input.archived ?? prev?.archived ?? false,
+      createdAt: prev?.createdAt ?? now,
+      updatedAt: now,
+    }
+    await this.db.assets.put(row)
+    return row
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    await this.db.assets.delete(id)
+  }
+
+  /** Alış veya satış ekler; eldekinden fazlası satılamaz. */
+  async addAssetTrade(assetId: string, trade: Omit<AssetTrade, 'id'>): Promise<void> {
+    assertTrade(trade)
+    await this.db.transaction('rw', this.db.assets, async () => {
+      const a = await this.db.assets.get(assetId)
+      if (!a) throw new UserFacingError('Varlık bulunamadı.')
+      const next = [...a.trades, { ...trade, id: newId() }]
+      if (trade.side === 'sell') {
+        // Satış tarihinde ve sonraki her işlemde miktar eksiye düşmemeli
+        const check = { ...a, trades: next }
+        for (const d of [trade.date, ...next.map((t) => t.date).filter((d) => d > trade.date)])
+          if (quantityAt(check, d) < -1e-9) throw new UserFacingError('Elinizdekinden fazlasını satamazsınız.')
+      }
+      await this.db.assets.put({ ...a, trades: next, updatedAt: nowIso() })
+    })
+  }
+
+  async removeAssetTrade(assetId: string, tradeId: string): Promise<void> {
+    await this.db.transaction('rw', this.db.assets, async () => {
+      const a = await this.db.assets.get(assetId)
+      if (!a) return
+      const next = { ...a, trades: a.trades.filter((t) => t.id !== tradeId) }
+      for (const t of next.trades) if (quantityAt(next, t.date) < -1e-9) throw new UserFacingError('Bu alış silinirse sonraki satışlar eldekinden fazla olur. Önce satışı silin.')
+      await this.db.assets.put({ ...next, updatedAt: nowIso() })
+    })
+  }
+
+  /** Güncel birim fiyatı kaydeder; aynı gün için önceki değer değiştirilir. */
+  async setAssetValuation(assetId: string, v: Omit<AssetValuation, 'source'>): Promise<void> {
+    if (!Number.isFinite(v.unitPriceKurus) || v.unitPriceKurus < 0) throw new UserFacingError('Geçerli bir fiyat girin.')
+    await this.db.transaction('rw', this.db.assets, async () => {
+      const a = await this.db.assets.get(assetId)
+      if (!a) throw new UserFacingError('Varlık bulunamadı.')
+      const valuations = [...a.valuations.filter((x) => x.date !== v.date), { ...v, source: 'manual' as const }].sort((x, y) => x.date.localeCompare(y.date))
+      await this.db.assets.put({ ...a, valuations, updatedAt: nowIso() })
+    })
+  }
+
+  async removeAssetValuation(assetId: string, date: string): Promise<void> {
+    await this.db.transaction('rw', this.db.assets, async () => {
+      const a = await this.db.assets.get(assetId)
+      if (!a) return
+      await this.db.assets.put({ ...a, valuations: a.valuations.filter((x) => x.date !== date), updatedAt: nowIso() })
+    })
+  }
+
   // ---------- Yedekleme ----------
 
   async exportBackup(): Promise<Backup> {
-    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring, this.db.goals], async () => ({
+    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring, this.db.goals, this.db.assets], async () => ({
       format: BACKUP_FORMAT,
       backupVersion: BACKUP_VERSION,
       schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -569,6 +645,7 @@ export class AtlasRepository {
         imports: await this.db.imports.toArray(),
         recurring: await this.db.recurring.toArray(),
         goals: await this.db.goals.toArray(),
+        assets: await this.db.assets.toArray(),
         settings: (await this.db.settings.get('settings')) ?? null,
       },
     }))
@@ -591,7 +668,7 @@ export class AtlasRepository {
    */
   async restoreBackup(backup: Backup, mode: RestoreMode): Promise<RestoreReport> {
     const d = backup.data
-    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring, this.db.goals]
+    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring, this.db.goals, this.db.assets]
     return this.db.transaction('rw', tables, async () => {
       // Cihazın kendi üye kimliği korunur (bulut hesabı bu cihaza bağlıdır)
       const cur = await this.getSettings()
@@ -616,6 +693,7 @@ export class AtlasRepository {
         await this.db.transactions.bulkAdd(d.transactions)
         if (d.recurring?.length) await this.db.recurring.bulkAdd(d.recurring)
         if (d.goals?.length) await this.db.goals.bulkAdd(d.goals)
+        if (d.assets?.length) await this.db.assets.bulkAdd(d.assets)
         const members: Member[] = d.members ?? []
         if (members.length) await this.db.members.bulkPut(members)
         if (selfBefore) await this.db.members.put(selfBefore)
@@ -647,13 +725,17 @@ export class AtlasRepository {
         const existing = new Set((await this.db.goals.bulkGet(d.goals.map((g) => g.id))).filter(Boolean).map((g) => g!.id))
         await this.db.goals.bulkAdd(d.goals.filter((g) => !existing.has(g.id)))
       }
+      if (d.assets?.length) {
+        const existing = new Set((await this.db.assets.bulkGet(d.assets.map((a) => a.id))).filter(Boolean).map((a) => a!.id))
+        await this.db.assets.bulkAdd(d.assets.filter((a) => !existing.has(a.id)))
+      }
       return report
     })
   }
 
   /** Bütün verileri siler ve başlangıç kategorileri/kurallarıyla yeniden başlatır. */
   async clearAll(): Promise<void> {
-    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.meta, this.db.recurring, this.db.goals]
+    const tables = [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.meta, this.db.recurring, this.db.goals, this.db.assets]
     await this.db.transaction('rw', tables, async () => {
       const cur = await this.getSettings()
       const selfBefore = cur.selfMemberId ? await this.db.members.get(cur.selfMemberId) : undefined
@@ -673,3 +755,9 @@ export class AtlasRepository {
 }
 
 export { merchantKey }
+
+function assertTrade(t: Pick<AssetTrade, 'date' | 'quantity' | 'unitPriceKurus'>): void {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t.date)) throw new UserFacingError('Geçerli bir tarih seçin.')
+  if (!Number.isFinite(t.quantity) || t.quantity <= 0) throw new UserFacingError('Geçerli bir miktar girin.')
+  if (!Number.isFinite(t.unitPriceKurus) || t.unitPriceKurus < 0) throw new UserFacingError('Geçerli bir fiyat girin.')
+}

@@ -126,6 +126,19 @@ const goalSchema = z.object({
   updatedAt: z.string(),
 })
 
+const assetSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(['deposit', 'fx', 'fund', 'gold', 'stock', 'cash', 'other', 'debt']),
+  name: z.string(),
+  unit: z.string(),
+  trades: z.array(z.object({ id: z.string().min(1), date: isoDate, side: z.enum(['buy', 'sell']), quantity: z.number().positive(), unitPriceKurus: z.number().nonnegative() })),
+  valuations: z.array(z.object({ date: isoDate, unitPriceKurus: z.number().nonnegative(), source: z.literal('manual') })),
+  note: z.string().optional(),
+  archived: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
 const settingsSchema = z.object({
   id: z.literal('settings'),
   monthlyBudgetKurus: kurus.nullable(),
@@ -162,6 +175,8 @@ export const backupSchema = z.object({
     recurring: z.array(recurringSchema).optional(),
     /** v7 öncesi yedeklerde yoktur. */
     goals: z.array(goalSchema).optional(),
+    /** v8 öncesi yedeklerde yoktur. */
+    assets: z.array(assetSchema).optional(),
     settings: settingsSchema.nullable(),
   }),
 })

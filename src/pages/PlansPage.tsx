@@ -15,6 +15,7 @@ const READY: Partial<Record<Feature, string>> = {
   subscriptions: '/odemeler',
   goals: '/hedefler',
   reports: '/raporlar',
+  assets: '/varliklar',
 }
 
 interface Item {

@@ -46,7 +46,7 @@ describe('ilk kurulum ve göç', () => {
     const cats = await db.categories.toArray()
     expect(cats.map((c) => c.name)).toEqual(expect.arrayContaining(['Market', 'Akaryakıt', 'Restoran/Kafe', 'Ulaşım', 'Faturalar', 'Kira/Ev', 'Sağlık', 'Eğitim', 'Giyim', 'Bebek/Çocuk', 'Eğlence', 'Abonelikler', 'Diğer']))
     expect(await db.rules.count()).toBeGreaterThan(20)
-    expect(db.verno).toBe(7)
+    expect(db.verno).toBe(8)
     const selfId = (await repo.getSettings()).selfMemberId
     expect(selfId).toBeTruthy()
     expect((await db.members.get(selfId!))?.name).toBe('Ben')
@@ -184,6 +184,22 @@ describe('birikim hedefleri', () => {
   })
 })
 
+describe('varlıklar', () => {
+  it('alış/satış ekler, fazla satışı ve sonraki satışı bozan silmeyi engeller, fiyatı günceller', async () => {
+    const a = await repo.saveAsset({ kind: 'fx', name: 'Dolar', unit: 'USD' }, { date: '2026-09-01', quantity: 100, unitPriceKurus: 4100 })
+    await repo.addAssetTrade(a.id, { date: '2026-09-20', side: 'sell', quantity: 40, unitPriceKurus: 4150 })
+    await expect(repo.addAssetTrade(a.id, { date: '2026-09-25', side: 'sell', quantity: 61, unitPriceKurus: 4150 })).rejects.toBeInstanceOf(UserFacingError)
+    await expect(repo.addAssetTrade(a.id, { date: '2026-08-01', side: 'sell', quantity: 1, unitPriceKurus: 4150 })).rejects.toBeInstanceOf(UserFacingError)
+    const buyId = (await db.assets.get(a.id))!.trades[0].id
+    await expect(repo.removeAssetTrade(a.id, buyId)).rejects.toBeInstanceOf(UserFacingError)
+    await repo.setAssetValuation(a.id, { date: '2026-10-01', unitPriceKurus: 4200 })
+    await repo.setAssetValuation(a.id, { date: '2026-10-01', unitPriceKurus: 4210 })
+    expect((await db.assets.get(a.id))!.valuations).toEqual([{ date: '2026-10-01', unitPriceKurus: 4210, source: 'manual' }])
+    await repo.deleteAsset(a.id)
+    expect(await db.assets.count()).toBe(0)
+  })
+})
+
 describe('yedekleme / geri yükleme', () => {
   it('tam yedek alır, doğrular ve değiştirerek geri yükler', async () => {
     await repo.addTransaction({ date: '2026-09-01', amountKurus: 12345, type: 'expense', description: 'A', categoryId: 'cat-market', note: 'not' })
@@ -191,6 +207,7 @@ describe('yedekleme / geri yükleme', () => {
     await repo.saveRecurring({ name: 'Netflix', kind: 'subscription', amountKurus: 22999, categoryId: null, cadence: 'monthly', startDate: '2026-09-15', reminderDays: 3, active: true })
     const goal = await repo.saveGoal({ name: 'Tatil', icon: 'Plane', color: '#0ea5e9', targetKurus: 3000000, targetDate: '2027-06-30' })
     await repo.addGoalContribution(goal.id, { date: '2026-09-10', amountKurus: 500000 })
+    await repo.saveAsset({ kind: 'gold', name: 'Gram altın', unit: 'gram' }, { date: '2026-09-01', quantity: 2.5, unitPriceKurus: 450000 })
     const backup = await repo.exportBackup()
     const text = JSON.stringify(backup)
     const parsed = parseBackup(text)
@@ -205,6 +222,7 @@ describe('yedekleme / geri yükleme', () => {
     expect((await repo.getSettings()).budgetPlan?.categoryLimits['cat-market']).toBe(100000)
     expect(await db.recurring.toArray()).toMatchObject([{ name: 'Netflix', matchKey: 'NETFLIX', amountKurus: 22999 }])
     expect(await db.goals.toArray()).toMatchObject([{ name: 'Tatil', contributions: [{ amountKurus: 500000 }] }])
+    expect(await db.assets.toArray()).toMatchObject([{ name: 'Gram altın', trades: [{ quantity: 2.5, side: 'buy' }] }])
   })
   it('birleştirmede mevcut kayıtları ezmez', async () => {
     const t = await repo.addTransaction({ date: '2026-09-01', amountKurus: 100, type: 'expense', description: 'A', categoryId: 'cat-market' })

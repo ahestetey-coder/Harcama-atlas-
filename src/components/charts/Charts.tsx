@@ -1,4 +1,5 @@
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { formatDate } from '../../domain/dates'
 import { formatKurus, formatKurusCompact } from '../../domain/money'
 import { useReducedMotion } from '../../lib/hooks'
 
@@ -138,6 +139,98 @@ export function DailyBars({ data, onSelect, highlightDay }: { data: DailyPoint[]
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+    </div>
+  )
+}
+
+export interface WealthPoint {
+  date: string
+  valueKurus: number
+  contributedKurus: number
+}
+
+/**
+ * Varlık değeri ve yatırılan tutar (aynı birim, tek eksen). Yalnızca kullanıcının veri girdiği
+ * günler noktalanır; ekran okuyucu için tablo eşlik eder.
+ */
+export function WealthLine({ points }: { points: WealthPoint[] }) {
+  const reduced = useReducedMotion()
+  const data = points.map((p) => ({ ...p, label: formatDate(p.date), ts: Date.parse(`${p.date}T00:00:00Z`) }))
+  return (
+    <div>
+      <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted" aria-hidden>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--asset-1)' }} /> Değer
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> Yatırılan
+        </span>
+      </div>
+      <div className="mt-2 h-48" aria-hidden>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="var(--line)" />
+            <XAxis
+              dataKey="ts"
+              type="number"
+              scale="time"
+              domain={['dataMin', 'dataMax']}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: 'var(--subtle)', fontSize: 11 }}
+              tickFormatter={(v: number) => formatDate(new Date(v).toISOString().slice(0, 10))}
+              ticks={data.length <= 4 ? data.map((d) => d.ts) : [data[0].ts, data[Math.floor(data.length / 2)].ts, data[data.length - 1].ts]}
+              padding={{ left: 8, right: 8 }}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              width={56}
+              tick={{ fill: 'var(--subtle)', fontSize: 11 }}
+              tickFormatter={(v: number) => formatKurusCompact(v)}
+              domain={['auto', 'auto']}
+            />
+            <Tooltip
+              cursor={{ stroke: 'var(--line-strong)' }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const p = payload[0].payload as WealthPoint & { label: string }
+                return (
+                  <TooltipBox
+                    title={p.label}
+                    lines={[
+                      ['Değer', formatKurus(p.valueKurus)],
+                      ['Yatırılan', formatKurus(p.contributedKurus)],
+                      ['Fark', formatKurus(p.valueKurus - p.contributedKurus)],
+                    ]}
+                  />
+                )
+              }}
+            />
+            <Line type="linear" dataKey="contributedKurus" stroke="var(--subtle)" strokeWidth={2} strokeDasharray="4 4" dot={false} isAnimationActive={!reduced} />
+            <Line type="linear" dataKey="valueKurus" stroke="var(--asset-1)" strokeWidth={2} dot={{ r: 4, fill: 'var(--asset-1)', stroke: 'var(--surface)', strokeWidth: 2 }} activeDot={{ r: 5 }} isAnimationActive={!reduced} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>Varlık değeri ve yatırılan tutar</caption>
+        <thead>
+          <tr>
+            <th>Tarih</th>
+            <th>Değer</th>
+            <th>Yatırılan</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((p) => (
+            <tr key={p.date}>
+              <td>{p.label}</td>
+              <td>{formatKurus(p.valueKurus)}</td>
+              <td>{formatKurus(p.contributedKurus)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

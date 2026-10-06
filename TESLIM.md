@@ -366,3 +366,14 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **Raporlar** (`#/raporlar`): seçili dönemin toplamı, önceki döneme göre fark ve son 3 dönem ortalaması; kategorilerin ortalamayla veya önceki dönemle karşılaştırması; en çok harcanan iş yerleri (önceki dönem tutarıyla); son 6 dönemin net harcama grafiği (ekran okuyucu için tablo).
 - **Tasarruf uyarıları** cihazda kurallarla hazırlanır: toplam harcama ortalamanın %15 ve 500 TL üstündeyse, bir kategori ortalamanın %30 ve 500 TL üstündeyse (olası tasarruf tutarıyla), daha önce görülmeyen bir iş yerine 2.000 TL ve üstü harcandıysa, bir kategori ortalamanın belirgin altındaysa. Süren dönemde "ortalamanın altında" mesajı verilmez. Hiçbir veri dışarı gönderilmez.
 - **Sınır:** Karşılaştırma için önceki dönemlerde kayıt gerekir; eşikler sabit kurallardır, kişiye göre öğrenmez.
+
+## 24. Plus: Varlıklarım (06.10.2026)
+
+- **Varlıklar** (`#/varliklar`): mevduat, döviz, fon, altın, hisse, nakit ve diğer. Altın (gram, çeyrek, yarım, tam, Cumhuriyet), döviz (USD, EUR, GBP) ve mevduat için hazır seçenekler. Her varlık miktar, birim, alış tarihi ve birim alış fiyatıyla eklenir; sonradan alış/satış veya para yatırma/çekme kaydedilir. Eldekinden fazlası satılamaz.
+- **Değerleme:** Fiyatlar (mevduatta güncel bakiye) kullanıcı tarafından girilir; her varlıkta fiyatın kaynağı ("Fiyat elle girildi" veya "İşlem fiyatı") ve tarihi görünür. 30 günden eski fiyatlar için uyarı gösterilir. Otomatik piyasa fiyatı yok.
+- **Özet:** net varlık (varlıklar − borçlar), toplam varlık, borçlar, net yatırılan tutar ve yatırım kazancı/kaybı ayrı ayrı. Kazanç ortalama maliyet yöntemiyle hesaplanır; satış yapılmışsa gerçekleşen ve eldeki (gerçekleşmemiş) kazanç ayrı gösterilir. Mevduat faizi kazanç olarak görünür.
+- **Dağılım:** türlere göre çubuk ve yüzdeli liste (sabit renk sırası, açık ve koyu temada doğrulanmış palet).
+- **Zaman içinde değer:** Yalnızca kullanıcının işlem veya fiyat girdiği günlerde, o güne kadar bilinen fiyatlarla hesaplanan değer ve yatırılan tutar çizilir. Aradaki günler için değer üretilmez; iki farklı günden az veri varsa grafik gösterilmez.
+- **Borçlar:** elle eklenen borçlar (kredi kartı, ihtiyaç/konut kredisi…) ve "Düzenli ödemeler"deki kalan taksitlerin otomatik toplamı (net varlığa katılması kapatılabilir).
+- Yeni tablo `assets` (veritabanı şeması v8), yedeğe dahil. Yatırım tavsiyesi verilmez.
+- **Sınır:** Fiyatlar elle girilir; otomatik fiyat kaynağı seçildiğinde eklenecek. Komisyon ve vergi ayrıca tutulmuyor (birim fiyata dahil edilebilir).

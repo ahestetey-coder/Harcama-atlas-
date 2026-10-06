@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { normalizeText } from '../domain/normalize'
+import type { Asset } from '../domain/assets'
 import type { SavingsGoal } from '../domain/goals'
 import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
 import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, buildSelfMember, RULES_BEFORE_V3 } from './seed'
@@ -16,6 +17,7 @@ export type AtlasDb = Dexie & {
   members: EntityTable<Member, 'id'>
   recurring: EntityTable<RecurringPayment, 'id'>
   goals: EntityTable<SavingsGoal, 'id'>
+  assets: EntityTable<Asset, 'id'>
   rules: EntityTable<Rule, 'id'>
   imports: EntityTable<ImportRecord, 'id'>
   settings: EntityTable<Settings, 'id'>
@@ -31,7 +33,7 @@ export const DEMO_DB_NAME = 'harcama-atlasi-demo'
  *  2. Gerekirse `.upgrade()` ile mevcut kayıtları dönüştürün.
  *  3. `CURRENT_SCHEMA_VERSION` değerini artırın; yedek dosyaları bu değeri taşır.
  */
-export const CURRENT_SCHEMA_VERSION = 7
+export const CURRENT_SCHEMA_VERSION = 8
 
 export function createDb(name: string): AtlasDb {
   const db = new Dexie(name) as AtlasDb
@@ -96,6 +98,7 @@ export function createDb(name: string): AtlasDb {
   // v6: Plus düzenli ödemeler (abonelik, fatura, elle eklenen taksit).
   db.version(6).stores({ recurring: 'id, kind, active' })
   db.version(7).stores({ goals: 'id, archived' })
+  db.version(8).stores({ assets: 'id, kind, archived' })
 
   db.on('populate', async (tx) => {
     const now = new Date().toISOString()

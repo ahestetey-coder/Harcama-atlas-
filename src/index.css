@@ -31,10 +31,24 @@
   --shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.12);
   --shadow-lg: 0 24px 60px -20px rgb(15 23 42 / 0.3);
   --ring: rgb(5 150 105 / 0.45);
+  --asset-1: #2a78d6;
+  --asset-2: #eb6834;
+  --asset-3: #1baf7a;
+  --asset-4: #eda100;
+  --asset-5: #e87ba4;
+  --asset-6: #008300;
+  --asset-7: #4a3aa7;
   color-scheme: light;
 }
 
 [data-theme='dark'] {
+  --asset-1: #3987e5;
+  --asset-2: #d95926;
+  --asset-3: #199e70;
+  --asset-4: #c98500;
+  --asset-5: #d55181;
+  --asset-6: #008300;
+  --asset-7: #9085e9;
   --bg: #080d18;
   --bg-accent: radial-gradient(1200px 600px at 100% -10%, rgb(16 185 129 / 0.1), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, rgb(6 182 212 / 0.08), transparent 60%);
