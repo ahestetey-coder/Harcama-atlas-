@@ -24,10 +24,9 @@ import {
 } from '../domain/assets'
 import { diffDays, formatDate, todayIso } from '../domain/dates'
 import { formatKurus, parseUserAmount } from '../domain/money'
-import { installmentPlans, progressOf } from '../domain/recurring'
 import { cn } from '../lib/cn'
-import { useAssets, useRecurring, useRepo } from '../state/data'
-import { usePersonalTransactions } from '../state/personal'
+import { useInstallmentDebt } from '../state/budget'
+import { useAssets, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
 
 /** Dağılım renkleri: sabit sırayla (tür → renk), açık ve koyu temada doğrulanmış palet. */
@@ -103,20 +102,6 @@ export default function AssetsPage() {
       </PlanGate>
     </div>
   )
-}
-
-function useInstallmentDebt(): number {
-  const recurring = useRecurring()
-  const personal = usePersonalTransactions()
-  return useMemo(() => {
-    if (!recurring || !personal) return 0
-    const today = todayIso()
-    const manual = recurring.filter((r) => r.kind === 'installment' && r.active)
-    const keys = new Set(manual.map((r) => r.matchKey ?? ''))
-    const fromStatements = installmentPlans(personal.counted, keys).reduce((s, p) => s + p.remainingKurus, 0)
-    const fromManual = manual.reduce((s, r) => s + (progressOf(r, today).remaining ?? 0) * r.amountKurus, 0)
-    return fromStatements + fromManual
-  }, [recurring, personal])
 }
 
 function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {

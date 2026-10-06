@@ -17,6 +17,9 @@ const READY: Partial<Record<Feature, string>> = {
   reports: '/raporlar',
   assets: '/varliklar',
   advancedSplit: '/',
+  journey: '/yolculuk',
+  scenarios: '/senaryolar',
+  learning: '/ogren',
 }
 
 interface Item {

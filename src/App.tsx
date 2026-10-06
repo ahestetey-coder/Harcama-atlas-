@@ -30,6 +30,9 @@ const loaders = {
   goals: () => import('./pages/GoalsPage'),
   reports: () => import('./pages/ReportsPage'),
   assets: () => import('./pages/AssetsPage'),
+  journey: () => import('./pages/JourneyPage'),
+  scenarios: () => import('./pages/ScenariosPage'),
+  learning: () => import('./pages/LearningPage'),
 }
 const TransactionsPage = lazy(loaders.transactions)
 const ImportPage = lazy(loaders.import)
@@ -46,6 +49,9 @@ const PaymentsPage = lazy(loaders.payments)
 const GoalsPage = lazy(loaders.goals)
 const ReportsPage = lazy(loaders.reports)
 const AssetsPage = lazy(loaders.assets)
+const JourneyPage = lazy(loaders.journey)
+const ScenariosPage = lazy(loaders.scenarios)
+const LearningPage = lazy(loaders.learning)
 
 /** Uygulama açıldıktan sonra boşta kalınca bütün sayfalar önceden yüklenir; geçişte bekleme olmaz. */
 function usePrefetchPages() {
@@ -113,6 +119,9 @@ const router = createHashRouter([
       { path: '/hedefler', element: <GoalsPage /> },
       { path: '/raporlar', element: <ReportsPage /> },
       { path: '/varliklar', element: <AssetsPage /> },
+      { path: '/yolculuk', element: <JourneyPage /> },
+      { path: '/senaryolar', element: <ScenariosPage /> },
+      { path: '/ogren', element: <LearningPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

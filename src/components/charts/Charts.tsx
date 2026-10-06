@@ -169,7 +169,7 @@ export function WealthLine({ points }: { points: WealthPoint[] }) {
       <div className="mt-2 h-48" aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid vertical={false} stroke="var(--line)" />
+            <CartesianGrid vertical={false} stroke="var(--border)" />
             <XAxis
               dataKey="ts"
               type="number"
@@ -191,7 +191,7 @@ export function WealthLine({ points }: { points: WealthPoint[] }) {
               domain={['auto', 'auto']}
             />
             <Tooltip
-              cursor={{ stroke: 'var(--line-strong)' }}
+              cursor={{ stroke: 'var(--border-strong)' }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const p = payload[0].payload as WealthPoint & { label: string }
@@ -227,6 +227,91 @@ export function WealthLine({ points }: { points: WealthPoint[] }) {
               <td>{p.label}</td>
               <td>{formatKurus(p.valueKurus)}</td>
               <td>{formatKurus(p.contributedKurus)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+export interface ScenarioRow {
+  year: number
+  cautious: number
+  mid: number
+  optimistic: number
+  target: number
+}
+
+const SCENARIO_SERIES: Array<{ key: 'optimistic' | 'mid' | 'cautious'; label: string; color: string }> = [
+  { key: 'optimistic', label: 'Olumlu', color: 'var(--asset-1)' },
+  { key: 'mid', label: 'Orta', color: 'var(--asset-2)' },
+  { key: 'cautious', label: 'Temkinli', color: 'var(--asset-3)' },
+]
+
+/** Üç senaryo ve hedef çizgisi (yıl ekseni). */
+export function ScenarioLines({ rows, caption }: { rows: ScenarioRow[]; caption: string }) {
+  const reduced = useReducedMotion()
+  const last = rows[rows.length - 1]?.year ?? 0
+  const step = last <= 10 ? 1 : last <= 20 ? 2 : 5
+  const ticks = rows.filter((r) => r.year % step === 0 || r.year === last).map((r) => r.year)
+  return (
+    <div>
+      <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted" aria-hidden>
+        {SCENARIO_SERIES.map((s) => (
+          <span key={s.key} className="inline-flex items-center gap-1.5">
+            <span className="h-0.5 w-4 rounded-full" style={{ background: s.color }} /> {s.label}
+          </span>
+        ))}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> Hedef
+        </span>
+      </div>
+      <div className="mt-2 h-60" aria-hidden>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="year" type="number" domain={[0, last]} ticks={ticks} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? 'Bugün' : `${v}. yıl`)} />
+            <YAxis tickLine={false} axisLine={false} width={68} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => formatKurusCompact(v)} domain={['auto', 'auto']} />
+            <Tooltip
+              cursor={{ stroke: 'var(--border-strong)' }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const p = payload[0].payload as ScenarioRow
+                return (
+                  <TooltipBox
+                    title={p.year === 0 ? 'Bugün' : `${p.year}. yıl sonu`}
+                    lines={[...SCENARIO_SERIES.map((s) => [s.label, formatKurus(p[s.key])] as [string, string]), ['Hedef', formatKurus(p.target)]]}
+                  />
+                )
+              }}
+            />
+            <Line type="linear" dataKey="target" stroke="var(--subtle)" strokeWidth={2} strokeDasharray="4 4" dot={false} isAnimationActive={!reduced} />
+            {SCENARIO_SERIES.map((s) => (
+              <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} strokeWidth={2} dot={false} activeDot={{ r: 5, stroke: 'var(--surface)', strokeWidth: 2 }} isAnimationActive={!reduced} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{caption}</caption>
+        <thead>
+          <tr>
+            <th>Yıl</th>
+            {SCENARIO_SERIES.map((s) => (
+              <th key={s.key}>{s.label}</th>
+            ))}
+            <th>Hedef</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.year}>
+              <td>{r.year}</td>
+              {SCENARIO_SERIES.map((s) => (
+                <td key={s.key}>{formatKurus(r[s.key])}</td>
+              ))}
+              <td>{formatKurus(r.target)}</td>
             </tr>
           ))}
         </tbody>

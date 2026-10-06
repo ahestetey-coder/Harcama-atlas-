@@ -1,5 +1,6 @@
 import type { SplitRule } from './split'
 import type { BudgetPlan } from './budget'
+import type { JourneyProfile } from './journey'
 /** Takvim günü: 'YYYY-AA-GG'. Saat dilimi bilgisi taşımaz; gün kayması olmaz. */
 export type IsoDate = string
 /** Takvim ayı: 'YYYY-AA'. */
@@ -172,6 +173,8 @@ export interface Settings {
   cycleStartDay?: number
   /** Plus: kategori limitleri, haftalık bütçe, devir ve uyarı eşiği. */
   budgetPlan?: BudgetPlan
+  /** Plus+: Finansal Özgürlük Yolculuğum anketi (kullanıcının doğruladığı bilgiler). */
+  journey?: JourneyProfile
   updatedAt: string
 }
 

@@ -166,3 +166,63 @@ test('Plus varlıklarım: altın eklenir, fiyat güncellenir, satılır, borç n
   await expect(page.getByRole('list', { name: 'Varlık dağılımı' })).toContainText('Altın')
   await expect(page.getByRole('table')).toContainText('36.000,00 ₺')
 })
+
+test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve göstergeler hesaplanır', async ({ page }) => {
+  await open(page, 'paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
+  await page.goto('./#/varliklar')
+  await page.getByRole('button', { name: 'Altın', exact: true }).click()
+  const dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await dlg.getByRole('button', { name: 'Gram altın' }).click()
+  await dlg.getByLabel('Miktar (gram)').fill('10')
+  await dlg.getByLabel('Birim alış fiyatı (TL)').fill('4.000')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+
+  // Senaryolar ankete bağlıdır
+  await page.goto('./#/senaryolar')
+  await expect(page.getByRole('heading', { name: 'Önce yolculuğunuzu oluşturun' })).toBeVisible()
+
+  await page.goto('./#/yolculuk')
+  const survey = page.getByRole('region', { name: 'Yolculuk anketi' })
+  await expect(survey).toContainText('Eksik')
+  await expect(survey).toContainText('40.000,00 ₺')
+  await survey.getByRole('button', { name: 'Doğruladım, rotamı oluştur' }).click()
+  await expect(survey.getByRole('alert')).toContainText('Hedefte aylık yaşam gideri için geçerli bir tutar girin.')
+  await survey.getByLabel(/Hedefte aylık yaşam gideri/).fill('25.000')
+  await survey.getByLabel(/Aylık net gelir/).fill('50.000')
+  await survey.getByLabel(/Zorunlu aylık giderler/).fill('20.000')
+  await survey.getByRole('button', { name: 'Doğruladım, rotamı oluştur' }).click()
+
+  // 40.000 / 20.000 = 2 ay; hedef 25.000 × 12 / %4 = 7.500.000
+  await expect(page.getByRole('region', { name: 'Finansal güvence' })).toContainText('2 ay')
+  await expect(page.getByRole('region', { name: 'Hedef ilerlemesi' })).toContainText('7.500.000,00 ₺')
+  await expect(page.getByRole('region', { name: 'Tahmini rota' })).toContainText('Ayda 30.000,00 ₺ birikimle')
+  const stages = page.getByRole('list', { name: 'Aşamalar' })
+  await expect(stages.getByRole('listitem').filter({ hasText: 'Bütçe dengesi' })).toContainText('Tamamlandı')
+  await expect(stages.getByRole('listitem').filter({ hasText: 'Acil durum birikimi' })).toContainText('20.000 ₺ daha biriktirin')
+  await expect(stages.getByRole('listitem').filter({ hasText: 'Düzenli birikim' })).toContainText('Tamamlandı')
+  await expect(page.getByText(/Kilometre taşı:/)).toBeVisible()
+
+  // Bilgileri düzenleme anketi doldurulmuş açar
+  await page.getByRole('button', { name: 'Bilgilerimi düzenle' }).click()
+  await expect(page.getByLabel(/Aylık net gelir/)).toHaveValue('50.000,00')
+  await page.getByRole('button', { name: 'Vazgeç' }).click()
+
+  await page.getByRole('link', { name: 'Senaryolar' }).first().click()
+  await expect(page).toHaveURL(/#\/senaryolar/)
+  const table = page.getByRole('region', { name: 'Senaryo tablosu' })
+  await expect(table).toContainText('40.000,00 ₺')
+  await expect(page.getByRole('list', { name: 'Hedefe ulaşma' })).toContainText('Temkinli')
+  // Gelir kaybı ilk yılda birikimi azaltır
+  const before = await table.getByRole('row').nth(2).textContent()
+  await page.getByLabel('Gelir kaybı (ay)').fill('6')
+  await expect(table.getByRole('row').nth(2)).not.toHaveText(before ?? '')
+  await page.getByRole('radio', { name: 'Nominal' }).click()
+  await expect(table).toContainText('(nominal)')
+  await expect(page.getByText('olasılık veya garanti değildir')).toBeVisible()
+
+  await page.goto('./#/ogren')
+  await expect(page.getByText('Likidite', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Henüz bir haber kaynağı bağlı değil/)).toBeVisible()
+})

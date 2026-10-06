@@ -163,6 +163,21 @@ const settingsSchema = z.object({
       warnPct: z.number().int().min(50).max(100),
     })
     .optional(),
+  journey: z
+    .object({
+      goal: z.enum(['independence', 'security', 'early-retire', 'custom']),
+      goalName: z.string().optional(),
+      horizonYears: z.number().min(1).max(60),
+      targetMonthlyExpenseKurus: kurus,
+      monthlyIncomeKurus: kurus,
+      essentialMonthlyKurus: kurus,
+      incomeStability: z.enum(['regular', 'variable', 'irregular']),
+      priorities: z.array(z.string()),
+      withdrawalRatePct: z.number().min(0.5).max(10),
+      celebrated: z.array(z.enum(['balance', 'emergency', 'debt', 'saving', 'target'])),
+      confirmedAt: z.string(),
+    })
+    .optional(),
   updatedAt: z.string(),
 })
 
