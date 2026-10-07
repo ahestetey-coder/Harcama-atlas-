@@ -90,8 +90,11 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
     }
     if (url.pathname === '/functions/v1/market-rates') {
       calls.push('KUR')
-      bodies.kur = req.postDataJSON()
-      return json({ date: '2026-10-07', source: 'tcmb', rates: [{ code: 'USD', name: 'ABD DOLARI', valueTl: 42.5 }, { code: 'EUR', name: 'EURO', valueTl: 49 }] })
+      const b = req.postDataJSON() as { quotes?: { market: string; symbol: string }[] }
+      bodies.kur = b
+      const prices: Record<string, number> = { 'us:SPY': 25500, 'crypto:BTC': 3400000 }
+      const quotes = (b.quotes ?? []).map((q) => (prices[`${q.market}:${q.symbol}`] ? { ...q, ok: true, priceTl: prices[`${q.market}:${q.symbol}`], price: 1, currency: 'USD', date: '2026-10-07', name: null, provider: 'Yahoo Finance' } : { ...q, ok: false, error: 'Bu sembol bulunamadı' }))
+      return json({ date: '2026-10-07', source: 'tcmb', rates: [{ code: 'USD', name: 'ABD DOLARI', valueTl: 42.5 }, { code: 'EUR', name: 'EURO', valueTl: 49 }], quotes })
     }
     if (url.pathname === '/functions/v1/coach-chat') {
       bodies.chat = req.postDataJSON()
@@ -523,7 +526,7 @@ test('Plus+ koç ve araştırma: rapor kaynaklı görünür, hafıza düzenlenir
   await expect(page.getByText('Geçti')).toBeVisible()
 })
 
-test('Varlıklarım: döviz varlığı TCMB kuruyla otomatik güncellenir, kâr/zarar görünür; istek varlık bilgisi taşımaz', async ({ page }) => {
+test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâr/zarar ve USD görünümü; istek yalnızca sembol taşır', async ({ page }) => {
   const calls = await mockSupabase(page, { admin: true })
   await page.goto('./')
   await signIn(page, 'osman@ornek.com')
@@ -533,7 +536,7 @@ test('Varlıklarım: döviz varlığı TCMB kuruyla otomatik güncellenir, kâr/
   await page.goto('./#/varliklar')
 
   await page.getByRole('button', { name: 'Döviz', exact: true }).click()
-  const dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  let dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
   await dlg.getByRole('button', { name: 'Dolar' }).click()
   await dlg.getByLabel('Miktar (USD)').fill('1.000')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('40')
@@ -545,10 +548,47 @@ test('Varlıklarım: döviz varlığı TCMB kuruyla otomatik güncellenir, kâr/
   await expect(list).toContainText('42.500,00 ₺')
   await expect(list).toContainText('Kâr +2.500,00 ₺')
   await expect(list).toContainText('TCMB kuru')
-  await expect(page.getByLabel('Güncel fiyatlar')).toContainText('TCMB gösterge kuru')
-  expect(calls.filter((c) => c === 'KUR')).toHaveLength(1)
-  expect(JSON.stringify(calls.bodies.kur)).toBe('{}')
 
-  await page.getByRole('button', { name: 'Kurları güncelle' }).click()
-  await expect(page.getByText('Kurlar zaten güncel.')).toBeVisible()
+  // ABD ETF: sembolle eklenir, fiyatı otomatik gelir
+  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await dlg.getByLabel('Tür').selectOption('stock')
+  await dlg.getByLabel('Borsa').selectOption('us')
+  await dlg.getByLabel('Ad', { exact: true }).fill('S&P 500 ETF')
+  await dlg.getByLabel('Sembol').fill('spy')
+  await dlg.getByLabel('Miktar (adet)').fill('2')
+  await dlg.getByLabel('Birim alış fiyatı (TL)').fill('26.000')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  await expect(list).toContainText('SPY · ABD borsası')
+  await expect(list).toContainText('51.000,00 ₺')
+  await expect(list).toContainText('Zarar −1.000,00 ₺')
+  await expect(list).toContainText('Yahoo Finance')
+
+  // Bilinmeyen kripto: fiyat alınamadı uyarısı
+  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await dlg.getByLabel('Tür').selectOption('crypto')
+  await dlg.getByLabel('Ad', { exact: true }).fill('Bilinmeyen')
+  await dlg.getByLabel('Sembol').fill('XYZ')
+  await dlg.getByLabel('Miktar (adet)').fill('1')
+  await dlg.getByLabel('Birim alış fiyatı (TL)').fill('100')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  await expect(list).toContainText('Fiyat alınamadı')
+  await expect(page.getByLabel('Güncel fiyatlar')).toContainText('1 varlığın fiyatı alınamadı')
+
+  // İstek yalnızca piyasa ve sembol taşır
+  const sent = JSON.stringify(calls.bodies.kur)
+  expect(sent).toContain('SPY')
+  expect(sent).not.toMatch(/26000|2600000|quantity|unitPrice|Bilinmeyen|S&P/)
+
+  // USD görünümü: 42.500 + 51.000 + 100 = 93.600 ₺ / 42,5 = 2.202,35 $
+  const sum = page.getByRole('region', { name: 'Net varlık' })
+  await sum.getByRole('radiogroup', { name: 'Para birimi' }).getByRole('radio', { name: '$ USD' }).click()
+  await expect(sum).toContainText('$2.202,35')
+  await expect(sum).toContainText('dolara çevrildi')
+
+  await page.getByRole('button', { name: 'Fiyatları güncelle' }).click()
+  await expect(page.getByText('Fiyatlar zaten güncel.')).toBeVisible()
 })

@@ -2,7 +2,7 @@ import Dexie from 'dexie'
 import { APP_CONFIG } from '../config/app'
 import { merchantKey, normalizeText, cleanDescription } from '../domain/normalize'
 import { PRIORITY, validateRulePattern } from '../domain/rules'
-import { quantityAt, type Asset, type AssetKind, type AssetTrade, type AssetValuation, type DebtTerms } from '../domain/assets'
+import { quantityAt, type Asset, type AssetKind, type AssetQuote, type AssetTrade, type AssetValuation, type DebtTerms } from '../domain/assets'
 import type { GoalContribution, SavingsGoal } from '../domain/goals'
 import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from './backup'
@@ -564,7 +564,7 @@ export class AtlasRepository {
 
   // ---------- Varlıklarım (Plus) ----------
 
-  async saveAsset(input: { id?: string; kind: AssetKind; name: string; unit: string; note?: string; archived?: boolean; debtTerms?: DebtTerms | null }, firstTrade?: Omit<AssetTrade, 'id' | 'side'>): Promise<Asset> {
+  async saveAsset(input: { id?: string; kind: AssetKind; name: string; unit: string; note?: string; archived?: boolean; debtTerms?: DebtTerms | null; quote?: AssetQuote | null }, firstTrade?: Omit<AssetTrade, 'id' | 'side'>): Promise<Asset> {
     const name = input.name.trim().slice(0, 60)
     if (!name) throw new UserFacingError('Bir ad girin.')
     const unit = input.unit.trim().slice(0, 16) || 'adet'
@@ -578,6 +578,7 @@ export class AtlasRepository {
       unit,
       note: input.note?.trim().slice(0, 200) || undefined,
       debtTerms: (prev?.kind ?? input.kind) !== 'debt' ? undefined : input.debtTerms === undefined ? prev?.debtTerms : (input.debtTerms ?? undefined),
+      quote: input.quote === undefined ? prev?.quote : (input.quote ?? undefined),
       trades: prev?.trades ?? (firstTrade ? [{ ...firstTrade, side: 'buy', id: newId() }] : []),
       valuations: prev?.valuations ?? [],
       archived: input.archived ?? prev?.archived ?? false,

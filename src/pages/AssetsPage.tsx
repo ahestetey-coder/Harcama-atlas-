@@ -10,6 +10,12 @@ import {
   ASSET_KIND_LABEL,
   ASSET_KINDS,
   autoPriceCode,
+  autoQuote,
+  hasAutoPrice,
+  normalizeSymbol,
+  QUOTE_MARKET_LABEL,
+  quoteKey,
+  quoteUpdates,
   DEFAULT_UNIT,
   formatQuantity,
   formatUnitPrice,
@@ -22,6 +28,8 @@ import {
   valueHistory,
   type Asset,
   type AssetKind,
+  type AssetQuote,
+  type QuoteMarket,
   type DebtTerms,
   type HoldingSummary,
 } from '../domain/assets'
@@ -33,7 +41,7 @@ import { useAssets, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
 import { useStartNew } from '../lib/useStartNew'
 import { useAuth } from '../state/auth'
-import { fetchTcmbRates } from '../cloud/rates'
+import { fetchMarket } from '../cloud/rates'
 
 /** Dağılım renkleri: sabit sırayla (tür → renk), açık ve koyu temada doğrulanmış palet. */
 const KIND_COLOR: Record<Exclude<AssetKind, 'debt'>, string> = {
@@ -44,9 +52,10 @@ const KIND_COLOR: Record<Exclude<AssetKind, 'debt'>, string> = {
   stock: 'var(--asset-5)',
   cash: 'var(--asset-6)',
   other: 'var(--asset-7)',
+  crypto: 'var(--asset-8)',
 }
 
-const PRESETS: Partial<Record<AssetKind, { name: string; unit: string }[]>> = {
+const PRESETS: Partial<Record<AssetKind, { name: string; unit: string; symbol?: string }[]>> = {
   gold: [
     { name: 'Gram altın', unit: 'gram' },
     { name: 'Çeyrek altın', unit: 'adet' },
@@ -59,6 +68,11 @@ const PRESETS: Partial<Record<AssetKind, { name: string; unit: string }[]>> = {
     { name: 'Euro', unit: 'EUR' },
     { name: 'Sterlin', unit: 'GBP' },
   ],
+  crypto: [
+    { name: 'Bitcoin', unit: 'adet', symbol: 'BTC' },
+    { name: 'Ethereum', unit: 'adet', symbol: 'ETH' },
+    { name: 'Solana', unit: 'adet', symbol: 'SOL' },
+  ],
   deposit: [{ name: 'Vadeli mevduat', unit: 'TL' }],
   cash: [{ name: 'Nakit', unit: 'TL' }],
   debt: [
@@ -70,10 +84,25 @@ const PRESETS: Partial<Record<AssetKind, { name: string; unit: string }[]>> = {
 
 const STALE_DAYS = 30
 
+/** TEFAS, sunucu erişimine kapalı (canlı denemede istek reddedildi); fon fiyatı alınamazsa elle girilir. */
+const TEFAS_BLOCKED = 'TEFAS şu an otomatik fiyat vermiyor; fiyatı elle girin'
+
+/** Sembol girilebilen türler. */
+const SYMBOL_KINDS: AssetKind[] = ['stock', 'fund', 'crypto']
+const defaultMarket = (k: AssetKind): QuoteMarket => (k === 'fund' ? 'tefas' : k === 'crypto' ? 'crypto' : 'bist')
+
 type Editing = { kind: AssetKind; asset?: Asset } | null
 type Acting = { asset: Asset; mode: 'trade' | 'price' } | null
 
-const signed = (k: number) => `${k > 0 ? '+' : k < 0 ? '−' : ''}${formatKurus(Math.abs(k))}`
+const signedWith = (fmt: (k: number) => string) => (k: number) => `${k > 0 ? '+' : k < 0 ? '−' : ''}${fmt(Math.abs(k))}`
+const signed = signedWith(formatKurus)
+const usdFormat = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'USD' })
+const usdCompact = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 })
+
+/** Piyasa fiyatının kaynağı (satırda gösterilir). */
+function providerOf(market: QuoteMarket): string {
+  return market === 'crypto' ? 'Binance' : market === 'tefas' ? 'TEFAS' : 'Yahoo Finance'
+}
 const pct = (part: number, whole: number) => (whole > 0 ? `%${((part / whole) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}` : '')
 
 export default function AssetsPage() {
@@ -101,7 +130,8 @@ export default function AssetsPage() {
           'Altın, döviz, fon, hisse ve mevduatlarınızı miktar, alış tarihi ve maliyetiyle kaydedin',
           'Toplam değeri, dağılımı ve borçlar düşülmüş net varlığınızı görün',
           'Yatırdığınız parayı ve yatırım kazancını ayrı ayrı izleyin',
-          'Döviz değerleri TCMB kuruyla otomatik güncellenir, kâr/zarar anında görünür',
+          'Döviz, hisse, ETF, fon, kripto ve gram altın güncel fiyatla otomatik güncellenir; kâr/zarar anında görünür',
+          'Toplam varlığınızı TL ya da USD olarak görün',
         ]}
       >
         <AssetsContent onEdit={setEditing} />
@@ -119,6 +149,8 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   const [includeInstallments, setIncludeInstallments] = useState(true)
   const [acting, setActing] = useState<Acting>(null)
   const [del, setDel] = useState<Asset | null>(null)
+  const [ccy, setCcy] = useState<'TRY' | 'USD'>('TRY')
+  const live = useLivePrices(assets)
   const today = todayIso()
   const extraDebt = includeInstallments ? installmentDebt : 0
   const p = useMemo(() => portfolio(assets ?? [], today, extraDebt), [assets, today, extraDebt])
@@ -128,12 +160,17 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   const holdings = assets.filter((a) => a.kind !== 'debt' && !a.archived)
   const debts = assets.filter((a) => a.kind === 'debt' && !a.archived)
   const gain = p.unrealizedKurus + p.realizedKurus
+  const usd = live.usd ?? usdFromAssets(assets)
+  const inUsd = ccy === 'USD' && !!usd
+  const money = inUsd ? (k: number) => usdFormat.format(k / 100 / usd.valueTl) : formatKurus
+  const moneyCompact = inUsd ? (k: number) => usdCompact.format(k / 100 / usd.valueTl) : undefined
+  const signedM = signedWith(money)
 
   if (assets.length === 0 && installmentDebt === 0)
     return (
       <Card className="p-5">
         <EmptyState icon={<Wallet className="size-6" />} title="Henüz varlık eklenmedi" className="py-6">
-          Altın, döviz, fon, hisse veya mevduatınızı ve borçlarınızı ekleyin. Döviz kuru otomatik gelir, diğer fiyatları siz girersiniz; bilgiler yalnızca bu cihazda kalır.
+          Altın, döviz, fon, hisse veya mevduatınızı ve borçlarınızı ekleyin. Döviz, hisse, ETF, fon, kripto ve gram altının güncel fiyatı otomatik gelir; bilgiler yalnızca bu cihazda kalır.
         </EmptyState>
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           {ASSET_KINDS.filter((k) => k !== 'other').map((k) => (
@@ -151,28 +188,47 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card className="p-5 lg:col-span-2" aria-label="Net varlık">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-base font-semibold">Özet</h2>
+          {usd && (
+          <Segmented
+            label="Para birimi"
+            value={inUsd ? 'USD' : 'TRY'}
+            onChange={setCcy}
+            options={[
+              { value: 'TRY', label: '₺ TL' },
+              { value: 'USD', label: '$ USD' },
+            ]}
+          />
+          )}
+        </div>
         <div className="flex flex-wrap gap-x-10 gap-y-4">
           <div>
             <div className="text-[12.5px] text-muted">Net varlık</div>
-            <div className="num font-display text-2xl font-semibold">{formatKurus(p.netWorthKurus)}</div>
+            <div className="num font-display text-2xl font-semibold">{money(p.netWorthKurus)}</div>
             <div className="mt-0.5 text-[12px] text-subtle">Varlıklar − borçlar</div>
           </div>
-          <Figure label="Toplam varlık" value={formatKurus(p.assetsKurus)} />
-          <Figure label="Borçlar" value={formatKurus(p.debtsKurus)} />
-          <Figure label="Yatırdığınız (net)" value={formatKurus(p.contributedKurus)} />
+          <Figure label="Toplam varlık" value={money(p.assetsKurus)} />
+          <Figure label="Borçlar" value={money(p.debtsKurus)} />
+          <Figure label="Yatırdığınız (net)" value={money(p.contributedKurus)} />
           <Figure
             label="Yatırım kazancı / kaybı"
-            value={signed(gain)}
+            value={signedM(gain)}
             tone={gain > 0 ? 'up' : gain < 0 ? 'down' : undefined}
-            sub={p.realizedKurus !== 0 ? `Gerçekleşen ${signed(p.realizedKurus)} · eldeki ${signed(p.unrealizedKurus)}` : p.contributedKurus > 0 ? pct(gain, p.contributedKurus) : undefined}
+            sub={p.realizedKurus !== 0 ? `Gerçekleşen ${signedM(p.realizedKurus)} · eldeki ${signedM(p.unrealizedKurus)}` : p.contributedKurus > 0 ? pct(gain, p.contributedKurus) : undefined}
           />
         </div>
+        {inUsd && usd && (
+          <p className="mt-3 text-[12px] text-subtle">
+            Tutarlar TCMB kuruyla ({usd.valueTl.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} ₺ · {formatDate(usd.date)}) dolara çevrildi. Kazanç TL bazında hesaplanıp bugünkü kurla gösterilir.
+          </p>
+        )}
         {p.oldestPriceDate && diffDays(today, p.oldestPriceDate) > STALE_DAYS && (
           <Alert tone="warning" className="mt-4">
             Bazı fiyatlar {STALE_DAYS} günden eski ({formatDate(p.oldestPriceDate)}). Güncel değer için fiyatları güncelleyin.
           </Alert>
         )}
-        <LivePrices assets={assets} />
+        <LivePrices live={live} assets={assets} />
       </Card>
 
       <Card className="p-5">
@@ -187,6 +243,8 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
                 total={p.assetsKurus}
                 centerLabel="Toplam varlık"
                 valueLabel="Değer"
+                format={money}
+                formatCompact={moneyCompact}
               />
             </div>
             <ul className="mt-3 space-y-1.5" aria-label="Varlık dağılımı">
@@ -195,7 +253,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
                   <span className="size-2.5 shrink-0 rounded-sm" style={{ background: KIND_COLOR[a.kind] }} aria-hidden />
                   <span className="flex-1 text-ink">{ASSET_KIND_LABEL[a.kind]}</span>
                   <span className="num w-14 text-right text-muted">{pct(a.valueKurus, p.assetsKurus)}</span>
-                  <span className="num w-32 text-right font-medium text-ink">{formatKurus(a.valueKurus)}</span>
+                  <span className="num w-32 text-right font-medium text-ink">{money(a.valueKurus)}</span>
                 </li>
               ))}
             </ul>
@@ -229,7 +287,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
         ) : (
           <ul className="mt-2 divide-y divide-line" aria-label="Varlıklar">
             {ASSET_KINDS.flatMap((k) => holdings.filter((a) => a.kind === k)).map((a) => (
-              <HoldingRow key={a.id} asset={a} s={holdingSummary(a, today)} onAct={(mode) => setActing({ asset: a, mode })} onEdit={() => onEdit({ kind: a.kind, asset: a })} onDelete={() => setDel(a)} />
+              <HoldingRow key={a.id} asset={a} s={holdingSummary(a, today)} money={money} failed={live.failed[a.id]} onAct={(mode) => setActing({ asset: a, mode })} onEdit={() => onEdit({ kind: a.kind, asset: a })} onDelete={() => setDel(a)} />
             ))}
           </ul>
         )}
@@ -255,18 +313,18 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
                 <input type="checkbox" className="accent-[var(--accent)]" checked={includeInstallments} onChange={(e) => setIncludeInstallments(e.target.checked)} />
                 Net varlığa kat
               </label>
-              <span className="num w-32 text-right font-semibold">{formatKurus(installmentDebt)}</span>
+              <span className="num w-32 text-right font-semibold">{money(installmentDebt)}</span>
             </li>
           )}
           {debts.map((a) => (
-            <HoldingRow key={a.id} asset={a} s={holdingSummary(a, today)} onAct={(mode) => setActing({ asset: a, mode })} onEdit={() => onEdit({ kind: 'debt', asset: a })} onDelete={() => setDel(a)} />
+            <HoldingRow key={a.id} asset={a} s={holdingSummary(a, today)} money={money} onAct={(mode) => setActing({ asset: a, mode })} onEdit={() => onEdit({ kind: 'debt', asset: a })} onDelete={() => setDel(a)} />
           ))}
           {installmentDebt === 0 && debts.length === 0 && <li className="py-2 text-sm text-muted">Kayıtlı borç yok.</li>}
         </ul>
       </Card>
 
       <p className="text-[12.5px] text-subtle lg:col-span-2">
-        Döviz fiyatları TCMB gösterge kurundan (döviz satış) otomatik alınır; kur isteği varlık bilginizi içermez. Altın, fon, hisse ve mevduat değerleri sizin girdiğiniz fiyatlarla hesaplanır. Bu sayfa yatırım tavsiyesi vermez. Bilgiler yalnızca bu cihazda tutulur.
+        Döviz TCMB gösterge kurundan; Borsa İstanbul, ABD hisse ve ETF'leri ile gram altın (ons fiyatı × kur) Yahoo Finance'ten; kripto Binance'ten (USDT paritesi × kur); fonlar TEFAS'tan alınır. Fiyatlar gecikmeli olabilir. Fiyat isteği yalnızca sembolleri içerir; miktar ve maliyetleriniz gönderilmez. Bu sayfa yatırım tavsiyesi vermez. Bilgiler yalnızca bu cihazda tutulur.
       </p>
 
       <ActionDialog acting={acting} onClose={() => setActing(null)} />
@@ -293,71 +351,119 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   )
 }
 
-/** Oturum boyunca otomatik kur denemesi bir kez yapılır; sonrası "Kurları güncelle" ile. */
-let autoTried = false
+interface LiveState {
+  busy: boolean
+  /** Son başarılı güncelleme zamanı (ISO). */
+  at?: string
+  error?: string
+  /** Fiyatı alınamayan varlıklar: id → neden. */
+  failed: Record<string, string>
+  usd: { valueTl: number; date: string } | null
+}
 
-/** Döviz varlıklarını TCMB gösterge kuruyla günceller. İstek varlık bilgisi taşımaz; yalnızca kur listesi gelir. */
-function LivePrices({ assets }: { assets: Asset[] }) {
+/** Oturum boyunca son istenen sembol listesi: liste değişmedikçe sayfa her açıldığında yeniden istenmez. */
+let lastSignature: string | null = null
+let lastUsd: LiveState['usd'] = null
+
+/**
+ * Döviz (TCMB), hisse, ETF, fon, kripto ve gram altın fiyatlarını alır ve fiyat kaydı olarak yazar.
+ * İstek yalnızca piyasa ve sembol taşır; miktar ya da maliyet gönderilmez.
+ */
+function useLivePrices(assets: Asset[] | undefined) {
   const { backend, user } = useAuth()
   const repo = useRepo()
   const { toast } = useUi()
-  const [state, setState] = useState<{ busy: boolean; date?: string; error?: string }>({ busy: false })
-  const fxAssets = assets.filter((a) => !a.archived && autoPriceCode(a))
-  const fxCount = fxAssets.length
-  const assetsRef = useRef(assets)
-  useEffect(() => {
-    assetsRef.current = assets
-  }, [assets])
+  const [state, setState] = useState<LiveState>({ busy: false, failed: {}, usd: lastUsd })
   const client = backend && user ? backend.client : null
+  const assetsRef = useRef(assets ?? [])
+  useEffect(() => {
+    assetsRef.current = assets ?? []
+  }, [assets])
+  const auto = (assets ?? []).filter(hasAutoPrice)
+  const signature = assets ? auto.map((a) => `${a.id}=${autoPriceCode(a) ?? quoteKey(autoQuote(a)!)}`).join('|') : null
 
   const refresh = useCallback(
     async (manual: boolean) => {
       if (!client) return
       setState((s) => ({ ...s, busy: true, error: undefined }))
       try {
-        const r = await fetchTcmbRates(client)
-        const updates = rateUpdates(assetsRef.current, r.rates, r.date)
+        const list = assetsRef.current
+        const wanted = new Map<string, AssetQuote>()
+        for (const a of list) {
+          const q = a.archived ? null : autoQuote(a)
+          if (q) wanted.set(quoteKey(q), q)
+        }
+        const data = await fetchMarket(client, [...wanted.values()])
+        const ok = data.quotes.filter((q) => q.ok).map((q) => ({ market: q.market, symbol: q.symbol, priceTl: q.priceTl!, date: q.date! }))
+        const updates = [...(data.date ? rateUpdates(list, data.rates, data.date) : []), ...quoteUpdates(list, ok)]
         for (const u of updates) await repo.setAssetValuation(u.assetId, u.valuation)
-        setState({ busy: false, date: r.date })
-        if (manual) toast(updates.length ? `${updates.length} döviz varlığı güncel kurla güncellendi.` : 'Kurlar zaten güncel.')
+        const errors = new Map(data.quotes.filter((q) => !q.ok).map((q) => [`${q.market}:${q.symbol}`, q.market === 'tefas' ? TEFAS_BLOCKED : (q.error ?? 'Fiyat alınamadı')]))
+        const failed: Record<string, string> = {}
+        for (const a of list) {
+          const q = a.archived ? null : autoQuote(a)
+          const e = q ? errors.get(quoteKey(q)) : undefined
+          if (e) failed[a.id] = e
+        }
+        const usdRate = data.rates.find((r) => r.code === 'USD')
+        if (usdRate && data.date) lastUsd = { valueTl: usdRate.valueTl, date: data.date }
+        setState({ busy: false, at: new Date().toISOString(), failed, usd: lastUsd })
+        if (manual) toast(updates.length ? `${updates.length} varlığın fiyatı güncellendi.` : 'Fiyatlar zaten güncel.')
       } catch (e) {
-        setState({ busy: false, error: e instanceof Error ? e.message : 'Kurlar alınamadı.' })
+        setState((s) => ({ ...s, busy: false, error: e instanceof Error ? e.message : 'Güncel fiyatlar alınamadı.' }))
       }
     },
     [client, repo, toast],
   )
 
   useEffect(() => {
-    if (autoTried || !client || fxCount === 0) return
-    autoTried = true
+    if (!client || signature === null || signature === lastSignature) return
+    lastSignature = signature
     void refresh(false)
-  }, [client, fxCount, refresh])
+  }, [client, signature, refresh])
 
-  const latest = fxAssets.flatMap((a) => a.valuations.filter((v) => v.source === 'tcmb').map((v) => v.date)).sort().at(-1)
-  const date = state.date ?? latest
+  return { ...state, signedIn: !!client, autoCount: auto.length, refresh }
+}
+
+type Live = ReturnType<typeof useLivePrices>
+
+/** Döviz varlığının son TCMB fiyatından USD kuru (çevrimdışıyken USD görünümü için). */
+function usdFromAssets(assets: Asset[]): LiveState['usd'] {
+  let best: LiveState['usd'] = null
+  for (const a of assets)
+    if (autoPriceCode(a) === 'USD') for (const v of a.valuations) if (v.source === 'tcmb' && (!best || v.date > best.date)) best = { valueTl: v.unitPriceKurus / 100, date: v.date }
+  return best
+}
+
+function LivePrices({ live, assets }: { live: Live; assets: Asset[] }) {
+  const failedCount = Object.keys(live.failed).length
+  const latest = assets
+    .filter(hasAutoPrice)
+    .flatMap((a) => a.valuations.filter((v) => v.source !== 'manual').map((v) => v.date))
+    .sort()
+    .at(-1)
+  const time = live.at ? new Date(live.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-surface-2 px-3 py-2.5 text-[12.5px]" aria-label="Güncel fiyatlar">
-      <RefreshCw className={cn('size-4 shrink-0 text-accent', state.busy && 'animate-spin')} aria-hidden />
+      <RefreshCw className={cn('size-4 shrink-0 text-accent', live.busy && 'animate-spin')} aria-hidden />
       <div className="min-w-0 flex-1 text-muted">
-        {!client ? (
-          'Döviz varlıklarınızın güncel değerini otomatik almak için hesabınızla giriş yapın.'
-        ) : fxCount === 0 ? (
-          'Birimi USD, EUR, GBP gibi döviz kodu olan döviz varlıkları TCMB kuruyla otomatik güncellenir. Altın, fon ve hisse fiyatlarını şimdilik siz girersiniz.'
-        ) : state.error ? (
-          <span className="text-danger">{state.error}</span>
-        ) : state.busy ? (
-          'TCMB kurları alınıyor…'
-        ) : date ? (
-          <>
-            Döviz değerleri <span className="font-medium text-ink">TCMB gösterge kuru</span> ile hesaplandı · {formatDate(date)}. Altın, fon ve hisse için fiyatı siz girersiniz.
-          </>
+        {!live.signedIn ? (
+          'Güncel fiyatları otomatik almak için hesabınızla giriş yapın.'
+        ) : live.error ? (
+          <span className="text-danger">{live.error}</span>
+        ) : live.busy ? (
+          'Güncel fiyatlar alınıyor…'
+        ) : live.autoCount === 0 ? (
+          'Hisse, ETF, fon ve kriptoya sembol girerseniz (THYAO, AAPL, SPY, TTE, BTC…) güncel fiyatı otomatik gelir. Döviz ve gram altın kendiliğinden güncellenir.'
         ) : (
-          'Döviz varlıklarınız TCMB kuruyla güncellenebilir.'
+          <>
+            <span className="font-medium text-ink">Güncel fiyatlar</span> {time ? `${time} itibarıyla alındı` : latest ? `· son fiyat ${formatDate(latest)}` : ''}.
+            {failedCount > 0 && <span className="text-warning"> {failedCount} varlığın fiyatı alınamadı.</span>}
+          </>
         )}
       </div>
-      {client && fxCount > 0 && (
-        <Button size="sm" variant="soft" onClick={() => void refresh(true)} disabled={state.busy}>
-          Kurları güncelle
+      {live.signedIn && live.autoCount > 0 && (
+        <Button size="sm" variant="soft" onClick={() => void live.refresh(true)} disabled={live.busy}>
+          Fiyatları güncelle
         </Button>
       )}
     </div>
@@ -374,14 +480,35 @@ function Figure({ label, value, sub, tone }: { label: string; value: string; sub
   )
 }
 
-function priceSourceLabel(s: HoldingSummary['price'], balance: boolean): string {
+function priceSourceLabel(asset: Asset, s: HoldingSummary['price'], balance: boolean): string {
   if (!s) return 'Fiyat yok'
+  if (s.source === 'piyasa') {
+    const q = autoQuote(asset)
+    return `${q ? providerOf(q.market) : 'Piyasa'} · ${formatDate(s.date)}`
+  }
   if (s.source === 'manual') return `${balance ? 'Bakiye' : 'Fiyat'} elle girildi · ${formatDate(s.date)}`
   if (s.source === 'tcmb') return `TCMB kuru · ${formatDate(s.date)}`
   return `${balance ? 'Son hareket' : 'İşlem fiyatı'} · ${formatDate(s.date)}`
 }
 
-function HoldingRow({ asset, s, onAct, onEdit, onDelete }: { asset: Asset; s: HoldingSummary; onAct: (m: 'trade' | 'price') => void; onEdit: () => void; onDelete: () => void }) {
+function HoldingRow({
+  asset,
+  s,
+  money = formatKurus,
+  failed,
+  onAct,
+  onEdit,
+  onDelete,
+}: {
+  asset: Asset
+  s: HoldingSummary
+  money?: (k: number) => string
+  failed?: string
+  onAct: (m: 'trade' | 'price') => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const quote = autoQuote(asset)
   const [open, setOpen] = useState(false)
   const balance = isBalanceKind(asset.kind)
   const debt = asset.kind === 'debt'
@@ -393,7 +520,17 @@ function HoldingRow({ asset, s, onAct, onEdit, onDelete }: { asset: Asset; s: Ho
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate font-medium text-ink">{asset.name}</span>
             <Badge tone={debt ? 'danger' : 'neutral'}>{ASSET_KIND_LABEL[asset.kind]}</Badge>
-            {s.price?.source === 'tcmb' && <Badge tone="accent">Otomatik</Badge>}
+            {quote && quote.market !== 'gold' && (
+              <span className="num text-[11.5px] font-medium text-subtle">
+                {quote.symbol} · {QUOTE_MARKET_LABEL[quote.market]}
+              </span>
+            )}
+            {(s.price?.source === 'tcmb' || s.price?.source === 'piyasa') && <Badge tone="accent">Otomatik</Badge>}
+            {failed && (
+              <span title={failed}>
+                <Badge tone="warning">Fiyat alınamadı</Badge>
+              </span>
+            )}
             {stale && <Badge tone="warning">Fiyat eski</Badge>}
           </div>
           <div className="text-[12px] text-muted">
@@ -405,15 +542,15 @@ function HoldingRow({ asset, s, onAct, onEdit, onDelete }: { asset: Asset; s: Ho
                 {' · '}
               </>
             ) : null}
-            {priceSourceLabel(s.price, balance)}
+            {priceSourceLabel(asset, s.price, balance)}
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="num font-semibold">{formatKurus(s.valueKurus)}</div>
+          <div className="num font-semibold">{money(s.valueKurus)}</div>
           {!debt && s.quantity > 0 && (
             <div className={cn('num text-[12px]', s.unrealizedKurus > 0 ? 'text-accent' : s.unrealizedKurus < 0 ? 'text-danger' : 'text-muted')}>
               {s.unrealizedKurus > 0 ? 'Kâr ' : s.unrealizedKurus < 0 ? 'Zarar ' : ''}
-              {signed(s.unrealizedKurus)} {pct(s.unrealizedKurus, s.costKurus)}
+              {signedWith(money)(s.unrealizedKurus)} {pct(s.unrealizedKurus, s.costKurus)}
             </div>
           )}
         </div>
@@ -452,7 +589,7 @@ function AssetHistory({ asset, s }: { asset: Asset; s: HoldingSummary }) {
     ...asset.valuations.map((v) => ({
       key: `v${v.date}`,
       date: v.date,
-      text: balance ? `Bakiye güncellendi: ${formatKurus(Math.round(v.unitPriceKurus * quantityOn(asset, v.date)))}` : `Fiyat: ${formatUnitPrice(v.unitPriceKurus)} (${v.source === 'tcmb' ? 'TCMB kuru' : 'elle'})`,
+      text: balance ? `Bakiye güncellendi: ${formatKurus(Math.round(v.unitPriceKurus * quantityOn(asset, v.date)))}` : `Fiyat: ${formatUnitPrice(v.unitPriceKurus)} (${v.source === 'tcmb' ? 'TCMB kuru' : v.source === 'piyasa' ? 'piyasa' : 'elle'})`,
       onDelete: () => repo.removeAssetValuation(asset.id, v.date),
     })),
   ].sort((a, b) => b.date.localeCompare(a.date))
@@ -627,7 +764,7 @@ function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () => void
 function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => void }) {
   const repo = useRepo()
   const { toast } = useUi()
-  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '' })
+  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '', market: 'bist' as QuoteMarket, symbol: '' })
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [shown, setShown] = useState<Editing>(null)
@@ -646,6 +783,8 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
         date: todayIso(),
         rate: t ? String(t.monthlyRatePct).replace('.', ',') : '',
         minPay: t?.minPaymentKurus ? formatKurusPlain(t.minPaymentKurus) : '',
+        market: a?.quote?.market ?? defaultMarket(editing.kind),
+        symbol: a?.quote?.symbol ?? '',
       })
       setError(undefined)
     }
@@ -672,6 +811,15 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
         first = { date: f.date, quantity: q, unitPriceKurus: p }
       }
     }
+    let quote: AssetQuote | null | undefined
+    if (SYMBOL_KINDS.includes(f.kind)) {
+      if (!f.symbol.trim()) quote = null
+      else {
+        const sym = normalizeSymbol(f.symbol)
+        if (!sym) return setError('Sembol yalnızca harf, rakam, nokta ve tire içerebilir (ör. THYAO, AAPL, BTC).')
+        quote = { market: f.market, symbol: sym }
+      }
+    }
     let debtTerms: DebtTerms | null | undefined
     if (debt) {
       const rate = f.rate.trim() ? Number(f.rate.trim().replace(',', '.')) : null
@@ -686,7 +834,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
     }
     setBusy(true)
     try {
-      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms }, first)
+      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms, quote }, first)
       toast(isNew ? `${f.name.trim()} eklendi.` : 'Kaydedildi.')
       onClose()
     } catch (e) {
@@ -717,7 +865,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
               value={f.kind}
               onChange={(e) => {
                 const k = e.target.value as AssetKind
-                setF((p) => ({ ...p, kind: k, unit: DEFAULT_UNIT[k], name: '' }))
+                setF((p) => ({ ...p, kind: k, unit: DEFAULT_UNIT[k], name: '', symbol: '', market: defaultMarket(k) }))
               }}
             >
               {ASSET_KINDS.map((k) => (
@@ -731,15 +879,49 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
         {isNew && presets.length > 0 && (
           <div className="flex flex-wrap gap-1.5" aria-label="Hazır seçenekler">
             {presets.map((p) => (
-              <Button key={p.name} size="sm" variant={f.name === p.name ? 'soft' : 'ghost'} onClick={() => setF((x) => ({ ...x, name: p.name, unit: p.unit }))}>
+              <Button key={p.name} size="sm" variant={f.name === p.name ? 'soft' : 'ghost'} onClick={() => setF((x) => ({ ...x, name: p.name, unit: p.unit, symbol: p.symbol ?? x.symbol }))}>
                 {p.name}
               </Button>
             ))}
           </div>
         )}
         <Field label="Ad" htmlFor="asset-name">
-          <Input id="asset-name" value={f.name} maxLength={60} onChange={(e) => set('name', e.target.value)} placeholder={debt ? 'Örn. Taşıt kredisi' : f.kind === 'fund' ? 'Örn. fon kodu veya adı' : f.kind === 'stock' ? 'Örn. hisse kodu' : ''} />
+          <Input id="asset-name" value={f.name} maxLength={60} onChange={(e) => set('name', e.target.value)} placeholder={debt ? 'Örn. Taşıt kredisi' : f.kind === 'fund' ? 'Örn. fon adı' : f.kind === 'stock' ? 'Örn. Türk Hava Yolları' : f.kind === 'crypto' ? 'Örn. Bitcoin' : ''} />
         </Field>
+        {SYMBOL_KINDS.includes(f.kind) && (
+          <div className="grid grid-cols-2 gap-3">
+            {f.kind === 'stock' ? (
+              <Field label="Borsa" htmlFor="asset-market">
+                <Select
+                  id="asset-market"
+                  value={f.market}
+                  onChange={(e) => {
+                    const m = e.target.value as QuoteMarket
+                    setF((p) => ({ ...p, market: m, unit: m === 'us' && p.unit === 'lot' ? 'adet' : m === 'bist' && p.unit === 'adet' ? 'lot' : p.unit }))
+                  }}
+                >
+                  <option value="bist">Borsa İstanbul</option>
+                  <option value="us">ABD (hisse, ETF)</option>
+                </Select>
+              </Field>
+            ) : (
+              <Field label="Kaynak" htmlFor="asset-market">
+                <Input id="asset-market" value={f.kind === 'fund' ? 'TEFAS' : 'Kripto (USDT)'} readOnly disabled />
+              </Field>
+            )}
+            <Field label={f.kind === 'fund' ? 'Fon kodu' : 'Sembol'} htmlFor="asset-symbol" hint={f.kind === 'fund' ? 'TEFAS otomatik fiyatı şu an alınamıyor; fiyatı elle güncelleyin' : 'Güncel fiyat için; boş bırakırsanız fiyatı siz girersiniz'}>
+              <Input
+                id="asset-symbol"
+                value={f.symbol}
+                maxLength={15}
+                autoCapitalize="characters"
+                onChange={(e) => set('symbol', e.target.value.toUpperCase())}
+                placeholder={f.kind === 'fund' ? 'Örn. TTE' : f.kind === 'crypto' ? 'Örn. BTC' : f.market === 'us' ? 'Örn. AAPL, SPY' : 'Örn. THYAO'}
+              />
+            </Field>
+          </div>
+        )}
+        {f.kind === 'gold' && <p className="text-[12px] text-muted">Birimi gram olan altının güncel fiyatı ons fiyatı ve dolar kurundan otomatik hesaplanır (yaklaşık, 24 ayar).</p>}
         {!balance && (
           <Field label="Birim" htmlFor="asset-unit" hint="Fiyatı hangi birim için gireceğiniz (gram, adet, USD, pay…)">
             <Input id="asset-unit" value={f.unit} maxLength={16} onChange={(e) => set('unit', e.target.value)} />
@@ -755,7 +937,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
               <Field label={`Miktar (${f.unit || 'birim'})`} htmlFor="asset-first-qty">
                 <Input id="asset-first-qty" inputMode="decimal" value={f.qty} onChange={(e) => set('qty', e.target.value)} placeholder="0" />
               </Field>
-              <Field label="Birim alış fiyatı (TL)" htmlFor="asset-first-price">
+              <Field label="Birim alış fiyatı (TL)" htmlFor="asset-first-price" hint={f.kind === 'crypto' || (f.kind === 'stock' && f.market === 'us') ? 'Dolarla aldıysanız alış günündeki kurla TL karşılığını girin' : undefined}>
                 <Input id="asset-first-price" inputMode="decimal" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="0,00" />
               </Field>
             </>

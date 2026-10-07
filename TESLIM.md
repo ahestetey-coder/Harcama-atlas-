@@ -450,3 +450,14 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - Her satırda "Otomatik" etiketi, "TCMB kuru · tarih" kaynağı ve "Kâr / Zarar" tutarı ile yüzdesi görünür. Toplam kazanç/kayıp kartı bu fiyatlarla hesaplanır.
 - Altın, fon ve hisse için otomatik fiyat yoktur (piyasa verisinde yalnızca TCMB kararı). Bunların fiyatı elle girilir.
 - Otomatik kur için hesapla giriş gerekir. Testlerde TCMB yanıtı taklit edildi; fonksiyon Supabase'e kuruldu (sürüm 1) ama bu ortamın ağ kuralı Supabase'e erişimi engellediği için canlı çağrı buradan denenemedi; ilk gerçek deneme uygulamada yapılacak.
+
+## 32. Varlıklarım: hisse, ETF, kripto, fon ve altın güncel fiyatı; USD görünümü (07.10.2026)
+
+osman'ın isteğiyle "piyasa verisinde yalnızca TCMB" kararı genişletildi.
+- `market-rates` sunucu fonksiyonu (sürüm 3) TCMB kurlarına ek olarak sembol listesi alır. Kaynaklar: Borsa İstanbul, ABD hisse ve ETF'leri ile gram altın (ons vadeli fiyatı × USD kuru ÷ 31,1035) için Yahoo Finance; kripto için Binance USDT paritesi × USD kuru; fonlar için TEFAS. Sembol isteği için giriş gerekir; istek yalnızca piyasa ve sembol taşır.
+- Canlı deneme (07.10.2026, Supabase sunucusundan): THYAO 286,25 ₺, AAPL, SPY, BTC ve gram altın fiyatı alındı. **TEFAS, sunucu erişimini reddetti** ("Request Rejected"); fon fiyatı şu an elle girilir, uygulama bunu fon satırında belirtir.
+- Yahoo Finance ve Binance'in açık uç noktaları resmî ya da lisanslı bir veri hizmeti değildir; fiyatlar gecikmeli olabilir ve uç nokta haber vermeden değişebilir. Mağaza yayını öncesinde lisanslı bir sağlayıcıya geçilmesi önerilir.
+- Yeni varlık türü "Kripto"; "Hisse" türü "Hisse / ETF" oldu. Hisse için borsa (BIST / ABD) ve sembol, fon için TEFAS kodu, kripto için sembol girilir. Sembolsüz varlıkların fiyatı eskisi gibi elle girilir.
+- Özet kartında ₺ TL / $ USD seçimi: tutarlar son TCMB USD kuruyla çevrilir; kazanç TL bazında hesaplanıp bugünkü kurla gösterilir.
+- İsteğe bağlı ortak önbellek: `supabase/fiyat-onbellegi.sql` (ha_price_cache). Tablo yoksa fonksiyon yalnızca bellek önbelleğiyle çalışır.
+- Testler: 224 birim testi; e2e'de sahte fiyat yanıtıyla ETF, kripto, fiyat alınamadı uyarısı ve USD görünümü sınandı.

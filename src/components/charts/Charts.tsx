@@ -30,7 +30,24 @@ function TooltipBox({ title, lines }: { title: string; lines: Array<[string, str
  * Kategori dağılımı: yalnızca brüt giderler (negatif net tutarlar pastaya zorlanmaz).
  * Kimlik yalnızca renge bırakılmaz; yanındaki liste her dilimi adıyla ve tutarıyla gösterir.
  */
-export function CategoryDonut({ slices, total, onSelect, centerLabel, valueLabel = 'Gider' }: { slices: DonutSlice[]; total: number; onSelect?: (s: DonutSlice) => void; centerLabel: string; valueLabel?: string }) {
+export function CategoryDonut({
+  slices,
+  total,
+  onSelect,
+  centerLabel,
+  valueLabel = 'Gider',
+  format = formatKurus,
+  formatCompact = formatKurusCompact,
+}: {
+  slices: DonutSlice[]
+  total: number
+  onSelect?: (s: DonutSlice) => void
+  centerLabel: string
+  valueLabel?: string
+  /** Tutar biçimi (varsayılan TL); Varlıklarım'da USD görünümü için değişir. */
+  format?: (kurus: number) => string
+  formatCompact?: (kurus: number) => string
+}) {
   const reduced = useReducedMotion()
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[240px]">
@@ -58,7 +75,7 @@ export function CategoryDonut({ slices, total, onSelect, centerLabel, valueLabel
             className={onSelect ? 'cursor-pointer outline-none' : 'outline-none'}
           >
             {slices.map((s) => (
-              <Cell key={s.id} fill={s.color} aria-label={`${s.name}: ${formatKurus(s.kurus)}`} />
+              <Cell key={s.id} fill={s.color} aria-label={`${s.name}: ${format(s.kurus)}`} />
             ))}
           </Pie>
           <Tooltip
@@ -66,14 +83,14 @@ export function CategoryDonut({ slices, total, onSelect, centerLabel, valueLabel
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null
               const s = payload[0].payload as DonutSlice
-              return <TooltipBox title={s.name} lines={[[valueLabel, formatKurus(s.kurus)], ['Pay', `%${((s.kurus / Math.max(1, total)) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`]]} />
+              return <TooltipBox title={s.name} lines={[[valueLabel, format(s.kurus)], ['Pay', `%${((s.kurus / Math.max(1, total)) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`]]} />
             }}
           />
         </PieChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
         <span className="text-[11.5px] font-medium uppercase tracking-wide text-subtle">{centerLabel}</span>
-        <span className="num mt-0.5 font-display text-lg font-bold text-ink">{formatKurusCompact(total)}</span>
+        <span className="num mt-0.5 font-display text-lg font-bold text-ink">{formatCompact(total)}</span>
       </div>
     </div>
   )

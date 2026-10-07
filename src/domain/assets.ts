@@ -1,19 +1,23 @@
 import type { IsoDate } from './types'
 
-/** Plus "Varlıklarım": elle girilen varlıklar ve borçlar. Döviz fiyatı TCMB kurundan, diğerleri kullanıcıdan gelir. */
-export type AssetKind = 'deposit' | 'fx' | 'fund' | 'gold' | 'stock' | 'cash' | 'other' | 'debt'
+/**
+ * Plus "Varlıklarım": varlıklar ve borçlar. Döviz TCMB kurundan, sembolü girilen hisse, ETF, fon, kripto ve
+ * gram altın piyasa fiyatından otomatik güncellenir; diğerlerinin fiyatını kullanıcı girer.
+ */
+export type AssetKind = 'deposit' | 'fx' | 'fund' | 'gold' | 'stock' | 'cash' | 'other' | 'crypto' | 'debt'
 
-/** Sabit sıra: dağılım grafiğinde renk bu sıraya göre verilir (sıralamaya göre değil). */
-export const ASSET_KINDS: Exclude<AssetKind, 'debt'>[] = ['deposit', 'fx', 'fund', 'gold', 'stock', 'cash', 'other']
+/** Sabit sıra: dağılım grafiğinde renk bu sıraya göre verilir (sıralamaya göre değil). Yeni tür sona eklenir. */
+export const ASSET_KINDS: Exclude<AssetKind, 'debt'>[] = ['deposit', 'fx', 'fund', 'gold', 'stock', 'cash', 'other', 'crypto']
 
 export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
   deposit: 'Mevduat',
   fx: 'Döviz',
   fund: 'Fon',
   gold: 'Altın',
-  stock: 'Hisse',
+  stock: 'Hisse / ETF',
   cash: 'Nakit',
   other: 'Diğer',
+  crypto: 'Kripto',
   debt: 'Borç',
 }
 
@@ -26,6 +30,7 @@ export const DEFAULT_UNIT: Record<AssetKind, string> = {
   stock: 'lot',
   cash: 'TL',
   other: 'adet',
+  crypto: 'adet',
   debt: 'TL',
 }
 
@@ -48,7 +53,31 @@ export interface AssetValuation {
   source: ValuationSource
 }
 
-export type ValuationSource = 'manual' | 'tcmb'
+/** manual: elle; tcmb: TCMB gösterge kuru; piyasa: hisse, ETF, fon, kripto ya da altın piyasa fiyatı. */
+export type ValuationSource = 'manual' | 'tcmb' | 'piyasa'
+
+/** Otomatik fiyat için piyasa: Borsa İstanbul, ABD borsaları (hisse ve ETF), TEFAS fonu, kripto, gram altın. */
+export type QuoteMarket = 'bist' | 'us' | 'tefas' | 'crypto' | 'gold'
+
+export interface AssetQuote {
+  market: QuoteMarket
+  /** THYAO, AAPL, SPY, TTE, BTC… (gram altında 'XAU'). */
+  symbol: string
+}
+
+export const QUOTE_MARKET_LABEL: Record<QuoteMarket, string> = {
+  bist: 'Borsa İstanbul',
+  us: 'ABD borsası',
+  tefas: 'TEFAS',
+  crypto: 'Kripto',
+  gold: 'Altın (ons)',
+}
+
+/** Sembolü sadeleştirir; geçersizse null. */
+export function normalizeSymbol(input: string): string | null {
+  const s = input.trim().toUpperCase().replace(/\.IS$/, '')
+  return /^[A-Z0-9][A-Z0-9.-]{0,14}$/.test(s) ? s : null
+}
 
 export interface Asset {
   id: string
@@ -58,6 +87,8 @@ export interface Asset {
   trades: AssetTrade[]
   valuations: AssetValuation[]
   note?: string
+  /** Otomatik fiyat için piyasa ve sembol; yoksa fiyat elle girilir (döviz ve gram altın kendiliğinden eşlenir). */
+  quote?: AssetQuote
   /** Yalnızca borçlarda: aylık faiz ve aylık asgari ödeme/taksit (koçun borç planı için). */
   debtTerms?: DebtTerms
   archived: boolean
@@ -242,13 +273,22 @@ export function formatUnitPrice(kurus: number): string {
   return `${tl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: tl < 10 ? 6 : 2 })} ₺`
 }
 
-// ---------- Otomatik döviz fiyatı (TCMB gösterge kuru) ----------
+// ---------- Otomatik fiyat (TCMB kuru ve piyasa fiyatı) ----------
 
 export interface MarketRate {
   /** ISO döviz kodu (USD, EUR…). */
   code: string
   /** 1 birimin TL karşılığı. */
   valueTl: number
+}
+
+export interface MarketQuote {
+  market: QuoteMarket
+  symbol: string
+  /** 1 birimin TL karşılığı. */
+  priceTl: number
+  /** Fiyatın ait olduğu gün (İstanbul). */
+  date: IsoDate
 }
 
 /** Otomatik fiyatı alınabilen varlıklarda döviz kodu: yalnızca döviz türünde ve birimi kod olanlar. */
@@ -258,9 +298,31 @@ export function autoPriceCode(asset: Pick<Asset, 'kind' | 'unit'>): string | nul
   return /^[A-Z]{3}$/.test(code) ? code : null
 }
 
+/** Piyasa fiyatı istenecek sembol: kayıtlı sembol, yoksa birimi gram olan altın. */
+export function autoQuote(asset: Pick<Asset, 'kind' | 'unit' | 'quote'>): AssetQuote | null {
+  if (asset.kind === 'gold') return asset.unit.trim().toLocaleLowerCase('tr') === 'gram' ? { market: 'gold', symbol: 'XAU' } : null
+  if (!asset.quote) return null
+  const allowed: Partial<Record<AssetKind, QuoteMarket[]>> = { stock: ['bist', 'us'], fund: ['tefas', 'us'], crypto: ['crypto'] }
+  return allowed[asset.kind]?.includes(asset.quote.market) ? asset.quote : null
+}
+
+export const quoteKey = (q: AssetQuote) => `${q.market}:${q.symbol}`
+
+/** Otomatik fiyatı olan (ya da olabilecek) varlık mı? */
+export const hasAutoPrice = (a: Asset) => !a.archived && (!!autoPriceCode(a) || !!autoQuote(a))
+
 export interface RateUpdate {
   assetId: string
   valuation: AssetValuation
+}
+
+function update(a: Asset, date: IsoDate, priceTl: number, source: ValuationSource): RateUpdate | null {
+  if (!Number.isFinite(priceTl) || priceTl <= 0) return null
+  const unitPriceKurus = Math.round(priceTl * 100 * 1e4) / 1e4
+  const same = a.valuations.find((v) => v.date === date)
+  // Aynı gün elle girilen fiyat korunur; aynı fiyat tekrar yazılmaz
+  if (same && (same.source === 'manual' || same.unitPriceKurus === unitPriceKurus)) return null
+  return { assetId: a.id, valuation: { date, unitPriceKurus, source } }
 }
 
 /**
@@ -274,11 +336,22 @@ export function rateUpdates(assets: Asset[], rates: MarketRate[], date: IsoDate)
     if (a.archived) continue
     const code = autoPriceCode(a)
     const tl = code ? byCode.get(code) : undefined
-    if (!tl || !Number.isFinite(tl) || tl <= 0) continue
-    const unitPriceKurus = Math.round(tl * 100 * 1e4) / 1e4
-    const same = a.valuations.find((v) => v.date === date)
-    if (same && (same.source === 'manual' || same.unitPriceKurus === unitPriceKurus)) continue
-    out.push({ assetId: a.id, valuation: { date, unitPriceKurus, source: 'tcmb' } })
+    const u = tl ? update(a, date, tl, 'tcmb') : null
+    if (u) out.push(u)
+  }
+  return out
+}
+
+/** Piyasa fiyatlarıyla yazılacak fiyatlar (kurallar rateUpdates ile aynı). */
+export function quoteUpdates(assets: Asset[], quotes: MarketQuote[]): RateUpdate[] {
+  const byKey = new Map(quotes.map((q) => [quoteKey(q), q]))
+  const out: RateUpdate[] = []
+  for (const a of assets) {
+    if (a.archived) continue
+    const want = autoQuote(a)
+    const q = want ? byKey.get(quoteKey(want)) : undefined
+    const u = q ? update(a, q.date, q.priceTl, 'piyasa') : null
+    if (u) out.push(u)
   }
   return out
 }
