@@ -85,6 +85,12 @@ const PRESETS: Partial<Record<AssetKind, { name: string; unit: string; symbol?: 
 
 const STALE_DAYS = 30
 
+/** Fiyatı 30 günden eski mi? Nakit ve borçlar fiyatla değil tutarla izlendiği için sayılmaz. */
+function isStale(asset: Asset, s: HoldingSummary, today: string): boolean {
+  if (asset.kind === 'cash' || asset.kind === 'debt') return false
+  return !!s.price && s.quantity > 0 && diffDays(today, s.price.date) > STALE_DAYS
+}
+
 
 /** Sembol girilebilen türler. */
 const SYMBOL_KINDS: AssetKind[] = ['stock', 'foreign', 'fund', 'crypto']
@@ -162,6 +168,10 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   const holdings = assets.filter((a) => a.kind !== 'debt' && !a.archived)
   const debts = assets.filter((a) => a.kind === 'debt' && !a.archived)
   const gain = p.unrealizedKurus + p.realizedKurus
+  const staleList = holdings.flatMap((a) => {
+    const h = holdingSummary(a, today)
+    return isStale(a, h, today) && h.price ? [{ asset: a, date: h.price.date }] : []
+  })
   const usd = live.usd ?? usdFromAssets(assets)
   const inUsd = ccy === 'USD' && !!usd
   const money = inUsd ? (k: number) => usdFormat.format(k / 100 / usd.valueTl) : formatKurus
@@ -225,9 +235,17 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
             Tutarlar TCMB kuruyla ({usd.valueTl.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} ₺ · {formatDate(usd.date)}) dolara çevrildi. Kazanç TL bazında hesaplanıp bugünkü kurla gösterilir.
           </p>
         )}
-        {p.oldestPriceDate && diffDays(today, p.oldestPriceDate) > STALE_DAYS && (
+        {staleList.length > 0 && (
           <Alert tone="warning" className="mt-4">
-            Bazı fiyatlar {STALE_DAYS} günden eski ({formatDate(p.oldestPriceDate)}). Güncel değer için fiyatları güncelleyin.
+            <span className="font-medium">Fiyatı {STALE_DAYS} günden eski olan varlıklar:</span>{' '}
+            {staleList.map((x, i) => (
+              <span key={x.asset.id}>
+                {i > 0 && ', '}
+                {x.asset.name} ({formatDate(x.date)})
+              </span>
+            ))}
+            . Toplam değer bu eski fiyatlarla hesaplanıyor. Satırdaki "Güncelle" ile bugünkü fiyatı girin
+            {staleList.some((x) => !hasAutoPrice(x.asset)) ? '; hisse, fon ve kripto için sembol eklerseniz fiyat kendiliğinden güncellenir' : ''}.
           </Alert>
         )}
         <LivePrices live={live} assets={assets} />
@@ -514,7 +532,7 @@ function HoldingRow({
   const [open, setOpen] = useState(false)
   const balance = isBalanceKind(asset.kind)
   const debt = asset.kind === 'debt'
-  const stale = s.price && s.quantity > 0 && diffDays(todayIso(), s.price.date) > STALE_DAYS
+  const stale = isStale(asset, s, todayIso())
   return (
     <li className="py-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

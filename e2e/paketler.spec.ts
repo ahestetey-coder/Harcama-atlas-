@@ -165,6 +165,19 @@ test('Plus varlıklarım: altın eklenir, fiyat güncellenir, satılır, borç n
   await expect(sum).toContainText('Gerçekleşen +1.000,00 ₺')
   await expect(page.getByRole('list', { name: 'Varlık dağılımı' })).toContainText('Altın')
   await expect(page.getByRole('table')).toContainText('36.000,00 ₺')
+  await expect(sum).not.toContainText('günden eski')
+
+  // Fiyatı 30 günden eski varlık uyarıda adıyla ve tarihiyle görünür
+  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await dlg.getByRole('button', { name: 'Çeyrek altın' }).click()
+  await dlg.getByLabel('Miktar (adet)').fill('1')
+  await dlg.getByLabel('Birim alış fiyatı (TL)').fill('10.000')
+  await dlg.getByLabel('Alış tarihi').fill('2026-08-14')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  await expect(sum).toContainText('Fiyatı 30 günden eski olan varlıklar: Çeyrek altın (14.08.2026)')
+  await expect(page.getByRole('list', { name: 'Varlıklar' })).toContainText('Fiyat eski')
 })
 
 test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve göstergeler hesaplanır', async ({ page }) => {
