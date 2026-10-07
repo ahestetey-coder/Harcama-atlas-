@@ -837,3 +837,52 @@ insert into public.ha_news_sources (kind, value, label, active, grp, default_typ
   ('rss', 'https://www.imf.org/en/News/rss?language=eng', 'IMF haberleri', false, 'global_resmi', 'resmi_veri', 'inceleniyor', 240),
   ('rss', 'https://www.bis.org/doclist/all_pressrels.rss', 'BIS basın duyuruları', false, 'global_resmi', 'resmi_veri', 'inceleniyor', 240)
 on conflict (kind, value) do nothing;
+
+-- ---------------------------------------------------------------------------------------------
+-- Hesap paketleri (Ücretsiz / Plus / Plus+)
+--
+-- Mağaza ödemesi bağlanana kadar paketi yalnızca yönetici tanımlar. Satırı olmayan hesap Ücretsiz'dir.
+-- Kişi yalnızca kendi paketini okur; süre bitince paket kendiliğinden Ücretsiz sayılır.
+
+create table if not exists public.ha_user_plans (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  plan text not null check (plan in ('plus', 'plusplus')),
+  expires_at timestamptz,
+  granted_by uuid,
+  granted_at timestamptz not null default now()
+);
+alter table public.ha_user_plans enable row level security;
+revoke all on public.ha_user_plans from anon, authenticated;
+grant select on public.ha_user_plans to authenticated;
+drop policy if exists "ha_user_plans_read" on public.ha_user_plans;
+create policy "ha_user_plans_read" on public.ha_user_plans for select to authenticated using (user_id = auth.uid() or public.ha_is_admin());
+
+create or replace function public.ha_plan_of(p_user uuid) returns text
+  language sql stable security definer set search_path = public as $$
+  select coalesce((select plan from public.ha_user_plans where user_id = p_user and (expires_at is null or expires_at > now())), 'free')
+$$;
+
+create or replace function public.ha_my_plan() returns text
+  language sql stable security definer set search_path = public as $$
+  select public.ha_plan_of(auth.uid())
+$$;
+
+-- p_plan 'free' paketi kaldırır.
+create or replace function public.ha_admin_set_plan(p_user uuid, p_plan text, p_expires timestamptz) returns void
+  language plpgsql security definer set search_path = public as $$
+begin
+  perform public.ha_admin_require();
+  if p_plan = 'free' then
+    delete from public.ha_user_plans where user_id = p_user;
+  elsif p_plan in ('plus', 'plusplus') then
+    if p_expires is not null and p_expires <= now() then raise exception 'Bitiş tarihi gelecekte olmalı'; end if;
+    insert into public.ha_user_plans (user_id, plan, expires_at, granted_by) values (p_user, p_plan, p_expires, auth.uid())
+      on conflict (user_id) do update set plan = excluded.plan, expires_at = excluded.expires_at, granted_by = excluded.granted_by, granted_at = now();
+  else
+    raise exception 'Geçersiz paket';
+  end if;
+end $$;
+
+revoke all on function public.ha_plan_of(uuid), public.ha_my_plan(), public.ha_admin_set_plan(uuid, text, timestamptz) from public, anon;
+grant execute on function public.ha_my_plan(), public.ha_admin_set_plan(uuid, text, timestamptz) to authenticated;
+grant execute on function public.ha_plan_of(uuid) to service_role;

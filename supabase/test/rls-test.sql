@@ -398,4 +398,25 @@ select count = 2 and tokens = 200 as bump_ok from public.ha_coach_usage where us
 \if :bump_ok \else \echo 'HATA: sayaç değeri' \q \endif
 select public.ha_agent_usage_add('ai_coach', 50, '2026-10-07') + public.ha_agent_usage_add('ai_coach', 50, '2026-10-07') = 150 as usage_ok \gset
 \if :usage_ok \else \echo 'HATA: kullanım toplamı' \q \endif
+-- Paketler: yalnızca yönetici tanımlar, kişi kendi paketini okur
+select pg_temp.as_user('55555555-5555-5555-5555-555555555555');
+select public.ha_my_plan() = 'free' as plan_free \gset
+\if :plan_free \else \echo 'HATA: varsayılan paket' \q \endif
+do $$ begin
+  perform public.ha_admin_set_plan(auth.uid(), 'plusplus', null);
+  raise exception 'HATA: üye kendine paket tanımladı';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+reset role;
+select pg_temp.as_user(:'osman');
+select public.ha_admin_set_plan('55555555-5555-5555-5555-555555555555', 'plusplus', null);
+reset role;
+select pg_temp.as_user('55555555-5555-5555-5555-555555555555');
+select public.ha_my_plan() = 'plusplus' and (select count(*) from public.ha_user_plans) = 1 as plan_set \gset
+\if :plan_set \else \echo 'HATA: paket tanımlanmadı' \q \endif
+reset role;
+update public.ha_user_plans set expires_at = now() - interval '1 day';
+select public.ha_plan_of('55555555-5555-5555-5555-555555555555') = 'free' as plan_expired \gset
+\if :plan_expired \else \echo 'HATA: süresi biten paket' \q \endif
 \echo 'TUM SQL TESTLERI GECTI'

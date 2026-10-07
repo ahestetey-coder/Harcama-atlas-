@@ -423,3 +423,10 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **Yönlendirme denetimi:** Her koç yanıtı sunucuda kurallarla denetlenir (belirli araç + al/sat/tut/yönel, hedef fiyat, portföy yüzdesi, "muhtemelen yükselir" gibi yön tahmini, kesinlik dili). Yakalanırsa model bir kez uyarılıp yeniden yazdırılır, yine olmazsa hazır güvenli metin gider. 23 örnek yanıtla birim testi var; 10 örnek sohbetlik güvenlik testi (`coach-eval`) panelden ve haftalık çalışır.
 - **Limitler ve ölçümler:** günlük kaynak ve piyasa isteği, aylık araştırma ve koç token sınırları. Ölçümler (son 30 gün): kaynaksız iddia, kaynakta olmayan rakam, eski veri oranı, resmî açıklamayı yakalama süresi (medyan), rapor düzeltme oranı, raporda ve koçta yakalanan yönlendirme, son güvenlik testi.
 - **Sınırlar:** OpenAI ve X çağrıları gerçek anahtarlarla denenmedi; testler taklit yanıtlarla yapıldı. Önerilen RSS adreslerinin çoğu 07.10.2026'da yayında görüldü (Fed, ECB, BLS, SEC, BIS, TCMB kurları); IMF ve TCMB PPK adresi doğrulanamadı. TÜİK ve KAP için açık RSS bulunamadı. Veri/API/sayfa türleri için okuyucu yok. Olay eşleştirme başlık benzerliğine dayanır; farklı dillerdeki aynı haberi birleştirmez.
+
+## 29. Hesaba paket tanımlama (07.10.2026)
+
+- Yönetici paneli > kullanıcı penceresinde **Paket** (Ücretsiz / Plus / Plus+) ve isteğe bağlı bitiş tarihi seçilir. Mağaza ödemesi bağlanana kadar paketler böyle tanımlanır; satırı olmayan hesap Ücretsiz'dir, süresi biten paket kendiliğinden Ücretsiz sayılır.
+- Uygulama hesabın paketini açılışta sunucudan okur (`ha_my_plan`). Yönetici önizlemesi ayrıca çalışmaya devam eder.
+- Koç sohbeti sunucuda da Plus+ (veya yönetici) ister.
+- Kurulum: `harcama-atlasi-kurulum/paket-tanimlama.sql`; son satırı yönetici hesaplarına süresiz Plus+ verir. Eski şemanın üzerine iki kez kurulum denendi.

@@ -13,6 +13,8 @@ export interface AdminUser {
   is_admin: boolean
   group_count: number
   shared_tx_count: number
+  /** Yöneticinin tanımladığı paket (panelde eklenir). */
+  plan?: UserPlan
 }
 
 /** Yönetici paneli veritabanına kurulmamışsa (fonksiyon yok) bu hata döner. */
@@ -41,7 +43,9 @@ export async function isAdmin(client: SupabaseClient): Promise<boolean> {
 }
 
 export async function listUsers(client: SupabaseClient): Promise<AdminUser[]> {
-  return (await call<AdminUser[] | null>(client, 'ha_admin_list_users')) ?? []
+  const users = (await call<AdminUser[] | null>(client, 'ha_admin_list_users')) ?? []
+  const plans = new Map((await listPlans(client)).map((p) => [p.user_id, p]))
+  return users.map((u) => (plans.has(u.id) ? { ...u, plan: plans.get(u.id) } : u))
 }
 
 export async function setBanned(client: SupabaseClient, userId: string, banned: boolean): Promise<void> {
@@ -64,4 +68,29 @@ export async function sendPasswordReset(client: SupabaseClient, email: string, r
 
 export function isBanned(u: Pick<AdminUser, 'banned_until'>, now = Date.now()): boolean {
   return !!u.banned_until && new Date(u.banned_until).getTime() > now
+}
+
+export type AccountPlan = 'free' | 'plus' | 'plusplus'
+
+export interface UserPlan {
+  user_id: string
+  plan: Exclude<AccountPlan, 'free'>
+  expires_at: string | null
+}
+
+/** Oturumdaki hesabın paketi. Kurulum yoksa veya hata olursa Ücretsiz. */
+export async function getMyPlan(client: SupabaseClient): Promise<AccountPlan> {
+  const { data, error } = await client.rpc('ha_my_plan')
+  return !error && (data === 'plus' || data === 'plusplus') ? data : 'free'
+}
+
+/** Yönetici: paket tanımlanmış hesaplar (süresi bitenler dahil). */
+export async function listPlans(client: SupabaseClient): Promise<UserPlan[]> {
+  const { data, error } = await client.from('ha_user_plans').select('user_id, plan, expires_at')
+  if (error) return []
+  return (data ?? []) as UserPlan[]
+}
+
+export async function setPlan(client: SupabaseClient, userId: string, plan: AccountPlan, expiresAt: string | null): Promise<void> {
+  await call(client, 'ha_admin_set_plan', { p_user: userId, p_plan: plan, p_expires: expiresAt })
 }

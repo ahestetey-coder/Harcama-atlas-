@@ -57,6 +57,8 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
   let settlements: Record<string, unknown>[] = []
   let payments: Record<string, unknown>[] = []
   let budget: number | null = null
+  const plans: Record<string, string> = {}
+  let current = ''
   const d = new Date()
   const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   await page.route(`${SUPABASE}/**`, async (route) => {
@@ -68,6 +70,7 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
     if (url.pathname === '/auth/v1/token') {
       const body = req.postDataJSON() as { email: string; password: string }
       if (!USERS[body.email] || body.password !== 'gizli123') return json({ error: 'invalid_grant', error_description: 'Invalid login credentials', code: 'invalid_credentials', msg: 'Invalid login credentials' }, 400)
+      current = USERS[body.email].id
       return json(session(body.email))
     }
     if (url.pathname === '/auth/v1/signup') {
@@ -77,6 +80,14 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
     if (url.pathname === '/auth/v1/recover') return json({})
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204 })
     if (url.pathname === '/rest/v1/rpc/ha_is_admin') return json(!!opts.admin)
+    if (url.pathname === '/rest/v1/rpc/ha_my_plan') return json(plans[current] ?? 'free')
+    if (url.pathname === '/rest/v1/ha_user_plans') return json(Object.entries(plans).map(([user_id, plan]) => ({ user_id, plan, expires_at: null })))
+    if (url.pathname === '/rest/v1/rpc/ha_admin_set_plan' && opts.admin) {
+      const b = req.postDataJSON() as { p_user: string; p_plan: string }
+      if (b.p_plan === 'free') delete plans[b.p_user]
+      else plans[b.p_user] = b.p_plan
+      return route.fulfill({ status: 204 })
+    }
     if (url.pathname === '/functions/v1/coach-chat') {
       bodies.chat = req.postDataJSON()
       return json({ reply: 'Önce kredi kartı borcunu kapatalım; ardından ayda ayırdığınız tutarı birikime ayırırsınız.', remaining: 29 })
@@ -263,7 +274,21 @@ test('yönetici paneli yalnızca yöneticiye görünür; kullanıcılar listelen
   // Kendi hesabı dondurulamaz/silinemez
   await page.getByLabel('Ad veya e-postada ara').fill('osman')
   await list.getByRole('button', { name: 'Osman ayrıntıları' }).click()
-  await expect(page.getByRole('dialog', { name: 'Osman' }).getByRole('button', { name: 'Hesabı sil' })).toBeDisabled()
+  const me = page.getByRole('dialog', { name: 'Osman' })
+  await expect(me.getByRole('button', { name: 'Hesabı sil' })).toBeDisabled()
+
+  // Paket tanımlama: yönetici kendine Plus+ verir; yenileyince hesabın paketi olur
+  await me.getByLabel('Paket', { exact: true }).selectOption('plusplus')
+  await me.getByRole('button', { name: 'Paketi kaydet' }).click()
+  await expect(page.getByText('Plus+ tanımlandı.', { exact: false })).toBeVisible()
+  await expect(me).toContainText('Plus+')
+  await page.keyboard.press('Escape')
+  await expect(list.getByRole('button', { name: 'Osman ayrıntıları' })).toContainText('Plus+')
+  await page.goto('./#/paketler')
+  await page.reload()
+  await expect(page.getByText('Kullandığınız paket')).toBeVisible()
+  await page.goto('./#/koc')
+  await expect(page.getByRole('region', { name: 'Koç mesajları' })).toBeVisible()
 })
 
 test('ortak grubun yöneticisi gideri paylaştırır ve geri alır; Tümü toplamına alacak satırı eklenir', async ({ page }) => {

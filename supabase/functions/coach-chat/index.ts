@@ -57,6 +57,9 @@ Deno.serve(async (req) => {
   if (summary.length > 6000 || memory.join('').length > 6000 || !history.length || history.some((m) => m.content.length > 1500)) return json({ error: 'Geçersiz istek' }, 400)
 
   const db = serviceClient()
+  // Sohbet Plus+ paketine dahil (yönetici her zaman kullanabilir).
+  const [{ data: plan }, { data: admin }] = await Promise.all([db.rpc('ha_plan_of', { p_user: uid }), db.from('ha_admins').select('user_id').eq('user_id', uid).maybeSingle()])
+  if (plan !== 'plusplus' && !admin) return json({ error: 'Koç sohbeti Plus+ paketine dahildir.' }, 403)
   const settings = await agentSettings(db)
   if ((await usage(db, 'ai_coach', 'month')) >= settings.ai_coach_monthly_tokens) return json({ error: 'Koç bu ay için ayrılan kullanım sınırına ulaştı. Yönetici sınırı artırana kadar sohbet kapalı.' }, 429)
 

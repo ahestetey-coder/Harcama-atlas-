@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { getMyPlan } from '../cloud/admin'
 import { hasFeature, isPlan, type Feature, type Plan } from '../domain/plans'
 import { useIsAdmin } from './admin'
 import { useAuth } from './auth'
@@ -8,7 +9,7 @@ import { readPref, writePref } from './prefs'
 interface PlanCtx {
   /** Geçerli paket (önizleme varsa o). */
   plan: Plan
-  /** Satın alınmış paket. Mağaza ödemesi bağlanana kadar herkes için Ücretsiz. */
+  /** Hesabın paketi: mağaza ödemesi bağlanana kadar yöneticinin tanımladığı paket, yoksa Ücretsiz. */
   purchased: Plan
   /** Önizleme açık mı? */
   preview: Plan | null
@@ -25,9 +26,19 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const { isDemo } = useData()
   const admin = useIsAdmin()
   const [pref, setPref] = useState(() => readPref('planPreview'))
-  const purchased: Plan = 'free'
+  const { backend, user } = auth
+  const [account, setAccount] = useState<{ uid: string; plan: Plan } | null>(null)
+  useEffect(() => {
+    if (!backend || !user) return
+    let alive = true
+    getMyPlan(backend.client).then((plan) => alive && setAccount({ uid: user.id, plan }))
+    return () => {
+      alive = false
+    }
+  }, [backend, user])
+  const purchased: Plan = user && account?.uid === user.id ? account.plan : 'free'
   const canPreview = admin || isDemo || !auth.enabled
-  const preview = canPreview && isPlan(pref) && pref !== 'free' ? pref : null
+  const preview = canPreview && isPlan(pref) && pref !== 'free' && pref !== purchased ? pref : null
   const plan = preview ?? purchased
 
   const setPreview = useCallback((p: Plan | null) => {

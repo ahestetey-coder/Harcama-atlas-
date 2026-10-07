@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { Link } from 'react-router-dom'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
-import { Alert, Badge, Button, Card, EmptyState, Input, Segmented, Skeleton } from '../components/ui/primitives'
-import { AdminNotInstalledError, confirmEmail, deleteUser, isBanned, listUsers, sendPasswordReset, setBanned, type AdminUser } from '../cloud/admin'
+import { Alert, Badge, Button, Card, EmptyState, Field, Input, Segmented, Select, Skeleton } from '../components/ui/primitives'
+import { AdminNotInstalledError, confirmEmail, deleteUser, isBanned, listUsers, sendPasswordReset, setBanned, setPlan, type AccountPlan, type AdminUser } from '../cloud/admin'
 import { cloudErrorMessage } from '../cloud/errors'
 import { cn } from '../lib/cn'
 import { useIsAdmin } from '../state/admin'
@@ -209,7 +209,26 @@ function AdminConsole() {
         </>
       )}
 
-      <UserModal user={selected} self={selected?.id === me?.id} now={now} onClose={() => setSelected(null)} onAction={(action) => selected && setPending({ action, user: selected })} />
+      <UserModal
+        key={selected?.id ?? 'yok'}
+        user={selected}
+        self={selected?.id === me?.id}
+        now={now}
+        onClose={() => setSelected(null)}
+        onAction={(action) => selected && setPending({ action, user: selected })}
+        onPlan={async (plan, expires) => {
+          if (!backend || !selected) return
+          try {
+            await setPlan(backend.client, selected.id, plan, expires)
+            toast(plan === 'free' ? 'Paket kaldırıldı; hesap Ücretsiz.' : `${plan === 'plus' ? 'Plus' : 'Plus+'} tanımlandı. Kişi uygulamayı yenileyince açılır.`)
+            const fresh = await listUsers(backend.client)
+            setUsers(fresh)
+            setSelected(fresh.find((u) => u.id === selected.id) ?? null)
+          } catch (e) {
+            toast(e instanceof AdminNotInstalledError ? 'Paket tanımlama veritabanına henüz eklenmemiş (paket-tanimlama.sql).' : cloudErrorMessage(e), { kind: 'error' })
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={!!pending}
@@ -280,9 +299,15 @@ function dateText(iso: string): string {
   return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function activePlan(u: AdminUser, now: number): AccountPlan {
+  return u.plan && (!u.plan.expires_at || Date.parse(u.plan.expires_at) > now) ? u.plan.plan : 'free'
+}
+
 function StatusBadges({ u, now }: { u: AdminUser; now: number }) {
+  const plan = activePlan(u, now)
   return (
     <>
+      {plan !== 'free' && <Badge tone="teal">{plan === 'plus' ? 'Plus' : 'Plus+'}</Badge>}
       {u.is_admin && (
         <Badge tone="accent">
           <ShieldCheck className="size-3" /> Yönetici
@@ -324,8 +349,26 @@ function UserRow({ u, self, now, onOpen }: { u: AdminUser; self: boolean; now: n
   )
 }
 
-function UserModal({ user, self, now, onClose, onAction }: { user: AdminUser | null; self: boolean; now: number; onClose: () => void; onAction: (a: Action) => void }) {
+function UserModal({
+  user,
+  self,
+  now,
+  onClose,
+  onAction,
+  onPlan,
+}: {
+  user: AdminUser | null
+  self: boolean
+  now: number
+  onClose: () => void
+  onAction: (a: Action) => void
+  onPlan: (plan: AccountPlan, expiresAt: string | null) => Promise<void>
+}) {
   const banned = user ? isBanned(user, now) : false
+  const current = user ? activePlan(user, now) : 'free'
+  const [plan, setPlanSel] = useState<AccountPlan>(current)
+  const [until, setUntil] = useState(user?.plan?.expires_at && current !== 'free' ? user.plan.expires_at.slice(0, 10) : '')
+  const [saving, setSaving] = useState(false)
   const locked = self || !!user?.is_admin
   return (
     <Modal open={!!user} onOpenChange={(o) => !o && onClose()} title={user?.full_name ?? user?.email ?? 'Kullanıcı'} description={user?.full_name ? (user.email ?? undefined) : undefined} size="md">
@@ -340,6 +383,31 @@ function UserModal({ user, self, now, onClose, onAction }: { user: AdminUser | n
             <Info label="Ortak grup" value={String(user.group_count)} />
             <Info label="Ortak harcama" value={String(user.shared_tx_count)} />
           </dl>
+          <form
+            aria-label="Paket tanımlama"
+            className="grid gap-2 rounded-2xl border border-line p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              setSaving(true)
+              await onPlan(plan, plan !== 'free' && until ? new Date(`${until}T23:59:59`).toISOString() : null)
+              setSaving(false)
+            }}
+          >
+            <Field label="Paket" htmlFor="kullanici-paket">
+              <Select id="kullanici-paket" value={plan} onChange={(e) => setPlanSel(e.target.value as AccountPlan)}>
+                <option value="free">Ücretsiz</option>
+                <option value="plus">Plus</option>
+                <option value="plusplus">Plus+</option>
+              </Select>
+            </Field>
+            <Field label="Bitiş" htmlFor="kullanici-paket-bitis" optional>
+              <Input id="kullanici-paket-bitis" type="date" value={until} disabled={plan === 'free'} onChange={(e) => setUntil(e.target.value)} />
+            </Field>
+            <Button type="submit" variant="primary" loading={saving}>
+              Paketi kaydet
+            </Button>
+            <p className="text-[12px] text-subtle sm:col-span-3">Mağaza ödemesi bağlanana kadar paketleri buradan tanımlarsınız. Bitiş boşsa süresizdir.</p>
+          </form>
           <div className="grid gap-2 sm:grid-cols-2">
             <Button icon={<KeyRound className="size-4" />} onClick={() => onAction('reset')} disabled={!user.email}>
               Şifre yenileme e-postası
