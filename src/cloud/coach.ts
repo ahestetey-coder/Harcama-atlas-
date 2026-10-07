@@ -1,59 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-/** Günlük ekonomi özeti maddesi: kaynak ve tarih sunucuda gerçek maddeden eklenir. */
-export interface BroadcastItem {
-  kind: 'haber' | 'yorum' | 'tahmin'
-  text: string
-  source: string
-  url: string
-  publishedAt: string
-}
-
-export interface Broadcast {
-  id: string
-  day: string
-  title: string
-  summary: string
-  items: BroadcastItem[]
-  created_at: string
-}
-
-export interface NewsSource {
-  id: string
-  kind: 'x' | 'rss'
-  value: string
-  label: string | null
-  active: boolean
-}
-
-/** Son günlük özetler. Tablo kurulmamışsa boş liste. */
-export async function listBroadcasts(client: SupabaseClient, limit = 7): Promise<Broadcast[]> {
-  const { data, error } = await client.from('ha_coach_broadcasts').select('id, day, title, summary, items, created_at').order('day', { ascending: false }).limit(limit)
-  if (error) return []
-  return (data ?? []) as Broadcast[]
-}
-
-export async function listNewsSources(client: SupabaseClient): Promise<NewsSource[]> {
-  const { data, error } = await client.from('ha_news_sources').select('id, kind, value, label, active').order('created_at')
-  if (error) throw error
-  return (data ?? []) as NewsSource[]
-}
-
-export async function addNewsSource(client: SupabaseClient, kind: 'x' | 'rss', value: string, label: string): Promise<void> {
-  const { error } = await client.rpc('ha_admin_add_news_source', { p_kind: kind, p_value: value, p_label: label || null })
-  if (error) throw error
-}
-
-export async function setNewsSourceActive(client: SupabaseClient, id: string, active: boolean): Promise<void> {
-  const { error } = await client.rpc('ha_admin_set_news_source', { p_id: id, p_active: active })
-  if (error) throw error
-}
-
-export async function deleteNewsSource(client: SupabaseClient, id: string): Promise<void> {
-  const { error } = await client.rpc('ha_admin_delete_news_source', { p_id: id })
-  if (error) throw error
-}
-
 export interface ChatTurn {
   role: 'user' | 'assistant'
   content: string
@@ -61,19 +7,39 @@ export interface ChatTurn {
 
 export class CoachChatError extends Error {}
 
-/** Koç sohbeti: özet bilgiler ve son mesajlar sunucu fonksiyonuna gider; hiçbir şey saklanmaz. */
-export async function coachChat(client: SupabaseClient, summary: unknown, messages: ChatTurn[]): Promise<string> {
-  const { data, error } = await client.functions.invoke('coach-chat', { body: { summary, messages } })
+async function call<T>(client: SupabaseClient, body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await client.functions.invoke('coach-chat', { body })
   if (error) {
-    let msg = 'Koç şu an yanıt veremiyor. Biraz sonra tekrar deneyin.'
+    let msg = 'Koç şu an yanıt veremiyor. Biraz sonra tekrar deneyin; bu deneme günlük hakkınızdan sayılmadı.'
     try {
-      const body = await (error as { context?: Response }).context?.json()
-      if (body?.error) msg = body.error
+      const b = await (error as { context?: Response }).context?.json()
+      if (b?.error) msg = b.error
     } catch {
       /* yok say */
     }
     throw new CoachChatError(msg)
   }
+  return data as T
+}
+
+export interface CoachReply {
+  reply: string
+  /** Bugün kalan soru hakkı (yalnızca başarılı yanıtlar sayılır). */
+  remaining: number | null
+}
+
+/**
+ * Koç sohbeti: izin verilen özet bilgiler, cihazdaki hafıza notları ve son mesajlar sunucu fonksiyonuna gider;
+ * sunucuda hiçbir şey saklanmaz.
+ */
+export async function coachChat(client: SupabaseClient, summary: unknown, memory: string[], messages: ChatTurn[]): Promise<CoachReply> {
+  const data = await call<{ reply?: string; remaining?: number }>(client, { summary, memory, messages })
   if (!data?.reply) throw new CoachChatError('Koç boş yanıt verdi.')
-  return data.reply as string
+  return { reply: data.reply, remaining: typeof data.remaining === 'number' ? data.remaining : null }
+}
+
+/** Uzun sohbetin eski kısmını hafıza notlarına özetletir (soru hakkından düşmez). */
+export async function coachSummarize(client: SupabaseClient, messages: ChatTurn[]): Promise<string[]> {
+  const data = await call<{ notes?: unknown }>(client, { mode: 'summarize', summary: {}, messages })
+  return Array.isArray(data?.notes) ? data.notes.filter((n): n is string => typeof n === 'string').slice(0, 4) : []
 }

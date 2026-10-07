@@ -1,7 +1,7 @@
-import { Ban, CheckCircle2, KeyRound, Lock, MailCheck, RefreshCw, Search, ShieldCheck, Trash2, UserCheck, Users, UserX } from 'lucide-react'
+import { ArrowRight, Ban, BookOpenCheck, CheckCircle2, KeyRound, Lock, MailCheck, RefreshCw, Search, ShieldCheck, Trash2, UserCheck, Users, UserX } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
-import { NewsSourcesCard } from '../components/NewsSources'
+import { Link } from 'react-router-dom'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Alert, Badge, Button, Card, EmptyState, Input, Segmented, Skeleton } from '../components/ui/primitives'
 import { AdminNotInstalledError, confirmEmail, deleteUser, isBanned, listUsers, sendPasswordReset, setBanned, type AdminUser } from '../cloud/admin'
@@ -197,7 +197,15 @@ function AdminConsole() {
               </ul>
             )}
           </Card>
-          <NewsSourcesCard />
+          <Card className="mt-4 p-4 sm:p-5" aria-label="Araştırma ajanı">
+            <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+              <BookOpenCheck className="size-5 text-accent" /> Ortak ekonomi araştırma ajanı
+            </h2>
+            <p className="mt-1 text-[13px] text-muted">Kaynaklar ve uzmanlar, yayın takvimi, rapor taslaklarının onayı, kullanım limitleri ve kalite ölçümleri.</p>
+            <Link to="/yonetim/arastirma" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-accent hover:underline">
+              Araştırma ajanını yönet <ArrowRight className="size-4" />
+            </Link>
+          </Card>
         </>
       )}
 

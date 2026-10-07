@@ -6,7 +6,17 @@ export interface ChatMessage {
   content: string
 }
 
+export interface ChatResult {
+  text: string
+  /** Toplam token (istem + yanıt); maliyet sınırı için. */
+  tokens: number
+}
+
 export async function openaiChat(messages: ChatMessage[], opts: { json?: boolean; maxTokens?: number } = {}): Promise<string> {
+  return (await openaiChatUsage(messages, opts)).text
+}
+
+export async function openaiChatUsage(messages: ChatMessage[], opts: { json?: boolean; maxTokens?: number; temperature?: number } = {}): Promise<ChatResult> {
   const key = Deno.env.get('OPENAI_API_KEY')
   if (!key) throw new Error('OPENAI_API_KEY tanımlı değil')
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -15,7 +25,7 @@ export async function openaiChat(messages: ChatMessage[], opts: { json?: boolean
     body: JSON.stringify({
       model: Deno.env.get('OPENAI_MODEL') || 'gpt-4o-mini',
       messages,
-      temperature: 0.3,
+      temperature: opts.temperature ?? 0.3,
       max_tokens: opts.maxTokens ?? 700,
       ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
     }),
@@ -24,12 +34,12 @@ export async function openaiChat(messages: ChatMessage[], opts: { json?: boolean
   const data = await res.json()
   const text = data?.choices?.[0]?.message?.content
   if (typeof text !== 'string') throw new Error('OpenAI boş yanıt verdi')
-  return text
+  return { text, tokens: Number(data?.usage?.total_tokens) || 0 }
 }
 
 export const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 

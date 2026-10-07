@@ -188,6 +188,30 @@ export interface CoachSettings {
   dismissed: string[]
   /** Yapay zekâ sohbeti için özet verilerin gönderilmesine izin. */
   aiConsent: boolean
+  /** Hangi bilgi gruplarının koça gönderileceği (boşsa hepsi açık). */
+  share?: CoachShare
+  /** Koçun kişisel hafızası: yalnızca bu cihazda durur; kullanıcı görür, düzeltir, siler. */
+  memory?: CoachMemoryEntry[]
+}
+
+export interface CoachShare {
+  income: boolean
+  expenses: boolean
+  debts: boolean
+  goals: boolean
+  budget: boolean
+}
+
+export type CoachMemoryKind = 'hedef' | 'tercih' | 'not' | 'sohbet'
+
+export interface CoachMemoryEntry {
+  id: string
+  kind: CoachMemoryKind
+  text: string
+  /** Kullanıcı mı yazdı, sohbet özetinden mi geldi. */
+  source: 'kullanici' | 'sohbet'
+  createdAt: string
+  updatedAt: string
 }
 
 export type RecurringKind = 'subscription' | 'bill' | 'installment'

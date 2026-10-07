@@ -1,9 +1,11 @@
 import { BookOpen, ChevronDown, Newspaper } from "lucide-react";
 import { PageHeader } from "../components/AppShell";
-import { BroadcastBody } from "../components/Broadcast";
+import { useState } from "react";
+import { ReportMeta, ReportView } from "../components/Report";
+import { REPORT_KIND_LABEL, type ReportKind } from "../cloud/research";
 import { PlanBadge, PlanGate } from "../components/PlanGate";
-import { useBroadcasts } from "../state/coach";
-import { Alert, Badge, Card } from "../components/ui/primitives";
+import { useReports } from "../state/coach";
+import { Alert, Badge, Card, Segmented } from "../components/ui/primitives";
 
 interface Topic {
   id: string;
@@ -94,7 +96,9 @@ const TOPICS: Topic[] = [
 ];
 
 export default function LearningPage() {
-  const news = useBroadcasts(7);
+  const reports = useReports(20);
+  const [kind, setKind] = useState<ReportKind | "hepsi">("hepsi");
+  const news = reports?.filter((r) => kind === "hepsi" || r.kind === kind) ?? null;
   return (
     <div>
       <PageHeader
@@ -110,8 +114,8 @@ export default function LearningPage() {
         title="Finansal bilgi ve ekonomi gündemi"
         points={[
           "Risk, likidite, masraf ve çeşitlendirme gibi temel kavramlar",
-          "Kaynağı ve tarihi belli ekonomi haberleri",
-          "Haber, yorum ve tahmin ayrı gösterilir",
+          "Editör onaylı günlük, haftalık ve aylık ekonomi raporları",
+          "Her bilginin kaynağı ve tarihi; resmî veri, haber, uzman yorumu ve tahmin ayrı gösterilir",
         ]}
       >
         <div className="flex flex-col gap-4">
@@ -159,38 +163,56 @@ export default function LearningPage() {
           </section>
 
           <section aria-label="Ekonomi gündemi">
-            <h2 className="mb-2 flex items-center gap-2 font-display text-base font-semibold">
-              <Newspaper className="size-5 text-accent" /> Ekonomi gündemi
-            </h2>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+                <Newspaper className="size-5 text-accent" /> Ekonomi gündemi
+              </h2>
+              <Segmented<ReportKind | "hepsi">
+                label="Rapor türü"
+                value={kind}
+                onChange={setKind}
+                className="no-scrollbar max-sm:w-full max-sm:overflow-x-auto"
+                options={[
+                  { value: "hepsi", label: "Tümü" },
+                  ...(["gunluk", "haftalik", "aylik", "acil"] as const).map(
+                    (k) => ({ value: k, label: REPORT_KIND_LABEL[k] }),
+                  ),
+                ]}
+              />
+            </div>
+            <p className="mb-3 text-[12.5px] text-muted">
+              Raporlar herkese aynıdır; seçilmiş resmî kurumlar, haber
+              kaynakları ve uzmanlardan derlenir, editör onayından sonra
+              yayınlanır. Her konu aynı 7 başlıkla anlatılır ve her cümlenin
+              dayandığı kaynak numarasıyla gösterilir. Yatırım tavsiyesi
+              değildir.
+            </p>
             {news && news.length > 0 ? (
               <div className="flex flex-col gap-3">
-                {news.map((b) => (
-                  <Card key={b.id} className="p-5 text-[13.5px]">
-                    <div className="font-semibold text-ink">{b.title}</div>
-                    <div className="text-[12px] text-subtle">
-                      {new Date(`${b.day}T00:00:00`).toLocaleDateString(
-                        "tr-TR",
-                        { day: "numeric", month: "long", year: "numeric" },
-                      )}{" "}
-                      · kaynaklardan yapay zekâ ile özetlendi
-                    </div>
-                    <BroadcastBody b={b} />
+                {news.map((r, i) => (
+                  <Card key={r.id} className="p-4 sm:p-5">
+                    <div className="mb-1 font-semibold text-ink">{r.title}</div>
+                    <ReportMeta r={r} />
+                    <ReportView r={r} className="mt-3" openFirst={i === 0} />
                   </Card>
                 ))}
               </div>
             ) : (
               <Card className="p-5">
                 <p className="text-sm text-muted">
-                  Henüz günlük özet yok. Özetler her sabah yöneticinin seçtiği
-                  kaynaklardan hazırlanır ve her madde kaynağı ve yayın
-                  tarihiyle görünür; uygulama kendi başına haber yazmaz.
+                  {news
+                    ? "Henüz yayınlanmış rapor yok. Raporlar yöneticinin seçtiği kaynaklardan hazırlanır ve editör onayından sonra burada görünür; uygulama kendi başına haber yazmaz."
+                    : "Yükleniyor…"}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2 text-[12.5px] text-muted">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Badge tone="teal">Resmî veri</Badge> kurumun açıkladığı
+                  </span>
                   <span className="inline-flex items-center gap-1.5">
                     <Badge tone="neutral">Haber</Badge> olanı aktarır
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <Badge tone="accent">Yorum</Badge> bir kişinin görüşüdür
+                    <Badge tone="accent">Uzman yorumu</Badge> bir kişinin görüşüdür
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <Badge tone="warning">Tahmin</Badge> gerçekleşmeyebilir

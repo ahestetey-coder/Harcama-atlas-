@@ -185,6 +185,20 @@ const settingsSchema = z.object({
       debtsInExpenses: z.boolean(),
       dismissed: z.array(z.string()),
       aiConsent: z.boolean(),
+      share: z.object({ income: z.boolean(), expenses: z.boolean(), debts: z.boolean(), goals: z.boolean(), budget: z.boolean() }).optional(),
+      memory: z
+        .array(
+          z.object({
+            id: z.string(),
+            kind: z.enum(['hedef', 'tercih', 'not', 'sohbet']),
+            text: z.string().max(400),
+            source: z.enum(['kullanici', 'sohbet']),
+            createdAt: z.string(),
+            updatedAt: z.string(),
+          }),
+        )
+        .max(60)
+        .optional(),
     })
     .optional(),
   updatedAt: z.string(),

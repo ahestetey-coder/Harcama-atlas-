@@ -534,3 +534,306 @@ end $$;
 
 revoke all on function public.ha_admin_add_news_source(text, text, text), public.ha_admin_set_news_source(uuid, boolean), public.ha_admin_delete_news_source(uuid) from public, anon;
 grant execute on function public.ha_admin_add_news_source(text, text, text), public.ha_admin_set_news_source(uuid, boolean), public.ha_admin_delete_news_source(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------
+-- Ortak ekonomi araştırma ajanı
+--
+-- Yalnızca yöneticinin eklediği ve kullanım koşullarını "izinli" olarak işaretlediği kaynaklar okunur.
+-- Toplanan her madde kaynak bağlantısı, yazar/kurum, yayın ve alınma zamanı, dönem ve içerik türüyle saklanır;
+-- aynı madde iki kez kaydedilmez (dedupe_key), aynı olayın kopyaları olay anahtarıyla birleştirilir ve ilk
+-- resmî açıklamaya bağlanır. Raporlar taslak olarak yazılır; yayın öncesi denetimden geçen taslağı yalnızca
+-- yönetici (editör) yayınlar. Kullanıcı sohbetleri ve kişisel veriler bu tablolara hiç girmez.
+
+create table if not exists public.ha_experts (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(name) between 2 and 80),
+  title text check (title is null or char_length(title) <= 120),
+  institution text check (institution is null or char_length(institution) <= 120),
+  area text not null default 'tr_makro' check (area in ('tr_makro', 'global', 'bist', 'emtia', 'kripto', 'diger')),
+  -- Kişisel görüş mü, kurum adına mı konuşuyor. Kişisel görüş raporda kurum görüşü gibi sunulmaz.
+  speaks_for text not null default 'kisisel' check (speaks_for in ('kisisel', 'kurumsal')),
+  profile_url text check (profile_url is null or profile_url ~* '^https://\S+$'),
+  note text check (note is null or char_length(note) <= 500),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.ha_experts enable row level security;
+revoke all on public.ha_experts from anon, authenticated;
+grant select, insert, update, delete on public.ha_experts to authenticated;
+drop policy if exists "ha_experts_admin" on public.ha_experts;
+create policy "ha_experts_admin" on public.ha_experts for all to authenticated using (public.ha_is_admin()) with check (public.ha_is_admin());
+
+-- Kaynaklar: eski haber kaynakları tablosu genişletilir (grup, erişim türü, koşul durumu, sağlık bilgileri).
+alter table public.ha_news_sources drop constraint if exists ha_news_sources_kind_check;
+alter table public.ha_news_sources add constraint ha_news_sources_kind_check check (kind in ('x', 'rss', 'tcmb_kur', 'data', 'api', 'page'));
+alter table public.ha_news_sources alter column value type text;
+alter table public.ha_news_sources drop constraint if exists ha_news_sources_value_check;
+alter table public.ha_news_sources add constraint ha_news_sources_value_check check (
+  char_length(value) between 1 and 300
+  and ((kind = 'x' and value ~ '^[a-z0-9_]{1,15}$') or (kind <> 'x' and value ~* '^https://\S+$')));
+alter table public.ha_news_sources add column if not exists grp text not null default 'haber_uzman';
+alter table public.ha_news_sources add column if not exists default_type text not null default 'haber';
+alter table public.ha_news_sources add column if not exists terms_status text not null default 'inceleniyor';
+alter table public.ha_news_sources add column if not exists terms_url text;
+alter table public.ha_news_sources add column if not exists terms_note text;
+alter table public.ha_news_sources add column if not exists terms_checked_at timestamptz;
+alter table public.ha_news_sources add column if not exists poll_minutes integer not null default 60;
+alter table public.ha_news_sources add column if not exists expert_id uuid references public.ha_experts (id) on delete set null;
+alter table public.ha_news_sources add column if not exists last_checked_at timestamptz;
+alter table public.ha_news_sources add column if not exists last_ok_at timestamptz;
+alter table public.ha_news_sources add column if not exists last_error text;
+alter table public.ha_news_sources add column if not exists last_error_at timestamptz;
+alter table public.ha_news_sources add column if not exists last_item_at timestamptz;
+alter table public.ha_news_sources add column if not exists items_total integer not null default 0;
+alter table public.ha_news_sources drop constraint if exists ha_news_sources_meta_check;
+alter table public.ha_news_sources add constraint ha_news_sources_meta_check check (
+  grp in ('tr_resmi', 'global_resmi', 'haber_uzman', 'piyasa')
+  and default_type in ('resmi_veri', 'sirket_aciklamasi', 'haber', 'uzman_yorumu', 'tahmin')
+  and terms_status in ('inceleniyor', 'izinli', 'izinsiz')
+  and (terms_url is null or terms_url ~* '^https://\S+$')
+  and (terms_note is null or char_length(terms_note) <= 500)
+  and poll_minutes between 10 and 10080
+  -- Piyasa fiyatı yalnızca lisanslı/resmî fiyat kaynağından gelir; haber kaynağı fiyat grubuna konamaz.
+  and (grp <> 'piyasa' or kind in ('tcmb_kur', 'api')));
+grant insert, update, delete on public.ha_news_sources to authenticated;
+drop policy if exists "ha_news_sources_admin_write" on public.ha_news_sources;
+create policy "ha_news_sources_admin_write" on public.ha_news_sources for all to authenticated using (public.ha_is_admin()) with check (public.ha_is_admin());
+
+-- Toplanan maddeler (yalnızca yönetici görür; kullanıcılar maddeleri yayınlanmış raporun kaynak listesinde görür).
+create table if not exists public.ha_research_items (
+  id uuid primary key default gen_random_uuid(),
+  source_id uuid references public.ha_news_sources (id) on delete set null,
+  dedupe_key text not null unique,
+  url text not null check (url ~* '^https?://\S+$'),
+  title text not null,
+  body text not null default '',
+  author text,
+  institution text not null,
+  published_at timestamptz not null,
+  ingested_at timestamptz not null default now(),
+  period text,
+  content_type text not null check (content_type in ('resmi_veri', 'sirket_aciklamasi', 'haber', 'uzman_yorumu', 'tahmin')),
+  expert_id uuid references public.ha_experts (id) on delete set null,
+  event_key text,
+  primary_item_id uuid references public.ha_research_items (id) on delete set null,
+  -- Kurallarla hesaplanmış değerler (ör. kurun önceki güne göre değişimi). Raporda rakamlar buradan gelir.
+  data jsonb
+);
+create index if not exists ha_research_items_published on public.ha_research_items (published_at desc);
+create index if not exists ha_research_items_event on public.ha_research_items (event_key);
+alter table public.ha_research_items enable row level security;
+revoke all on public.ha_research_items from anon, authenticated;
+grant select on public.ha_research_items to authenticated;
+drop policy if exists "ha_research_items_admin_read" on public.ha_research_items;
+create policy "ha_research_items_admin_read" on public.ha_research_items for select to authenticated using (public.ha_is_admin());
+
+-- Yayın takvimi: planlı açıklamaların (TÜİK verisi, faiz kararı) çevresinde ilgili kaynak sık kontrol edilir.
+create table if not exists public.ha_release_calendar (
+  id uuid primary key default gen_random_uuid(),
+  institution text not null check (char_length(institution) between 2 and 80),
+  title text not null check (char_length(title) between 2 and 160),
+  release_at timestamptz not null,
+  period text check (period is null or char_length(period) <= 20),
+  source_id uuid references public.ha_news_sources (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists ha_release_calendar_at on public.ha_release_calendar (release_at);
+alter table public.ha_release_calendar enable row level security;
+revoke all on public.ha_release_calendar from anon, authenticated;
+grant select, insert, update, delete on public.ha_release_calendar to authenticated;
+drop policy if exists "ha_release_calendar_admin" on public.ha_release_calendar;
+create policy "ha_release_calendar_admin" on public.ha_release_calendar for all to authenticated using (public.ha_is_admin()) with check (public.ha_is_admin());
+
+-- Raporlar: sunucu fonksiyonu taslak yazar ve denetler (checks); yönetici yayınlar, reddeder veya geri çeker.
+-- Herkes yalnızca yayınlanmış raporları okur. Metin değişiklikleri de sunucu fonksiyonundan geçer ki denetim atlanmasın.
+create table if not exists public.ha_reports (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('gunluk', 'haftalik', 'aylik', 'acil')),
+  title text not null,
+  window_start timestamptz not null,
+  window_end timestamptz not null,
+  status text not null default 'taslak' check (status in ('taslak', 'yayinda', 'reddedildi', 'geri_cekildi')),
+  topics jsonb not null default '[]'::jsonb,
+  checks jsonb not null default '{}'::jsonb,
+  first_checks jsonb not null default '{}'::jsonb,
+  version integer not null default 1,
+  created_by text not null default 'otomatik',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  published_at timestamptz,
+  published_by uuid,
+  status_note text
+);
+create index if not exists ha_reports_published on public.ha_reports (status, published_at desc);
+alter table public.ha_reports enable row level security;
+revoke all on public.ha_reports from anon, authenticated;
+grant select on public.ha_reports to authenticated;
+drop policy if exists "ha_reports_read" on public.ha_reports;
+create policy "ha_reports_read" on public.ha_reports for select to authenticated using (status = 'yayinda' or public.ha_is_admin());
+
+create table if not exists public.ha_report_revisions (
+  id uuid primary key default gen_random_uuid(),
+  report_id uuid not null references public.ha_reports (id) on delete cascade,
+  version integer not null,
+  topics jsonb not null,
+  checks jsonb not null,
+  edited_by uuid,
+  edited_at timestamptz not null default now(),
+  note text,
+  after_publish boolean not null default false
+);
+alter table public.ha_report_revisions enable row level security;
+revoke all on public.ha_report_revisions from anon, authenticated;
+grant select on public.ha_report_revisions to authenticated;
+drop policy if exists "ha_report_revisions_admin_read" on public.ha_report_revisions;
+create policy "ha_report_revisions_admin_read" on public.ha_report_revisions for select to authenticated using (public.ha_is_admin());
+
+-- Ajan ayarları ve kullanım limitleri (tek satır). Toplama, piyasa verisi ve yapay zekâ ayrı sınırlanır.
+create table if not exists public.ha_agent_settings (
+  id integer primary key default 1 check (id = 1),
+  collect_daily_max integer not null default 2000 check (collect_daily_max between 0 and 100000),
+  market_daily_max integer not null default 50 check (market_daily_max between 0 and 10000),
+  ai_research_monthly_tokens integer not null default 3000000 check (ai_research_monthly_tokens >= 0),
+  ai_coach_monthly_tokens integer not null default 5000000 check (ai_coach_monthly_tokens >= 0),
+  coach_daily_limit integer not null default 30 check (coach_daily_limit between 0 and 500),
+  updated_at timestamptz not null default now()
+);
+insert into public.ha_agent_settings (id) values (1) on conflict do nothing;
+alter table public.ha_agent_settings enable row level security;
+revoke all on public.ha_agent_settings from anon, authenticated;
+grant select, update on public.ha_agent_settings to authenticated;
+drop policy if exists "ha_agent_settings_admin" on public.ha_agent_settings;
+create policy "ha_agent_settings_admin" on public.ha_agent_settings for all to authenticated using (public.ha_is_admin()) with check (public.ha_is_admin());
+
+-- Günlük kullanım: istek ve yapay zekâ token sayıları; koçun yönlendirme denetimine takılma sayıları.
+-- Kişiye ait hiçbir bilgi tutulmaz.
+create table if not exists public.ha_agent_usage (
+  day date not null,
+  kind text not null check (kind in ('collect', 'market', 'ai_research', 'ai_coach', 'koc_yeniden', 'koc_engel')),
+  amount bigint not null default 0,
+  primary key (day, kind)
+);
+alter table public.ha_agent_usage enable row level security;
+revoke all on public.ha_agent_usage from anon, authenticated;
+grant select on public.ha_agent_usage to authenticated;
+drop policy if exists "ha_agent_usage_admin_read" on public.ha_agent_usage;
+create policy "ha_agent_usage_admin_read" on public.ha_agent_usage for select to authenticated using (public.ha_is_admin());
+
+create table if not exists public.ha_agent_runs (
+  id uuid primary key default gen_random_uuid(),
+  job text not null check (job in ('toplama', 'rapor', 'koc_testi')),
+  started_at timestamptz not null default now(),
+  finished_at timestamptz,
+  ok boolean,
+  stats jsonb not null default '{}'::jsonb,
+  error text
+);
+create index if not exists ha_agent_runs_job on public.ha_agent_runs (job, started_at desc);
+alter table public.ha_agent_runs enable row level security;
+revoke all on public.ha_agent_runs from anon, authenticated;
+grant select on public.ha_agent_runs to authenticated;
+drop policy if exists "ha_agent_runs_admin_read" on public.ha_agent_runs;
+create policy "ha_agent_runs_admin_read" on public.ha_agent_runs for select to authenticated using (public.ha_is_admin());
+
+alter table public.ha_coach_usage add column if not exists tokens integer not null default 0;
+
+-- Sunucu fonksiyonlarının kullandığı sayaçlar (yalnızca servis anahtarı).
+create or replace function public.ha_agent_usage_add(p_kind text, p_amount bigint, p_day date default null) returns bigint
+  language sql security definer set search_path = public as $$
+  insert into public.ha_agent_usage (day, kind, amount)
+    values (coalesce(p_day, (now() at time zone 'Europe/Istanbul')::date), p_kind, p_amount)
+    on conflict (day, kind) do update set amount = ha_agent_usage.amount + excluded.amount
+    returning amount
+$$;
+
+-- Koç sohbeti: başarılı yanıttan SONRA çağrılır; sınır dolmuşsa -1 döner, sayaç artmaz.
+create or replace function public.ha_coach_usage_bump(p_user uuid, p_day date, p_limit integer, p_tokens integer) returns integer
+  language plpgsql security definer set search_path = public as $$
+declare
+  n integer;
+begin
+  insert into public.ha_coach_usage (user_id, day, count, tokens) values (p_user, p_day, 0, 0) on conflict do nothing;
+  update public.ha_coach_usage set count = count + 1, tokens = tokens + greatest(p_tokens, 0)
+   where user_id = p_user and day = p_day and count < p_limit
+   returning count into n;
+  return coalesce(n, -1);
+end $$;
+
+revoke all on function public.ha_agent_usage_add(text, bigint, date), public.ha_coach_usage_bump(uuid, date, integer, integer) from public, anon, authenticated;
+grant execute on function public.ha_agent_usage_add(text, bigint, date), public.ha_coach_usage_bump(uuid, date, integer, integer) to service_role;
+
+-- Editör işlemleri
+create or replace function public.ha_admin_report_publish(p_id uuid) returns void
+  language plpgsql security definer set search_path = public as $$
+declare
+  r public.ha_reports;
+begin
+  perform public.ha_admin_require();
+  select * into r from public.ha_reports where id = p_id for update;
+  if not found then raise exception 'Rapor bulunamadı'; end if;
+  if r.status <> 'taslak' then raise exception 'Yalnızca taslak yayınlanabilir'; end if;
+  if coalesce((r.checks->>'ok')::boolean, false) is not true then raise exception 'Yayın öncesi denetimde çözülmemiş sorun var'; end if;
+  update public.ha_reports set status = 'yayinda', published_at = now(), published_by = auth.uid(), status_note = null, updated_at = now() where id = p_id;
+end $$;
+
+create or replace function public.ha_admin_report_set_status(p_id uuid, p_status text, p_note text) returns void
+  language plpgsql security definer set search_path = public as $$
+declare
+  cur text;
+begin
+  perform public.ha_admin_require();
+  select status into cur from public.ha_reports where id = p_id for update;
+  if not found then raise exception 'Rapor bulunamadı'; end if;
+  if p_status = 'reddedildi' and cur <> 'taslak' then raise exception 'Yalnızca taslak reddedilebilir'; end if;
+  if p_status = 'geri_cekildi' and cur <> 'yayinda' then raise exception 'Yalnızca yayındaki rapor geri çekilebilir'; end if;
+  if p_status = 'taslak' and cur not in ('reddedildi', 'geri_cekildi') then raise exception 'Bu rapor taslağa alınamaz'; end if;
+  if p_status not in ('reddedildi', 'geri_cekildi', 'taslak') then raise exception 'Geçersiz durum'; end if;
+  update public.ha_reports set status = p_status, status_note = nullif(left(btrim(coalesce(p_note, '')), 300), ''), updated_at = now() where id = p_id;
+end $$;
+
+-- Yönetici ölçümleri (son 30 gün)
+create or replace function public.ha_admin_research_metrics() returns jsonb
+  language plpgsql stable security definer set search_path = public as $$
+declare
+  since timestamptz := now() - interval '30 days';
+  today date := (now() at time zone 'Europe/Istanbul')::date;
+  month_start date := date_trunc('month', (now() at time zone 'Europe/Istanbul'))::date;
+  res jsonb;
+begin
+  perform public.ha_admin_require();
+  select jsonb_build_object(
+    'taslak', (select count(*) from public.ha_reports where created_at >= since),
+    'yayinlanan', (select count(*) from public.ha_reports where published_at >= since),
+    'kaynaksizIddia', (select coalesce(sum((first_checks->'counts'->>'kaynaksiz')::int), 0) from public.ha_reports where created_at >= since),
+    'kaynaksizRakam', (select coalesce(sum((first_checks->'counts'->>'kaynaksizRakam')::int), 0) from public.ha_reports where created_at >= since),
+    'eskiVeri', (select coalesce(sum((first_checks->'counts'->>'eskiVeri')::int), 0) from public.ha_reports where created_at >= since),
+    'kaynakSayisi', (select coalesce(sum((first_checks->'counts'->>'kaynakSayisi')::int), 0) from public.ha_reports where created_at >= since),
+    'raporYonlendirme', (select coalesce(sum((first_checks->'counts'->>'yonlendirme')::int), 0) from public.ha_reports where created_at >= since),
+    'yakalamaDakikaMedyan', (select round((percentile_cont(0.5) within group (order by extract(epoch from (ingested_at - published_at)) / 60))::numeric, 1)
+                               from public.ha_research_items where ingested_at >= since and content_type in ('resmi_veri', 'sirket_aciklamasi') and ingested_at >= published_at),
+    'duzeltilenRapor', (select count(distinct report_id) from public.ha_report_revisions v join public.ha_reports r on r.id = v.report_id where v.after_publish and r.published_at >= since),
+    'kocYenidenYazildi', (select coalesce(sum(amount), 0) from public.ha_agent_usage where kind = 'koc_yeniden' and day >= since::date),
+    'kocEngellendi', (select coalesce(sum(amount), 0) from public.ha_agent_usage where kind = 'koc_engel' and day >= since::date),
+    'sonKocTesti', (select to_jsonb(x) from (select started_at, ok, stats from public.ha_agent_runs where job = 'koc_testi' and finished_at is not null order by started_at desc limit 1) x),
+    'sonToplama', (select to_jsonb(x) from (select started_at, ok, stats, error from public.ha_agent_runs where job = 'toplama' and finished_at is not null order by started_at desc limit 1) x),
+    'bugun', (select coalesce(jsonb_object_agg(kind, amount), '{}'::jsonb) from public.ha_agent_usage where day = today),
+    'buAy', (select coalesce(jsonb_object_agg(kind, s), '{}'::jsonb) from (select kind, sum(amount) s from public.ha_agent_usage where day >= month_start group by kind) m)
+  ) into res;
+  return res;
+end $$;
+
+revoke all on function public.ha_admin_report_publish(uuid), public.ha_admin_report_set_status(uuid, text, text), public.ha_admin_research_metrics() from public, anon;
+grant execute on function public.ha_admin_report_publish(uuid), public.ha_admin_report_set_status(uuid, text, text), public.ha_admin_research_metrics() to authenticated;
+
+-- Önerilen resmî kaynaklar: KAPALI ve "koşullar inceleniyor" olarak eklenir. Yönetici kullanım koşullarını
+-- okuyup "izinli" yapmadan ve açmadan hiçbiri okunmaz.
+insert into public.ha_news_sources (kind, value, label, active, grp, default_type, terms_status, poll_minutes) values
+  ('tcmb_kur', 'https://www.tcmb.gov.tr/kurlar/today.xml', 'TCMB gösterge kurları', false, 'piyasa', 'resmi_veri', 'inceleniyor', 120),
+  ('rss', 'https://tcmb.gov.tr/wps/wcm/connect/TR/TCMB+TR/Bottom+Menu/Diger/RSS/PPK+Kararlari', 'TCMB PPK kararları', false, 'tr_resmi', 'resmi_veri', 'inceleniyor', 120),
+  ('rss', 'https://www.federalreserve.gov/feeds/press_all.xml', 'Fed basın duyuruları', false, 'global_resmi', 'resmi_veri', 'inceleniyor', 120),
+  ('rss', 'https://www.ecb.europa.eu/rss/press.html', 'ECB basın duyuruları', false, 'global_resmi', 'resmi_veri', 'inceleniyor', 120),
+  ('rss', 'https://www.bls.gov/feed/bls_latest.rss', 'ABD BLS temel göstergeler', false, 'global_resmi', 'resmi_veri', 'inceleniyor', 120),
+  ('rss', 'https://www.sec.gov/news/pressreleases.rss', 'SEC basın duyuruları', false, 'global_resmi', 'resmi_veri', 'inceleniyor', 240),
+  ('rss', 'https://www.imf.org/en/News/rss?language=eng', 'IMF haberleri', false, 'global_resmi', 'resmi_veri', 'inceleniyor', 240),
+  ('rss', 'https://www.bis.org/doclist/all_pressrels.rss', 'BIS basın duyuruları', false, 'global_resmi', 'resmi_veri', 'inceleniyor', 240)
+on conflict (kind, value) do nothing;

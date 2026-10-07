@@ -280,7 +280,7 @@ do $$ begin
 exception when others then
   if sqlerrm like 'HATA%' then raise; end if;
 end $$;
-select count(*) = 2 and bool_or(value = 'ornek_hesap') as sources_ok from public.ha_news_sources \gset
+select count(*) = 2 and bool_or(value = 'ornek_hesap') as sources_ok from public.ha_news_sources where value in ('ornek_hesap', 'https://ornek.test/rss') \gset
 \if :sources_ok \else \echo 'HATA: kaynak listesi' \q \endif
 reset role;
 insert into public.ha_coach_broadcasts (day, title, summary, items) values ('2026-10-06', 'Günün özeti', 'Özet', '[]');
@@ -310,4 +310,92 @@ select public.ha_delete_my_account();
 reset role;
 select count(*) = 0 as usage_gone from public.ha_coach_usage \gset
 \if :usage_gone \else \echo 'HATA: hesap silinince sayaç kaldı' \q \endif
+-- Araştırma ajanı
+insert into auth.users (id, email) values ('55555555-5555-5555-5555-555555555555', 'u@ornek.test');
+select count(*) = 8 and bool_and(not active and terms_status = 'inceleniyor') as seeds_ok from public.ha_news_sources where kind <> 'x' and value <> 'https://ornek.test/rss' \gset
+\if :seeds_ok \else \echo 'HATA: önerilen kaynaklar kapalı ve incelemede değil' \q \endif
+select pg_temp.as_user(:'osman');
+insert into public.ha_experts (name, area, speaks_for) values ('Örnek Uzman', 'tr_makro', 'kisisel');
+insert into public.ha_release_calendar (institution, title, release_at) values ('TÜİK', 'TÜFE Eylül', now() + interval '1 day');
+update public.ha_news_sources set terms_status = 'izinli', active = true where value = 'https://ornek.test/rss';
+do $$ begin
+  insert into public.ha_news_sources (kind, value, grp) values ('rss', 'https://haber.test/rss', 'piyasa');
+  raise exception 'HATA: haber kaynağı fiyat grubuna eklendi';
+exception when check_violation then null;
+end $$;
+do $$ begin
+  insert into public.ha_news_sources (kind, value) values ('rss', 'http://guvensiz.test/rss');
+  raise exception 'HATA: https olmayan kaynak eklendi';
+exception when check_violation then null;
+end $$;
+update public.ha_agent_settings set coach_daily_limit = 25;
+reset role;
+insert into public.ha_research_items (dedupe_key, url, title, institution, published_at, content_type) values ('k1', 'https://ornek.test/1', 'Madde', 'Kurum', now(), 'resmi_veri');
+do $$ begin
+  insert into public.ha_research_items (dedupe_key, url, title, institution, published_at, content_type) values ('k1', 'https://ornek.test/1', 'Madde', 'Kurum', now(), 'resmi_veri');
+  raise exception 'HATA: aynı madde iki kez kaydedildi';
+exception when unique_violation then null;
+end $$;
+insert into public.ha_reports (id, kind, title, window_start, window_end, checks) values
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'gunluk', 'Sorunlu taslak', now() - interval '1 day', now(), '{"ok": false}'),
+  ('aaaaaaaa-0000-0000-0000-000000000002', 'gunluk', 'Temiz taslak', now() - interval '1 day', now(), '{"ok": true, "counts": {"kaynaksiz": 0}}');
+-- Üye: taslakları, maddeleri, uzmanları, limitleri göremez; yayın yapamaz
+select pg_temp.as_user('55555555-5555-5555-5555-555555555555');
+select count(*) = 0 as member_no_drafts from public.ha_reports \gset
+\if :member_no_drafts \else \echo 'HATA: üye taslak gördü' \q \endif
+select (select count(*) from public.ha_research_items) + (select count(*) from public.ha_experts) + (select count(*) from public.ha_release_calendar) + (select count(*) from public.ha_agent_settings) = 0 as member_hidden \gset
+\if :member_hidden \else \echo 'HATA: üye araştırma tablolarını gördü' \q \endif
+do $$ begin
+  perform public.ha_admin_report_publish('aaaaaaaa-0000-0000-0000-000000000002');
+  raise exception 'HATA: üye rapor yayınladı';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+do $$ begin
+  insert into public.ha_experts (name) values ('Sahte');
+  raise exception 'HATA: üye uzman ekledi';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  perform public.ha_coach_usage_bump(auth.uid(), current_date, 1000, 0);
+  raise exception 'HATA: üye sayaç fonksiyonunu çağırdı';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  perform public.ha_admin_research_metrics();
+  raise exception 'HATA: üye ölçümleri gördü';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+reset role;
+-- Editör: denetimden geçmeyen taslak yayınlanamaz; temiz taslak yayınlanır ve herkes görür
+select pg_temp.as_user(:'osman');
+do $$ begin
+  perform public.ha_admin_report_publish('aaaaaaaa-0000-0000-0000-000000000001');
+  raise exception 'HATA: sorunlu taslak yayınlandı';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+select public.ha_admin_report_publish('aaaaaaaa-0000-0000-0000-000000000002');
+select public.ha_admin_report_set_status('aaaaaaaa-0000-0000-0000-000000000001', 'reddedildi', 'Kaynak eksik');
+select (public.ha_admin_research_metrics()->>'yayinlanan')::int = 1 as metrics_ok \gset
+\if :metrics_ok \else \echo 'HATA: ölçümler' \q \endif
+select count(*) = 1 as admin_items from public.ha_research_items \gset
+\if :admin_items \else \echo 'HATA: yönetici maddeleri göremedi' \q \endif
+reset role;
+select pg_temp.as_user('55555555-5555-5555-5555-555555555555');
+select count(*) = 1 and bool_and(title = 'Temiz taslak') as member_published from public.ha_reports \gset
+\if :member_published \else \echo 'HATA: yayınlanan rapor görünmedi' \q \endif
+reset role;
+-- Koç sayacı: sınıra kadar artar, sınırda -1 döner ve artmaz
+select public.ha_coach_usage_bump('55555555-5555-5555-5555-555555555555', '2026-10-07', 2, 100) = 1 as b1 \gset
+select public.ha_coach_usage_bump('55555555-5555-5555-5555-555555555555', '2026-10-07', 2, 100) = 2 as b2 \gset
+select public.ha_coach_usage_bump('55555555-5555-5555-5555-555555555555', '2026-10-07', 2, 100) = -1 as b3 \gset
+\if :b1 \else \echo 'HATA: sayaç 1' \q \endif
+\if :b2 \else \echo 'HATA: sayaç 2' \q \endif
+\if :b3 \else \echo 'HATA: sayaç sınırı aştı' \q \endif
+select count = 2 and tokens = 200 as bump_ok from public.ha_coach_usage where user_id = '55555555-5555-5555-5555-555555555555' \gset
+\if :bump_ok \else \echo 'HATA: sayaç değeri' \q \endif
+select public.ha_agent_usage_add('ai_coach', 50, '2026-10-07') + public.ha_agent_usage_add('ai_coach', 50, '2026-10-07') = 150 as usage_ok \gset
+\if :usage_ok \else \echo 'HATA: kullanım toplamı' \q \endif
 \echo 'TUM SQL TESTLERI GECTI'

@@ -7,7 +7,7 @@
     "moduleResolution": "bundler",
     "types": ["vite/client", "vite-plugin-pwa/client"],
     "skipLibCheck": true,
-    "allowImportingTsExtensions": false,
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,

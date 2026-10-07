@@ -24,6 +24,32 @@ const ADMIN_USERS = [
   { id: '33333333-3333-4333-8333-333333333333', email: 'eski@ornek.com', full_name: null, provider: 'email', created_at: '2026-01-01T00:00:00Z', last_sign_in_at: '2026-02-01T00:00:00Z', email_confirmed_at: '2026-01-01T00:00:00Z', banned_until: '2126-01-01T00:00:00Z', is_admin: false, group_count: 0, shared_tx_count: 0 },
 ]
 
+const CLEAN_CHECKS = { ok: true, checkedAt: '2026-10-07T04:00:00Z', issues: [], counts: { kaynaksiz: 0, eskiVeri: 0, kaynaksizRakam: 0, yonlendirme: 0, kaynakSayisi: 2 } }
+const sec = (text: string, refs: number[]) => ({ text, refs })
+const TOPIC = {
+  title: 'Politika faizi sabit kaldı',
+  eventKey: 'e1',
+  sections: {
+    ne_oldu: sec('Merkez bankası politika faizini yüzde 40 seviyesinde sabit tuttu.', [1]),
+    neden_onemli: sec('Kredi kartı ve kredi faizleri bu karara bağlı olarak değişebilir.', [1]),
+    uzmanlar: sec('Örnek Ekonomist kişisel görüşünde gevşemenin gecikebileceğini düşünüyor.', [2]),
+    degerlendirme: sec('Karar sıkı duruşun sürdüğünü gösteriyor olabilir.', [1, 2]),
+    senaryolar: sec('Enflasyon yavaşlarsa indirim gündeme gelebilir; yavaşlamazsa faiz yüksek kalabilir.', []),
+    sonraki_isaret: sec('Bir sonraki karar takvimdeki toplantıda açıklanacak.', []),
+  },
+  sources: [
+    { n: 1, itemId: 'i1', title: 'Faiz Oranlarına İlişkin Basın Duyurusu', url: 'https://ornek-merkez.test/duyuru/1', author: null, institution: 'Örnek Merkez Bankası', publishedAt: '2026-10-06T11:00:00Z', period: null, type: 'resmi_veri' },
+    { n: 2, itemId: 'i2', title: 'Faiz kararı üzerine', url: 'https://x.com/ornekekonomist/status/1', author: 'Örnek Ekonomist', institution: '@ornekekonomist', publishedAt: '2026-10-06T12:00:00Z', period: null, type: 'uzman_yorumu', personal: true },
+  ],
+}
+const REPORT = { id: 'r1', kind: 'gunluk', title: 'Günlük ekonomi raporu · 7 Ekim 2026', window_start: '2026-10-06T04:00:00Z', window_end: new Date().toISOString(), status: 'yayinda', topics: [TOPIC], checks: CLEAN_CHECKS, version: 1, created_by: 'otomatik', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), published_at: new Date().toISOString(), status_note: null }
+const DRAFT = { ...REPORT, id: 'r2', title: 'Haftalık ekonomi raporu · taslak', kind: 'haftalik', status: 'taslak', published_at: null, checks: { ...CLEAN_CHECKS, ok: false, issues: [{ topic: 0, section: 'degerlendirme', kind: 'kaynaksiz-rakam', detail: 'Kaynakta bulunmayan rakam: 35' }] } }
+const SOURCES = [
+  { id: 's1', kind: 'rss', value: 'https://ornek-merkez.test/rss', label: 'Örnek Merkez Bankası', active: true, grp: 'tr_resmi', default_type: 'resmi_veri', terms_status: 'izinli', terms_url: null, terms_note: null, terms_checked_at: null, poll_minutes: 60, expert_id: null, last_checked_at: new Date().toISOString(), last_ok_at: new Date().toISOString(), last_error: null, last_error_at: null, last_item_at: '2026-10-06T11:00:00Z', items_total: 12 },
+  { id: 's2', kind: 'x', value: 'ornekekonomist', label: null, active: true, grp: 'haber_uzman', default_type: 'uzman_yorumu', terms_status: 'izinli', terms_url: null, terms_note: null, terms_checked_at: null, poll_minutes: 120, expert_id: 'e1', last_checked_at: new Date().toISOString(), last_ok_at: null, last_error: 'X erişim anahtarı (X_BEARER_TOKEN) tanımlı değil', last_error_at: new Date().toISOString(), last_item_at: null, items_total: 0 },
+  { id: 's3', kind: 'tcmb_kur', value: 'https://www.tcmb.gov.tr/kurlar/today.xml', label: 'TCMB gösterge kurları', active: false, grp: 'piyasa', default_type: 'resmi_veri', terms_status: 'inceleniyor', terms_url: null, terms_note: null, terms_checked_at: null, poll_minutes: 120, expert_id: null, last_checked_at: null, last_ok_at: null, last_error: null, last_error_at: null, last_item_at: null, items_total: 0 },
+]
+
 /** Supabase kimlik ve veri API'sini taklit eder. */
 async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?: boolean; admin?: boolean; sharedGroup?: boolean } = {}) {
   const calls: string[] = []
@@ -53,23 +79,23 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
     if (url.pathname === '/rest/v1/rpc/ha_is_admin') return json(!!opts.admin)
     if (url.pathname === '/functions/v1/coach-chat') {
       bodies.chat = req.postDataJSON()
-      return json({ reply: 'Önce kredi kartı borcunu kapatalım; ardından ayda ayırdığınız tutarı yatırıma yönlendirirsiniz.' })
+      return json({ reply: 'Önce kredi kartı borcunu kapatalım; ardından ayda ayırdığınız tutarı birikime ayırırsınız.', remaining: 29 })
     }
-    if (url.pathname === '/rest/v1/ha_coach_broadcasts')
-      return json([
-        {
-          id: 'b1',
-          day: '2026-10-06',
-          title: 'Günün ekonomi özeti',
-          summary: 'Bugün piyasada öne çıkanlar.',
-          created_at: '2026-10-06T05:00:00Z',
-          items: [
-            { kind: 'haber', text: 'Merkez bankası faiz kararını açıkladı.', source: '@ornekhaber', url: 'https://x.com/ornekhaber/status/1', publishedAt: '2026-10-06T04:00:00Z' },
-            { kind: 'tahmin', text: 'Bir ekonomist enflasyonun yavaşlamasını bekliyor.', source: 'Örnek RSS', url: 'https://ornek.test/haber/2', publishedAt: '2026-10-05T20:00:00Z' },
-          ],
-        },
-      ])
-    if (url.pathname === '/rest/v1/ha_news_sources') return json(opts.admin ? [{ id: 's1', kind: 'x', value: 'ornekhaber', label: 'Örnek Haber', active: true }] : [])
+    if (url.pathname === '/functions/v1/research-report' || url.pathname === '/functions/v1/research-collect' || url.pathname === '/functions/v1/coach-eval') {
+      bodies[url.pathname] = req.postDataJSON()
+      return json({ ok: true, checks: CLEAN_CHECKS, version: 2, kontrol: 1, yeni: 0, hata: 0 })
+    }
+    if (url.pathname === '/rest/v1/ha_reports') return json(url.searchParams.get('status') === 'eq.yayinda' ? [REPORT] : opts.admin ? [DRAFT, REPORT] : [])
+    if (url.pathname === '/rest/v1/ha_report_revisions') return json([{ id: 'v1', version: 1, edited_by: null, edited_at: '2026-10-07T04:00:00Z', note: 'Otomatik taslak', after_publish: false, checks: DRAFT.checks }])
+    if (url.pathname === '/rest/v1/ha_news_sources') return json(opts.admin ? SOURCES : [])
+    if (url.pathname === '/rest/v1/ha_experts') return json(opts.admin ? [{ id: 'e1', name: 'Örnek Ekonomist', title: 'Profesör', institution: 'Örnek Üniversite', area: 'tr_makro', speaks_for: 'kisisel', profile_url: null, note: null, active: true }] : [])
+    if (url.pathname === '/rest/v1/ha_agent_settings') return json({ collect_daily_max: 2000, market_daily_max: 50, ai_research_monthly_tokens: 3000000, ai_coach_monthly_tokens: 5000000, coach_daily_limit: 30 })
+    if (url.pathname === '/rest/v1/rpc/ha_admin_research_metrics')
+      return json({ taslak: 4, yayinlanan: 3, kaynaksizIddia: 2, kaynaksizRakam: 1, eskiVeri: 1, kaynakSayisi: 40, raporYonlendirme: 0, yakalamaDakikaMedyan: 12.5, duzeltilenRapor: 1, kocYenidenYazildi: 2, kocEngellendi: 0, sonKocTesti: { started_at: '2026-10-06T10:00:00Z', ok: true, stats: { vaka: 10, ilkYanittaYonlendirme: 1, kullaniciyaGidenYonlendirme: 0 } }, sonToplama: null, bugun: { collect: 120 }, buAy: { ai_coach: 25000 } })
+    if (url.pathname === '/rest/v1/rpc/ha_admin_report_publish') {
+      calls.push('YAYIN')
+      return route.fulfill({ status: 204 })
+    }
     if (url.pathname === '/rest/v1/rpc/ha_delete_my_account') return route.fulfill({ status: 204 })
     if (url.pathname === '/rest/v1/rpc/ha_admin_list_users') return opts.admin ? json(ADMIN_USERS) : json({ message: 'Bu işlem için yönetici yetkisi gerekir' }, 400)
     if (url.pathname.startsWith('/rest/v1/rpc/ha_admin_')) return opts.admin ? route.fulfill({ status: 204 }) : json({ message: 'yetki yok' }, 400)
@@ -379,7 +405,7 @@ test('Ayarlar: hesabımı sil, hesabı ve bu cihazdaki kayıtları siler', async
   await expect(page.getByText('Silinecek kayıt').filter({ visible: true })).toHaveCount(0)
 })
 
-test('Plus+ koç: yapay zekâ izniyle sohbet, yalnızca özet bilgi gönderilir; günlük özet kaynaklı görünür', async ({ page }) => {
+test('Plus+ koç ve araştırma: rapor kaynaklı görünür, hafıza düzenlenir, kapatılan bilgi gönderilmez; yönetici taslağı denetler', async ({ page }) => {
   const calls = await mockSupabase(page, { admin: true })
   await page.goto('./')
   await signIn(page, 'osman@ornek.com')
@@ -396,27 +422,73 @@ test('Plus+ koç: yapay zekâ izniyle sohbet, yalnızca özet bilgi gönderilir;
 
   await page.goto('./#/koc')
   const chat = page.getByRole('region', { name: 'Koç mesajları' })
-  // Günlük özet: madde türü, kaynak ve tarih
-  await expect(chat).toContainText('Günün ekonomi özeti')
-  await expect(chat).toContainText('Tahmin')
-  await expect(chat.getByRole('link', { name: /@ornekhaber/ })).toHaveAttribute('href', 'https://x.com/ornekhaber/status/1')
+  // Ortak rapor: konu, içerik türü ve tamamına bağlantı
+  await expect(chat).toContainText('Günlük ekonomi raporu')
+  await expect(chat).toContainText('Politika faizi sabit kaldı')
+  await expect(chat).toContainText('Resmî veri')
+  await expect(chat.getByRole('link', { name: /Raporun tamamı/ })).toBeVisible()
+
+  // Hafıza: not eklenir, düzeltilir; kapatılan bilgi gönderilmez
+  const memory = page.getByRole('region', { name: 'Koçun hafızası' })
+  await memory.getByLabel('Hafızaya not ekle').fill('İki yıl içinde ev peşinatı biriktirmek istiyorum')
+  await memory.getByRole('button', { name: 'Ekle' }).click()
+  await expect(memory.getByRole('list', { name: 'Hafıza notları' })).toContainText('ev peşinatı')
+  await memory.getByRole('button', { name: 'Notu düzelt' }).click()
+  await memory.getByLabel('Notu düzelt').fill('Üç yıl içinde ev peşinatı biriktirmek istiyorum')
+  await memory.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(memory).toContainText('Üç yıl içinde')
+  await memory.getByRole('switch', { name: 'Borçlar koça gönderilsin' }).click()
 
   // İzin yokken serbest soru kapalı
   const input = chat.getByLabel('Koça yazın')
   await expect(input).toBeDisabled()
   await page.getByRole('region', { name: 'Yapay zekâ sohbeti' }).getByRole('switch').click()
   await expect(input).toBeEnabled()
-  await input.fill('Borcumu mu kapatayım yatırım mı yapayım?')
+  await input.fill('Borcumu mu kapatayım birikim mi yapayım?')
   await chat.getByRole('button', { name: 'Gönder' }).click()
   await expect(chat).toContainText('Önce kredi kartı borcunu kapatalım')
+  await expect(chat).toContainText('Bugün 29 soru hakkınız kaldı')
   const sent = JSON.stringify(calls.bodies.chat)
   expect(sent).toContain('aylikGelir')
   expect(sent).toContain('50000')
+  expect(sent).toContain('Üç yıl içinde ev peşinatı')
+  expect(sent).not.toContain('borclar')
   expect(sent).not.toContain('osman@ornek.com')
   await chat.getByRole('button', { name: 'Sohbeti sil' }).click()
   await expect(chat).not.toContainText('Önce kredi kartı borcunu kapatalım')
+  await memory.getByRole('button', { name: 'Notu sil' }).click()
+  await expect(memory).toContainText('Henüz not yok')
 
-  // Yönetici haber kaynaklarını görür
+  // Finansal bilgi: 7 bölüm ve kaynaklar
+  await page.goto('./#/ogren')
+  const agenda = page.getByRole('region', { name: 'Ekonomi gündemi' })
+  await expect(agenda).toContainText('Ortak araştırma değerlendirmesi')
+  await expect(agenda).toContainText('Kişisel görüş')
+  await expect(agenda.getByRole('link', { name: /Faiz Oranlarına İlişkin/ })).toHaveAttribute('href', 'https://ornek-merkez.test/duyuru/1')
+
+  // Yönetici: araştırma ajanı
   await page.goto('./#/yonetim')
-  await expect(page.getByRole('list', { name: 'Kaynaklar' })).toContainText('@ornekhaber')
+  await page.getByRole('link', { name: /Araştırma ajanını yönet/ }).click()
+  await expect(page.getByRole('heading', { name: 'Araştırma ajanı', level: 1 })).toBeVisible()
+  await page.getByRole('button', { name: /Haftalık ekonomi raporu · taslak/ }).click()
+  const editor = page.getByRole('dialog')
+  await expect(editor).toContainText('Kaynakta bulunmayan rakam: 35')
+  await expect(editor.getByRole('button', { name: 'Onayla ve yayınla' })).toBeDisabled()
+  await editor.getByLabel('Konu 1 başlığı').fill('Faiz kararı')
+  await editor.getByRole('button', { name: 'Kaydet ve denetle' }).click()
+  await expect.poll(() => JSON.stringify(calls.bodies['/functions/v1/research-report'])).toContain('Faiz kararı')
+  await expect(page.getByText('Kaydedildi ve yeniden denetlendi.')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(editor).toBeHidden()
+
+  await page.getByRole('radio', { name: 'Kaynaklar' }).click()
+  await expect(page.getByText('Örnek Merkez Bankası').first()).toBeVisible()
+  await expect(page.getByText('Sağlıklı')).toBeVisible()
+  await expect(page.getByText(/X_BEARER_TOKEN/)).toBeVisible()
+  await expect(page.getByText('Koşullar inceleniyor').first()).toBeVisible()
+
+  await page.getByRole('radio', { name: 'Ölçümler' }).click()
+  await expect(page.getByText('Kaynaksız iddia')).toBeVisible()
+  await expect(page.getByText('12,5 dk')).toBeVisible()
+  await expect(page.getByText('Geçti')).toBeVisible()
 })

@@ -1,22 +1,24 @@
-import { AlertTriangle, ArrowRight, Bot, Calculator, CheckCheck, ChevronDown, Eraser, Flag, Landmark, Lock, Newspaper, PartyPopper, PiggyBank, Send, ShieldCheck, Sparkles, Target, TrendingUp } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Bot, Brain, Calculator, CheckCheck, ChevronDown, Eraser, Flag, Landmark, Lock, Newspaper, PartyPopper, Pencil, PiggyBank, Plus, Send, ShieldCheck, Sparkles, Target, Trash2, TrendingUp } from 'lucide-react'
 import { animate, AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
-import { BroadcastBody } from '../components/Broadcast'
+import { ReportMeta, TypeBadge } from '../components/Report'
 import { DebtPayoffChart } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
-import { Alert, Badge, Button, Card, Field, Input, Segmented, Switch } from '../components/ui/primitives'
+import { Alert, Badge, Button, Card, Field, Input, Segmented, Select, Switch } from '../components/ui/primitives'
 import { answer, QUESTIONS, restructure, STRATEGY_LABEL, type CoachMessage, type CoachPhase, type CoachPlan, type DebtStrategy, type QuestionId } from '../domain/coach'
 import { todayIso } from '../domain/dates'
 import { formatKurus } from '../domain/money'
 import { addMonthsClamped } from '../domain/recurring'
-import type { CoachSettings } from '../domain/types'
+import type { CoachMemoryEntry, CoachMemoryKind, CoachSettings, CoachShare } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
-import { coachChat, type Broadcast, type ChatTurn } from '../cloud/coach'
+import { coachChat, coachSummarize, type ChatTurn } from '../cloud/coach'
+import type { Report } from '../cloud/research'
+import { newId } from '../data/repository'
 import { useAuth } from '../state/auth'
-import { coachSummary, useBroadcasts, useCoach, type CoachDebtInfo, type CoachState } from '../state/coach'
+import { coachMemoryText, coachSummary, DEFAULT_SHARE, MEMORY_MAX, useCoach, useReports, type CoachDebtInfo, type CoachState } from '../state/coach'
 import { useRepo } from '../state/data'
 import { useUi } from '../state/ui'
 
@@ -57,8 +59,17 @@ function CoachContent() {
       {state.plan && <Timeline plan={state.plan} />}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-5">
         <div className="flex flex-col gap-4 lg:col-span-3">
-          <Chat state={state} onDismiss={(id) => save({ dismissed: [...state.settings.dismissed, id].slice(-200) })} />
+          <Chat
+            state={state}
+            onDismiss={(id) => save({ dismissed: [...state.settings.dismissed, id].slice(-200) })}
+            onRemember={(notes) => {
+              const now = new Date().toISOString()
+              const added: CoachMemoryEntry[] = notes.map((text) => ({ id: newId(), kind: 'sohbet', text: text.slice(0, 400), source: 'sohbet', createdAt: now, updatedAt: now }))
+              save({ memory: [...(state.settings.memory ?? []), ...added].slice(-MEMORY_MAX) })
+            }}
+          />
           <AiCard consent={state.settings.aiConsent} onChange={(v) => save({ aiConsent: v })} />
+          <MemoryCard state={state} onChange={save} />
         </div>
         <div className="flex flex-col gap-4 lg:col-span-2">{state.plan && <DebtPanel state={state} plan={state.plan} onChange={save} />}</div>
       </div>
@@ -319,11 +330,17 @@ const TONE: Record<CoachMessage['tone'], { icon: typeof Sparkles; cls: string }>
   plan: { icon: Target, cls: 'text-accent' },
 }
 
-function Chat({ state, onDismiss }: { state: CoachState; onDismiss: (id: string) => void }) {
+/** Bu kadar mesajdan sonra sohbetin eski kısmı hafızaya özetlenir; sunucuya yalnızca son mesajlar gider. */
+const SUMMARIZE_AFTER = 12
+const KEEP_RECENT = 4
+
+function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: (id: string) => void; onRemember: (notes: string[]) => void }) {
   const reduced = useReducedMotion()
   const { backend, user } = useAuth()
-  const latest = useBroadcasts(1)?.[0]
-  const news = latest && !state.settings.dismissed.includes(`news-${latest.day}`) ? latest : null
+  const latest = useReports(3)?.find((r) => r.kind === 'gunluk' || r.kind === 'acil')
+  const news = latest && !state.settings.dismissed.includes(`rapor-${latest.id}`) ? latest : null
+  const [remaining, setRemaining] = useState<number | null>(null)
+  const [summarizedUpTo, setSummarizedUpTo] = useState(0)
   const unread = state.messages.filter((m) => !m.read)
   const read = state.messages.filter((m) => m.read)
   const [draft, setDraft] = useState('')
@@ -355,16 +372,28 @@ function Chat({ state, onDismiss }: { state: CoachState; onDismiss: (id: string)
       reduced ? 0 : 750,
     )
   }
+  const toTurns = (bubbles: Bubble[]): ChatTurn[] => bubbles.filter((b) => b.text && !b.error).map((b) => ({ role: b.from === 'me' ? ('user' as const) : ('assistant' as const), content: b.text! }))
   const send = async () => {
     const text = draft.trim().slice(0, 1000)
     if (!text || typing || !aiReady || !backend) return
-    const turns: ChatTurn[] = [...thread.filter((b) => b.text).map((b) => ({ role: b.from === 'me' ? ('user' as const) : ('assistant' as const), content: b.text! })), { role: 'user', content: text }]
+    const turns: ChatTurn[] = [...toTurns(thread.slice(summarizedUpTo)), { role: 'user', content: text }]
     setDraft('')
     setThread((t) => [...t, { key: `me-${t.length}`, from: 'me', text }])
     setTyping(true)
     try {
-      const reply = await coachChat(backend.client, coachSummary(state), turns.slice(-12))
-      setThread((t) => [...t, { key: `c-${t.length}`, from: 'coach', text: reply }])
+      const res = await coachChat(backend.client, coachSummary(state), coachMemoryText(state), turns.slice(-12))
+      setRemaining(res.remaining)
+      const next: Bubble[] = [...thread, { key: `me-${thread.length}`, from: 'me', text }, { key: `c-${thread.length + 1}`, from: 'coach', text: res.reply }]
+      setThread(next)
+      // Uzun sohbet: eski kısım hafızaya özetlenir (kullanıcı hafıza kartında görür, düzeltir, siler).
+      const pendingTurns = next.slice(summarizedUpTo)
+      if (toTurns(pendingTurns).length > SUMMARIZE_AFTER) {
+        const cut = next.length - KEEP_RECENT
+        setSummarizedUpTo(cut)
+        void coachSummarize(backend.client, toTurns(next.slice(summarizedUpTo, cut)))
+          .then((notes) => notes.length && onRemember(notes))
+          .catch(() => {})
+      }
     } catch (e) {
       setThread((t) => [...t, { key: `c-${t.length}`, from: 'coach', text: e instanceof Error ? e.message : 'Koç şu an yanıt veremiyor.', error: true }])
     } finally {
@@ -382,10 +411,15 @@ function Chat({ state, onDismiss }: { state: CoachState; onDismiss: (id: string)
         <CoachOrb size={36} talking={pending} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-ink">Koç</div>
-          <div className="text-[12px] text-muted">{pending ? 'yazıyor…' : unread.length ? `${unread.length} yeni mesaj` : aiReady ? 'Çevrimiçi' : 'Çevrimiçi · cihazınızda çalışıyor'}</div>
+          <div className="text-[12px] text-muted">
+            {pending ? 'yazıyor…' : unread.length ? `${unread.length} yeni mesaj` : aiReady ? 'Çevrimiçi' : 'Çevrimiçi · cihazınızda çalışıyor'}
+          </div>
         </div>
         {thread.length > 0 && (
-          <Button size="sm" variant="ghost" icon={<Eraser className="size-4" />} onClick={() => setThread([])}>
+          <Button size="sm" variant="ghost" icon={<Eraser className="size-4" />} onClick={() => {
+              setThread([])
+              setSummarizedUpTo(0)
+            }}>
             Sohbeti sil
           </Button>
         )}
@@ -397,7 +431,7 @@ function Chat({ state, onDismiss }: { state: CoachState; onDismiss: (id: string)
           </button>
         )}
         {showOld && read.map((m) => <CoachBubble key={m.id} msg={m} dim />)}
-        {news && <NewsBubble b={news} onDismiss={() => onDismiss(`news-${news.day}`)} />}
+        {news && <NewsBubble r={news} onDismiss={() => onDismiss(`rapor-${news.id}`)} />}
         <AnimatePresence initial={false}>
           {unread.slice(0, shown).map((m) => (
             <CoachBubble key={m.id} msg={m} onDismiss={() => onDismiss(m.id)} />
@@ -433,6 +467,7 @@ function Chat({ state, onDismiss }: { state: CoachState; onDismiss: (id: string)
           <Input aria-label="Koça yazın" disabled={!aiReady} value={draft} maxLength={1000} onChange={(e) => setDraft(e.target.value)} placeholder={aiHint} className="flex-1" />
           <Button type="submit" variant="primary" disabled={!aiReady || !draft.trim() || typing} icon={<Send className="size-4" />} aria-label="Gönder" />
         </form>
+        {remaining != null && <p className="mt-1.5 text-[12px] text-subtle">Bugün {remaining} soru hakkınız kaldı · yalnızca yanıtlanan sorular sayılır, Türkiye saatiyle gece yarısı yenilenir.</p>}
       </div>
     </Card>
   )
@@ -484,19 +519,35 @@ function CoachBubble({ msg, text, dim, error, onDismiss }: { msg?: CoachMessage;
   )
 }
 
-function NewsBubble({ b, onDismiss }: { b: Broadcast; onDismiss: () => void }) {
+function NewsBubble({ r, onDismiss }: { r: Report; onDismiss: () => void }) {
   return (
     <motion.div {...bubbleMotion} className="flex max-w-[96%] gap-2">
       <div className="mt-1 grid size-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white">
         <Newspaper className="size-4" />
       </div>
       <div className="rounded-2xl rounded-tl-md border border-violet-500/25 bg-surface-2 px-3.5 py-2.5 text-[13.5px] shadow-card">
-        <div className="font-semibold text-ink">{b.title}</div>
-        <div className="text-[11.5px] text-subtle">{new Date(`${b.day}T00:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} · yapay zekâ ile özetlendi</div>
-        <BroadcastBody b={b} />
-        <button type="button" onClick={onDismiss} className="mt-2 inline-flex items-center gap-1 text-[12.5px] text-subtle hover:text-ink">
-          <CheckCheck className="size-3.5" /> Okudum
-        </button>
+        <div className="font-semibold text-ink">{r.title}</div>
+        <ReportMeta r={r} />
+        <ul className="mt-2 flex flex-col gap-1.5">
+          {r.topics.slice(0, 5).map((t, i) => (
+            <li key={i} className="rounded-xl bg-surface px-3 py-2">
+              <div className="flex items-start gap-2">
+                {t.sources[0] && <TypeBadge type={t.sources[0].type} />}
+                <span className="text-[13px] font-medium text-ink">{t.title}</span>
+              </div>
+              <div className="mt-0.5 line-clamp-2 text-[12.5px] text-muted">{t.sections.ne_oldu?.text}</div>
+              <div className="mt-0.5 text-[11.5px] text-subtle">{t.sources.length} kaynak · ilk kaynak {t.sources[0]?.institution}</div>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <Link to="/ogren" className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-accent hover:underline">
+            Raporun tamamı ve kaynaklar <ArrowRight className="size-3.5" />
+          </Link>
+          <button type="button" onClick={onDismiss} className="inline-flex items-center gap-1 text-[12.5px] text-subtle hover:text-ink">
+            <CheckCheck className="size-3.5" /> Okudum
+          </button>
+        </div>
       </div>
     </motion.div>
   )
@@ -706,11 +757,11 @@ function AiCard({ consent, onChange }: { consent: boolean; onChange: (v: boolean
       <p className="relative mt-1 text-[13px] text-muted">İzin verirseniz koç, serbest sorularınızı yapay zekâ (OpenAI) ile yanıtlar. Hesapları yine uygulama yapar; yapay zekâ yalnızca açıklar ve ürün önermez.</p>
       <div className="relative mt-3 rounded-xl bg-surface-2 p-3 text-[12.5px]">
         <div className="font-medium text-ink">Gönderilecek özet bilgiler</div>
-        <p className="text-muted">Aylık gelir ve gider, borç bakiyeleri ve faizleri (adları olmadan), birikim, plan ve hedef tutarları, bu dönemin bütçe durumu.</p>
+        <p className="text-muted">Yalnızca aşağıdaki "Koçun hafızası" kartında açık bıraktığınız toplamlar (gelir, gider, borç bakiyeleri adları olmadan, birikim, bütçe durumu) ve hafıza notlarınız.</p>
         <div className="mt-1.5 flex items-center gap-1 font-medium text-ink">
           <Lock className="size-3.5" /> Hiç gönderilmeyenler
         </div>
-        <p className="text-muted">Ekstre ve belgeler, tek tek işlemler ve açıklamaları, iş yeri adları, kart numarası, hesap bilgileri. Sohbet sunucuda saklanmaz; "Sohbeti sil" ile ekrandan da silinir.</p>
+        <p className="text-muted">Ekstre ve belgeler, tek tek işlemler ve açıklamaları, iş yeri adları, kart numarası, hesap bilgileri. Sohbet ve hafıza sunucuda saklanmaz, herkese giden ortak raporlara hiç karışmaz; "Sohbeti sil" ile ekrandan da silinir.</p>
       </div>
       <div className="relative mt-3">
         <LabeledSwitch
@@ -721,6 +772,132 @@ function AiCard({ consent, onChange }: { consent: boolean; onChange: (v: boolean
             toast(v ? 'İzin verildi. Koça serbest soru sorabilirsiniz.' : 'İzin geri alındı.')
           }}
         />
+      </div>
+    </Card>
+  )
+}
+
+// ---------- Hafıza ----------
+
+const MEMORY_KIND: Record<CoachMemoryKind, string> = { hedef: 'Hedef', tercih: 'Tercih', not: 'Not', sohbet: 'Sohbet özeti' }
+
+const SHARE_ROWS: Array<{ key: keyof CoachShare; label: string; value: (s: CoachState) => string }> = [
+  { key: 'income', label: 'Gelir', value: (s) => (s.profile ? `${formatKurus(s.profile.monthlyIncomeKurus)} / ay` : 'Yolculuk anketinde girilmedi') },
+  { key: 'expenses', label: 'Giderler', value: (s) => (s.facts.averageExpenseKurus ? `Ortalama ${formatKurus(s.facts.averageExpenseKurus)} / ay` : 'Henüz yeterli kayıt yok') },
+  { key: 'debts', label: 'Borçlar', value: (s) => (s.debts.length ? `${s.debts.length} borç, toplam ${formatKurus(s.debts.reduce((n, d) => n + d.balanceKurus, 0))} (adları gönderilmez)` : 'Borç yok') },
+  { key: 'goals', label: 'Birikim ve hedefler', value: (s) => `Hızlı kullanılabilir ${formatKurus(s.facts.liquidKurus)}${s.plan?.goalKurus ? ` · hedef ${formatKurus(s.plan.goalKurus)}` : ''}` },
+  { key: 'budget', label: 'Bu dönemin bütçesi', value: (s) => (s.budget?.total ? `${formatKurus(s.budget.total.spentKurus)} / ${formatKurus(s.budget.total.effectiveKurus)}` : 'Bütçe yok') },
+]
+
+function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Partial<CoachSettings>) => void }) {
+  const { toast } = useUi()
+  const share = { ...DEFAULT_SHARE, ...state.settings.share }
+  const memory = state.settings.memory ?? []
+  const [kind, setKind] = useState<CoachMemoryKind>('hedef')
+  const [text, setText] = useState('')
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
+  const setMemory = (m: CoachMemoryEntry[]) => onChange({ memory: m })
+  const add = () => {
+    const t = text.trim().slice(0, 400)
+    if (!t) return
+    const now = new Date().toISOString()
+    setMemory([...memory, { id: newId(), kind, text: t, source: 'kullanici' as const, createdAt: now, updatedAt: now }].slice(-MEMORY_MAX))
+    setText('')
+  }
+  return (
+    <Card className="p-5" aria-label="Koçun hafızası">
+      <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+        <Brain className="size-5 text-accent" /> Koçun hafızası
+      </h2>
+      <p className="mt-1 text-[13px] text-muted">
+        Koç sizi bu bilgilerle tanır. Hafıza yalnızca bu cihazda durur; ortak ekonomi raporlarına ve başka kullanıcılara hiç karışmaz. Soru sorduğunuzda yalnızca açık olanlar gönderilir. İstediğinizi kapatabilir, düzeltebilir veya silebilirsiniz.
+      </p>
+
+      <div className="mt-3 rounded-xl border border-line">
+        <div className="border-b border-line px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-subtle">Uygulamadan alınan bilgiler</div>
+        <ul>
+          {SHARE_ROWS.map((r) => (
+            <li key={r.key} className="flex items-center gap-3 border-b border-line px-3 py-2 last:border-0">
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium text-ink">{r.label}</div>
+                <div className={cn('text-[12px]', share[r.key] ? 'text-muted' : 'text-subtle line-through')}>{r.value(state)}</div>
+              </div>
+              <Switch label={`${r.label} koça gönderilsin`} checked={share[r.key]} onChange={(v) => onChange({ share: { ...share, [r.key]: v } })} />
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-3 rounded-xl border border-line">
+        <div className="flex items-center justify-between border-b border-line px-3 py-2">
+          <span className="text-[12px] font-semibold uppercase tracking-wide text-subtle">Notlar ({memory.length})</span>
+          {memory.length > 0 && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-[12px] text-subtle hover:text-danger"
+              onClick={() => {
+                setMemory([])
+                toast('Hafıza notları silindi.')
+              }}
+            >
+              <Trash2 className="size-3.5" /> Tümünü sil
+            </button>
+          )}
+        </div>
+        {memory.length === 0 ? (
+          <p className="px-3 py-3 text-[12.5px] text-subtle">Henüz not yok. Hedeflerinizi ve tercihlerinizi ekleyebilirsiniz; uzun sohbetlerin özeti de buraya yazılır.</p>
+        ) : (
+          <ul aria-label="Hafıza notları">
+            {memory.map((m) => (
+              <li key={m.id} className="flex items-start gap-2 border-b border-line px-3 py-2 last:border-0">
+                <Badge tone={m.kind === 'sohbet' ? 'info' : 'neutral'}>{MEMORY_KIND[m.kind]}</Badge>
+                {editing?.id === m.id ? (
+                  <form
+                    className="flex flex-1 gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const t = editing.text.trim().slice(0, 400)
+                      setMemory(t ? memory.map((x) => (x.id === m.id ? { ...x, text: t, updatedAt: new Date().toISOString() } : x)) : memory.filter((x) => x.id !== m.id))
+                      setEditing(null)
+                    }}
+                  >
+                    <Input aria-label="Notu düzelt" autoFocus value={editing.text} maxLength={400} onChange={(e) => setEditing({ id: m.id, text: e.target.value })} className="flex-1" />
+                    <Button size="sm" type="submit" variant="primary">
+                      Kaydet
+                    </Button>
+                  </form>
+                ) : (
+                  <>
+                    <span className="min-w-0 flex-1 text-[13px] text-ink">{m.text}</span>
+                    <button type="button" aria-label="Notu düzelt" className="p-1 text-subtle hover:text-ink" onClick={() => setEditing({ id: m.id, text: m.text })}>
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button type="button" aria-label="Notu sil" className="p-1 text-subtle hover:text-danger" onClick={() => setMemory(memory.filter((x) => x.id !== m.id))}>
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <form
+          className="flex flex-col gap-2 border-t border-line p-3 sm:flex-row"
+          onSubmit={(e) => {
+            e.preventDefault()
+            add()
+          }}
+        >
+          <Select aria-label="Not türü" value={kind} onChange={(e) => setKind(e.target.value as CoachMemoryKind)} className="sm:w-32">
+            <option value="hedef">Hedef</option>
+            <option value="tercih">Tercih</option>
+            <option value="not">Not</option>
+          </Select>
+          <Input aria-label="Hafızaya not ekle" value={text} maxLength={400} onChange={(e) => setText(e.target.value)} placeholder="ör. 2 yıl içinde ev için peşinat biriktirmek istiyorum" className="flex-1" />
+          <Button type="submit" icon={<Plus className="size-4" />} disabled={!text.trim() || memory.length >= MEMORY_MAX}>
+            Ekle
+          </Button>
+        </form>
       </div>
     </Card>
   )

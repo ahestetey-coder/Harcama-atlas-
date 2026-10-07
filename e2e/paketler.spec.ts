@@ -224,7 +224,7 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
 
   await page.goto('./#/ogren')
   await expect(page.getByText('Likidite', { exact: true })).toBeVisible()
-  await expect(page.getByText(/Henüz günlük özet yok/)).toBeVisible()
+  await expect(page.getByText(/Henüz yayınlanmış rapor yok/)).toBeVisible()
 })
 
 test('Plus+ koç: borç önce kapanır, yatırım tutarı ve yapılandırma hesabı; hazır sorular yanıtlanır', async ({ page }) => {
