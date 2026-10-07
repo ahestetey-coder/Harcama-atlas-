@@ -30,7 +30,7 @@ function TooltipBox({ title, lines }: { title: string; lines: Array<[string, str
  * Kategori dağılımı: yalnızca brüt giderler (negatif net tutarlar pastaya zorlanmaz).
  * Kimlik yalnızca renge bırakılmaz; yanındaki liste her dilimi adıyla ve tutarıyla gösterir.
  */
-export function CategoryDonut({ slices, total, onSelect, centerLabel }: { slices: DonutSlice[]; total: number; onSelect?: (s: DonutSlice) => void; centerLabel: string }) {
+export function CategoryDonut({ slices, total, onSelect, centerLabel, valueLabel = 'Gider' }: { slices: DonutSlice[]; total: number; onSelect?: (s: DonutSlice) => void; centerLabel: string; valueLabel?: string }) {
   const reduced = useReducedMotion()
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[240px]">
@@ -55,7 +55,7 @@ export function CategoryDonut({ slices, total, onSelect, centerLabel }: { slices
               const s = (d as { payload?: DonutSlice })?.payload
               if (s) onSelect?.(s)
             }}
-            className="cursor-pointer outline-none"
+            className={onSelect ? 'cursor-pointer outline-none' : 'outline-none'}
           >
             {slices.map((s) => (
               <Cell key={s.id} fill={s.color} aria-label={`${s.name}: ${formatKurus(s.kurus)}`} />
@@ -66,7 +66,7 @@ export function CategoryDonut({ slices, total, onSelect, centerLabel }: { slices
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null
               const s = payload[0].payload as DonutSlice
-              return <TooltipBox title={s.name} lines={[['Gider', formatKurus(s.kurus)], ['Pay', `%${((s.kurus / Math.max(1, total)) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`]]} />
+              return <TooltipBox title={s.name} lines={[[valueLabel, formatKurus(s.kurus)], ['Pay', `%${((s.kurus / Math.max(1, total)) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`]]} />
             }}
           />
         </PieChart>

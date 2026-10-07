@@ -1,7 +1,7 @@
 import { ArrowDownUp, ChevronDown, Landmark, Pencil, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
-import { WealthLine } from '../components/charts/Charts'
+import { CategoryDonut, WealthLine } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Alert, Badge, Button, Card, EmptyState, Field, IconButton, Input, Segmented, Select } from '../components/ui/primitives'
@@ -174,10 +174,13 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
           <p className="mt-2 text-sm text-muted">Değeri olan bir varlık yok.</p>
         ) : (
           <>
-            <div className="mt-3 flex h-3 w-full gap-0.5" aria-hidden>
-              {p.allocation.map((a) => (
-                <div key={a.kind} className="h-full rounded-[4px]" style={{ flexGrow: a.valueKurus, background: KIND_COLOR[a.kind] }} title={`${ASSET_KIND_LABEL[a.kind]}: ${formatKurus(a.valueKurus)}`} />
-              ))}
+            <div className="mt-3">
+              <CategoryDonut
+                slices={p.allocation.map((a) => ({ id: a.kind, name: ASSET_KIND_LABEL[a.kind], color: KIND_COLOR[a.kind], kurus: a.valueKurus }))}
+                total={p.assetsKurus}
+                centerLabel="Toplam varlık"
+                valueLabel="Değer"
+              />
             </div>
             <ul className="mt-3 space-y-1.5" aria-label="Varlık dağılımı">
               {p.allocation.map((a) => (
