@@ -442,3 +442,11 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - **İşlemler:** arama, tür sekmeleri (Tümü/Gider/Gelir/İade/Transfer), Gider/Gelir/İşlem kutuları; diğer filtreler ve CSV tek "Filtreler" penceresinde.
 - **Efektler:** sayfa geçişi, sayarak artan tutar, özet kartında hareketli ışık, kayan sekme seçimi, alttan pencere açılınca sayfanın geriye çekilmesi, "+" düğmesinde nabız. "Hareketi azalt" ayarında hepsi kapanır.
 - Varlıklarım sayfasındaki dağılım grafiği daire grafik oldu.
+
+## 31. Varlıklarım: TCMB kuruyla otomatik döviz fiyatı ve kâr/zarar (07.10.2026)
+
+- Yeni sunucu fonksiyonu `market-rates`, TCMB `today.xml` gösterge kurlarını (döviz satış) okur ve 30 dakika önbellekte tutar. Tarayıcı TCMB'ye doğrudan erişemediği için gerekir. İstek gövdesi boştur; varlık, miktar ya da tutar gönderilmez.
+- Döviz türündeki ve birimi döviz kodu olan (USD, EUR, GBP…) varlıklar, Varlıklarım açıldığında oturum başına bir kez, ayrıca "Kurları güncelle" düğmesiyle güncellenir. Kur, TCMB yayın tarihiyle `source: 'tcmb'` fiyat kaydı olarak yazılır. Aynı gün elle girilmiş fiyatın üzerine yazılmaz.
+- Her satırda "Otomatik" etiketi, "TCMB kuru · tarih" kaynağı ve "Kâr / Zarar" tutarı ile yüzdesi görünür. Toplam kazanç/kayıp kartı bu fiyatlarla hesaplanır.
+- Altın, fon ve hisse için otomatik fiyat yoktur (piyasa verisinde yalnızca TCMB kararı). Bunların fiyatı elle girilir.
+- Otomatik kur için hesapla giriş gerekir. Testlerde TCMB yanıtı taklit edildi; fonksiyon Supabase'e kuruldu (sürüm 1) ama bu ortamın ağ kuralı Supabase'e erişimi engellediği için canlı çağrı buradan denenemedi; ilk gerçek deneme uygulamada yapılacak.

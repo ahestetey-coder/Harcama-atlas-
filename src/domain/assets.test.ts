@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { holdingSummary, parseQuantity, portfolio, priceAt, valueHistory, type Asset, type AssetTrade } from './assets'
+import { autoPriceCode, holdingSummary, parseQuantity, portfolio, priceAt, rateUpdates, valueHistory, type Asset, type AssetTrade } from './assets'
 
 let seq = 0
 const asset = (kind: Asset['kind'], trades: Omit<AssetTrade, 'id'>[], valuations: [string, number][] = []): Asset => ({
@@ -67,5 +67,38 @@ describe('varlık özeti', () => {
     expect(parseQuantity('0.5')).toBe(0.5)
     expect(parseQuantity('abc')).toBeNull()
     expect(parseQuantity('0')).toBeNull()
+  })
+})
+
+describe('TCMB kuruyla otomatik fiyat', () => {
+  const usd = (unit = 'USD') => ({ ...asset('fx', [{ date: '2026-09-01', side: 'buy', quantity: 1000, unitPriceKurus: 4000 }]), unit })
+  const rates = [
+    { code: 'USD', valueTl: 41.2345 },
+    { code: 'EUR', valueTl: 48.1 },
+  ]
+
+  it('yalnızca birimi döviz kodu olan döviz varlıklarını eşler', () => {
+    expect(autoPriceCode({ kind: 'fx', unit: 'usd' })).toBe('USD')
+    expect(autoPriceCode({ kind: 'fx', unit: 'Dolar' })).toBeNull()
+    expect(autoPriceCode({ kind: 'gold', unit: 'USD' })).toBeNull()
+  })
+
+  it('kuru fiyat olarak yazar ve kâr/zarar güncel kurla hesaplanır', () => {
+    const a = usd()
+    const [u] = rateUpdates([a, asset('gold', [])], rates, '2026-10-07')
+    expect(u).toEqual({ assetId: a.id, valuation: { date: '2026-10-07', unitPriceKurus: 4123.45, source: 'tcmb' } })
+    const withRate = { ...a, valuations: [u.valuation] }
+    const s = holdingSummary(withRate, '2026-10-07')
+    expect(s.price?.source).toBe('tcmb')
+    expect(s.valueKurus).toBe(4123450)
+    expect(s.unrealizedKurus).toBe(4123450 - 4000000)
+  })
+
+  it('aynı gün elle girilen fiyatın üzerine yazmaz, aynı kuru tekrar yazmaz', () => {
+    const manual = { ...usd(), valuations: [{ date: '2026-10-07', unitPriceKurus: 4200, source: 'manual' as const }] }
+    const same = { ...usd(), valuations: [{ date: '2026-10-07', unitPriceKurus: 4123.45, source: 'tcmb' as const }] }
+    const old = { ...usd(), valuations: [{ date: '2026-10-07', unitPriceKurus: 4100, source: 'tcmb' as const }] }
+    const ids = rateUpdates([manual, same, old, { ...usd('JPY') }, { ...usd(), archived: true }], rates, '2026-10-07').map((u) => u.assetId)
+    expect(ids).toEqual([old.id])
   })
 })

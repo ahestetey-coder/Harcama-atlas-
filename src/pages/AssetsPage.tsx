@@ -1,5 +1,5 @@
 import { ArrowDownUp, ChevronDown, Landmark, Pencil, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, WealthLine } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
@@ -9,6 +9,7 @@ import { toUserMessage } from '../data/repository'
 import {
   ASSET_KIND_LABEL,
   ASSET_KINDS,
+  autoPriceCode,
   DEFAULT_UNIT,
   formatQuantity,
   formatUnitPrice,
@@ -17,6 +18,7 @@ import {
   parseQuantity,
   portfolio,
   priceAt,
+  rateUpdates,
   valueHistory,
   type Asset,
   type AssetKind,
@@ -30,6 +32,8 @@ import { useInstallmentDebt } from '../state/budget'
 import { useAssets, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
 import { useStartNew } from '../lib/useStartNew'
+import { useAuth } from '../state/auth'
+import { fetchTcmbRates } from '../cloud/rates'
 
 /** Dağılım renkleri: sabit sırayla (tür → renk), açık ve koyu temada doğrulanmış palet. */
 const KIND_COLOR: Record<Exclude<AssetKind, 'debt'>, string> = {
@@ -97,7 +101,7 @@ export default function AssetsPage() {
           'Altın, döviz, fon, hisse ve mevduatlarınızı miktar, alış tarihi ve maliyetiyle kaydedin',
           'Toplam değeri, dağılımı ve borçlar düşülmüş net varlığınızı görün',
           'Yatırdığınız parayı ve yatırım kazancını ayrı ayrı izleyin',
-          'Değerler sizin girdiğiniz fiyatlarla hesaplanır; her fiyatın tarihi görünür',
+          'Döviz değerleri TCMB kuruyla otomatik güncellenir, kâr/zarar anında görünür',
         ]}
       >
         <AssetsContent onEdit={setEditing} />
@@ -129,7 +133,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
     return (
       <Card className="p-5">
         <EmptyState icon={<Wallet className="size-6" />} title="Henüz varlık eklenmedi" className="py-6">
-          Altın, döviz, fon, hisse veya mevduatınızı ve borçlarınızı ekleyin. Değerleri siz girersiniz; bilgiler yalnızca bu cihazda kalır.
+          Altın, döviz, fon, hisse veya mevduatınızı ve borçlarınızı ekleyin. Döviz kuru otomatik gelir, diğer fiyatları siz girersiniz; bilgiler yalnızca bu cihazda kalır.
         </EmptyState>
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           {ASSET_KINDS.filter((k) => k !== 'other').map((k) => (
@@ -168,6 +172,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
             Bazı fiyatlar {STALE_DAYS} günden eski ({formatDate(p.oldestPriceDate)}). Güncel değer için fiyatları güncelleyin.
           </Alert>
         )}
+        <LivePrices assets={assets} />
       </Card>
 
       <Card className="p-5">
@@ -261,7 +266,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
       </Card>
 
       <p className="text-[12.5px] text-subtle lg:col-span-2">
-        Değerler sizin girdiğiniz fiyatlarla hesaplanır; otomatik piyasa fiyatı kullanılmaz. Bu sayfa yatırım tavsiyesi vermez. Bilgiler yalnızca bu cihazda tutulur.
+        Döviz fiyatları TCMB gösterge kurundan (döviz satış) otomatik alınır; kur isteği varlık bilginizi içermez. Altın, fon, hisse ve mevduat değerleri sizin girdiğiniz fiyatlarla hesaplanır. Bu sayfa yatırım tavsiyesi vermez. Bilgiler yalnızca bu cihazda tutulur.
       </p>
 
       <ActionDialog acting={acting} onClose={() => setActing(null)} />
@@ -288,6 +293,77 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   )
 }
 
+/** Oturum boyunca otomatik kur denemesi bir kez yapılır; sonrası "Kurları güncelle" ile. */
+let autoTried = false
+
+/** Döviz varlıklarını TCMB gösterge kuruyla günceller. İstek varlık bilgisi taşımaz; yalnızca kur listesi gelir. */
+function LivePrices({ assets }: { assets: Asset[] }) {
+  const { backend, user } = useAuth()
+  const repo = useRepo()
+  const { toast } = useUi()
+  const [state, setState] = useState<{ busy: boolean; date?: string; error?: string }>({ busy: false })
+  const fxAssets = assets.filter((a) => !a.archived && autoPriceCode(a))
+  const fxCount = fxAssets.length
+  const assetsRef = useRef(assets)
+  useEffect(() => {
+    assetsRef.current = assets
+  }, [assets])
+  const client = backend && user ? backend.client : null
+
+  const refresh = useCallback(
+    async (manual: boolean) => {
+      if (!client) return
+      setState((s) => ({ ...s, busy: true, error: undefined }))
+      try {
+        const r = await fetchTcmbRates(client)
+        const updates = rateUpdates(assetsRef.current, r.rates, r.date)
+        for (const u of updates) await repo.setAssetValuation(u.assetId, u.valuation)
+        setState({ busy: false, date: r.date })
+        if (manual) toast(updates.length ? `${updates.length} döviz varlığı güncel kurla güncellendi.` : 'Kurlar zaten güncel.')
+      } catch (e) {
+        setState({ busy: false, error: e instanceof Error ? e.message : 'Kurlar alınamadı.' })
+      }
+    },
+    [client, repo, toast],
+  )
+
+  useEffect(() => {
+    if (autoTried || !client || fxCount === 0) return
+    autoTried = true
+    void refresh(false)
+  }, [client, fxCount, refresh])
+
+  const latest = fxAssets.flatMap((a) => a.valuations.filter((v) => v.source === 'tcmb').map((v) => v.date)).sort().at(-1)
+  const date = state.date ?? latest
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-surface-2 px-3 py-2.5 text-[12.5px]" aria-label="Güncel fiyatlar">
+      <RefreshCw className={cn('size-4 shrink-0 text-accent', state.busy && 'animate-spin')} aria-hidden />
+      <div className="min-w-0 flex-1 text-muted">
+        {!client ? (
+          'Döviz varlıklarınızın güncel değerini otomatik almak için hesabınızla giriş yapın.'
+        ) : fxCount === 0 ? (
+          'Birimi USD, EUR, GBP gibi döviz kodu olan döviz varlıkları TCMB kuruyla otomatik güncellenir. Altın, fon ve hisse fiyatlarını şimdilik siz girersiniz.'
+        ) : state.error ? (
+          <span className="text-danger">{state.error}</span>
+        ) : state.busy ? (
+          'TCMB kurları alınıyor…'
+        ) : date ? (
+          <>
+            Döviz değerleri <span className="font-medium text-ink">TCMB gösterge kuru</span> ile hesaplandı · {formatDate(date)}. Altın, fon ve hisse için fiyatı siz girersiniz.
+          </>
+        ) : (
+          'Döviz varlıklarınız TCMB kuruyla güncellenebilir.'
+        )}
+      </div>
+      {client && fxCount > 0 && (
+        <Button size="sm" variant="soft" onClick={() => void refresh(true)} disabled={state.busy}>
+          Kurları güncelle
+        </Button>
+      )}
+    </div>
+  )
+}
+
 function Figure({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'up' | 'down' }) {
   return (
     <div>
@@ -301,6 +377,7 @@ function Figure({ label, value, sub, tone }: { label: string; value: string; sub
 function priceSourceLabel(s: HoldingSummary['price'], balance: boolean): string {
   if (!s) return 'Fiyat yok'
   if (s.source === 'manual') return `${balance ? 'Bakiye' : 'Fiyat'} elle girildi · ${formatDate(s.date)}`
+  if (s.source === 'tcmb') return `TCMB kuru · ${formatDate(s.date)}`
   return `${balance ? 'Son hareket' : 'İşlem fiyatı'} · ${formatDate(s.date)}`
 }
 
@@ -316,6 +393,7 @@ function HoldingRow({ asset, s, onAct, onEdit, onDelete }: { asset: Asset; s: Ho
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate font-medium text-ink">{asset.name}</span>
             <Badge tone={debt ? 'danger' : 'neutral'}>{ASSET_KIND_LABEL[asset.kind]}</Badge>
+            {s.price?.source === 'tcmb' && <Badge tone="accent">Otomatik</Badge>}
             {stale && <Badge tone="warning">Fiyat eski</Badge>}
           </div>
           <div className="text-[12px] text-muted">
@@ -334,6 +412,7 @@ function HoldingRow({ asset, s, onAct, onEdit, onDelete }: { asset: Asset; s: Ho
           <div className="num font-semibold">{formatKurus(s.valueKurus)}</div>
           {!debt && s.quantity > 0 && (
             <div className={cn('num text-[12px]', s.unrealizedKurus > 0 ? 'text-accent' : s.unrealizedKurus < 0 ? 'text-danger' : 'text-muted')}>
+              {s.unrealizedKurus > 0 ? 'Kâr ' : s.unrealizedKurus < 0 ? 'Zarar ' : ''}
               {signed(s.unrealizedKurus)} {pct(s.unrealizedKurus, s.costKurus)}
             </div>
           )}
@@ -373,7 +452,7 @@ function AssetHistory({ asset, s }: { asset: Asset; s: HoldingSummary }) {
     ...asset.valuations.map((v) => ({
       key: `v${v.date}`,
       date: v.date,
-      text: balance ? `Bakiye güncellendi: ${formatKurus(Math.round(v.unitPriceKurus * quantityOn(asset, v.date)))}` : `Fiyat: ${formatUnitPrice(v.unitPriceKurus)} (elle)`,
+      text: balance ? `Bakiye güncellendi: ${formatKurus(Math.round(v.unitPriceKurus * quantityOn(asset, v.date)))}` : `Fiyat: ${formatUnitPrice(v.unitPriceKurus)} (${v.source === 'tcmb' ? 'TCMB kuru' : 'elle'})`,
       onDelete: () => repo.removeAssetValuation(asset.id, v.date),
     })),
   ].sort((a, b) => b.date.localeCompare(a.date))

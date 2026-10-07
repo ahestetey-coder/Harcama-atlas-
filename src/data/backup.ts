@@ -142,7 +142,7 @@ const assetSchema = z.object({
   name: z.string(),
   unit: z.string(),
   trades: z.array(z.object({ id: z.string().min(1), date: isoDate, side: z.enum(['buy', 'sell']), quantity: z.number().positive(), unitPriceKurus: z.number().nonnegative() })),
-  valuations: z.array(z.object({ date: isoDate, unitPriceKurus: z.number().nonnegative(), source: z.literal('manual') })),
+  valuations: z.array(z.object({ date: isoDate, unitPriceKurus: z.number().nonnegative(), source: z.enum(['manual', 'tcmb']) })),
   note: z.string().optional(),
   debtTerms: z.object({ monthlyRatePct: z.number().min(0).max(100), minPaymentKurus: z.number().int().nonnegative().nullable() }).optional(),
   archived: z.boolean(),

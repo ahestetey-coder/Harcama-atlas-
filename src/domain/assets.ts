@@ -1,6 +1,6 @@
 import type { IsoDate } from './types'
 
-/** Plus "Varlıklarım": elle girilen varlıklar ve borçlar. Fiyatlar kullanıcıdan gelir. */
+/** Plus "Varlıklarım": elle girilen varlıklar ve borçlar. Döviz fiyatı TCMB kurundan, diğerleri kullanıcıdan gelir. */
 export type AssetKind = 'deposit' | 'fx' | 'fund' | 'gold' | 'stock' | 'cash' | 'other' | 'debt'
 
 /** Sabit sıra: dağılım grafiğinde renk bu sıraya göre verilir (sıralamaya göre değil). */
@@ -44,9 +44,11 @@ export interface AssetTrade {
 export interface AssetValuation {
   date: IsoDate
   unitPriceKurus: number
-  /** Şimdilik yalnızca elle; ileride otomatik fiyat kaynağı eklenirse adı buraya yazılır. */
-  source: 'manual'
+  /** Elle girilen ya da TCMB gösterge kurundan otomatik alınan fiyat. */
+  source: ValuationSource
 }
+
+export type ValuationSource = 'manual' | 'tcmb'
 
 export interface Asset {
   id: string
@@ -73,7 +75,7 @@ export interface DebtTerms {
 export interface PriceInfo {
   unitPriceKurus: number
   date: IsoDate
-  source: 'manual' | 'trade'
+  source: ValuationSource | 'trade'
 }
 
 export interface HoldingSummary {
@@ -95,7 +97,7 @@ const sortTrades = (t: AssetTrade[]) => t.slice().sort((a, b) => a.date.localeCo
 /** Belirli bir tarihteki (dahil) son bilinen fiyat: elle girilen değer, yoksa son alış/satış fiyatı. */
 export function priceAt(asset: Asset, date: IsoDate): PriceInfo | null {
   let best: PriceInfo | null = null
-  for (const v of asset.valuations) if (v.date <= date && (!best || v.date >= best.date)) best = { unitPriceKurus: v.unitPriceKurus, date: v.date, source: 'manual' }
+  for (const v of asset.valuations) if (v.date <= date && (!best || v.date >= best.date)) best = { unitPriceKurus: v.unitPriceKurus, date: v.date, source: v.source }
   for (const t of asset.trades) if (t.date <= date && (!best || t.date > best.date)) best = { unitPriceKurus: t.unitPriceKurus, date: t.date, source: 'trade' }
   return best
 }
@@ -238,4 +240,45 @@ export function formatQuantity(n: number): string {
 export function formatUnitPrice(kurus: number): string {
   const tl = kurus / 100
   return `${tl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: tl < 10 ? 6 : 2 })} ₺`
+}
+
+// ---------- Otomatik döviz fiyatı (TCMB gösterge kuru) ----------
+
+export interface MarketRate {
+  /** ISO döviz kodu (USD, EUR…). */
+  code: string
+  /** 1 birimin TL karşılığı. */
+  valueTl: number
+}
+
+/** Otomatik fiyatı alınabilen varlıklarda döviz kodu: yalnızca döviz türünde ve birimi kod olanlar. */
+export function autoPriceCode(asset: Pick<Asset, 'kind' | 'unit'>): string | null {
+  if (asset.kind !== 'fx') return null
+  const code = asset.unit.trim().toUpperCase()
+  return /^[A-Z]{3}$/.test(code) ? code : null
+}
+
+export interface RateUpdate {
+  assetId: string
+  valuation: AssetValuation
+}
+
+/**
+ * Kurlarla yazılacak fiyatlar. Aynı gün elle girilmiş fiyatın üzerine yazılmaz; aynı fiyat
+ * zaten kayıtlıysa da tekrar yazılmaz. Arşivlenmiş ya da kur listesinde olmayanlar atlanır.
+ */
+export function rateUpdates(assets: Asset[], rates: MarketRate[], date: IsoDate): RateUpdate[] {
+  const byCode = new Map(rates.map((r) => [r.code.toUpperCase(), r.valueTl]))
+  const out: RateUpdate[] = []
+  for (const a of assets) {
+    if (a.archived) continue
+    const code = autoPriceCode(a)
+    const tl = code ? byCode.get(code) : undefined
+    if (!tl || !Number.isFinite(tl) || tl <= 0) continue
+    const unitPriceKurus = Math.round(tl * 100 * 1e4) / 1e4
+    const same = a.valuations.find((v) => v.date === date)
+    if (same && (same.source === 'manual' || same.unitPriceKurus === unitPriceKurus)) continue
+    out.push({ assetId: a.id, valuation: { date, unitPriceKurus, source: 'tcmb' } })
+  }
+  return out
 }

@@ -88,6 +88,11 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
       else plans[b.p_user] = b.p_plan
       return route.fulfill({ status: 204 })
     }
+    if (url.pathname === '/functions/v1/market-rates') {
+      calls.push('KUR')
+      bodies.kur = req.postDataJSON()
+      return json({ date: '2026-10-07', source: 'tcmb', rates: [{ code: 'USD', name: 'ABD DOLARI', valueTl: 42.5 }, { code: 'EUR', name: 'EURO', valueTl: 49 }] })
+    }
     if (url.pathname === '/functions/v1/coach-chat') {
       bodies.chat = req.postDataJSON()
       return json({ reply: 'Önce kredi kartı borcunu kapatalım; ardından ayda ayırdığınız tutarı birikime ayırırsınız.', remaining: 29 })
@@ -516,4 +521,34 @@ test('Plus+ koç ve araştırma: rapor kaynaklı görünür, hafıza düzenlenir
   await expect(page.getByText('Kaynaksız iddia')).toBeVisible()
   await expect(page.getByText('12,5 dk')).toBeVisible()
   await expect(page.getByText('Geçti')).toBeVisible()
+})
+
+test('Varlıklarım: döviz varlığı TCMB kuruyla otomatik güncellenir, kâr/zarar görünür; istek varlık bilgisi taşımaz', async ({ page }) => {
+  const calls = await mockSupabase(page, { admin: true })
+  await page.goto('./')
+  await signIn(page, 'osman@ornek.com')
+  await expect(page.getByRole('navigation', { name: 'Ana menü' })).toBeVisible()
+  await page.goto('./#/paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
+  await page.goto('./#/varliklar')
+
+  await page.getByRole('button', { name: 'Döviz', exact: true }).click()
+  const dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await dlg.getByRole('button', { name: 'Dolar' }).click()
+  await dlg.getByLabel('Miktar (USD)').fill('1.000')
+  await dlg.getByLabel('Birim alış fiyatı (TL)').fill('40')
+  await dlg.getByLabel('Alış tarihi').fill('2026-09-01')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+
+  const list = page.getByRole('list', { name: 'Varlıklar' })
+  await expect(list).toContainText('42.500,00 ₺')
+  await expect(list).toContainText('Kâr +2.500,00 ₺')
+  await expect(list).toContainText('TCMB kuru')
+  await expect(page.getByLabel('Güncel fiyatlar')).toContainText('TCMB gösterge kuru')
+  expect(calls.filter((c) => c === 'KUR')).toHaveLength(1)
+  expect(JSON.stringify(calls.bodies.kur)).toBe('{}')
+
+  await page.getByRole('button', { name: 'Kurları güncelle' }).click()
+  await expect(page.getByText('Kurlar zaten güncel.')).toBeVisible()
 })

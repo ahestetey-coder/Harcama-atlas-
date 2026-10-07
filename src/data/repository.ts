@@ -620,12 +620,12 @@ export class AtlasRepository {
   }
 
   /** Güncel birim fiyatı kaydeder; aynı gün için önceki değer değiştirilir. */
-  async setAssetValuation(assetId: string, v: Omit<AssetValuation, 'source'>): Promise<void> {
+  async setAssetValuation(assetId: string, v: Omit<AssetValuation, 'source'> & { source?: AssetValuation['source'] }): Promise<void> {
     if (!Number.isFinite(v.unitPriceKurus) || v.unitPriceKurus < 0) throw new UserFacingError('Geçerli bir fiyat girin.')
     await this.db.transaction('rw', this.db.assets, async () => {
       const a = await this.db.assets.get(assetId)
       if (!a) throw new UserFacingError('Varlık bulunamadı.')
-      const valuations = [...a.valuations.filter((x) => x.date !== v.date), { ...v, source: 'manual' as const }].sort((x, y) => x.date.localeCompare(y.date))
+      const valuations = [...a.valuations.filter((x) => x.date !== v.date), { ...v, source: v.source ?? 'manual' }].sort((x, y) => x.date.localeCompare(y.date))
       await this.db.assets.put({ ...a, valuations, updatedAt: nowIso() })
     })
   }
