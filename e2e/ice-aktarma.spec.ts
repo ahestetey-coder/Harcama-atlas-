@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { open, trackExternalRequests, uploadImport } from './helpers'
+import { expectTxTotals, open, trackExternalRequests, uploadImport } from './helpers'
 
 const tab = (page: Page, name: string) => page.getByRole('tablist', { name: 'Satır durumu' }).getByRole('tab', { name: new RegExp(`^${name}`) })
 
@@ -23,7 +23,7 @@ test('CSV: eşleştirme, inceleme; sorunlu satırlar sessizce kaydedilmez; geri 
   await expect(page.getByRole('heading', { name: '7 işlem kaydedildi' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Aktarılan işlemler' }).click()
-  await expect(page.getByText(/^7 işlem/)).toBeVisible()
+  await expectTxTotals(page, 7)
   await expect(page.getByRole('row', { name: /KUAFÖR/ })).toHaveCount(0)
   await expect(page.getByRole('row', { name: /HYPERLINK/ })).toHaveCount(0)
   await expect(page.getByRole('row', { name: /ZARA İADE/ })).toContainText('450,00')

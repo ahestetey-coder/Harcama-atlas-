@@ -7,7 +7,12 @@ export type IsoDate = string
 export type MonthKey = string
 
 /** gider, iade, kart ödemesi/transfer */
-export type TxType = 'expense' | 'refund' | 'transfer'
+export type TxType = 'expense' | 'refund' | 'transfer' | 'income'
+
+/** Harcama toplamlarına giren türler (gider ve iade). Gelir ve transfer harcama sayılmaz. */
+export function isSpending(t: { type: TxType }): boolean {
+  return t.type === 'expense' || t.type === 'refund'
+}
 export type PaymentMethod = 'cash' | 'debit' | 'credit'
 /** settlement: ortak grup paylaşımında size düşen pay; kaydedilmez, "Tümü" görünümünde hesaplanır. */
 export type TxSource = 'manual' | 'pdf' | 'csv' | 'xlsx' | 'image' | 'demo' | 'shared' | 'settlement'
@@ -258,6 +263,7 @@ export const TX_TYPE_LABEL: Record<TxType, string> = {
   expense: 'Gider',
   refund: 'İade',
   transfer: 'Kart ödemesi / Transfer',
+  income: 'Gelir',
 }
 
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {

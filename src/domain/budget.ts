@@ -1,5 +1,5 @@
 import { addDays, addMonths, diffDays, periodLength, periodOf, periodRange } from './dates'
-import type { IsoDate, MonthKey, Transaction } from './types'
+import { isSpending, type IsoDate, type MonthKey, type Transaction } from './types'
 
 /** Plus: gelişmiş bütçe ayarları (Ayarlar kaydında saklanır). */
 export interface BudgetPlan {
@@ -110,7 +110,7 @@ export function budgetStatus(
   const byCat = new Map<string, number>()
   const prevByCat = new Map<string, number>()
   for (const t of txs) {
-    if (t.type === 'transfer') continue
+    if (!isSpending(t)) continue
     const p = periodOf(t.date, startDay)
     const n = netOf(t)
     if (p === month) {

@@ -10,8 +10,8 @@ export async function open(page: Page, route = '') {
   await expect(page.getByRole('navigation', { name: /Ana menü|Alt menü/ }).first()).toBeVisible()
   await expect(page.locator('main h1')).toHaveCount(1)
   await page.waitForLoadState('networkidle')
-  // Sayfa geçiş animasyonu bitene kadar bekle (çıkan sayfanın öğeleriyle karışmasın)
-  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'))
+  // Sayfa geçiş animasyonu bitene kadar bekle (çıkan sayfanın öğeleriyle karışmasın); süresiz süs animasyonları sayılmaz
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity))
 }
 
 /** Uygulama dışındaki bir adrese giden istekleri yakalar (gizlilik kontrolü). */
@@ -40,4 +40,20 @@ export async function addExpense(page: Page, o: { amount: string; description: s
 export async function uploadImport(page: Page, file: string) {
   await open(page, 'ice-aktar')
   await page.getByLabel('İçe aktarılacak dosyayı seçin').setInputFiles(sample(file))
+}
+
+/** İşlemler sayfasındaki özet kutuları: işlem sayısı ve (isteğe bağlı) net gider. */
+export async function expectTxTotals(page: Page, count: number, gider?: string) {
+  await expect(page.getByRole('group', { name: 'İşlem', exact: true }).locator('div').nth(1)).toHaveText(String(count))
+  if (gider) await expect(page.getByRole('group', { name: 'Gider', exact: true }).locator('div').nth(1)).toHaveText(gider)
+}
+
+/** İşlemler sayfasında filtre penceresini açıp kategori seçer (boşsa "Tümü"). */
+export async function filterCategory(page: Page, label: string | null) {
+  await page.getByRole('button', { name: /^Filtreler(,|$)/ }).click()
+  const dlg = page.getByRole('dialog', { name: 'Filtreler' })
+  if (label) await dlg.getByLabel('Kategori', { exact: true }).selectOption({ label })
+  else await dlg.getByLabel('Kategori', { exact: true }).selectOption({ index: 0 })
+  await dlg.getByRole('button', { name: /^Göster/ }).click()
+  await expect(dlg).toBeHidden()
 }

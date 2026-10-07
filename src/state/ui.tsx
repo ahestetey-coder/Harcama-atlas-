@@ -26,9 +26,13 @@ interface UiCtx {
   /** İşlem formunu açar: yeni kayıt (isteğe bağlı türüyle) veya düzenleme. */
   openTransactionForm: (tx?: Transaction, opts?: { type?: Transaction['type'] }) => void
   formState: { open: boolean; tx?: Transaction; type?: Transaction['type'] }
-  /** "+" menüsünden seçilen ekstre/görsel; İçe aktar sayfası açılınca okunur. */
+  /** "+" menüsünden seçilen ekstre/görsel; içe aktarma penceresi açılınca okunur. */
   pendingImport: File | null
   setPendingImport: (f: File | null) => void
+  /** İçe aktarma, bulunulan sayfanın üstünde açılan pencerede yapılır. */
+  importOpen: boolean
+  openImport: (file?: File) => void
+  closeImport: () => void
   closeTransactionForm: () => void
   /** Son eklenen/güncellenen satırı vurgulamak için. */
   highlightId: string | null
@@ -44,6 +48,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [formState, setFormState] = useState<UiCtx['formState']>({ open: false })
   const [pendingImport, setPendingImport] = useState<File | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const seq = useRef(0)
 
@@ -60,10 +65,18 @@ export function UiProvider({ children }: { children: ReactNode }) {
 
   const openTransactionForm = useCallback<UiCtx['openTransactionForm']>((tx, opts) => setFormState({ open: true, tx, type: opts?.type }), [])
   const closeTransactionForm = useCallback(() => setFormState((s) => ({ ...s, open: false })), [])
+  const openImport = useCallback((file?: File) => {
+    if (file) setPendingImport(file)
+    setImportOpen(true)
+  }, [])
+  const closeImport = useCallback(() => {
+    setImportOpen(false)
+    setPendingImport(null)
+  }, [])
 
   const value = useMemo(
-    () => ({ month, setMonth, groupFilter, setGroupFilter, memberFilter, setMemberFilter, toast, openTransactionForm, formState, closeTransactionForm, highlightId, setHighlightId, pendingImport, setPendingImport }),
-    [month, groupFilter, memberFilter, toast, openTransactionForm, formState, closeTransactionForm, highlightId, pendingImport],
+    () => ({ month, setMonth, groupFilter, setGroupFilter, memberFilter, setMemberFilter, toast, openTransactionForm, formState, closeTransactionForm, highlightId, setHighlightId, pendingImport, setPendingImport, importOpen, openImport, closeImport }),
+    [month, groupFilter, memberFilter, toast, openTransactionForm, formState, closeTransactionForm, highlightId, pendingImport, importOpen, openImport, closeImport],
   )
 
   return (

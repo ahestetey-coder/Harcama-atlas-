@@ -1,4 +1,4 @@
-import type { Transaction } from './types'
+import { isSpending, type Transaction } from './types'
 
 export interface SplitMember {
   id: string
@@ -58,7 +58,7 @@ function paidBy(members: SplitMember[], txs: Transaction[], selfId: string | nul
   const paid = new Map<string, number>()
   const people = new Map(members.map((m) => [m.id, m]))
   for (const t of txs) {
-    if (t.type === 'transfer') continue
+    if (!isSpending(t)) continue
     const id = t.memberId ?? selfId ?? 'self'
     if (!people.has(id)) people.set(id, { id, name: 'Grup üyesi', color: '#94a3b8' })
     paid.set(id, (paid.get(id) ?? 0) + (t.type === 'expense' ? t.amountKurus : -t.amountKurus))

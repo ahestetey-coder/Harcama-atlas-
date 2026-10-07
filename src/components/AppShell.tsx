@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpen, Bot, ChartColumn, Database, FileUp, FlaskConical, History, LayoutDashboard, LayoutGrid, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Repeat, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet } from 'lucide-react'
+import { BookOpen, Bot, ChartColumn, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Repeat, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -10,33 +10,54 @@ import { useFollowCurrentPeriod } from '../state/cycle'
 import { useTheme } from '../state/theme'
 import { useData } from '../state/data'
 import { useUi } from '../state/ui'
+import { ImportSheet } from './ImportSheet'
 import { QuickAddSheet } from './QuickAdd'
 import { Modal } from './ui/Modal'
 import { Alert, Button, IconButton } from './ui/primitives'
 
-const NAV = [
-  { to: '/', label: 'Panel', icon: LayoutDashboard, end: true },
-  { to: '/islemler', label: 'İşlemler', icon: ListOrdered },
-  { to: '/ice-aktar', label: 'İçe aktar', icon: FileUp },
-  { to: '/kategoriler', label: 'Kategoriler ve gruplar', short: 'Kategoriler', icon: Tags },
-  { to: '/butce', label: 'Bütçe planı', short: 'Bütçe', icon: Target },
-  { to: '/odemeler', label: 'Düzenli ödemeler', short: 'Ödemeler', icon: Repeat },
-  { to: '/hedefler', label: 'Birikim hedefleri', short: 'Hedefler', icon: PiggyBank },
-  { to: '/raporlar', label: 'Raporlar', icon: ChartColumn },
-  { to: '/varliklar', label: 'Varlıklarım', icon: Wallet },
-  { to: '/koc', label: 'Koçum', icon: Bot },
-  { to: '/yolculuk', label: 'Finansal yolculuğum', short: 'Yolculuğum', icon: Mountain },
-  { to: '/senaryolar', label: 'Gelecek senaryoları', short: 'Senaryolar', icon: TrendingUp },
-  { to: '/ogren', label: 'Finansal bilgi', short: 'Bilgi', icon: BookOpen },
-  { to: '/aktarimlar', label: 'Aktarım geçmişi', short: 'Aktarımlar', icon: History },
-  { to: '/uyeler', label: 'Üyeler ve paylaşım', short: 'Üyeler', icon: Users },
-  { to: '/yedekleme', label: 'Yedekleme ve veri', short: 'Yedekleme', icon: Database },
-  { to: '/ayarlar', label: 'Ayarlar', icon: Settings },
-  { to: '/paketler', label: 'Paketler', icon: Sparkles },
+interface NavItem {
+  to: string
+  label: string
+  /** Alt menü ve dar alanlar için kısa ad. */
+  short?: string
+  icon: LucideIcon
+  end?: boolean
+  /** Menüdeki simge kutusunun rengi. */
+  tone: string
+}
+
+const ITEMS = {
+  home: { to: '/', label: 'Özet', icon: LayoutDashboard, end: true, tone: 'from-emerald-500 to-teal-600' },
+  txs: { to: '/islemler', label: 'İşlemler', icon: ListOrdered, tone: 'from-sky-500 to-blue-600' },
+  categories: { to: '/kategoriler', label: 'Kategoriler ve gruplar', short: 'Kategoriler', icon: Tags, tone: 'from-teal-500 to-cyan-600' },
+  budget: { to: '/butce', label: 'Bütçe planı', short: 'Bütçe', icon: Target, tone: 'from-amber-500 to-orange-600' },
+  payments: { to: '/odemeler', label: 'Düzenli ödemeler', short: 'Ödemeler', icon: Repeat, tone: 'from-violet-500 to-purple-600' },
+  goals: { to: '/hedefler', label: 'Birikim hedefleri', short: 'Hedefler', icon: PiggyBank, tone: 'from-pink-500 to-rose-600' },
+  reports: { to: '/raporlar', label: 'Raporlar', icon: ChartColumn, tone: 'from-indigo-500 to-blue-700' },
+  assets: { to: '/varliklar', label: 'Varlıklarım', short: 'Varlık', icon: Wallet, tone: 'from-emerald-600 to-green-700' },
+  coach: { to: '/koc', label: 'Koçum', short: 'Koç', icon: Bot, tone: 'from-cyan-500 to-emerald-500' },
+  journey: { to: '/yolculuk', label: 'Finansal yolculuğum', short: 'Yolculuğum', icon: Mountain, tone: 'from-orange-500 to-red-600' },
+  scenarios: { to: '/senaryolar', label: 'Gelecek senaryoları', short: 'Senaryolar', icon: TrendingUp, tone: 'from-fuchsia-500 to-purple-600' },
+  learning: { to: '/ogren', label: 'Finansal bilgi', short: 'Bilgi', icon: BookOpen, tone: 'from-yellow-500 to-amber-600' },
+  members: { to: '/uyeler', label: 'Üyeler ve paylaşım', short: 'Üyeler', icon: Users, tone: 'from-fuchsia-500 to-pink-600' },
+  history: { to: '/aktarimlar', label: 'Aktarım geçmişi', short: 'Aktarımlar', icon: History, tone: 'from-slate-500 to-slate-700' },
+  backup: { to: '/yedekleme', label: 'Yedekleme ve veri', short: 'Yedekleme', icon: Database, tone: 'from-slate-500 to-slate-700' },
+  settings: { to: '/ayarlar', label: 'Ayarlar', icon: Settings, tone: 'from-slate-500 to-slate-700' },
+  plans: { to: '/paketler', label: 'Paketler', icon: Sparkles, tone: 'from-amber-400 to-pink-500' },
+  admin: { to: '/yonetim', label: 'Yönetici paneli', short: 'Yönetim', icon: ShieldCheck, tone: 'from-rose-500 to-red-700' },
+} satisfies Record<string, NavItem>
+
+/** Kenar menüsü ve "Menü" penceresindeki bölümler. */
+const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
+  { title: 'Günlük', items: [ITEMS.home, ITEMS.txs, ITEMS.categories] },
+  { title: 'Planlama', items: [ITEMS.budget, ITEMS.payments, ITEMS.goals, ITEMS.reports] },
+  { title: 'Varlık ve gelecek', items: [ITEMS.assets, ITEMS.coach, ITEMS.journey, ITEMS.scenarios, ITEMS.learning] },
+  { title: 'Hesap ve veri', items: [ITEMS.members, ITEMS.history, ITEMS.backup, ITEMS.settings, ITEMS.plans] },
 ]
-/** "Daha fazla" menüsündeki sayfalar (alt menüde sekmesi olmayanlar). */
-const MORE_PATHS = [...NAV.slice(3).map((n) => n.to), '/yonetim']
-const ADMIN_NAV = { to: '/yonetim', label: 'Yönetici paneli', short: 'Yönetim', icon: ShieldCheck, end: false }
+/** Mobil alt menüdeki sekmeler ("+" düğmesinin solu ve sağı). */
+const DOCK_LEFT: NavItem[] = [ITEMS.home, ITEMS.txs, ITEMS.budget]
+const DOCK_RIGHT: NavItem[] = [ITEMS.assets, ITEMS.coach]
+const DOCK_PATHS = [...DOCK_LEFT, ...DOCK_RIGHT].map((n) => n.to)
 
 export function Logo({ className }: { className?: string }) {
   // Her logo kendi gradyan kimliğini kullanır; gizli bir kopyaya başvurursa mobilde boş görünür.
@@ -64,14 +85,16 @@ export function Logo({ className }: { className?: string }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { isDemo, setDemo, dbError } = useData()
-  const { openTransactionForm } = useUi()
+  const { openTransactionForm, importOpen, formState } = useUi()
   const location = useLocation()
-  const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   useFollowCurrentPeriod()
   const admin = useIsAdmin()
-  const nav = admin ? [...NAV, ADMIN_NAV] : NAV
+  const sections: typeof SECTIONS = admin ? [...SECTIONS.slice(0, -1), { ...SECTIONS[SECTIONS.length - 1], items: [...SECTIONS[SECTIONS.length - 1].items, ITEMS.admin] }] : SECTIONS
+  const inMenu = !DOCK_PATHS.some((p) => (p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)))
+  // Alttan bir pencere açıkken sayfa hafifçe geriye çekilir (mobil)
+  const depth = addOpen || moreOpen || importOpen || formState.open
 
   return (
     <div className="min-h-dvh lg:pl-[272px]">
@@ -85,36 +108,43 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ThemeToggle />
         </div>
         <div className="mt-6 flex gap-2">
-          <Button variant="primary" size="lg" className="flex-1" icon={<Plus className="size-5" />} onClick={() => openTransactionForm()}>
-            Gider ekle
+          <Button variant="primary" size="lg" className="flex-1" icon={<Plus className="size-5" />} onClick={() => setAddOpen(true)}>
+            Yeni ekle
           </Button>
-          <IconButton label="Diğer ekleme seçenekleri" className="size-12 rounded-xl border border-line bg-surface shadow-card" onClick={() => setAddOpen(true)}>
-            <LayoutGrid className="size-5" />
+          <IconButton label="Gider ekle" className="size-12 rounded-xl border border-line bg-surface shadow-card" onClick={() => openTransactionForm()}>
+            <Receipt className="size-5" />
           </IconButton>
         </div>
-        <nav aria-label="Ana menü" className="-mx-1 mt-6 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 pb-2">
-          {nav.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              className={({ isActive }) =>
-                cn(
-                  'relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-[14px] font-medium transition-colors duration-150',
-                  isActive ? 'text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink',
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <motion.span layoutId="nav-active" className="absolute inset-0 rounded-xl border border-line bg-surface shadow-card" transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }} />
+        <nav aria-label="Ana menü" className="-mx-1 mt-5 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-2">
+          {sections.map((sec) => (
+            <div key={sec.title} className="flex flex-col gap-0.5">
+              <div className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-subtle">{sec.title}</div>
+              {sec.items.map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  end={n.end}
+                  className={({ isActive }) =>
+                    cn(
+                      'relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-[14px] font-medium transition-colors duration-150',
+                      isActive ? 'text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink',
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <motion.span layoutId="nav-active" className="absolute inset-0 rounded-xl border border-line bg-surface shadow-card" transition={{ type: 'spring', stiffness: 480, damping: 36 }} />
+                      )}
+                      <span className={cn('relative grid size-7 place-items-center rounded-lg transition-colors', isActive ? cn('bg-gradient-to-br text-white shadow-card', n.tone) : 'text-muted')}>
+                        <n.icon className="size-[17px]" />
+                      </span>
+                      <span className="relative">{n.label}</span>
+                    </>
                   )}
-                  <n.icon className={cn('relative size-[18px]', isActive && 'text-accent')} />
-                  <span className="relative">{n.label}</span>
-                </>
-              )}
-            </NavLink>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="shrink-0 space-y-3 pt-3">
@@ -130,7 +160,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           )}
           <AccountBox />
-          <p className="px-2 text-[11.5px] leading-relaxed text-subtle">Veriler bu tarayıcıda saklanır. Yalnızca paylaşıma açtığınız gruptaki harcamalar üyelerle eşitlenir.</p>
         </div>
       </aside>
 
@@ -154,7 +183,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <main id="main" className="mx-auto w-full max-w-[1180px] px-4 pb-32 pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-7">
+      <main id="main" className={cn('app-depth mx-auto w-full max-w-[1180px] px-4 pb-36 pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-7', depth && 'app-depth-on')}>
         {dbError && (
           <Alert tone="danger" title="Veritabanı açılamadı" className="mb-4">
             {dbError}
@@ -166,11 +195,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      {/* Mobil alt gezinme */}
-      <nav aria-label="Alt menü" className="glass safe-bottom hide-on-kb fixed inset-x-0 bottom-0 z-40 border-t border-line lg:hidden">
-        <div className="relative mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-1.5">
-          {[NAV[0], NAV[1]].map((n) => (
-            <MobileTab key={n.to} to={n.to} end={n.end} icon={<n.icon className="size-[22px]" />} label={n.short ?? n.label} />
+      {/* Mobil alt menü: yüzen çubuk */}
+      <nav aria-label="Alt menü" className="hide-on-kb pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden">
+        <div className="dock pointer-events-auto relative mx-auto grid max-w-md grid-cols-7 items-end rounded-[26px] border border-line-strong px-1 pb-1 pt-1.5 shadow-float">
+          {DOCK_LEFT.map((n) => (
+            <MobileTab key={n.to} item={n} />
           ))}
           <div className="flex justify-center">
             <motion.button
@@ -178,50 +207,77 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setAddOpen(true)}
               aria-label="Ekle"
               aria-haspopup="dialog"
-              whileTap={{ scale: 0.92 }}
+              whileTap={{ scale: 0.9 }}
               animate={{ rotate: addOpen ? 45 : 0 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-              className="-mt-6 grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_12px_28px_-8px_rgb(5_150_105/0.8)] ring-4 ring-bg"
+              transition={{ type: 'spring', stiffness: 500, damping: 26 }}
+              className="plus-glow relative -mt-7 grid size-[52px] place-items-center rounded-[18px] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 text-white ring-4 ring-bg"
             >
-              <Plus className="size-7" />
+              <Plus className="size-7" strokeWidth={2.4} />
             </motion.button>
           </div>
-          <MobileTab to="/ice-aktar" icon={<FileUp className="size-[22px]" />} label="İçe aktar" />
+          {DOCK_RIGHT.map((n) => (
+            <MobileTab key={n.to} item={n} />
+          ))}
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
-            className={cn(
-              'pressable relative flex flex-col items-center gap-0.5 rounded-xl pb-2 pt-1 text-[11px] font-medium',
-              MORE_PATHS.some((p) => location.pathname.startsWith(p)) ? 'text-accent' : 'text-muted',
-            )}
+            aria-haspopup="dialog"
+            className={cn('pressable relative flex flex-col items-center gap-0.5 rounded-2xl pb-1 pt-1.5 text-[10.5px] font-medium', inMenu ? 'text-accent' : 'text-muted')}
           >
-            {MORE_PATHS.some((p) => location.pathname.startsWith(p)) && <TabIndicator />}
-            <Menu className="size-[22px]" />
-            Daha fazla
+            {inMenu && <TabIndicator />}
+            <Menu className="relative size-[21px]" />
+            <span className="relative">Menü</span>
           </button>
         </div>
       </nav>
       <QuickAddSheet open={addOpen} onOpenChange={setAddOpen} />
-      <Modal open={moreOpen} onOpenChange={setMoreOpen} title="Menü" size="sm">
-        <div className="grid grid-cols-2 gap-2 pb-2">
-          {nav.slice(3).map((n) => (
-            <button
-              key={n.to}
-              type="button"
-              onClick={() => {
-                setMoreOpen(false)
-                navigate(n.to)
-              }}
-              className="pressable flex flex-col items-start gap-3 rounded-2xl border border-line bg-surface-2 p-4 text-left text-sm font-medium text-ink transition-colors hover:border-line-strong"
-            >
-              <n.icon className="size-5 text-accent" />
-              {n.label}
-            </button>
+      <ImportSheet />
+      <Modal open={moreOpen} onOpenChange={setMoreOpen} title="Menü" size="md">
+        <div className="flex flex-col gap-5 pb-2">
+          {sections.map((sec, si) => (
+            <section key={sec.title} aria-label={sec.title}>
+              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-subtle">{sec.title}</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {sec.items.map((n, i) => (
+                  <MenuTile key={n.to} item={n} delay={0.025 * (si * 4 + i)} onGo={() => setMoreOpen(false)} />
+                ))}
+              </div>
+            </section>
           ))}
+          <AccountBox />
         </div>
-        <AccountBox className="mt-2 mb-2" />
       </Modal>
     </div>
+  )
+}
+
+/** "Menü" penceresinde bir sayfa kutusu. */
+function MenuTile({ item, delay, onGo }: { item: NavItem; delay: number; onGo: () => void }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const active = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
+  return (
+    <motion.button
+      type="button"
+      initial={{ opacity: 0, y: 10, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay, duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+      whileTap={{ scale: 0.95 }}
+      onClick={() => {
+        onGo()
+        navigate(item.to)
+      }}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl border px-1.5 py-3 text-center transition-colors',
+        active ? 'border-accent/40 bg-accent-soft' : 'border-line bg-surface-2 hover:border-line-strong hover:bg-surface-3',
+      )}
+    >
+      <span className={cn('grid size-10 place-items-center rounded-xl bg-gradient-to-br text-white shadow-card', item.tone)}>
+        <item.icon className="size-5" />
+      </span>
+      <span className="text-[12.5px] font-semibold leading-tight text-ink">{item.label}</span>
+    </motion.button>
   )
 }
 
@@ -284,18 +340,20 @@ function AccountBox({ className }: { className?: string }) {
   )
 }
 
-function MobileTab({ to, end, icon, label }: { to: string; end?: boolean; icon: ReactNode; label: string }) {
+function MobileTab({ item }: { item: NavItem }) {
   return (
     <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) => cn('pressable relative flex flex-col items-center gap-0.5 rounded-xl pb-2 pt-1 text-[11px] font-medium transition-colors', isActive ? 'text-accent' : 'text-muted')}
+      to={item.to}
+      end={item.end}
+      className={({ isActive }) => cn('pressable relative flex flex-col items-center gap-0.5 rounded-2xl pb-1 pt-1.5 text-[10.5px] font-medium transition-colors', isActive ? 'text-accent' : 'text-muted')}
     >
       {({ isActive }) => (
         <>
           {isActive && <TabIndicator />}
-          {icon}
-          {label}
+          <motion.span className="relative" animate={{ y: isActive ? -1 : 0, scale: isActive ? 1.08 : 1 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }}>
+            <item.icon className="size-[21px]" strokeWidth={isActive ? 2.3 : 2} />
+          </motion.span>
+          <span className={cn('relative max-w-full truncate', isActive && 'font-semibold')}>{item.short ?? item.label}</span>
         </>
       )}
     </NavLink>
@@ -314,12 +372,12 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   )
 }
 
-/** Alt menüde etkin sekmenin üstündeki çizgi; sekmeler arasında kayarak geçer. */
+/** Alt menüde etkin sekmenin arkasındaki parlak zemin; sekmeler arasında kayarak geçer. */
 function TabIndicator() {
   return (
     <motion.span
       layoutId="tab-active"
-      className="absolute -top-1.5 left-1/2 h-[3px] w-7 -translate-x-1/2 rounded-full bg-accent"
+      className="absolute inset-x-0.5 inset-y-0 rounded-2xl bg-accent-soft"
       transition={{ type: 'spring', stiffness: 520, damping: 38 }}
       aria-hidden
     />

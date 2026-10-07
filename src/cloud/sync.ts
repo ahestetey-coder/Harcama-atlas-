@@ -270,7 +270,8 @@ function toCloud(t: Transaction, cloudGroupId: string, cat: Category | undefined
     group_id: cloudGroupId,
     date: t.date,
     amount_kurus: t.amountKurus,
-    type: t.type,
+    // Gelir kayıtları buluta hiç gönderilmez (gönderim listesinden önce süzülür).
+    type: t.type as CloudTxInput['type'],
     description: t.description.slice(0, 200),
     category_name: cat?.name ?? null,
     category_icon: cat?.icon ?? null,
@@ -425,7 +426,7 @@ export async function syncAll(repo: AtlasRepository, backend: CloudBackend): Pro
     report.groups++
     const cloudId = g.cloudId!
     // 1) Gönder
-    const own = (await db.transactions.where('groupId').equals(g.id).toArray()).filter((t) => t.source !== 'shared' && (!t.memberId || t.memberId === userId))
+    const own = (await db.transactions.where('groupId').equals(g.id).toArray()).filter((t) => t.source !== 'shared' && t.type !== 'income' && (!t.memberId || t.memberId === userId))
     const pushed = await meta<Record<string, string>>(repo, PUSHED(g.id), {})
     const changed = own.filter((t) => pushed[t.id] !== t.updatedAt)
     for (let i = 0; i < changed.length; i += CHUNK) {

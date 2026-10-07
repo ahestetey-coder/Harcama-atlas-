@@ -28,9 +28,9 @@ test('mobil: alt menü, Ekle menüsü, kart listesi, yatay taşma yok', async ({
   }
 })
 
-test('mobil: "Daha fazla" menüsünden sayfalara gidilir', async ({ page }) => {
+test('mobil: "Menü" penceresinden sayfalara gidilir', async ({ page }) => {
   await open(page)
-  await page.getByRole('button', { name: 'Daha fazla' }).click()
+  await page.getByRole('navigation', { name: 'Alt menü' }).getByRole('button', { name: 'Menü' }).click()
   await page.getByRole('dialog', { name: 'Menü' }).getByRole('button', { name: /Yedekleme/ }).click()
   await expect(page.getByRole('heading', { name: 'Yedekleme ve veri' })).toBeVisible()
 })
@@ -62,6 +62,13 @@ test('mobil: Ekle menüsünden ekstre seçince içe aktarma başlar', async ({ p
   await page.getByRole('navigation', { name: 'Alt menü' }).getByRole('button', { name: 'Ekle', exact: true }).click()
   const csv = 'Tarih;Açıklama;Tutar\n01.09.2026;HIZLI MARKET;-12,50\n'
   await page.getByLabel('Ekstre dosyası seçin').setInputFiles({ name: 'ornek.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
-  await expect(page).toHaveURL(/ice-aktar/)
-  await expect(page.getByRole('heading', { name: 'Sütunları eşleştirin' })).toBeVisible()
+  // İçe aktarma bulunulan sayfanın üstünde açılır; sayfa değişmez
+  const sheet = page.getByRole('dialog', { name: 'İçe aktar' })
+  await expect(sheet.getByRole('heading', { name: 'Sütunları eşleştirin' })).toBeVisible()
+  await expect(page).not.toHaveURL(/ice-aktar/)
+  // Okunan dosya varken kapatmadan önce sorulur
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'İçe aktarma bırakılsın mı?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Bırak' }).click()
+  await expect(sheet).toBeHidden()
 })

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { addExpense, open } from './helpers'
+import { addExpense, expectTxTotals, open } from './helpers'
 
 test('harcama grupları: gider formunda seçilir, panel ve işlemler gruba göre filtrelenir, toplu atanır', async ({ page }) => {
   await open(page)
@@ -25,9 +25,9 @@ test('harcama grupları: gider formunda seçilir, panel ve işlemler gruba göre
   // İşlemler sayfası aynı filtreyle açılır; toplu grup ata
   await open(page, 'islemler')
   await expect(page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Ortak' })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByText(/^1 işlem · Gider 300,00 ₺/)).toBeVisible()
+  await expectTxTotals(page, 1, '300,00 ₺')
   await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Grupsuz' }).click()
-  await expect(page.getByText(/^1 işlem · Gider 50,00 ₺/)).toBeVisible()
+  await expectTxTotals(page, 1, '50,00 ₺')
   await page.getByRole('checkbox', { name: 'Grupsuz Otopark seç' }).first().check()
   await page.getByRole('button', { name: 'Grup ata' }).click()
   const dlg = page.getByRole('dialog', { name: 'Toplu grup ata' })
@@ -35,7 +35,7 @@ test('harcama grupları: gider formunda seçilir, panel ve işlemler gruba göre
   await dlg.getByRole('button', { name: 'Uygula' }).click()
   await expect(page.getByText('1 işlem “Ortak” grubuna alındı.')).toBeVisible()
   await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Ortak' }).click()
-  await expect(page.getByText(/^2 işlem · Gider 350,00 ₺/)).toBeVisible()
+  await expectTxTotals(page, 2, '350,00 ₺')
 })
 
 test('grup eklenir, yeniden adlandırılır ve silinince işlemler grupsuz kalır', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { addExpense, open, trackExternalRequests } from './helpers'
+import { addExpense, expectTxTotals, open, trackExternalRequests } from './helpers'
 
 function inviteParam(p: object): string {
   return Buffer.from(JSON.stringify({ v: 1, ...p })).toString('base64url')
@@ -112,9 +112,9 @@ test('üyenin harcaması panelde kişilere göre görünür ve salt okunurdur', 
   await persons.getByRole('radio', { name: 'Herkes' }).click()
 
   await open(page, 'islemler')
-  await expect(page.getByText(/^2 işlem · Gider 500,00 ₺/)).toBeVisible()
+  await expectTxTotals(page, 2, '500,00 ₺')
   await page.getByRole('radiogroup', { name: 'Kişi filtresi' }).getByRole('radio', { name: 'Siz' }).click()
-  await expect(page.getByText(/^1 işlem · Gider 300,00 ₺/)).toBeVisible()
+  await expectTxTotals(page, 1, '300,00 ₺')
   await page.getByRole('radiogroup', { name: 'Kişi filtresi' }).getByRole('radio', { name: 'Herkes' }).click()
   await expect(page.getByRole('button', { name: 'Ayşe Fatura sil' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Ayşe Fatura düzenle' }).first().click()
@@ -189,7 +189,9 @@ test('Tümü kişiseldir: üyenin ortak gideri listede görünür ama toplama gi
   await expect(notes).toContainText('payınız 250,00 ₺')
 
   await open(page, 'islemler')
-  await expect(page.getByText(/^4 işlem · Gider 340,00 ₺ · İade 50,00 ₺/)).toBeVisible()
+  // Gider kutusu net gideri (340 − 50 iade) gösterir
+  await expectTxTotals(page, 4, '290,00 ₺')
+  await expect(page.getByRole('group', { name: 'Gider', exact: true })).toContainText('iade −50,00 ₺')
   await expect(page.getByRole('button', { name: /Ortak paylaşımı · alacak sil/ })).toHaveCount(0)
   await page.getByRole('button', { name: /Ortak paylaşımı · alacak.*düzenle/ }).first().click()
   const dlg = page.getByRole('dialog', { name: 'Paylaşım farkı' })
@@ -198,7 +200,7 @@ test('Tümü kişiseldir: üyenin ortak gideri listede görünür ama toplama gi
 
   // Grup seçilince grubun bütün giderleri ve paylaşım durumu görünür
   await page.getByRole('radiogroup', { name: 'Grup filtresi' }).getByRole('radio', { name: 'Ortak' }).click()
-  await expect(page.getByText(/^2 işlem · Gider 500,00 ₺/)).toBeVisible()
+  await expectTxTotals(page, 2, '500,00 ₺')
   await open(page)
   await expect(page.getByText('Paylaştırıldı', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Paylaşımı gör' }).click()

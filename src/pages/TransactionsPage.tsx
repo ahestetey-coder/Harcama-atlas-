@@ -1,17 +1,18 @@
-import { Download, FileUp, Filter, ListOrdered, Plus, Search, Tags, Trash2, Users, X } from 'lucide-react'
+import { Download, FileUp, ListOrdered, Plus, Search, SlidersHorizontal, Tags, Trash2, Users, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { FilterStrip, GroupPicker, matchesGroup, matchesMember, MonthSwitcher } from '../components/common'
 import { TransactionList } from '../components/TransactionList'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
-import { Button, Card, EmptyState, Field, Input, Select, Skeleton } from '../components/ui/primitives'
+import { Button, Card, EmptyState, Field, Input, Segmented, Select, Skeleton } from '../components/ui/primitives'
+import { cn } from '../lib/cn'
 import { toUserMessage } from '../data/repository'
 import { periodLabel, periodRange } from '../domain/dates'
 import { formatKurus } from '../domain/money'
 import { normalizeText } from '../domain/normalize'
-import { PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type PaymentMethod, type Transaction, type TxSource, type TxType } from '../domain/types'
+import { PAYMENT_LABEL, SOURCE_LABEL, type PaymentMethod, type Transaction, type TxSource, type TxType } from '../domain/types'
 import { downloadBlob } from '../lib/download'
 import { transactionsToCsv } from '../lib/csvExport'
 import { APP_CONFIG } from '../config/app'
@@ -23,6 +24,14 @@ import { isCounted } from '../domain/personal'
 import { useUi } from '../state/ui'
 
 type Period = 'month' | 'all' | 'custom'
+
+const TYPE_TABS: Array<{ value: TxType | 'all'; label: string }> = [
+  { value: 'all', label: 'Tümü' },
+  { value: 'expense', label: 'Gider' },
+  { value: 'income', label: 'Gelir' },
+  { value: 'refund', label: 'İade' },
+  { value: 'transfer', label: 'Transfer' },
+]
 
 export default function TransactionsPage() {
   const allTxs = useTransactions()
@@ -38,9 +47,8 @@ export default function TransactionsPage() {
   const memberFilter = useMemberFilter()
   const person = groupFilter ? memberFilter : { ...memberFilter, value: '', options: [] }
   const txs = groupFilter ? allTxs : personal?.list
-  const { month, setMonth, openTransactionForm, toast } = useUi()
+  const { month, setMonth, openTransactionForm, openImport, toast } = useUi()
   const { startDay } = useCycle()
-  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
 
   const [query, setQuery] = useState('')
@@ -101,16 +109,19 @@ export default function TransactionsPage() {
   const totals = useMemo(() => {
     let e = 0
     let r = 0
+    let inc = 0
     for (const t of filtered) {
       // Tümü'de üyelerin ortak giderleri listede görünür ama toplama girmez
       if (!groupFilter && !isCounted(t)) continue
       if (t.type === 'expense') e += t.amountKurus
       else if (t.type === 'refund') r += t.amountKurus
+      else if (t.type === 'income') inc += t.amountKurus
     }
-    return { e, r }
+    return { e, r, inc }
   }, [filtered, groupFilter])
 
-  const activeFilterCount = [category, groupFilter, person.value, type, payment, source, importId, period === 'custom' ? 'x' : ''].filter(Boolean).length
+  // Tür, sayfadaki sekmelerle seçilir; filtre sayısına yalnızca penceredeki seçimler girer
+  const activeFilterCount = [category, groupFilter, person.value, payment, source, importId, period !== 'month' ? 'x' : ''].filter(Boolean).length
 
   const clearFilters = () => {
     setCategory('')
@@ -252,16 +263,6 @@ export default function TransactionsPage() {
           </Select>
         </Field>
       )}
-      <Field label="İşlem türü" htmlFor="f-type">
-        <Select id="f-type" value={type} onChange={(e) => setType(e.target.value as TxType | '')}>
-          <option value="">Tümü</option>
-          {(Object.keys(TX_TYPE_LABEL) as TxType[]).map((t) => (
-            <option key={t} value={t}>
-              {TX_TYPE_LABEL[t]}
-            </option>
-          ))}
-        </Select>
-      </Field>
       <Field label="Ödeme aracı" htmlFor="f-pay">
         <Select id="f-pay" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod | '')}>
           <option value="">Tümü</option>
@@ -289,13 +290,10 @@ export default function TransactionsPage() {
     <div>
       <PageHeader
         title="İşlemler"
-        subtitle="Arayın, filtreleyin, düzenleyin. Silinen kayıtlar birkaç saniye içinde geri alınabilir."
+        subtitle="Bütün kayıtlarınız. Bir satıra dokunarak düzenleyin."
         actions={
           <>
             {period === 'month' && <MonthSwitcher month={month} onChange={setMonth} className="max-sm:flex-1" />}
-            <Button icon={<Download className="size-4" />} onClick={exportCsv} disabled={!filtered.length} className="max-sm:w-10 max-sm:px-0" title="CSV olarak indir">
-              <span className="max-sm:sr-only">CSV</span>
-            </Button>
             <Button variant="primary" className="max-lg:hidden" icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
               Gider ekle
             </Button>
@@ -313,34 +311,40 @@ export default function TransactionsPage() {
         className="mb-3"
       />
 
-      <Card className="mb-4 p-3 sm:p-4">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle" aria-hidden />
-            <Input aria-label="Açıklama veya notta ara" placeholder="Ara: iş yeri, açıklama, not…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" type="search" />
-          </div>
-          <Button className="lg:hidden" icon={<Filter className="size-4" />} onClick={() => setFiltersOpen(true)} aria-label={`Filtreler${activeFilterCount ? `, ${activeFilterCount} etkin` : ''}`}>
-            {activeFilterCount ? <span className="num rounded-full bg-accent px-1.5 text-[11px] text-white">{activeFilterCount}</span> : null}
-          </Button>
+      <div className="mb-3 flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-subtle" aria-hidden />
+          <Input aria-label="Açıklama veya notta ara" placeholder="Ara: iş yeri, açıklama, not…" value={query} onChange={(e) => setQuery(e.target.value)} className="rounded-2xl pl-10" type="search" />
         </div>
-        <div className="mt-3 hidden lg:block">{filterFields}</div>
-        {(activeFilterCount > 0 || query) && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
-            {importName && <span className="rounded-full bg-info-soft px-2.5 py-1 text-info">Aktarım: {importName}</span>}
-            <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium text-accent hover:bg-accent-soft">
-              <X className="size-3.5" /> Filtreleri temizle
-            </button>
-          </div>
-        )}
-      </Card>
-
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[13px] text-muted">
-        <span className="num">
-          {filtered.length} işlem · Gider {formatKurus(totals.e)}
-          {totals.r > 0 && <> · İade {formatKurus(totals.r)}</>} · Net {formatKurus(totals.e - totals.r)}
-        </span>
+        <Button className="shrink-0 rounded-2xl" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen(true)} aria-label={`Filtreler${activeFilterCount ? `, ${activeFilterCount} etkin` : ''}`}>
+          <span className="max-sm:sr-only">Filtreler</span>
+          {activeFilterCount ? <span className="num rounded-full bg-accent px-1.5 text-[11px] text-white">{activeFilterCount}</span> : null}
+        </Button>
       </div>
 
+      <Segmented
+        label="İşlem türü"
+        value={type || 'all'}
+        onChange={(v) => setType(v === 'all' ? '' : v)}
+        options={TYPE_TABS}
+        className="no-scrollbar mb-3 flex w-full overflow-x-auto [&>button]:min-w-fit [&>button]:px-3"
+      />
+
+      {(activeFilterCount > 0 || query) && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-[13px]">
+          {importName && <span className="rounded-full bg-info-soft px-2.5 py-1 text-info">Aktarım: {importName}</span>}
+          {period !== 'month' && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-muted">{period === 'all' ? 'Tüm tarihler' : 'Tarih aralığı'}</span>}
+          <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium text-accent hover:bg-accent-soft">
+            <X className="size-3.5" /> Filtreleri temizle
+          </button>
+        </div>
+      )}
+
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        <Stat label="Gider" value={formatKurus(totals.e - totals.r)} sub={totals.r > 0 ? `iade −${formatKurus(totals.r)}` : undefined} />
+        <Stat label="Gelir" value={formatKurus(totals.inc)} tone="up" />
+        <Stat label="İşlem" value={String(filtered.length)} />
+      </div>
       <AnimatePresence>
         {selected.size > 0 && (
           <motion.div
@@ -396,7 +400,7 @@ export default function TransactionsPage() {
                 <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
                   Gider ekle
                 </Button>
-                <Button icon={<FileUp className="size-4" />} onClick={() => navigate('/ice-aktar')}>
+                <Button icon={<FileUp className="size-4" />} onClick={() => openImport()}>
                   Dosya içe aktar
                 </Button>
               </>
@@ -430,7 +434,22 @@ export default function TransactionsPage() {
         )}
       </Card>
 
-      <Modal open={filtersOpen} onOpenChange={setFiltersOpen} title="Filtreler" footer={<Button variant="primary" onClick={() => setFiltersOpen(false)}>Göster ({filtered.length})</Button>}>
+      <Modal
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        title="Filtreler"
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" className="mr-auto" icon={<Download className="size-4" />} onClick={exportCsv} disabled={!filtered.length}>
+              CSV indir
+            </Button>
+            <Button variant="primary" onClick={() => setFiltersOpen(false)}>
+              Göster ({filtered.length})
+            </Button>
+          </>
+        }
+      >
         {filterFields}
         <button type="button" onClick={clearFilters} className="mt-4 text-sm font-medium text-accent">
           Filtreleri temizle
@@ -497,6 +516,16 @@ export default function TransactionsPage() {
       >
         Seçili işlemler silinecek. Hemen ardından çıkan bildirimdeki “Geri al” ile kurtarabilirsiniz.
       </ConfirmDialog>
+    </div>
+  )
+}
+
+function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'up' }) {
+  return (
+    <div role="group" aria-label={label} className="min-w-0 rounded-2xl border border-line bg-surface px-3 py-2.5 shadow-card">
+      <div className="text-[11.5px] font-medium text-subtle">{label}</div>
+      <div className={cn('num truncate text-[15px] font-semibold', tone === 'up' ? 'text-accent' : 'text-ink')}>{value}</div>
+      {sub && <div className="num truncate text-[11px] text-subtle">{sub}</div>}
     </div>
   )
 }

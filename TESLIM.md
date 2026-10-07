@@ -430,3 +430,15 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 - Uygulama hesabın paketini açılışta sunucudan okur (`ha_my_plan`). Yönetici önizlemesi ayrıca çalışmaya devam eder.
 - Koç sohbeti sunucuda da Plus+ (veya yönetici) ister.
 - Kurulum: `harcama-atlasi-kurulum/paket-tanimlama.sql`; son satırı yönetici hesaplarına süresiz Plus+ verir. Eski şemanın üzerine iki kez kurulum denendi.
+
+## 30. Sade arayüz, gelir kaydı ve yeni menüler (07.10.2026)
+
+- **Alt menü:** yüzen cam çubuk; Özet · İşlemler · Bütçe · **+** · Varlık · Koç · Menü. "İçe aktar" sekmesi kaldırıldı.
+- **Menü:** sayfalar dört bölümde (Günlük, Planlama, Varlık ve gelecek, Hesap ve veri); masaüstü kenar menüsü de aynı bölümlerle.
+- **"+" menüsü:** Gider, **Gelir**, İade, Kart ödemesi; Ekstre, Ekran görüntüsü, Fotoğraf, İçe aktar; Düzenli ödeme, Birikim hedefi, Varlık/borç, Bütçe limiti; Kategori, Grup, Üye davet, Koça sor. Paketi gereken kısayolda Plus/Plus+ etiketi görünür.
+- **İçe aktarma** artık bulunulan sayfanın üstünde açılan tam boy pencerede yapılır; okunmuş bir dosya varken kapatmadan önce sorulur. `#/ice-aktar` adresi çalışmaya devam eder.
+- **Gelir kaydı:** yeni işlem türü. Harcama toplamlarına, bütçeye, raporlara ve paylaşıma girmez; Özet kartında "Gelir" ve "Kalan" gösterir. Gelir kayıtları yalnızca cihazda kalır, ortak gruba atanamaz ve buluta gönderilmez.
+- **Özet (eski Panel):** tek özet kartı (net gider, karşılaştırma, gelir/kalan, bütçe), ana özelliklere kısayollar, kategoriler (ilk 5, istenirse tümü), son 6 işlem; günlük gider grafiği istenince açılır.
+- **İşlemler:** arama, tür sekmeleri (Tümü/Gider/Gelir/İade/Transfer), Gider/Gelir/İşlem kutuları; diğer filtreler ve CSV tek "Filtreler" penceresinde.
+- **Efektler:** sayfa geçişi, sayarak artan tutar, özet kartında hareketli ışık, kayan sekme seçimi, alttan pencere açılınca sayfanın geriye çekilmesi, "+" düğmesinde nabız. "Hareketi azalt" ayarında hepsi kapanır.
+- Varlıklarım sayfasındaki dağılım grafiği daire grafik oldu.

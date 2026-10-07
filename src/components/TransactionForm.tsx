@@ -53,7 +53,7 @@ export function TransactionFormHost() {
     <Modal
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
-      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
+      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'income' ? 'Gelir ekle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
       description={formState.tx ? undefined : 'Kategorisini siz seçersiniz. Paylaşılan bir gruba eklemediğiniz sürece kayıt yalnızca bu cihazda tutulur.'}
       size="md"
       side
@@ -132,7 +132,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         type: s.type,
         description: s.description,
         categoryId: s.categoryId || null,
-        groupId: s.groupId || null,
+        groupId: s.type === 'income' ? null : s.groupId || null,
         note: s.note,
         paymentMethod: s.paymentMethod || undefined,
         accountAlias: s.accountAlias,
@@ -147,7 +147,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         setHighlightId(saved.id)
         const savedPeriod = periodOf(saved.date, startDay)
         const other = savedPeriod !== month
-        toast(other ? `Kaydedildi. İşlem ${periodLabel(savedPeriod, startDay)} döneminde.` : 'Gider kaydedildi.', {
+        toast(other ? `Kaydedildi. İşlem ${periodLabel(savedPeriod, startDay)} döneminde.` : s.type === 'income' ? 'Gelir kaydedildi.' : 'Gider kaydedildi.', {
           action: other ? { label: 'O aya git', onClick: () => setMonth(savedPeriod) } : undefined,
         })
       }
@@ -165,10 +165,11 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         label="İşlem türü"
         value={s.type}
         onChange={(v) => set('type', v)}
-        options={(['expense', 'refund', 'transfer'] as TxType[]).map((t) => ({ value: t, label: t === 'transfer' ? 'Kart ödemesi / Transfer' : TX_TYPE_LABEL[t] }))}
+        options={(['expense', 'income', 'refund', 'transfer'] as TxType[]).map((t) => ({ value: t, label: t === 'transfer' ? 'Transfer' : TX_TYPE_LABEL[t] }))}
         className="w-full [&>button]:px-2 [&>button]:text-[12.5px] sm:[&>button]:text-[13px]"
       />
       {s.type === 'transfer' && <p className="-mt-2 text-[12.5px] text-subtle">Kart borcu ödemeleri ve hesaplar arası transferler gider toplamına dahil edilmez.</p>}
+      {s.type === 'income' && <p className="-mt-2 text-[12.5px] text-subtle">Maaş, kira geliri gibi girişler. Gelir harcama toplamlarına girmez; özet sayfasında bu ay ne kadar kaldığını gösterir. Yalnızca bu cihazda tutulur, grup üyeleriyle paylaşılmaz.</p>}
       {s.type === 'refund' && <p className="-mt-2 text-[12.5px] text-subtle">İade tutarını pozitif girin; kayıt tarihinin ayındaki net giderden bir kez düşülür.</p>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -198,7 +199,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         <Input
           id="tx-description"
           autoComplete="off"
-          placeholder="Örn. Migros Kadıköy"
+          placeholder={s.type === 'income' ? 'Örn. Maaş' : 'Örn. Migros Kadıköy'}
           maxLength={200}
           value={s.description}
           onChange={(e) => {
@@ -234,7 +235,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         )}
       </Field>
 
-      {activeGroups.length > 0 && (
+      {activeGroups.length > 0 && s.type !== 'income' && (
         <Field label="Harcama grubu" optional hint="Kategoriden ayrı bir gruplama; panelde bu gruba göre filtreleyebilirsiniz.">
           <GroupPicker groups={activeGroups} value={s.groupId} onChange={(v) => set('groupId', v)} />
           {activeGroups.find((g) => g.id === s.groupId)?.cloudId && (

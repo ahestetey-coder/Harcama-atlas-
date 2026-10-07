@@ -1,5 +1,5 @@
 import { addMonths, periodOf } from './dates'
-import type { IsoDate, MonthKey, Transaction } from './types'
+import { isSpending, type IsoDate, type MonthKey, type Transaction } from './types'
 
 /**
  * Plus+ "Finansal Özgürlük Yolculuğum": anket, rota aşamaları, göstergeler ve senaryolar.
@@ -57,7 +57,7 @@ export function averageMonthlyExpense(txs: Transaction[], startDay: number, toda
   const wanted = Array.from({ length: count }, (_, i) => addMonths(current, -(i + 1)))
   const totals = new Map<MonthKey, number>()
   for (const t of txs) {
-    if (t.type === 'transfer') continue
+    if (!isSpending(t)) continue
     const p = periodOf(t.date, startDay)
     if (!wanted.includes(p)) continue
     totals.set(p, (totals.get(p) ?? 0) + (t.type === 'expense' ? t.amountKurus : -t.amountKurus))

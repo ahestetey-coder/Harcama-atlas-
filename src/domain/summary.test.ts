@@ -103,3 +103,19 @@ describe('önceki ay karşılaştırması', () => {
     }
   })
 })
+
+describe('gelir', () => {
+  const data = [tx('2026-09-01', 1000, 'expense', 'market'), tx('2026-09-01', 30000, 'income', null, 'Maaş'), tx('2026-08-10', 500, 'income', null, 'Prim')]
+  it('gelir harcama toplamlarına ve işlem sayısına girmez, ayrı toplanır', () => {
+    const s = summarizeMonth(data, '2026-09')
+    expect(s.netKurus).toBe(100000)
+    expect(s.count).toBe(1)
+    expect(s.incomeKurus).toBe(3000000)
+    expect(s.incomeCount).toBe(1)
+    expect(s.byCategory.map((c) => c.categoryId)).toEqual(['market'])
+  })
+  it('yalnızca gelir olan önceki ay karşılaştırma tabanı sayılmaz', () => {
+    const c = compareWithPrevious(data, '2026-09', '2026-08', '2026-09-30')
+    expect(c.kind).toBe('none')
+  })
+})

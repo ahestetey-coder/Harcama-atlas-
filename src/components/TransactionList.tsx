@@ -8,7 +8,7 @@ import { cn } from '../lib/cn'
 import { useMembers } from '../state/cloud'
 import { useGroupMap } from '../state/data'
 import { useUi } from '../state/ui'
-import { CategoryIcon, GroupBadge, Money, TransferIcon } from './common'
+import { CategoryIcon, GroupBadge, IncomeIcon, Money, TransferIcon } from './common'
 import { Badge, IconButton } from './ui/primitives'
 
 interface Props {
@@ -38,7 +38,7 @@ function TxMeta({ t, group, member, uncounted }: { t: Transaction; group?: Spend
       )}
       <GroupBadge group={group} />
       {uncounted && t.source === 'shared' && <Badge tone="warning">Toplama girmez</Badge>}
-      {t.type !== 'expense' && t.source !== 'settlement' && <Badge tone={t.type === 'refund' ? 'accent' : 'neutral'}>{TX_TYPE_LABEL[t.type]}</Badge>}
+      {t.type !== 'expense' && t.source !== 'settlement' && <Badge tone={t.type === 'refund' ? 'accent' : t.type === 'income' ? 'teal' : 'neutral'}>{TX_TYPE_LABEL[t.type]}</Badge>}
       {t.installment && (
         <Badge tone="info" className="num">
           Taksit {t.installment.current}/{t.installment.total || '?'}
@@ -129,7 +129,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                       </div>
                     </td>
                     <td className="border-b border-line py-2.5 pl-3">
-                      {t.type === 'transfer' && !cat ? (
+                      {(t.type === 'transfer' || t.type === 'income') && !cat ? (
                         <span className="text-subtle">—</span>
                       ) : (
                         <span className="inline-flex items-center gap-2">
@@ -188,7 +188,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                   {selectable && (
                     <input type="checkbox" aria-label={`${t.description} seç`} checked={!!selected?.has(t.id)} onChange={() => onToggle?.(t.id)} className="size-[18px] shrink-0 accent-emerald-600" />
                   )}
-                  {t.type === 'transfer' && !cat ? <TransferIcon /> : <CategoryIcon category={cat} />}
+                  {t.type === 'transfer' && !cat ? <TransferIcon /> : t.type === 'income' && !cat ? <IncomeIcon /> : <CategoryIcon category={cat} />}
                   <button
                     type="button"
                     className="min-w-0 flex-1 text-left disabled:cursor-default"
@@ -199,7 +199,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                     <div className="line-clamp-2 text-[14px] leading-snug [overflow-wrap:break-word] font-medium text-ink">{t.description}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-subtle">
                       <span className="num whitespace-nowrap">{formatDate(t.date)}</span>
-                      <span className={cn('whitespace-nowrap font-medium', cat || t.type === 'transfer' ? 'text-muted' : 'text-warning')}>{cat?.name ?? (t.type === 'transfer' ? 'Transfer' : 'Kategorisiz')}</span>
+                      <span className={cn('whitespace-nowrap font-medium', cat || t.type === 'transfer' || t.type === 'income' ? 'text-muted' : 'text-warning')}>{cat?.name ?? (t.type === 'transfer' ? 'Transfer' : t.type === 'income' ? 'Gelir' : 'Kategorisiz')}</span>
                       <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} uncounted={markUncounted} />
                     </div>
                   </button>

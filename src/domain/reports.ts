@@ -1,6 +1,6 @@
 import { addMonths, periodOf } from './dates'
 import { cleanDescription, merchantKey } from './normalize'
-import type { MonthKey, Transaction } from './types'
+import { isSpending, type MonthKey, type Transaction } from './types'
 
 const net = (t: Transaction) => (t.type === 'expense' ? t.amountKurus : t.type === 'refund' ? -t.amountKurus : 0)
 
@@ -67,7 +67,7 @@ export function periodReport(
   const trend = new Map(trendMonths.map((m) => [m, 0]))
   const prevMerchantKeys = new Set<string>()
   for (const t of txs) {
-    if (t.type === 'transfer') continue
+    if (!isSpending(t)) continue
     const p = periodOf(t.date, startDay)
     const n = net(t)
     if (trend.has(p)) trend.set(p, trend.get(p)! + n)

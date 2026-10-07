@@ -1,6 +1,6 @@
-import { ArrowDownRight, ArrowUpRight, Bot, CalendarClock, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Receipt, Repeat, Scale, Target, Wallet } from 'lucide-react'
-import { motion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { ArrowDownRight, ArrowUpRight, Bot, CalendarClock, ChartColumn, ChevronDown, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Repeat, Scale, Target, Wallet } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, DailyBars, type DonutSlice } from '../components/charts/Charts'
@@ -14,7 +14,9 @@ import { addMonths, currentPeriod, cycleDescription, dayOf, diffDays, formatDate
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { compareWithPrevious, summarizeMonth, type CategoryTotal } from '../domain/summary'
 import { findSettlement, settlementRangeText } from '../domain/personal'
-import type { Member, SpendGroup, Transaction } from '../domain/types'
+import { isSpending, type Member, type SpendGroup, type Transaction } from '../domain/types'
+import { FEATURE_PLAN, type Feature } from '../domain/plans'
+import { AnimatedKurus } from '../components/ui/AnimatedMoney'
 import { cn } from '../lib/cn'
 import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
 import { useCloud, useMemberFilter, useMembers } from '../state/cloud'
@@ -50,11 +52,13 @@ export default function DashboardPage() {
   )
   const categories = useCategoryMap()
   const settings = useSettings()
-  const { month, setMonth, openTransactionForm } = useUi()
+  const { month, setMonth, openTransactionForm, openImport } = useUi()
   const { isDemo, setDemo } = useData()
   const navigate = useNavigate()
   const [drawer, setDrawer] = useState<{ title: string; filter: (t: Transaction) => boolean; categoryId?: string | null; day?: number } | null>(null)
   const [budgetOpen, setBudgetOpen] = useState(false)
+  const [allCats, setAllCats] = useState(false)
+  const [dailyOpen, setDailyOpen] = useState(false)
   const today = todayIso()
   // Seçili ay boşsa kayıtlı en yakın ay (ör. geçen ayın ekstresi yüklendiyse)
   const otherMonth = useMemo(() => {
@@ -115,29 +119,24 @@ export default function DashboardPage() {
   const isCurrent = month === currentPeriod(startDay)
   const isFuture = month > currentPeriod(startDay)
   const label = periodLabel(month, startDay)
-  const topCat = summary.topCategory?.categoryId ? categories.get(summary.topCategory.categoryId) : undefined
   const budget = settings?.monthlyBudgetKurus ?? null
   const openCategory = (c: CategoryTotal) => {
     const cat = c.categoryId ? categories.get(c.categoryId) : undefined
-    setDrawer({ title: cat?.name ?? 'Kategorisiz', categoryId: c.categoryId, filter: (t) => t.type !== 'transfer' && (t.categoryId ?? null) === c.categoryId })
+    setDrawer({ title: cat?.name ?? 'Kategorisiz', categoryId: c.categoryId, filter: (t) => isSpending(t) && (t.categoryId ?? null) === c.categoryId })
   }
 
   const daily = summary.daily.map((d) => ({ ...d, label: formatDate(d.date, 'long') }))
   const hasData = listMonthTxs.length > 0
 
+  const hello = greeting()
+  const remaining = summary.incomeKurus - summary.netKurus
+
   return (
     <div>
       <PageHeader
-        title="Panel"
-        subtitle={isCurrent ? `Bugün ${formatDate(today, 'weekday')}` : isFuture ? 'Gelecek bir ay seçili' : `${label} özeti`}
-        actions={
-          <>
-            <MonthSwitcher month={month} onChange={setMonth} className="max-sm:flex-1" />
-            <Button className="max-sm:hidden" icon={<FileUp className="size-4" />} onClick={() => navigate('/ice-aktar')}>
-              İçe aktar
-            </Button>
-          </>
-        }
+        title="Özet"
+        subtitle={isCurrent ? `${hello} · ${formatDate(today, 'weekday')}` : isFuture ? 'Gelecek bir ay seçili' : `${label} özeti`}
+        actions={<MonthSwitcher month={month} onChange={setMonth} className="max-sm:flex-1" />}
       />
 
       <FilterStrip
@@ -193,211 +192,181 @@ export default function DashboardPage() {
       <DueBanner />
       {hasFeature('aiCoach') && <CoachBanner />}
       {!hasData ? (
-        <Card>
-          <EmptyState
-            icon={<Wallet className="size-6" />}
-            title={
-              personName
-                ? `${label} içinde ${personName === 'Siz' ? 'sizin' : `${personName} adlı üyenin`} kaydı yok`
-                : filterName
-                  ? `${label} içinde “${filterName}” kaydı yok`
-                  : `${label} için kayıt yok`
-            }
-            action={
-              <>
-                {personName && (
-                  <Button variant="primary" onClick={() => person.set('')}>
-                    Herkesi göster
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+          <Card className="lg:col-span-7">
+            <EmptyState
+              icon={<Wallet className="size-6" />}
+              title={
+                personName
+                  ? `${label} içinde ${personName === 'Siz' ? 'sizin' : `${personName} adlı üyenin`} kaydı yok`
+                  : filterName
+                    ? `${label} içinde “${filterName}” kaydı yok`
+                    : `${label} için kayıt yok`
+              }
+              action={
+                <>
+                  {personName && (
+                    <Button variant="primary" onClick={() => person.set('')}>
+                      Herkesi göster
+                    </Button>
+                  )}
+                  {filterName && allMonthCount > 0 && (
+                    <Button variant="primary" onClick={() => setGroupFilter('')}>
+                      Tüm grupları göster ({allMonthCount} işlem)
+                    </Button>
+                  )}
+                  {otherMonth && (
+                    <Button variant="primary" onClick={() => setMonth(otherMonth)}>
+                      {periodLabel(otherMonth, startDay)} kayıtlarını göster
+                    </Button>
+                  )}
+                  <Button variant={otherMonth ? 'secondary' : 'primary'} icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
+                    Gider ekle
                   </Button>
-                )}
-                {filterName && allMonthCount > 0 && (
-                  <Button variant="primary" onClick={() => setGroupFilter('')}>
-                    Tüm grupları göster ({allMonthCount} işlem)
+                  <Button icon={<FileUp className="size-4" />} onClick={() => openImport()}>
+                    Ekstre içe aktar
                   </Button>
-                )}
-                {otherMonth && (
-                  <Button variant="primary" onClick={() => setMonth(otherMonth)}>
-                    {periodLabel(otherMonth, startDay)} kayıtlarını göster
-                  </Button>
-                )}
-                <Button variant={otherMonth ? 'secondary' : 'primary'} icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
-                  Gider ekle
-                </Button>
-                <Button icon={<FileUp className="size-4" />} onClick={() => navigate('/ice-aktar')}>
-                  Ekstre içe aktar
-                </Button>
-                {!isDemo && (
-                  <Button variant="ghost" icon={<FlaskConical className="size-4" />} onClick={() => setDemo(true)}>
-                    Demo verisiyle dene
-                  </Button>
-                )}
-              </>
-            }
-          >
-            Manuel gider ekleyin veya kredi kartı ekstrenizi (PDF, CSV, Excel, ekran görüntüsü) içe aktarın. Özetler yalnızca onayladığınız kayıtlardan hesaplanır.
-          </EmptyState>
-        </Card>
+                  {!isDemo && (
+                    <Button variant="ghost" icon={<FlaskConical className="size-4" />} onClick={() => setDemo(true)}>
+                      Demo verisiyle dene
+                    </Button>
+                  )}
+                </>
+              }
+            >
+              Gider ekleyin veya kart ekstrenizi (PDF, CSV, Excel, ekran görüntüsü) içe aktarın. Özetler yalnızca onayladığınız kayıtlardan hesaplanır.
+            </EmptyState>
+          </Card>
+          <Shortcuts className="lg:col-span-5" />
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
-          {/* Özet kartı */}
+          {/* Özet kartı: bu ay ne kadar harcandı, gelir varsa ne kaldı, bütçe */}
           <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="hero-gradient relative overflow-hidden rounded-[1.5rem] p-5 text-white shadow-float sm:p-6 lg:col-span-7"
+            initial={{ opacity: 0, y: 12, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+            className="hero-gradient shine relative overflow-hidden rounded-[1.75rem] p-5 text-white shadow-float sm:p-6 lg:col-span-7"
             aria-labelledby="net-title"
           >
-            <div className="absolute -right-16 -top-16 size-56 rounded-full bg-emerald-400/10 blur-3xl" aria-hidden />
+            <span className="aurora -right-10 -top-12 size-52 bg-emerald-400/40" aria-hidden />
+            <span className="aurora -bottom-16 left-6 size-44 bg-cyan-400/30 [animation-delay:-6s]" aria-hidden />
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 id="net-title" className="text-[13px] font-medium uppercase tracking-wider text-white/70">
+                <h2 id="net-title" className="text-[12.5px] font-medium uppercase tracking-wider text-white/70">
                   Net gider · {label}
                   {filterName && ` · ${filterName}`}
                   {personName && ` · ${personName}`}
                 </h2>
-                {startDay > 1 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80" title={cycleDescription(startDay)}>
-                    <Repeat className="size-3.5" /> {startDay}. gün döngüsü{cycleGroup ? ` · ${cycleGroup}` : ''}
-                  </span>
-                )}
                 {isCurrent && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80">
-                    <CalendarClock className="size-3.5" /> {startDay > 1 ? 'Dönem' : 'Ay'} devam ediyor ({diffDays(today, periodRange(month, startDay).start) + 1}/{periodLength(month, startDay)} gün)
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80" title={startDay > 1 ? cycleDescription(startDay) : undefined}>
+                    <CalendarClock className="size-3.5" /> {diffDays(today, periodRange(month, startDay).start) + 1}/{periodLength(month, startDay)}. gün
+                    {startDay > 1 && ` · ${startDay}. gün döngüsü${cycleGroup ? ` · ${cycleGroup}` : ''}`}
                   </span>
                 )}
               </div>
-              <div className="num mt-2 font-display text-[40px] font-bold leading-none tracking-tight sm:text-[48px]">{formatKurus(summary.netKurus)}</div>
-              <p className="mt-1.5 text-[13px] text-white/60">Net = giderler − iadeler. Kart ödemeleri ve transferler dahil değildir.</p>
+              <AnimatedKurus value={summary.netKurus} className="mt-2 block font-display text-[42px] font-bold leading-none tracking-tight sm:text-[50px]" />
               <ComparisonChip comparison={comparison} />
-              <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-white/10 pt-4">
-                <HeroStat label="Brüt gider" value={formatKurus(summary.expenseKurus)} />
-                <HeroStat label="İadeler" value={summary.refundKurus ? `−${formatKurus(summary.refundKurus)}` : formatKurus(0)} />
-                <HeroStat label="İşlem sayısı" value={String(summary.count)} />
-              </dl>
+              <p className="num mt-3 text-[12.5px] text-white/60">
+                Gider {formatKurus(summary.expenseKurus)}
+                {summary.refundKurus > 0 && ` · iade −${formatKurus(summary.refundKurus)}`} · {summary.count} işlem
+                {summary.transferCount > 0 && ` · ${summary.transferCount} kart ödemesi dahil değil`}
+              </p>
+              {summary.incomeKurus > 0 && (
+                <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4">
+                  <HeroStat label="Gelir" value={formatKurus(summary.incomeKurus)} />
+                  <HeroStat label={remaining >= 0 ? 'Kalan' : 'Gelirden fazla'} value={formatKurus(Math.abs(remaining))} tone={remaining >= 0 ? 'up' : 'down'} />
+                </dl>
+              )}
+              <div className="mt-4 border-t border-white/10 pt-4">
+                {budgetGroup ? (
+                  <section aria-label="Grup bütçesi">
+                    <div className="flex items-center justify-between gap-2 text-[13px]">
+                      <span className="flex min-w-0 items-center gap-1.5 font-semibold text-white/85">
+                        <Target className="size-4 shrink-0" /> <span className="truncate">{budgetGroup.name} bütçesi</span>
+                      </span>
+                      {canEditGroupBudget && (
+                        <button type="button" onClick={() => setGroupBudgetOpen(true)} className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
+                          {budgetGroup.budgetKurus ? 'Düzenle' : 'Belirle'}
+                        </button>
+                      )}
+                    </div>
+                    {budgetGroup.budgetKurus ? (
+                      <BudgetBar budget={budgetGroup.budgetKurus} net={groupNet} />
+                    ) : (
+                      <p className="mt-1 text-[12.5px] text-white/60">{canEditGroupBudget ? 'Grubun aylık bütçesini belirleyin; kalan tutar burada görünür.' : 'Grup bütçesini grup yöneticisi belirler.'}</p>
+                    )}
+                  </section>
+                ) : budget ? (
+                  <section aria-label="Aylık bütçe">
+                    <div className="flex items-center justify-between gap-2 text-[13px]">
+                      <span className="flex items-center gap-1.5 font-semibold text-white/85">
+                        <Target className="size-4" /> Aylık bütçe
+                      </span>
+                      <button type="button" onClick={() => setBudgetOpen(true)} className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
+                        Düzenle
+                      </button>
+                    </div>
+                    <BudgetBar budget={budget} net={summary.netKurus} />
+                    <BudgetPlanLink />
+                  </section>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => setBudgetOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-white/15">
+                      <Target className="size-3.5" /> Aylık bütçe belirle
+                    </button>
+                    <BudgetPlanLink />
+                  </div>
+                )}
+              </div>
             </div>
           </motion.section>
 
-          {/* Bütçe ve en yüksek kategori */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1 lg:gap-5">
-            {budgetGroup ? (
-              <Card className="p-5" aria-label="Grup bütçesi">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-ink">
-                    <Target className="size-4 shrink-0 text-accent" /> <span className="truncate">{budgetGroup.name} bütçesi</span> <PlanBadge plan="plus" />
-                  </h2>
-                  {canEditGroupBudget && (
-                    <Button size="sm" variant="ghost" onClick={() => setGroupBudgetOpen(true)}>
-                      {budgetGroup.budgetKurus ? 'Düzenle' : 'Belirle'}
-                    </Button>
-                  )}
-                </div>
-                {budgetGroup.budgetKurus ? (
-                  <BudgetBar budget={budgetGroup.budgetKurus} net={groupNet} />
-                ) : (
-                  <p className="mt-2 text-sm text-muted">
-                    {canEditGroupBudget
-                      ? budgetGroup.cloudId
-                        ? 'Grubun aylık bütçesini belirleyin; bütün üyeler kalan tutarı görür.'
-                        : 'Bu grup için ayrı bir aylık bütçe belirleyebilirsiniz.'
-                      : 'Grup bütçesini grup yöneticisi belirler.'}
-                  </p>
-                )}
-                {budgetGroup.budgetKurus && person.value ? <p className="mt-2 text-[12px] text-subtle">Grup bütçesi, kişi filtresinden bağımsız olarak grubun toplam giderine göre hesaplanır.</p> : null}
-              </Card>
-            ) : (
-              <Card className="p-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                    <Target className="size-4 text-accent" /> Aylık bütçe
-                  </h2>
-                  <Button size="sm" variant="ghost" onClick={() => setBudgetOpen(true)}>
-                    {budget ? 'Düzenle' : 'Belirle'}
-                  </Button>
-                </div>
-                {budget ? <BudgetBar budget={budget} net={summary.netKurus} /> : <p className="mt-2 text-sm text-muted">İsteğe bağlı: bir bütçe belirlerseniz kalan veya aşılan tutar burada görünür.</p>}
-                <BudgetPlanLink />
-              </Card>
-            )}
-            <Card className="p-5">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Receipt className="size-4 text-accent" /> En yüksek harcama kategorisi
-              </h2>
-              {summary.topCategory ? (
-                <button type="button" onClick={() => openCategory(summary.topCategory!)} className="mt-3 flex w-full items-center gap-3 rounded-xl text-left transition-colors hover:bg-surface-2">
-                  <CategoryIcon category={topCat} size="lg" />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold text-ink">{topCat?.name ?? 'Kategorisiz'}</div>
-                    <div className="text-[12.5px] text-muted">
-                      Brüt giderin %{((summary.topCategory.expenseKurus / Math.max(1, summary.expenseKurus)) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}’i
-                    </div>
-                  </div>
-                  <span className="num font-semibold">{formatKurus(summary.topCategory.expenseKurus)}</span>
-                </button>
-              ) : (
-                <p className="mt-2 text-sm text-muted">Bu ay gider yok.</p>
-              )}
-              {summary.transferCount > 0 && (
-                <p className="mt-3 border-t border-line pt-3 text-[12.5px] text-subtle">
-                  {summary.transferCount} kart ödemesi/transfer ({formatKurus(summary.transferKurus)}) gider toplamına dahil edilmedi.
-                </p>
-              )}
-            </Card>
-          </div>
+          <Shortcuts className="lg:col-span-5" />
 
           {/* Kategori dağılımı */}
           <Card className="p-5 lg:col-span-7">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-base font-semibold">Kategori dağılımı</h2>
-              <span className="text-[12px] text-subtle">Brüt gider · dilime dokunun</span>
+              <h2 className="font-display text-base font-semibold">Kategoriler</h2>
+              <span className="text-[12px] text-subtle">Dokunarak işlemleri görün</span>
             </div>
             {summary.expenseKurus > 0 ? (
-              <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-[220px_1fr]">
+              <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-[200px_1fr]">
                 <CategoryDonut
                   slices={slices}
                   total={summary.expenseKurus}
-                  centerLabel="Brüt gider"
+                  centerLabel="Gider"
                   onSelect={(s) => {
                     if (s.grouped) return navigate(`/islemler?ay=${month}`)
                     const c = summary.byCategory.find((x) => (x.categoryId ?? 'none') === s.id)
                     if (c) openCategory(c)
                   }}
                 />
-                <CategoryTable rows={summary.byCategory} total={summary.expenseKurus} categories={categories} onSelect={openCategory} />
+                <div>
+                  <CategoryTable rows={allCats ? summary.byCategory : summary.byCategory.slice(0, 5)} total={summary.expenseKurus} categories={categories} onSelect={openCategory} />
+                  {summary.byCategory.length > 5 && (
+                    <button type="button" onClick={() => setAllCats((v) => !v)} className="mt-1 w-full rounded-xl py-2 text-[13px] font-medium text-accent hover:bg-accent-soft">
+                      {allCats ? 'Daha az göster' : `Tüm kategoriler (${summary.byCategory.length})`}
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <EmptyState icon={<PiggyBank className="size-6" />} title="Bu ay gider yok" className="py-6">
-                Yalnızca iade veya transfer kayıtları var.
+                Yalnızca gelir, iade veya transfer kayıtları var.
               </EmptyState>
             )}
           </Card>
 
           {/* Son işlemler */}
-          <Card className="p-5 lg:col-span-5 lg:row-span-2">
+          <Card className="p-5 lg:col-span-5">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-display text-base font-semibold">Son işlemler</h2>
               <Link to={`/islemler?ay=${month}`} className="text-[13px] font-medium text-accent hover:underline">
                 Tümü ({listMonthTxs.length})
               </Link>
             </div>
-            <TransactionList transactions={listMonthTxs.slice(0, 10)} categories={categories} compact onEdit={openTransactionForm} markUncounted={!groupFilter} />
-          </Card>
-
-          {/* Günlük gider */}
-          <Card className="p-5 lg:col-span-7">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-base font-semibold">Günlük gider</h2>
-              <span className="text-[12px] text-subtle">Çubuğa dokunarak o günün işlemlerini açın</span>
-            </div>
-            <DailyBars
-              data={daily}
-              onSelect={(day) =>
-                setDrawer({
-                  title: formatDate(daily.find((d) => d.day === day)?.date ?? today, 'long'),
-                  day,
-                  filter: (t) => dayOf(t.date) === day,
-                })
-              }
-            />
+            <TransactionList transactions={listMonthTxs.slice(0, 6)} categories={categories} compact onEdit={openTransactionForm} markUncounted={!groupFilter} />
           </Card>
 
           {/* Gruplara göre (Bireysel / Ortak / …) */}
@@ -432,11 +401,39 @@ export default function DashboardPage() {
                 rows={personRows}
                 selected={person.value}
                 actionLabel="Yalnızca bu kişiyi göster"
-                footer="Net = gider − iade. Bir kişiye dokunursanız bütün panel o kişinin harcamalarına göre süzülür."
+                footer="Net = gider − iade. Bir kişiye dokunursanız bütün sayfa o kişinin harcamalarına göre süzülür."
                 onSelect={(id) => person.set(person.value === id ? '' : id)}
               />
             </Card>
           )}
+
+          {/* Günlük gider: ayrıntı, istenince açılır */}
+          <Card className="p-5 lg:col-span-12">
+            <button type="button" onClick={() => setDailyOpen((v) => !v)} aria-expanded={dailyOpen} className="flex w-full items-center justify-between gap-2 text-left">
+              <h2 className="font-display text-base font-semibold">Günlük gider</h2>
+              <span className="flex items-center gap-1 text-[13px] font-medium text-accent">
+                {dailyOpen ? 'Gizle' : 'Göster'}
+                <ChevronDown className={cn('size-4 transition-transform', dailyOpen && 'rotate-180')} />
+              </span>
+            </button>
+            <AnimatePresence initial={false}>
+              {dailyOpen && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                  <p className="mb-3 mt-1 text-[12px] text-subtle">Çubuğa dokunarak o günün işlemlerini açın.</p>
+                  <DailyBars
+                    data={daily}
+                    onSelect={(day) =>
+                      setDrawer({
+                        title: formatDate(daily.find((d) => d.day === day)?.date ?? today, 'long'),
+                        day,
+                        filter: (t) => dayOf(t.date) === day,
+                      })
+                    }
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Card>
         </div>
       )}
 
@@ -471,12 +468,61 @@ export default function DashboardPage() {
   )
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
+function HeroStat({ label, value, tone }: { label: string; value: string; tone?: 'up' | 'down' }) {
   return (
     <div className="min-w-0">
       <dt className="truncate text-[11.5px] uppercase tracking-wide text-white/55">{label}</dt>
-      <dd className="num mt-0.5 truncate text-[15px] font-semibold sm:text-base">{value}</dd>
+      <dd className={cn('num mt-0.5 truncate text-[17px] font-semibold', tone === 'up' && 'text-emerald-200', tone === 'down' && 'text-rose-200')}>{value}</dd>
     </div>
+  )
+}
+
+/** Günün saatine göre selam. */
+function greeting(): string {
+  const h = new Date().getHours()
+  return h < 6 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar'
+}
+
+/** Ana özelliklere kısayollar: bütçe, ödemeler, hedefler, varlıklar, raporlar, koç. */
+function Shortcuts({ className }: { className?: string }) {
+  const { has } = usePlan()
+  const { month } = useUi()
+  const warnings = useBudgetStatus(month, has('advancedBudget'))?.warnings.length ?? 0
+  const due = useDuePayments(has('subscriptions')).length
+  const items: Array<{ to: string; label: string; icon: ReactNode; tone: string; feature: Feature; badge?: string }> = [
+    { to: '/butce', label: 'Bütçe', icon: <Target />, tone: 'from-amber-500 to-orange-600', feature: 'advancedBudget', badge: warnings ? `${warnings} uyarı` : undefined },
+    { to: '/odemeler', label: 'Ödemeler', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', feature: 'subscriptions', badge: due ? `${due} yaklaşan` : undefined },
+    { to: '/hedefler', label: 'Hedefler', icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', feature: 'goals' },
+    { to: '/varliklar', label: 'Varlıklar', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', feature: 'assets' },
+    { to: '/raporlar', label: 'Raporlar', icon: <ChartColumn />, tone: 'from-indigo-500 to-blue-700', feature: 'reports' },
+    { to: '/koc', label: 'Koçum', icon: <Bot />, tone: 'from-cyan-500 to-emerald-500', feature: 'aiCoach' },
+  ]
+  return (
+    <Card className={cn('flex flex-col p-5', className)} aria-label="Kısayollar">
+      <h2 className="mb-3 font-display text-base font-semibold">Kısayollar</h2>
+      <div className="grid flex-1 auto-rows-fr grid-cols-3 gap-2">
+        {items.map((it, i) => {
+          const need = has(it.feature) ? null : FEATURE_PLAN[it.feature]
+          return (
+            <motion.div key={it.to} className="flex" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 + i * 0.04, type: 'spring', stiffness: 380, damping: 28 }}>
+              <Link
+                to={it.to}
+                className="pressable relative flex min-h-[92px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface-2 px-1 py-3 text-center transition-colors hover:border-line-strong hover:bg-surface-3"
+              >
+                <span className={cn('grid size-10 place-items-center rounded-xl bg-gradient-to-br text-white shadow-card [&>svg]:size-5', it.tone)}>{it.icon}</span>
+                <span className="text-[12.5px] font-semibold leading-tight text-ink">{it.label}</span>
+                {it.badge && <span className="absolute right-1.5 top-1.5 rounded-full bg-warning-soft px-1.5 text-[10px] font-bold leading-4 text-warning">{it.badge}</span>}
+                {need && (
+                  <span className={cn('absolute right-1.5 top-1.5 rounded-full px-1.5 text-[9.5px] font-bold leading-4 text-white', need === 'plus' ? 'bg-emerald-600' : 'bg-violet-600')}>
+                    {need === 'plus' ? 'Plus' : 'Plus+'}
+                  </span>
+                )}
+              </Link>
+            </motion.div>
+          )
+        })}
+      </div>
+    </Card>
   )
 }
 
@@ -557,42 +603,39 @@ function BudgetPlanLink() {
   const warnings = useBudgetStatus(month, enabled)?.warnings ?? []
   const over = warnings.some((w) => w.status.state === 'over')
   return (
-    <>
-      <Link to="/butce" className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-[13px] font-medium text-accent hover:underline">
-        <span className="flex items-center gap-2">
-          {enabled ? 'Bütçe planı' : 'Kategori limitleri ve ay sonu tahmini'}
-          {!enabled && <PlanBadge plan="plus" />}
-        </span>
-        {warnings.length > 0 ? (
-          <span className={cn('rounded-full px-2 py-0.5 text-[11.5px] font-semibold', over ? 'bg-danger-soft text-danger' : 'bg-warning-soft text-warning')}>{warnings.length} uyarı</span>
-        ) : (
-          <ChevronRight className="size-4" />
-        )}
-      </Link>
-    </>
+    <Link to="/butce" className="mt-2 inline-flex items-center gap-2 rounded-full px-1 py-1 text-[12.5px] font-semibold text-emerald-200 hover:text-white">
+      {enabled ? 'Bütçe planı' : 'Kategori limitleri'}
+      {!enabled && <PlanBadge plan="plus" />}
+      {warnings.length > 0 ? (
+        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', over ? 'bg-rose-400/20 text-rose-100' : 'bg-amber-400/20 text-amber-100')}>{warnings.length} uyarı</span>
+      ) : (
+        <ChevronRight className="size-4" />
+      )}
+    </Link>
   )
 }
 
+/** Bütçe çubuğu (koyu özet kartının içinde). */
 function BudgetBar({ budget, net }: { budget: number; net: number }) {
   const ratio = net / budget
   const over = net > budget
   return (
-    <div className="mt-3">
+    <div className="mt-2">
       <div className="flex items-baseline justify-between gap-2">
-        <span className={cn('num font-display text-xl font-bold', over ? 'text-danger' : 'text-ink')}>
+        <span className={cn('num font-display text-lg font-bold', over ? 'text-rose-200' : 'text-white')}>
           {over ? `${formatKurus(net - budget)} aşıldı` : `${formatKurus(budget - net)} kaldı`}
         </span>
-        <span className="num text-[12.5px] text-muted">/ {formatKurus(budget)}</span>
+        <span className="num text-[12.5px] text-white/60">/ {formatKurus(budget)}</span>
       </div>
-      <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(1, Math.max(0, ratio)) * 100)} aria-label="Bütçe kullanımı">
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/12" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(1, Math.max(0, ratio)) * 100)} aria-label="Bütçe kullanımı">
         <motion.div
-          className={cn('h-full rounded-full', over ? 'bg-danger' : ratio > 0.85 ? 'bg-amber-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500')}
+          className={cn('h-full rounded-full', over ? 'bg-rose-400' : ratio > 0.85 ? 'bg-amber-400' : 'bg-gradient-to-r from-emerald-300 to-cyan-300')}
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(100, Math.max(0, ratio * 100))}%` }}
-          transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
         />
       </div>
-      <p className="mt-1.5 text-[12px] text-subtle">Net gidere göre %{Math.max(0, Math.round(ratio * 100))} kullanıldı.</p>
+      <p className="mt-1.5 text-[12px] text-white/55">Net gidere göre %{Math.max(0, Math.round(ratio * 100))} kullanıldı.</p>
     </div>
   )
 }
@@ -799,7 +842,7 @@ function groupBreakdown(txs: Transaction[], month: string, groups: SpendGroup[],
   for (const g of groups) rows.set(g.id, { id: g.id, name: g.name, color: g.color, expenseKurus: 0, refundKurus: 0, count: 0 })
   rows.set('none', { id: 'none', name: 'Grupsuz', color: '#94a3b8', expenseKurus: 0, refundKurus: 0, count: 0 })
   for (const t of txs) {
-    if (periodOf(t.date, startDay) !== month || t.type === 'transfer') continue
+    if (periodOf(t.date, startDay) !== month || !isSpending(t)) continue
     const r = rows.get(t.groupId && rows.has(t.groupId) ? t.groupId : 'none')!
     r.count++
     if (t.type === 'expense') r.expenseKurus += t.amountKurus
@@ -814,7 +857,7 @@ function groupBreakdown(txs: Transaction[], month: string, groups: SpendGroup[],
 function personBreakdown(txs: Transaction[], members: Map<string, Member>, selfId: string | null): GroupRow[] {
   const rows = new Map<string, GroupRow>()
   for (const t of txs) {
-    if (t.type === 'transfer') continue
+    if (!isSpending(t)) continue
     const id = t.memberId ?? selfId ?? 'self'
     let r = rows.get(id)
     if (!r) {

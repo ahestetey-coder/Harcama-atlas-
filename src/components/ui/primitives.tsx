@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react'
+import { motion } from 'motion/react'
 import { forwardRef, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
@@ -207,6 +208,8 @@ export function Segmented<T extends string>({
   label: string
   className?: string
 }) {
+  // Seçili zemin seçenekler arasında kayar; her grup kendi kimliğini kullanır
+  const pill = useId()
   return (
     <div role="radiogroup" aria-label={label} className={cn('inline-flex rounded-xl border border-line bg-surface-2 p-1', className)}>
       {options.map((o) => (
@@ -217,12 +220,15 @@ export function Segmented<T extends string>({
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            'inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all duration-150',
-            value === o.value ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink',
+            'relative inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors duration-150',
+            value === o.value ? 'text-ink' : 'text-muted hover:text-ink',
           )}
         >
-          {o.icon}
-          {o.label}
+          {value === o.value && <motion.span layoutId={pill} className="absolute inset-0 rounded-lg bg-surface shadow-card" transition={{ type: 'spring', stiffness: 500, damping: 36 }} aria-hidden />}
+          <span className="relative inline-flex items-center gap-1.5">
+            {o.icon}
+            {o.label}
+          </span>
         </button>
       ))}
     </div>

@@ -14,7 +14,7 @@ export function validateTransaction(
   if (!t.date || !isIsoDate(t.date)) errors.date = 'Geçerli bir tarih girin.'
   if (!Number.isSafeInteger(t.amountKurus) || t.amountKurus <= 0) errors.amount = 'Sıfırdan büyük bir tutar girin.'
   else if (t.amountKurus > MAX_AMOUNT_KURUS) errors.amount = 'Tutar olağan dışı büyük; kontrol edin.'
-  if (!['expense', 'refund', 'transfer'].includes(t.type)) errors.type = 'İşlem türünü seçin.'
+  if (!['expense', 'refund', 'transfer', 'income'].includes(t.type)) errors.type = 'İşlem türünü seçin.'
   if (!t.description || !t.description.trim()) errors.description = 'Açıklama veya iş yeri girin.'
   if (t.type === 'expense' && !t.categoryId) errors.category = 'Gider için kategori seçilmeli.'
   if (t.categoryId && knownCategoryIds && !knownCategoryIds.has(t.categoryId)) errors.category = 'Seçilen kategori bulunamadı.'

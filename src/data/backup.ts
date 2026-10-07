@@ -16,7 +16,7 @@ const transactionSchema = z.object({
   id: z.string().min(1),
   date: isoDate,
   amountKurus: kurus.positive(),
-  type: z.enum(['expense', 'refund', 'transfer']),
+  type: z.enum(['expense', 'refund', 'transfer', 'income']),
   description: z.string().min(1),
   normalizedDescription: z.string(),
   categoryId: z.string().nullable(),

@@ -16,7 +16,7 @@ const KIND_LABEL = { pdf: 'PDF', csv: 'CSV', xlsx: 'Excel', image: 'Görsel' }
 export default function ImportHistoryPage() {
   const imports = useImports()
   const repo = useRepo()
-  const { toast } = useUi()
+  const { toast, openImport } = useUi()
   const navigate = useNavigate()
   const [undo, setUndo] = useState<{ rec: ImportRecord; count: number; edited: number } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -31,7 +31,7 @@ export default function ImportHistoryPage() {
       <PageHeader title="Aktarım geçmişi" subtitle="Her içe aktarma ayrı kaydedilir ve tümüyle geri alınabilir. Orijinal dosyalar saklanmaz." />
       <Card className="overflow-hidden">
         {!imports ? null : imports.length === 0 ? (
-          <EmptyState icon={<History className="size-6" />} title="Henüz aktarım yok" action={<Button variant="primary" onClick={() => navigate('/ice-aktar')}>Dosya içe aktar</Button>}>
+          <EmptyState icon={<History className="size-6" />} title="Henüz aktarım yok" action={<Button variant="primary" onClick={() => openImport()}>Dosya içe aktar</Button>}>
             İçe aktardığınız her dosya burada listelenir.
           </EmptyState>
         ) : (

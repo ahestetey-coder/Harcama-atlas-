@@ -12,6 +12,7 @@ import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { cn } from '../lib/cn'
 import { useGoals, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
+import { useStartNew } from '../lib/useStartNew'
 
 /** Hazır hedefler: ad, simge ve renk önerir; tutar ve tarihi kullanıcı girer. */
 const PRESETS = [
@@ -38,6 +39,7 @@ type Moving = { goal: SavingsGoal; dir: 1 | -1 } | null
 
 export default function GoalsPage() {
   const [editing, setEditing] = useState<Draft | null>(null)
+  useStartNew(() => setEditing({}))
   return (
     <div>
       <PageHeader

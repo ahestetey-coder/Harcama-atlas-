@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { addExpense, open } from './helpers'
+import { addExpense, expectTxTotals, filterCategory, open } from './helpers'
 
 test('kategori seçilmeden gider kaydedilmez, seçilince kaydedilir', async ({ page }) => {
   await open(page)
@@ -24,7 +24,7 @@ test('düzenleme, arama, filtre ve geri alınabilir silme', async ({ page }) => 
   await expect(page.getByRole('dialog')).toBeHidden()
   await addExpense(page, { amount: '250,50', description: 'Benzinci', category: 'Akaryakıt' })
   await expect(page.getByRole('dialog')).toBeHidden()
-  await expect(page.getByText(/2 işlem · Gider 350,50 ₺/)).toBeVisible()
+  await expectTxTotals(page, 2, '350,50 ₺')
 
   // Düzenle
   await page.getByRole('button', { name: 'Kahve Evi düzenle' }).click()
@@ -32,17 +32,17 @@ test('düzenleme, arama, filtre ve geri alınabilir silme', async ({ page }) => 
   await dialog.getByLabel('Tutar (TL)').fill('120,25')
   await dialog.getByRole('button', { name: 'Değişiklikleri kaydet' }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.getByText(/2 işlem · Gider 370,75 ₺/)).toBeVisible()
+  await expectTxTotals(page, 2, '370,75 ₺')
 
   // Ara (Türkçe harf/büyük-küçük harf duyarsız)
   await page.getByLabel('Açıklama veya notta ara').fill('KAHVE')
-  await expect(page.getByText(/^1 işlem/)).toBeVisible()
+  await expectTxTotals(page, 1)
   await page.getByLabel('Açıklama veya notta ara').fill('')
 
   // Kategori filtresi
-  await page.getByLabel('Kategori', { exact: true }).selectOption({ label: 'Akaryakıt' })
-  await expect(page.getByText(/^1 işlem · Gider 250,50 ₺/)).toBeVisible()
-  await page.getByLabel('Kategori', { exact: true }).selectOption({ index: 0 })
+  await filterCategory(page, 'Akaryakıt')
+  await expectTxTotals(page, 1, '250,50 ₺')
+  await filterCategory(page, null)
 
   // Sil ve geri al
   await page.getByRole('button', { name: 'Benzinci sil' }).click()
@@ -131,4 +131,30 @@ test('ay değiştirme: toplamlar, iade ve grafik tutarlı', async ({ page }) => 
   const drawer = page.getByRole('dialog')
   await expect(drawer.getByRole('button', { name: /Geçen Ay Giyim, 1\.000,00 ₺/ })).toBeVisible()
   await expect(drawer).toContainText(/Net\s*800,00 ₺/)
+})
+
+test('gelir kaydı: harcama toplamına girmez, özette gelir ve kalan görünür', async ({ page }) => {
+  await open(page)
+  await addExpense(page, { amount: '1.000', description: 'Market Alışverişi', category: 'Market' })
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await page.getByRole('button', { name: 'Yeni ekle' }).click()
+  await page.getByRole('dialog', { name: 'Ne eklemek istersiniz?' }).getByRole('button', { name: /^Gelir/ }).click()
+  const form = page.getByRole('dialog', { name: 'Gelir ekle' })
+  await form.getByLabel('Tutar (TL)').fill('30.000')
+  await form.getByLabel('Açıklama / iş yeri').fill('Maaş')
+  await expect(form.getByRole('radiogroup', { name: 'Harcama grubu' })).toHaveCount(0)
+  await form.getByRole('button', { name: 'Kaydet', exact: true }).click()
+  await expect(page.getByText('Gelir kaydedildi.')).toBeVisible()
+
+  const hero = page.locator('section[aria-labelledby="net-title"]')
+  await expect(hero).toContainText('1.000,00 ₺')
+  await expect(hero).toContainText('Gelir30.000,00 ₺')
+  await expect(hero).toContainText('Kalan29.000,00 ₺')
+
+  await open(page, 'islemler')
+  await expectTxTotals(page, 2, '1.000,00 ₺')
+  await expect(page.getByRole('group', { name: 'Gelir', exact: true })).toContainText('30.000,00 ₺')
+  await page.getByRole('radiogroup', { name: 'İşlem türü' }).getByRole('radio', { name: 'Gelir' }).click()
+  await expectTxTotals(page, 1)
+  await expect(page.getByRole('row', { name: /Maaş/ })).toContainText('+30.000,00')
 })

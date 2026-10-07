@@ -1,5 +1,5 @@
 import { addDays, dayOf, diffDays, periodLength, periodOf, periodRange } from './dates'
-import type { Category, MonthKey, Transaction } from './types'
+import { isSpending, type Category, type MonthKey, type Transaction } from './types'
 
 export interface CategoryTotal {
   categoryId: string | null
@@ -16,6 +16,9 @@ export interface MonthSummary {
   refundKurus: number
   netKurus: number
   transferKurus: number
+  /** Dönemin gelirleri (harcama toplamlarına girmez). */
+  incomeKurus: number
+  incomeCount: number
   /** Gider + iade işlemleri (transferler hariç). */
   count: number
   transferCount: number
@@ -41,6 +44,8 @@ export function summarizeMonth(all: Transaction[], month: MonthKey, upToDay?: nu
   let expense = 0
   let refund = 0
   let transfer = 0
+  let income = 0
+  let incomeCount = 0
   let count = 0
   let transferCount = 0
   for (const t of all) {
@@ -52,6 +57,11 @@ export function summarizeMonth(all: Transaction[], month: MonthKey, upToDay?: nu
     if (t.type === 'transfer') {
       transfer += amt
       transferCount++
+      continue
+    }
+    if (t.type === 'income') {
+      income += amt
+      incomeCount++
       continue
     }
     count++
@@ -81,6 +91,8 @@ export function summarizeMonth(all: Transaction[], month: MonthKey, upToDay?: nu
     refundKurus: refund,
     netKurus: expense - refund,
     transferKurus: transfer,
+    incomeKurus: income,
+    incomeCount,
     count,
     transferCount,
     byCategory,
@@ -108,7 +120,7 @@ export type Comparison =
  * - İçinde bulunulan ay tamamlanmadıysa önceki ayın aynı gün aralığıyla karşılaştırılır ve etiketlenir.
  */
 export function compareWithPrevious(all: Transaction[], month: MonthKey, previousMonth: MonthKey, today: string, startDay = 1): Comparison {
-  const prevHasData = all.some((t) => periodOf(t.date, startDay) === previousMonth && t.type !== 'transfer')
+  const prevHasData = all.some((t) => periodOf(t.date, startDay) === previousMonth && isSpending(t))
   if (!prevHasData) return { kind: 'none', reason: 'Önceki ayda karşılaştırılacak kayıt yok.' }
   const isCurrent = periodOf(today, startDay) === month
   const upTo = isCurrent ? diffDays(today, periodRange(month, startDay).start) + 1 : undefined

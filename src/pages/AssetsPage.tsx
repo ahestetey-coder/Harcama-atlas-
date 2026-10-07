@@ -29,6 +29,7 @@ import { cn } from '../lib/cn'
 import { useInstallmentDebt } from '../state/budget'
 import { useAssets, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
+import { useStartNew } from '../lib/useStartNew'
 
 /** Dağılım renkleri: sabit sırayla (tür → renk), açık ve koyu temada doğrulanmış palet. */
 const KIND_COLOR: Record<Exclude<AssetKind, 'debt'>, string> = {
@@ -73,6 +74,7 @@ const pct = (part: number, whole: number) => (whole > 0 ? `%${((part / whole) * 
 
 export default function AssetsPage() {
   const [editing, setEditing] = useState<Editing>(null)
+  useStartNew(() => setEditing({ kind: 'gold' }))
   return (
     <div>
       <PageHeader

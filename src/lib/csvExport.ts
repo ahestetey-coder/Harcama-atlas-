@@ -17,7 +17,7 @@ export function transactionsToCsv(txs: Transaction[], categories: Map<string, Ca
   const header = ['Tarih', 'Açıklama', 'Tür', 'Tutar (TL)', 'Kategori', 'Grup', 'Ödeme aracı', 'Kart/hesap', 'Kaynak', 'Taksit', 'Döviz', 'Not']
   const lines = [header.join(';')]
   for (const t of txs) {
-    const signed = t.type === 'refund' ? -t.amountKurus : t.amountKurus
+    const signed = t.type === 'refund' || t.type === 'income' ? -t.amountKurus : t.amountKurus
     const row = [
       formatDate(t.date),
       t.description,

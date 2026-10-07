@@ -22,6 +22,14 @@ import { ACCEPT, useImportFlow } from './useImportFlow'
 const STEPS = ['Dosya seç', 'Oku', 'İncele ve düzelt', 'Kaydet']
 
 export default function ImportPage() {
+  return <ImportFlow />
+}
+
+/**
+ * İçe aktarma akışı. Sayfa olarak (/ice-aktar) veya "+" menüsünden bulunulan sayfanın üstünde açılan
+ * pencerede (embedded) çalışır; pencerede başka sayfaya geçmeden önce `onLeave` ile pencere kapanır.
+ */
+export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: boolean; onLeave?: () => void; onDirtyChange?: (dirty: boolean) => void } = {}) {
   const flow = useImportFlow()
   const { stage, info, review } = flow
   const { repo, isDemo } = useData()
@@ -37,7 +45,14 @@ export default function ImportPage() {
     })
   }, [pendingImport, stage.k, selectFile, setPendingImport, toast])
   const cycle = useCycle().startDay
-  const navigate = useNavigate()
+  const nav = useNavigate()
+  const navigate = (to: string) => {
+    onLeave?.()
+    nav(to)
+  }
+  // Okunan veya incelenen bir dosya varken pencere kapatılmadan önce sorulur
+  const dirty = stage.k !== 'select' && stage.k !== 'done' && stage.k !== 'error'
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange])
   const [payment, setPayment] = useState<PaymentMethod | ''>('credit')
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
@@ -89,7 +104,7 @@ export default function ImportPage() {
 
   return (
     <div>
-      <PageHeader title="İçe aktar" subtitle="Dosya seç → Oku → İncele/düzelt → Onayla. Onaylamadan hiçbir satır toplamlara eklenmez." />
+      {!embedded && <PageHeader title="İçe aktar" subtitle="Dosya seç → Oku → İncele/düzelt → Onayla. Onaylamadan hiçbir satır toplamlara eklenmez." />}
       <ol className="mb-5 flex items-center gap-1.5 overflow-x-auto pb-1 text-[12.5px] sm:gap-3" aria-label="Adımlar">
         {STEPS.map((s, i) => (
           <li key={s} className="flex shrink-0 items-center gap-1.5 sm:gap-3" aria-current={i === stepIndex ? 'step' : undefined}>
@@ -240,7 +255,7 @@ export default function ImportPage() {
                 Yeni dosya
               </Button>
             </div>
-            <Link to="/aktarimlar" className="mt-4 inline-flex items-center gap-1 text-[13px] text-muted hover:text-ink">
+            <Link to="/aktarimlar" onClick={onLeave} className="mt-4 inline-flex items-center gap-1 text-[13px] text-muted hover:text-ink">
               <Undo2 className="size-3.5" /> Yanlışlık mı var? Aktarım geçmişinden geri alabilirsiniz.
             </Link>
           </Card>

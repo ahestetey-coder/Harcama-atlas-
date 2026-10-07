@@ -31,7 +31,8 @@ export function Modal({
   description?: ReactNode
   children: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  /** 'full': neredeyse tam ekran (içe aktarma gibi uzun akışlar). */
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
   side?: boolean
   initialFocusRef?: React.RefObject<HTMLElement | null>
 }) {
@@ -42,7 +43,8 @@ export function Modal({
   useLayoutEffect(() => {
     if (open) returnFocus.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
   }, [open])
-  const widths = { sm: 'lg:max-w-md', md: 'lg:max-w-lg', lg: 'lg:max-w-2xl', xl: 'lg:max-w-4xl' }
+  const widths = { sm: 'lg:max-w-md', md: 'lg:max-w-lg', lg: 'lg:max-w-2xl', xl: 'lg:max-w-4xl', full: 'lg:max-w-6xl' }
+  const full = size === 'full'
   const asDrawer = side && desktop
   const motionProps = desktop
     ? asDrawer
@@ -90,8 +92,8 @@ export function Modal({
                   asDrawer
                     ? 'inset-y-3 right-3 w-[min(520px,calc(100vw-24px))] rounded-3xl'
                     : desktop
-                      ? cn('left-1/2 top-[8vh] max-h-[84vh] w-[calc(100vw-32px)] rounded-3xl', widths[size])
-                      : 'sheet-mobile inset-x-0 rounded-t-3xl',
+                      ? cn('left-1/2 w-[calc(100vw-32px)] rounded-3xl', full ? 'top-[4vh] h-[92vh]' : 'top-[8vh] max-h-[84vh]', widths[size])
+                      : cn('sheet-mobile inset-x-0 rounded-t-3xl', full && 'sheet-full'),
                 )}
                 style={desktop && !asDrawer ? { translateX: '-50%' } : undefined}
               >

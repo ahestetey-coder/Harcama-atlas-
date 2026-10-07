@@ -1,4 +1,5 @@
 import {
+  ArrowDownLeft,
   ArrowLeftRight,
   Baby,
   BookOpen,
@@ -98,6 +99,15 @@ export function CategoryIcon({ category, size = 'md', className }: { category?: 
   )
 }
 
+/** Kategorisiz gelir satırının simgesi. */
+export function IncomeIcon({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  return (
+    <span className={cn('inline-grid shrink-0 place-items-center bg-accent-soft text-accent', size === 'sm' ? 'size-7 rounded-lg [&>svg]:size-3.5' : 'size-9 rounded-xl [&>svg]:size-[18px]')} aria-hidden>
+      <ArrowDownLeft />
+    </span>
+  )
+}
+
 export function TransferIcon({ size = 'md' }: { size?: 'sm' | 'md' }) {
   return (
     <span className={cn('inline-grid shrink-0 place-items-center bg-surface-2 text-muted', size === 'sm' ? 'size-7 rounded-lg [&>svg]:size-3.5' : 'size-9 rounded-xl [&>svg]:size-[18px]')} aria-hidden>
@@ -114,6 +124,12 @@ export function Money({ kurus, type = 'expense', className, plain }: { kurus: nu
     return (
       <span className={cn('num text-accent', className)}>
         <span className="sr-only">İade: </span>+{text}
+      </span>
+    )
+  if (type === 'income')
+    return (
+      <span className={cn('num text-accent', className)}>
+        <span className="sr-only">Gelir: </span>+{text}
       </span>
     )
   if (type === 'transfer')

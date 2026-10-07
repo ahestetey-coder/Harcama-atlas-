@@ -16,6 +16,7 @@ import { usePersonalCycle } from '../state/cycle'
 import { useCategories, useCategoryMap, useGroupMap, useGroups, useRecurring, useRepo } from '../state/data'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
+import { useStartNew } from '../lib/useStartNew'
 
 /** Gelecek yük grafiği renkleri (açık ve koyu yüzeyde doğrulandı). */
 const COLOR_RECURRING = '#059669'
@@ -25,6 +26,7 @@ type Draft = Partial<RecurringPayment> & { kind: RecurringKind }
 
 export default function PaymentsPage() {
   const [editing, setEditing] = useState<Draft | null>(null)
+  useStartNew(() => setEditing({ kind: 'subscription' }))
   return (
     <div>
       <PageHeader
