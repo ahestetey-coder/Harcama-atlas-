@@ -46,7 +46,7 @@ describe('ilk kurulum ve göç', () => {
     const cats = await db.categories.toArray()
     expect(cats.map((c) => c.name)).toEqual(expect.arrayContaining(['Market', 'Akaryakıt', 'Restoran/Kafe', 'Ulaşım', 'Faturalar', 'Kira/Ev', 'Sağlık', 'Eğitim', 'Giyim', 'Bebek/Çocuk', 'Eğlence', 'Abonelikler', 'Diğer']))
     expect(await db.rules.count()).toBeGreaterThan(20)
-    expect(db.verno).toBe(8)
+    expect(db.verno).toBe(9)
     const selfId = (await repo.getSettings()).selfMemberId
     expect(selfId).toBeTruthy()
     expect((await db.members.get(selfId!))?.name).toBe('Ben')

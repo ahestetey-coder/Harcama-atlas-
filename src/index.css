@@ -38,6 +38,8 @@
   --asset-5: #e87ba4;
   --asset-6: #008300;
   --asset-7: #4a3aa7;
+  --asset-8: #0b9bb8;
+  --asset-other: #8b95a1;
   color-scheme: light;
 }
 
@@ -49,6 +51,8 @@
   --asset-5: #d55181;
   --asset-6: #008300;
   --asset-7: #9085e9;
+  --asset-8: #0b9bb8;
+  --asset-other: #6b7684;
   --bg: #080d18;
   --bg-accent: radial-gradient(1200px 600px at 100% -10%, rgb(16 185 129 / 0.1), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, rgb(6 182 212 / 0.08), transparent 60%);

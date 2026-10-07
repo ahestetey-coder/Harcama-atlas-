@@ -41,7 +41,7 @@ import { useAssets, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
 import { useStartNew } from '../lib/useStartNew'
 import { useAuth } from '../state/auth'
-import { fetchMarket } from '../cloud/rates'
+import { fetchMarket, searchSymbols, type SymbolSuggestion } from '../cloud/rates'
 
 /** Dağılım renkleri: sabit sırayla (tür → renk), açık ve koyu temada doğrulanmış palet. */
 const KIND_COLOR: Record<Exclude<AssetKind, 'debt'>, string> = {
@@ -51,8 +51,9 @@ const KIND_COLOR: Record<Exclude<AssetKind, 'debt'>, string> = {
   gold: 'var(--asset-4)',
   stock: 'var(--asset-5)',
   cash: 'var(--asset-6)',
-  other: 'var(--asset-7)',
+  foreign: 'var(--asset-7)',
   crypto: 'var(--asset-8)',
+  other: 'var(--asset-other)',
 }
 
 const PRESETS: Partial<Record<AssetKind, { name: string; unit: string; symbol?: string }[]>> = {
@@ -84,12 +85,13 @@ const PRESETS: Partial<Record<AssetKind, { name: string; unit: string; symbol?: 
 
 const STALE_DAYS = 30
 
-/** TEFAS, sunucu erişimine kapalı (canlı denemede istek reddedildi); fon fiyatı alınamazsa elle girilir. */
-const TEFAS_BLOCKED = 'TEFAS şu an otomatik fiyat vermiyor; fiyatı elle girin'
 
 /** Sembol girilebilen türler. */
-const SYMBOL_KINDS: AssetKind[] = ['stock', 'fund', 'crypto']
-const defaultMarket = (k: AssetKind): QuoteMarket => (k === 'fund' ? 'tefas' : k === 'crypto' ? 'crypto' : 'bist')
+const SYMBOL_KINDS: AssetKind[] = ['stock', 'foreign', 'fund', 'crypto']
+const defaultMarket = (k: AssetKind): QuoteMarket => (k === 'fund' ? 'tefas' : k === 'crypto' ? 'crypto' : k === 'foreign' ? 'us' : 'bist')
+const SOURCE_TEXT: Partial<Record<AssetKind, string>> = { stock: 'Borsa İstanbul', foreign: 'Yabancı borsa', fund: 'TEFAS', crypto: 'Kripto (USDT)' }
+const SYMBOL_PLACEHOLDER: Partial<Record<AssetKind, string>> = { stock: 'Örn. THYAO', foreign: 'Örn. AAPL, SPY, SAP.DE', fund: 'Örn. TTE', crypto: 'Örn. BTC' }
+const NAME_PLACEHOLDER: Partial<Record<AssetKind, string>> = { stock: 'Örn. Aselsan', foreign: 'Örn. Apple, S&P 500', fund: 'Örn. İş Portföy teknoloji', crypto: 'Örn. Bitcoin' }
 
 type Editing = { kind: AssetKind; asset?: Asset } | null
 type Acting = { asset: Asset; mode: 'trade' | 'price' } | null
@@ -397,7 +399,7 @@ function useLivePrices(assets: Asset[] | undefined) {
         const ok = data.quotes.filter((q) => q.ok).map((q) => ({ market: q.market, symbol: q.symbol, priceTl: q.priceTl!, date: q.date! }))
         const updates = [...(data.date ? rateUpdates(list, data.rates, data.date) : []), ...quoteUpdates(list, ok)]
         for (const u of updates) await repo.setAssetValuation(u.assetId, u.valuation)
-        const errors = new Map(data.quotes.filter((q) => !q.ok).map((q) => [`${q.market}:${q.symbol}`, q.market === 'tefas' ? TEFAS_BLOCKED : (q.error ?? 'Fiyat alınamadı')]))
+        const errors = new Map(data.quotes.filter((q) => !q.ok).map((q) => [`${q.market}:${q.symbol}`, q.error ?? 'Fiyat alınamadı']))
         const failed: Record<string, string> = {}
         for (const a of list) {
           const q = a.archived ? null : autoQuote(a)
@@ -793,6 +795,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
   const debt = f.kind === 'debt'
   const balance = isBalanceKind(f.kind)
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }))
+  const pick = (sg: SymbolSuggestion) => setF((p) => ({ ...p, symbol: sg.symbol, name: tidyName(sg.name).slice(0, 60) }))
 
   const save = async () => {
     setError(undefined)
@@ -885,38 +888,29 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
             ))}
           </div>
         )}
-        <Field label="Ad" htmlFor="asset-name">
-          <Input id="asset-name" value={f.name} maxLength={60} onChange={(e) => set('name', e.target.value)} placeholder={debt ? 'Örn. Taşıt kredisi' : f.kind === 'fund' ? 'Örn. fon adı' : f.kind === 'stock' ? 'Örn. Türk Hava Yolları' : f.kind === 'crypto' ? 'Örn. Bitcoin' : ''} />
+        <Field label="Ad" htmlFor="asset-name" hint={SYMBOL_KINDS.includes(f.kind) ? 'Yazdıkça öneriler çıkar; seçince sembol de dolar' : undefined}>
+          {SYMBOL_KINDS.includes(f.kind) ? (
+            <SuggestInput id="asset-name" value={f.name} maxLength={60} market={f.market} minChars={2} placeholder={NAME_PLACEHOLDER[f.kind]} onChange={(v) => set('name', v)} onPick={pick} />
+          ) : (
+            <Input id="asset-name" value={f.name} maxLength={60} onChange={(e) => set('name', e.target.value)} placeholder={debt ? 'Örn. Taşıt kredisi' : ''} />
+          )}
         </Field>
         {SYMBOL_KINDS.includes(f.kind) && (
           <div className="grid grid-cols-2 gap-3">
-            {f.kind === 'stock' ? (
-              <Field label="Borsa" htmlFor="asset-market">
-                <Select
-                  id="asset-market"
-                  value={f.market}
-                  onChange={(e) => {
-                    const m = e.target.value as QuoteMarket
-                    setF((p) => ({ ...p, market: m, unit: m === 'us' && p.unit === 'lot' ? 'adet' : m === 'bist' && p.unit === 'adet' ? 'lot' : p.unit }))
-                  }}
-                >
-                  <option value="bist">Borsa İstanbul</option>
-                  <option value="us">ABD (hisse, ETF)</option>
-                </Select>
-              </Field>
-            ) : (
-              <Field label="Kaynak" htmlFor="asset-market">
-                <Input id="asset-market" value={f.kind === 'fund' ? 'TEFAS' : 'Kripto (USDT)'} readOnly disabled />
-              </Field>
-            )}
-            <Field label={f.kind === 'fund' ? 'Fon kodu' : 'Sembol'} htmlFor="asset-symbol" hint={f.kind === 'fund' ? 'TEFAS otomatik fiyatı şu an alınamıyor; fiyatı elle güncelleyin' : 'Güncel fiyat için; boş bırakırsanız fiyatı siz girersiniz'}>
-              <Input
+            <Field label="Kaynak" htmlFor="asset-market">
+              <Input id="asset-market" value={SOURCE_TEXT[f.kind] ?? ''} readOnly disabled />
+            </Field>
+            <Field label={f.kind === 'fund' ? 'Fon kodu' : 'Sembol'} htmlFor="asset-symbol" hint="Güncel fiyat için; boş bırakırsanız fiyatı siz girersiniz">
+              <SuggestInput
                 id="asset-symbol"
                 value={f.symbol}
                 maxLength={15}
-                autoCapitalize="characters"
-                onChange={(e) => set('symbol', e.target.value.toUpperCase())}
-                placeholder={f.kind === 'fund' ? 'Örn. TTE' : f.kind === 'crypto' ? 'Örn. BTC' : f.market === 'us' ? 'Örn. AAPL, SPY' : 'Örn. THYAO'}
+                market={f.market}
+                minChars={1}
+                upper
+                placeholder={SYMBOL_PLACEHOLDER[f.kind]}
+                onChange={(v) => set('symbol', v)}
+                onPick={pick}
               />
             </Field>
           </div>
@@ -937,7 +931,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
               <Field label={`Miktar (${f.unit || 'birim'})`} htmlFor="asset-first-qty">
                 <Input id="asset-first-qty" inputMode="decimal" value={f.qty} onChange={(e) => set('qty', e.target.value)} placeholder="0" />
               </Field>
-              <Field label="Birim alış fiyatı (TL)" htmlFor="asset-first-price" hint={f.kind === 'crypto' || (f.kind === 'stock' && f.market === 'us') ? 'Dolarla aldıysanız alış günündeki kurla TL karşılığını girin' : undefined}>
+              <Field label="Birim alış fiyatı (TL)" htmlFor="asset-first-price" hint={f.kind === 'crypto' || f.kind === 'foreign' ? 'Dövizle aldıysanız alış günündeki kurla TL karşılığını girin' : undefined}>
                 <Input id="asset-first-price" inputMode="decimal" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="0,00" />
               </Field>
             </>
@@ -964,5 +958,137 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
         )}
       </div>
     </Modal>
+  )
+}
+
+/** Büyük harfli uzun fon/şirket adlarını okunur hale getirir ("İŞ PORTFÖY BIST" → "İş Portföy BIST"). */
+function tidyName(name: string): string {
+  if (name !== name.toLocaleUpperCase('tr')) return name
+  return name
+    .toLocaleLowerCase('tr')
+    .replace(/(^|[\s(/-])(\p{L})/gu, (_, a: string, b: string) => a + b.toLocaleUpperCase('tr'))
+    .replace(/\b(Bist|Abd|Tl|Usd|Eur|Etf|Byf|Ab)\b/g, (w) => w.toLocaleUpperCase('tr'))
+}
+
+/**
+ * Yazarken öneri gösteren alan (sembol ya da ad). Öneriler giriş yapılmışsa sunucudan gelir; istek yalnızca
+ * arama metnini taşır. Ok tuşları ve Enter ile seçilir, Esc kapatır.
+ */
+function SuggestInput({
+  id,
+  value,
+  onChange,
+  onPick,
+  market,
+  minChars,
+  maxLength,
+  placeholder,
+  upper,
+}: {
+  id: string
+  value: string
+  onChange: (v: string) => void
+  onPick: (s: SymbolSuggestion) => void
+  market: QuoteMarket
+  minChars: number
+  maxLength: number
+  placeholder?: string
+  upper?: boolean
+}) {
+  const { backend, user } = useAuth()
+  const client = backend && user ? backend.client : null
+  const [items, setItems] = useState<SymbolSuggestion[]>([])
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(-1)
+  const [query, setQuery] = useState<string | null>(null)
+  const listId = `${id}-oneriler`
+
+  useEffect(() => {
+    if (!client || query === null) return
+    const q = query.trim()
+    if (q.length < minChars) return
+    let stale = false
+    const t = setTimeout(() => {
+      void searchSymbols(client, market, q).then((list) => {
+        if (stale) return
+        setItems(list)
+        setActive(-1)
+        setOpen(list.length > 0)
+      })
+    }, 250)
+    return () => {
+      stale = true
+      clearTimeout(t)
+    }
+  }, [client, market, query, minChars])
+
+  const choose = (sg: SymbolSuggestion) => {
+    onPick(sg)
+    setOpen(false)
+    setItems([])
+    setQuery(null)
+  }
+  const shown = open && items.length > 0 && (query ?? '').trim().length >= minChars
+
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        value={value}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        autoComplete="off"
+        autoCapitalize={upper ? 'characters' : undefined}
+        role="combobox"
+        aria-expanded={shown}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={shown && active >= 0 ? `${listId}-${active}` : undefined}
+        onChange={(e) => {
+          const v = upper ? e.target.value.toUpperCase() : e.target.value
+          onChange(v)
+          setQuery(v)
+          if (v.trim().length < minChars) setOpen(false)
+        }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => {
+          if (!shown) return
+          if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            setActive((i) => Math.min(items.length - 1, i + 1))
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            setActive((i) => Math.max(0, i - 1))
+          } else if (e.key === 'Enter' && active >= 0) {
+            e.preventDefault()
+            choose(items[active])
+          } else if (e.key === 'Escape') {
+            e.stopPropagation()
+            setOpen(false)
+          }
+        }}
+      />
+      {shown && (
+        <ul id={listId} role="listbox" aria-label="Öneriler" className="absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-auto rounded-xl border border-line bg-surface py-1 shadow-float">
+          {items.map((sg, i) => (
+            <li
+              key={`${sg.symbol}-${i}`}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === active}
+              className={cn('flex cursor-pointer items-baseline gap-2 px-3 py-2 text-[13px]', i === active ? 'bg-surface-2' : 'hover:bg-surface-2')}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                choose(sg)
+              }}
+            >
+              <span className="num w-16 shrink-0 font-semibold text-ink">{sg.symbol}</span>
+              <span className="min-w-0 flex-1 truncate text-muted">{tidyName(sg.name)}</span>
+              {sg.exchange && <span className="shrink-0 text-[11px] text-subtle">{sg.exchange}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

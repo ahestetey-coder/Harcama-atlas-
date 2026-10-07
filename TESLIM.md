@@ -455,9 +455,17 @@ Ek düzeltme: otomatik eşitleme yalnızca cihazda bağlı bir grup varsa başl�
 
 osman'ın isteğiyle "piyasa verisinde yalnızca TCMB" kararı genişletildi.
 - `market-rates` sunucu fonksiyonu (sürüm 3) TCMB kurlarına ek olarak sembol listesi alır. Kaynaklar: Borsa İstanbul, ABD hisse ve ETF'leri ile gram altın (ons vadeli fiyatı × USD kuru ÷ 31,1035) için Yahoo Finance; kripto için Binance USDT paritesi × USD kuru; fonlar için TEFAS. Sembol isteği için giriş gerekir; istek yalnızca piyasa ve sembol taşır.
-- Canlı deneme (07.10.2026, Supabase sunucusundan): THYAO 286,25 ₺, AAPL, SPY, BTC ve gram altın fiyatı alındı. **TEFAS, sunucu erişimini reddetti** ("Request Rejected"); fon fiyatı şu an elle girilir, uygulama bunu fon satırında belirtir.
+- Canlı deneme (07.10.2026, Supabase sunucusundan): THYAO 286,25 ₺, AAPL, SPY, BTC ve gram altın fiyatı alındı. TEFAS'ın eski adresi kapalıydı; yeni adresiyle fon fiyatı da alındı (bkz. bölüm 33).
 - Yahoo Finance ve Binance'in açık uç noktaları resmî ya da lisanslı bir veri hizmeti değildir; fiyatlar gecikmeli olabilir ve uç nokta haber vermeden değişebilir. Mağaza yayını öncesinde lisanslı bir sağlayıcıya geçilmesi önerilir.
 - Yeni varlık türü "Kripto"; "Hisse" türü "Hisse / ETF" oldu. Hisse için borsa (BIST / ABD) ve sembol, fon için TEFAS kodu, kripto için sembol girilir. Sembolsüz varlıkların fiyatı eskisi gibi elle girilir.
 - Özet kartında ₺ TL / $ USD seçimi: tutarlar son TCMB USD kuruyla çevrilir; kazanç TL bazında hesaplanıp bugünkü kurla gösterilir.
 - İsteğe bağlı ortak önbellek: `supabase/fiyat-onbellegi.sql` (ha_price_cache). Tablo yoksa fonksiyon yalnızca bellek önbelleğiyle çalışır.
 - Testler: 224 birim testi; e2e'de sahte fiyat yanıtıyla ETF, kripto, fiyat alınamadı uyarısı ve USD görünümü sınandı.
+
+## 33. TEFAS fon fiyatı, BIST / yabancı hisse ayrımı, yazarken öneri (07.10.2026)
+
+- TEFAS'ın yeni API'si (`/api/funds/fonGnlBlgSiraliGetir`, JSON, tarih YYYYAAGG) kullanılıyor. Dakikada birkaç istek sınırı olduğu için fon başına değil, yatırım, emeklilik ve borsa yatırım fonu tiplerinin son 6 günlük listesi tek seferde alınıp 2 saat önbellekte tutulur. Canlı deneme: TTE 1,212706 ₺ (07.10.2026).
+- Türler ayrıldı: "Hisse (BIST)" ve "Yabancı hisse / ETF" (Yahoo sembolü; ABD dışı borsalar için ek ile, ör. SAP.DE; GBp/ZAc alt birimleri düzeltilir). Eski ABD sembollü hisseler veritabanı sürüm 9 geçişiyle ve yedekten dönüşte yeni türe taşınır. "Diğer" dağılımda gri.
+- Ad ve sembol alanında yazarken öneri: BIST ve yabancı için Yahoo Finance araması, fon için TEFAS listesi (kod ya da adın parçası, Türkçe harf duyarsız), kripto için CoinGecko araması (yalnızca Binance'te USDT paritesi olanlar). Seçilince ad ve sembol birlikte dolar. Arama için giriş gerekir; istek yalnızca arama metnini taşır.
+- Canlı denemede Yahoo araması "aselsan" için ASELS.IS döndürdü; arama uç noktası girişli kullanıcı istediği için uygulama içinden canlı denenemedi, e2e'de sahte yanıtla sınandı.
+- Önceki sürümde kripto rengi (--asset-8) CSS'te tanımlı değildi; düzeltildi.

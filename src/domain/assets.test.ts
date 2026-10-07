@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoPriceCode, autoQuote, holdingSummary, normalizeSymbol, quoteUpdates, parseQuantity, portfolio, priceAt, rateUpdates, valueHistory, type Asset, type AssetTrade } from './assets'
+import { autoPriceCode, autoQuote, holdingSummary, migrateAssetKind, normalizeSymbol, quoteUpdates, parseQuantity, portfolio, priceAt, rateUpdates, valueHistory, type Asset, type AssetTrade } from './assets'
 
 let seq = 0
 const asset = (kind: Asset['kind'], trades: Omit<AssetTrade, 'id'>[], valuations: [string, number][] = []): Asset => ({
@@ -110,6 +110,9 @@ describe('piyasa fiyatıyla otomatik güncelleme', () => {
     expect(autoQuote(stock({ market: 'bist', symbol: 'THYAO' }))).toEqual({ market: 'bist', symbol: 'THYAO' })
     expect(autoQuote(stock(undefined))).toBeNull()
     expect(autoQuote(stock({ market: 'crypto', symbol: 'BTC' }))).toBeNull() // hisse türünde kripto piyasası olmaz
+    expect(autoQuote(stock({ market: 'us', symbol: 'AAPL' }))).toBeNull() // BIST hissesi yabancı borsaya bakmaz
+    expect(migrateAssetKind(stock({ market: 'us', symbol: 'AAPL' })).kind).toBe('foreign')
+    expect(migrateAssetKind(stock({ market: 'bist', symbol: 'THYAO' })).kind).toBe('stock')
     expect(autoQuote({ kind: 'gold', unit: 'gram' })).toEqual({ market: 'gold', symbol: 'XAU' })
     expect(autoQuote({ kind: 'gold', unit: 'adet' })).toBeNull()
     expect(normalizeSymbol(' thyao.is ')).toBe('THYAO')
@@ -117,8 +120,8 @@ describe('piyasa fiyatıyla otomatik güncelleme', () => {
   })
 
   it('fiyatı yazar, elle girilen aynı günlük fiyatı korur', () => {
-    const a = stock({ market: 'us', symbol: 'SPY' })
-    const b = { ...stock({ market: 'us', symbol: 'SPY' }), valuations: [{ date: '2026-10-07', unitPriceKurus: 1, source: 'manual' as const }] }
+    const a = stock({ market: 'us', symbol: 'SPY' }, 'foreign')
+    const b = { ...stock({ market: 'us', symbol: 'SPY' }, 'foreign'), valuations: [{ date: '2026-10-07', unitPriceKurus: 1, source: 'manual' as const }] }
     const c = stock({ market: 'bist', symbol: 'YOK' })
     const u = quoteUpdates([a, b, c], [{ market: 'us', symbol: 'SPY', priceTl: 330.5, date: '2026-10-07' }])
     expect(u).toEqual([{ assetId: a.id, valuation: { date: '2026-10-07', unitPriceKurus: 33050, source: 'piyasa' } }])

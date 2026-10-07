@@ -99,6 +99,17 @@ export function createDb(name: string): AtlasDb {
   db.version(6).stores({ recurring: 'id, kind, active' })
   db.version(7).stores({ goals: 'id, archived' })
   db.version(8).stores({ assets: 'id, kind, archived' })
+  // ABD sembollü hisseler ayrı "Yabancı hisse / ETF" türüne taşınır
+  db.version(9)
+    .stores({ assets: 'id, kind, archived' })
+    .upgrade((tx) =>
+      tx
+        .table('assets')
+        .toCollection()
+        .modify((a: { kind: string; quote?: { market: string } }) => {
+          if (a.kind === 'stock' && a.quote?.market === 'us') a.kind = 'foreign'
+        }),
+    )
 
   db.on('populate', async (tx) => {
     const now = new Date().toISOString()

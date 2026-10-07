@@ -1,3 +1,4 @@
+import { migrateAssetKind } from '../domain/assets'
 import { z } from 'zod'
 import { APP_CONFIG } from '../config/app'
 import { isIsoDate } from '../domain/dates'
@@ -138,7 +139,7 @@ const goalSchema = z.object({
 
 const assetSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(['deposit', 'fx', 'fund', 'gold', 'stock', 'cash', 'other', 'crypto', 'debt']),
+  kind: z.enum(['deposit', 'fx', 'fund', 'gold', 'stock', 'foreign', 'cash', 'other', 'crypto', 'debt']),
   name: z.string(),
   unit: z.string(),
   trades: z.array(z.object({ id: z.string().min(1), date: isoDate, side: z.enum(['buy', 'sell']), quantity: z.number().positive(), unitPriceKurus: z.number().nonnegative() })),
@@ -225,7 +226,7 @@ export const backupSchema = z.object({
     /** v7 öncesi yedeklerde yoktur. */
     goals: z.array(goalSchema).optional(),
     /** v8 öncesi yedeklerde yoktur. */
-    assets: z.array(assetSchema).optional(),
+    assets: z.array(assetSchema.transform(migrateAssetKind)).optional(),
     settings: settingsSchema.nullable(),
   }),
 })

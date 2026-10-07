@@ -1,30 +1,45 @@
-// Varlıklarım için güncel fiyatlar: TCMB gösterge kurları ve istenirse hisse, ETF, fon, kripto ve gram altın.
-// Tarayıcı bu kaynaklara doğrudan erişemediği (CORS) için fiyatlar burada okunur. İstek yalnızca sembol
-// listesi taşır; miktar, tutar ya da maliyet gönderilmez ve semboller kaydedilmez ya da günlüğe yazılmaz.
+// Varlıklarım için güncel fiyatlar ve sembol araması: TCMB gösterge kurları; istenirse Borsa İstanbul ve yabancı
+// borsa hisse/ETF'leri, TEFAS fonları, kripto ve gram altın. Tarayıcı bu kaynaklara doğrudan erişemediği (CORS)
+// için burada okunur. İstek yalnızca sembol ya da arama metni taşır; miktar, tutar ya da maliyet gönderilmez,
+// semboller ve aramalar günlüğe yazılmaz.
 import { cors, json } from '../_shared/openai.ts'
 import { parseTcmbRates } from '../_shared/research.ts'
 import { serviceClient, userId } from '../_shared/server.ts'
 import {
-  parseBinanceTicker,
+  istanbulDate,
+  parseBinanceAll,
+  parseCoinSearch,
   parseQuoteRequests,
-  parseTefasHistory,
+  parseTefasList,
   parseYahooChart,
-  tefasDate,
+  parseYahooSearch,
+  searchFunds,
+  TEFAS_KINDS,
+  tefasBody,
+  tefasQuote,
   toTl,
   yahooSymbol,
+  type QuoteMarket,
   type QuoteRequest,
   type RawQuote,
+  type Suggestion,
+  type TefasFund,
 } from '../_shared/market.ts'
 
 const TCMB_URL = 'https://www.tcmb.gov.tr/kurlar/today.xml'
+const TEFAS_URL = 'https://www.tefas.gov.tr/api/funds/fonGnlBlgSiraliGetir'
 const RATES_TTL_MS = 30 * 60 * 1000
 const QUOTE_TTL_MS = 10 * 60 * 1000
-const TEFAS_TTL_MS = 3 * 60 * 60 * 1000
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+const BINANCE_TTL_MS = 5 * 60 * 1000
+const TEFAS_TTL_MS = 2 * 60 * 60 * 1000
+const SEARCH_TTL_MS = 60 * 60 * 1000
+const DAY = 86400000
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36'
 
 type Rates = { date: string; source: 'tcmb'; rates: { code: string; name: string; valueTl: number }[] }
 let ratesCache: { at: number; body: Rates } | null = null
 const quoteCache = new Map<string, { at: number; q: RawQuote }>()
+const searchCache = new Map<string, { at: number; list: Suggestion[] }>()
 
 async function getRates(): Promise<Rates | null> {
   if (ratesCache && Date.now() - ratesCache.at < RATES_TTL_MS) return ratesCache.body
@@ -43,26 +58,65 @@ async function getRates(): Promise<Rates | null> {
 }
 
 async function getJson(url: string, init?: RequestInit): Promise<unknown> {
-  const res = await fetch(url, { ...init, headers: { 'User-Agent': UA, Accept: 'application/json', ...(init?.headers ?? {}) }, signal: AbortSignal.timeout(10000) })
-  if (!res.ok) return null
   try {
+    const res = await fetch(url, { ...init, headers: { 'User-Agent': UA, Accept: 'application/json', ...(init?.headers ?? {}) }, signal: AbortSignal.timeout(15000) })
+    if (!res.ok) return null
     return await res.json()
   } catch {
     return null
   }
 }
 
-async function fetchQuote(q: QuoteRequest): Promise<RawQuote | null> {
-  if (q.market === 'crypto') return parseBinanceTicker(await getJson(`https://api.binance.com/api/v3/ticker/price?symbol=${encodeURIComponent(`${q.symbol}USDT`)}`), Date.now())
-  if (q.market === 'tefas') {
+// ---------- Binance: bütün USDT paritelerinin fiyatı tek istekte ----------
+let binanceCache: { at: number; prices: Map<string, number> } | null = null
+async function getBinance(): Promise<Map<string, number> | null> {
+  if (binanceCache && Date.now() - binanceCache.at < BINANCE_TTL_MS) return binanceCache.prices
+  const prices = parseBinanceAll(await getJson('https://api.binance.com/api/v3/ticker/price'))
+  if (prices.size) binanceCache = { at: Date.now(), prices }
+  return binanceCache?.prices ?? null
+}
+
+// ---------- TEFAS: yatırım, emeklilik ve borsa yatırım fonlarının son fiyatları tek seferde ----------
+// TEFAS dakikada birkaç istekle sınırlı; bu yüzden fon başına değil, fon tipi başına bir istek atılır.
+let fundsCache: { at: number; funds: Map<string, TefasFund> } | null = null
+let fundsLoading: Promise<Map<string, TefasFund> | null> | null = null
+async function getFunds(): Promise<Map<string, TefasFund> | null> {
+  if (fundsCache && Date.now() - fundsCache.at < TEFAS_TTL_MS) return fundsCache.funds
+  if (fundsLoading) return fundsLoading
+  fundsLoading = (async () => {
     const now = Date.now()
-    const form = new URLSearchParams({ fontip: 'YAT', sfontur: '', fonkod: q.symbol, fongrup: '', bastarih: tefasDate(now - 14 * 86400000), bittarih: tefasDate(now), fonturkod: '', fonunvantip: '' })
-    const body = await getJson('https://www.tefas.gov.tr/api/DB/BindHistoryInfo', {
-      method: 'POST',
-      body: form.toString(),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest', Origin: 'https://www.tefas.gov.tr', Referer: 'https://www.tefas.gov.tr/TarihselVeriler.aspx' },
-    })
-    return parseTefasHistory(body)
+    const funds = new Map<string, TefasFund>()
+    let failed = false
+    for (const kind of TEFAS_KINDS) {
+      const body = await getJson(TEFAS_URL, {
+        method: 'POST',
+        body: JSON.stringify(tefasBody(kind, istanbulDate(now - 6 * DAY), istanbulDate(now))),
+        headers: { 'Content-Type': 'application/json', Accept: '*/*', Origin: 'https://www.tefas.gov.tr', Referer: 'https://www.tefas.gov.tr/tr/fon-verileri' },
+      })
+      const list = parseTefasList(body)
+      if (!list) {
+        failed = true
+        continue
+      }
+      for (const f of list) if (!funds.has(f.code)) funds.set(f.code, f)
+    }
+    if (funds.size && !failed) fundsCache = { at: now, funds }
+    else if (funds.size) fundsCache = { at: now - TEFAS_TTL_MS + 10 * 60 * 1000, funds: new Map([...(fundsCache?.funds ?? []), ...funds]) }
+    return fundsCache?.funds ?? null
+  })().finally(() => {
+    fundsLoading = null
+  })
+  return fundsLoading
+}
+
+async function fetchQuote(q: QuoteRequest): Promise<RawQuote | null> {
+  if (q.market === 'crypto') {
+    const usd = (await getBinance())?.get(q.symbol)
+    return usd ? { price: usd, currency: 'USD', date: istanbulDate(Date.now()), name: null, provider: 'Binance' } : null
+  }
+  if (q.market === 'tefas') {
+    const f = (await getFunds())?.get(q.symbol)
+    return f ? tefasQuote(f) : null
   }
   return parseYahooChart(await getJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol(q))}?range=1d&interval=1d`))
 }
@@ -91,6 +145,30 @@ async function storeQuotes(rows: { key: string; q: RawQuote }[]): Promise<void> 
   }
 }
 
+async function search(market: QuoteMarket, q: string): Promise<Suggestion[]> {
+  const key = `${market}:${q.toLocaleLowerCase('tr')}`
+  const hit = searchCache.get(key)
+  if (hit && Date.now() - hit.at < SEARCH_TTL_MS) return hit.list
+  let list: Suggestion[] = []
+  if (market === 'tefas') list = searchFunds([...((await getFunds())?.values() ?? [])], q)
+  else if (market === 'crypto') {
+    const bases = await getBinance()
+    if (bases) {
+      list = parseCoinSearch(await getJson(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`), new Set(bases.keys()))
+      const sym = q.trim().toUpperCase()
+      if (bases.has(sym) && !list.some((s) => s.symbol === sym)) list.unshift({ symbol: sym, name: sym, exchange: 'Binance' })
+    }
+  } else if (market === 'bist' || market === 'us') {
+    const url = (s: string) => `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(s)}&quotesCount=20&newsCount=0&listsCount=0&lang=tr-TR&region=TR`
+    list = parseYahooSearch(await getJson(url(q)), market)
+    if (market === 'bist' && list.length === 0 && /^[A-Za-z0-9]{2,8}$/.test(q.trim())) list = parseYahooSearch(await getJson(url(`${q.trim()}.IS`)), market)
+  }
+  searchCache.set(key, { at: Date.now(), list })
+  if (searchCache.size > 2000) searchCache.clear()
+  return list
+}
+
+// Sağlık denetimi: sabit örnek sembollerle bütün kaynakları dener (girişsiz; kullanıcı sembolü kabul etmez)
 const CHECK_SYMBOLS: QuoteRequest[] = [
   { market: 'bist', symbol: 'THYAO' },
   { market: 'us', symbol: 'AAPL' },
@@ -100,18 +178,29 @@ const CHECK_SYMBOLS: QuoteRequest[] = [
   { market: 'tefas', symbol: 'TTE' },
 ]
 
-const ERROR_TEXT: Record<QuoteRequest['market'], string> = {
-  bist: 'Borsa İstanbul\'da bu sembol bulunamadı',
-  us: 'ABD borsalarında bu sembol bulunamadı',
-  tefas: 'TEFAS fiyatı alınamadı',
+const ERROR_TEXT: Record<QuoteMarket, string> = {
+  bist: "Borsa İstanbul'da bu sembol bulunamadı",
+  us: 'Yabancı borsalarda bu sembol bulunamadı',
+  tefas: 'TEFAS fiyatı alınamadı; fon kodunu kontrol edin',
   crypto: 'Bu kripto için USDT paritesi bulunamadı',
   gold: 'Altın fiyatı alınamadı',
 }
 
+const MARKETS: QuoteMarket[] = ['bist', 'us', 'tefas', 'crypto', 'gold']
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   const body: unknown = req.method === 'POST' ? await req.json().catch(() => null) : null
-  // Sağlık denetimi: sabit örnek sembollerle bütün kaynakları dener (girişsiz; kullanıcı sembolü kabul etmez)
+
+  const s = (body as { search?: { market?: unknown; q?: unknown } })?.search
+  if (s) {
+    const market = s.market as QuoteMarket
+    const q = typeof s.q === 'string' ? s.q.trim().slice(0, 40) : ''
+    if (!MARKETS.includes(market) || q.length < 1) return json({ suggestions: [] })
+    if (!(await userId(req))) return json({ error: 'Arama için giriş yapın.' }, 401)
+    return json({ suggestions: await search(market, q) })
+  }
+
   const check = (body as { check?: unknown })?.check === true
   const wanted = check ? CHECK_SYMBOLS : parseQuoteRequests(body)
   const rates = await getRates()

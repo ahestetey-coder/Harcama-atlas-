@@ -90,7 +90,11 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
     }
     if (url.pathname === '/functions/v1/market-rates') {
       calls.push('KUR')
-      const b = req.postDataJSON() as { quotes?: { market: string; symbol: string }[] }
+      const b = req.postDataJSON() as { quotes?: { market: string; symbol: string }[]; search?: { market: string; q: string } }
+      if (b.search) {
+        bodies.arama = b
+        return json({ suggestions: b.search.market === 'us' && /^s/i.test(b.search.q) ? [{ symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust', exchange: 'NYSEArca' }, { symbol: 'SPYG', name: 'SPDR Portfolio S&P 500 Growth ETF', exchange: 'NYSEArca' }] : [] })
+      }
       bodies.kur = b
       const prices: Record<string, number> = { 'us:SPY': 25500, 'crypto:BTC': 3400000 }
       const quotes = (b.quotes ?? []).map((q) => (prices[`${q.market}:${q.symbol}`] ? { ...q, ok: true, priceTl: prices[`${q.market}:${q.symbol}`], price: 1, currency: 'USD', date: '2026-10-07', name: null, provider: 'Yahoo Finance' } : { ...q, ok: false, error: 'Bu sembol bulunamadı' }))
@@ -552,15 +556,18 @@ test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâ
   // ABD ETF: sembolle eklenir, fiyatı otomatik gelir
   await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
   dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
-  await dlg.getByLabel('Tür').selectOption('stock')
-  await dlg.getByLabel('Borsa').selectOption('us')
-  await dlg.getByLabel('Ad', { exact: true }).fill('S&P 500 ETF')
-  await dlg.getByLabel('Sembol').fill('spy')
+  await dlg.getByLabel('Tür').selectOption('foreign')
+  await expect(dlg.getByLabel('Kaynak')).toHaveValue('Yabancı borsa')
+  // Ad yazılırken öneri çıkar; seçilince ad ve sembol dolar
+  await dlg.getByLabel('Ad', { exact: true }).fill('s&p')
+  await dlg.getByRole('option', { name: /SPY\s*SPDR S&P 500 ETF Trust/ }).click()
+  await expect(dlg.getByLabel('Sembol')).toHaveValue('SPY')
+  await expect(dlg.getByLabel('Ad', { exact: true })).toHaveValue('SPDR S&P 500 ETF Trust')
   await dlg.getByLabel('Miktar (adet)').fill('2')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('26.000')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dlg).toBeHidden()
-  await expect(list).toContainText('SPY · ABD borsası')
+  await expect(list).toContainText('SPY · Yabancı borsa')
   await expect(list).toContainText('51.000,00 ₺')
   await expect(list).toContainText('Zarar −1.000,00 ₺')
   await expect(list).toContainText('Yahoo Finance')
@@ -582,6 +589,7 @@ test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâ
   const sent = JSON.stringify(calls.bodies.kur)
   expect(sent).toContain('SPY')
   expect(sent).not.toMatch(/26000|2600000|quantity|unitPrice|Bilinmeyen|S&P/)
+  expect(JSON.stringify(calls.bodies.arama)).toBe('{"search":{"market":"crypto","q":"XYZ"}}')
 
   // USD görünümü: 42.500 + 51.000 + 100 = 93.600 ₺ / 42,5 = 2.202,35 $
   const sum = page.getByRole('region', { name: 'Net varlık' })

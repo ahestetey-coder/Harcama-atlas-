@@ -4,17 +4,18 @@ import type { IsoDate } from './types'
  * Plus "Varlıklarım": varlıklar ve borçlar. Döviz TCMB kurundan, sembolü girilen hisse, ETF, fon, kripto ve
  * gram altın piyasa fiyatından otomatik güncellenir; diğerlerinin fiyatını kullanıcı girer.
  */
-export type AssetKind = 'deposit' | 'fx' | 'fund' | 'gold' | 'stock' | 'cash' | 'other' | 'crypto' | 'debt'
+export type AssetKind = 'deposit' | 'fx' | 'fund' | 'gold' | 'stock' | 'foreign' | 'cash' | 'other' | 'crypto' | 'debt'
 
-/** Sabit sıra: dağılım grafiğinde renk bu sıraya göre verilir (sıralamaya göre değil). Yeni tür sona eklenir. */
-export const ASSET_KINDS: Exclude<AssetKind, 'debt'>[] = ['deposit', 'fx', 'fund', 'gold', 'stock', 'cash', 'other', 'crypto']
+/** Sabit sıra: dağılımda renk türe bağlıdır, sıralamaya göre verilmez. "Diğer" en sonda ve gri. */
+export const ASSET_KINDS: Exclude<AssetKind, 'debt'>[] = ['deposit', 'fx', 'fund', 'gold', 'stock', 'cash', 'foreign', 'crypto', 'other']
 
 export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
   deposit: 'Mevduat',
   fx: 'Döviz',
   fund: 'Fon',
   gold: 'Altın',
-  stock: 'Hisse / ETF',
+  stock: 'Hisse (BIST)',
+  foreign: 'Yabancı hisse / ETF',
   cash: 'Nakit',
   other: 'Diğer',
   crypto: 'Kripto',
@@ -28,6 +29,7 @@ export const DEFAULT_UNIT: Record<AssetKind, string> = {
   fund: 'pay',
   gold: 'gram',
   stock: 'lot',
+  foreign: 'adet',
   cash: 'TL',
   other: 'adet',
   crypto: 'adet',
@@ -56,18 +58,18 @@ export interface AssetValuation {
 /** manual: elle; tcmb: TCMB gösterge kuru; piyasa: hisse, ETF, fon, kripto ya da altın piyasa fiyatı. */
 export type ValuationSource = 'manual' | 'tcmb' | 'piyasa'
 
-/** Otomatik fiyat için piyasa: Borsa İstanbul, ABD borsaları (hisse ve ETF), TEFAS fonu, kripto, gram altın. */
+/** Otomatik fiyat için piyasa: Borsa İstanbul, yabancı borsalar ('us': ABD ve diğerleri; hisse ve ETF), TEFAS fonu, kripto, gram altın. */
 export type QuoteMarket = 'bist' | 'us' | 'tefas' | 'crypto' | 'gold'
 
 export interface AssetQuote {
   market: QuoteMarket
-  /** THYAO, AAPL, SPY, TTE, BTC… (gram altında 'XAU'). */
+  /** THYAO, AAPL, SPY, SAP.DE, TTE, BTC… (gram altında 'XAU'). */
   symbol: string
 }
 
 export const QUOTE_MARKET_LABEL: Record<QuoteMarket, string> = {
   bist: 'Borsa İstanbul',
-  us: 'ABD borsası',
+  us: 'Yabancı borsa',
   tefas: 'TEFAS',
   crypto: 'Kripto',
   gold: 'Altın (ons)',
@@ -302,7 +304,7 @@ export function autoPriceCode(asset: Pick<Asset, 'kind' | 'unit'>): string | nul
 export function autoQuote(asset: Pick<Asset, 'kind' | 'unit' | 'quote'>): AssetQuote | null {
   if (asset.kind === 'gold') return asset.unit.trim().toLocaleLowerCase('tr') === 'gram' ? { market: 'gold', symbol: 'XAU' } : null
   if (!asset.quote) return null
-  const allowed: Partial<Record<AssetKind, QuoteMarket[]>> = { stock: ['bist', 'us'], fund: ['tefas', 'us'], crypto: ['crypto'] }
+  const allowed: Partial<Record<AssetKind, QuoteMarket[]>> = { stock: ['bist'], foreign: ['us'], fund: ['tefas'], crypto: ['crypto'] }
   return allowed[asset.kind]?.includes(asset.quote.market) ? asset.quote : null
 }
 
@@ -354,4 +356,9 @@ export function quoteUpdates(assets: Asset[], quotes: MarketQuote[]): RateUpdate
     if (u) out.push(u)
   }
   return out
+}
+
+/** Eski kayıtlar: ABD sembollü "Hisse" artık "Yabancı hisse / ETF" türüdür. */
+export function migrateAssetKind<T extends Pick<Asset, 'kind' | 'quote'>>(a: T): T {
+  return a.kind === 'stock' && a.quote?.market === 'us' ? { ...a, kind: 'foreign' } : a
 }

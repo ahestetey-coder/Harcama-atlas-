@@ -60,10 +60,13 @@ export function parseYahooChart(json: unknown): RawQuote | null {
   if (!meta) return null
   const price = Number(meta.regularMarketPrice)
   const time = Number(meta.regularMarketTime)
-  const currency = typeof meta.currency === 'string' ? meta.currency.toUpperCase() : ''
-  if (!Number.isFinite(price) || price <= 0 || !currency || !Number.isFinite(time)) return null
+  const raw = typeof meta.currency === 'string' ? meta.currency : ''
+  if (!Number.isFinite(price) || price <= 0 || !raw || !Number.isFinite(time)) return null
+  // Londra (GBp) ve Johannesburg (ZAc) fiyatları alt birimle gelir
+  const minor = raw === 'GBp' || raw === 'ZAc' || raw === 'ILA'
+  const currency = raw === 'ILA' ? 'ILS' : raw.toUpperCase()
   const name = typeof meta.longName === 'string' ? meta.longName : typeof meta.shortName === 'string' ? meta.shortName : null
-  return { price, currency, date: istanbulDate(time * 1000), name, provider: 'Yahoo Finance' }
+  return { price: minor ? price / 100 : price, currency, date: istanbulDate(time * 1000), name, provider: 'Yahoo Finance' }
 }
 
 /** Binance ticker yanıtı ({symbol, price}) → USD fiyat (USDT paritesi). */
@@ -73,23 +76,148 @@ export function parseBinanceTicker(json: unknown, now: number): RawQuote | null 
   return { price, currency: 'USD', date: istanbulDate(now), name: null, provider: 'Binance' }
 }
 
-/** TEFAS tarihsel veri yanıtı → en son günün fiyatı. */
-export function parseTefasHistory(json: unknown): RawQuote | null {
-  const rows = (json as { data?: unknown })?.data
-  if (!Array.isArray(rows) || rows.length === 0) return null
-  let best: { t: number; price: number; name: string | null } | null = null
-  for (const r of rows as Record<string, unknown>[]) {
-    const t = Number(r.TARIH)
-    const price = Number(r.FIYAT)
-    if (!Number.isFinite(t) || !Number.isFinite(price) || price <= 0) continue
-    if (!best || t > best.t) best = { t, price, name: typeof r.FONUNVAN === 'string' ? r.FONUNVAN : null }
-  }
-  return best ? { price: best.price, currency: 'TRY', date: istanbulDate(best.t), name: best.name, provider: 'TEFAS' } : null
+export interface TefasFund {
+  code: string
+  name: string
+  price: number
+  /** YYYY-AA-GG */
+  date: string
 }
 
-export function tefasDate(ms: number): string {
-  const [y, m, d] = istanbulDate(ms).split('-')
-  return `${d}.${m}.${y}`
+/** TEFAS fon tipleri: yatırım, emeklilik, borsa yatırım fonu. */
+export const TEFAS_KINDS = ['YAT', 'EMK', 'BYF'] as const
+
+const ymd = (iso: string) => iso.replaceAll('-', '')
+
+/** TEFAS fonGnlBlgSiraliGetir isteği: fon kodu verilmezse o tipteki bütün fonlar gelir. */
+export function tefasBody(kind: string, fromIso: string, toIso: string, code: string | null = null): Record<string, unknown> {
+  return {
+    fonTipi: kind,
+    fonKodu: code,
+    aramaMetni: null,
+    fonTurKod: null,
+    fonGrubu: null,
+    sfonTurKod: null,
+    fonTurAciklama: null,
+    kurucuKod: null,
+    basTarih: ymd(fromIso),
+    bitTarih: ymd(toIso),
+    basSira: 1,
+    bitSira: 100000,
+    dil: 'TR',
+    sFonTurKod: '',
+    fonKod: '',
+    fonGrup: '',
+    fonUnvanTip: '',
+  }
+}
+
+/**
+ * TEFAS yanıtı → her fonun en son günkü fiyatı. Veri yoksa (tatil) TEFAS "out of bounds" mesajı döner;
+ * bu boş liste sayılır. Başka hata mesajında null döner.
+ */
+export function parseTefasList(json: unknown): TefasFund[] | null {
+  const j = json as { errorMessage?: unknown; resultList?: unknown }
+  if (!j || typeof j !== 'object') return null
+  if (typeof j.errorMessage === 'string' && j.errorMessage) return /out of bounds|bulunamad/i.test(j.errorMessage) ? [] : null
+  if (!Array.isArray(j.resultList)) return []
+  const best = new Map<string, TefasFund>()
+  for (const r of j.resultList as Record<string, unknown>[]) {
+    const code = typeof r.fonKodu === 'string' ? r.fonKodu.trim().toUpperCase() : ''
+    const date = typeof r.tarih === 'string' ? r.tarih.slice(0, 10) : ''
+    const price = Number(r.fiyat)
+    if (!code || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(price) || price <= 0) continue
+    const prev = best.get(code)
+    if (!prev || date > prev.date) best.set(code, { code, name: typeof r.fonUnvan === 'string' ? r.fonUnvan.trim() : code, price, date })
+  }
+  return [...best.values()]
+}
+
+export function tefasQuote(f: TefasFund): RawQuote {
+  return { price: f.price, currency: 'TRY', date: f.date, name: f.name, provider: 'TEFAS' }
+}
+
+// ---------- Sembol ve ad araması ----------
+
+export interface Suggestion {
+  symbol: string
+  name: string
+  /** Borsa ya da kaynak (ör. NASDAQ, BIST, TEFAS). */
+  exchange: string | null
+}
+
+/** Türkçe büyük harf ve aksan sadeleştirmesi (arama karşılaştırması için). */
+export function fold(s: string): string {
+  return s
+    .toLocaleUpperCase('tr')
+    .replace(/İ/g, 'I')
+    .replace(/Ş/g, 'S')
+    .replace(/Ğ/g, 'G')
+    .replace(/Ü/g, 'U')
+    .replace(/Ö/g, 'O')
+    .replace(/Ç/g, 'C')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Fon listesinde arama: kodun başı eşleşenler önce, sonra adında geçenler. */
+export function searchFunds(funds: TefasFund[], q: string, limit = 8): Suggestion[] {
+  const f = fold(q)
+  if (!f) return []
+  const code = funds.filter((x) => x.code.startsWith(f))
+  const name = funds.filter((x) => !x.code.startsWith(f) && f.split(' ').every((w) => fold(x.name).includes(w)))
+  return [...code.sort((a, b) => a.code.localeCompare(b.code)), ...name]
+    .slice(0, limit)
+    .map((x) => ({ symbol: x.code, name: x.name, exchange: 'TEFAS' }))
+}
+
+/** Yahoo Finance arama yanıtı → BIST ya da yabancı borsa önerileri (hisse ve ETF). */
+export function parseYahooSearch(json: unknown, market: 'bist' | 'us', limit = 8): Suggestion[] {
+  const quotes = (json as { quotes?: unknown })?.quotes
+  if (!Array.isArray(quotes)) return []
+  const out: Suggestion[] = []
+  for (const q of quotes as Record<string, unknown>[]) {
+    const sym = typeof q.symbol === 'string' ? q.symbol : ''
+    const type = typeof q.quoteType === 'string' ? q.quoteType : ''
+    if (!sym || !['EQUITY', 'ETF', 'MUTUALFUND'].includes(type)) continue
+    const isBist = sym.endsWith('.IS')
+    if ((market === 'bist') !== isBist) continue
+    const symbol = market === 'bist' ? sym.slice(0, -3) : sym
+    if (!/^[A-Z0-9][A-Z0-9.-]{0,14}$/.test(symbol)) continue
+    const name = typeof q.longname === 'string' ? q.longname : typeof q.shortname === 'string' ? q.shortname : symbol
+    const exchange = typeof q.exchDisp === 'string' ? q.exchDisp : typeof q.exchange === 'string' ? q.exchange : null
+    out.push({ symbol, name, exchange: market === 'bist' ? 'BIST' : exchange })
+    if (out.length >= limit) break
+  }
+  return out
+}
+
+/** CoinGecko arama yanıtı → kripto önerileri; yalnızca Binance'te USDT paritesi olanlar. */
+export function parseCoinSearch(json: unknown, usdtBases: Set<string>, limit = 8): Suggestion[] {
+  const coins = (json as { coins?: unknown })?.coins
+  if (!Array.isArray(coins)) return []
+  const out: Suggestion[] = []
+  const seen = new Set<string>()
+  for (const c of coins as Record<string, unknown>[]) {
+    const symbol = typeof c.symbol === 'string' ? c.symbol.toUpperCase() : ''
+    if (!symbol || seen.has(symbol) || !usdtBases.has(symbol)) continue
+    seen.add(symbol)
+    out.push({ symbol, name: typeof c.name === 'string' ? c.name : symbol, exchange: 'Binance' })
+    if (out.length >= limit) break
+  }
+  return out
+}
+
+/** Binance tüm fiyatlar yanıtı → USDT paritesi olan varlıklar ve USD fiyatları. */
+export function parseBinanceAll(json: unknown): Map<string, number> {
+  const out = new Map<string, number>()
+  if (!Array.isArray(json)) return out
+  for (const t of json as { symbol?: unknown; price?: unknown }[]) {
+    if (typeof t.symbol !== 'string' || !t.symbol.endsWith('USDT')) continue
+    const p = Number(t.price)
+    if (Number.isFinite(p) && p > 0) out.set(t.symbol.slice(0, -4), p)
+  }
+  return out
 }
 
 /**

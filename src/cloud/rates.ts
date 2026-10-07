@@ -51,3 +51,21 @@ export async function fetchMarket(client: SupabaseClient, quotes: AssetQuote[] =
     .map((q) => (q.ok && typeof q.priceTl === 'number' && Number.isFinite(q.priceTl) && q.priceTl > 0 && isDate(q.date) ? q : { market: q.market, symbol: q.symbol, ok: false, error: typeof q.error === 'string' ? q.error : 'Fiyat alınamadı' }))
   return { date: isDate(d.date) ? d.date : null, rates, quotes: results }
 }
+
+export interface SymbolSuggestion {
+  symbol: string
+  name: string
+  exchange: string | null
+}
+
+/** Sembol ya da ad araması (yazarken öneri). İstek yalnızca piyasa ve arama metnini taşır. */
+export async function searchSymbols(client: SupabaseClient, market: QuoteMarket, q: string): Promise<SymbolSuggestion[]> {
+  const { data, error } = await client.functions.invoke('market-rates', { body: { search: { market, q } } })
+  if (error) return []
+  const list = (data as { suggestions?: unknown })?.suggestions
+  if (!Array.isArray(list)) return []
+  return list
+    .filter((s): s is SymbolSuggestion => typeof s?.symbol === 'string' && typeof s?.name === 'string')
+    .slice(0, 8)
+    .map((s) => ({ symbol: s.symbol, name: s.name, exchange: typeof s.exchange === 'string' ? s.exchange : null }))
+}
