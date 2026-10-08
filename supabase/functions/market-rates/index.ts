@@ -118,7 +118,8 @@ async function fetchQuote(q: QuoteRequest): Promise<RawQuote | null> {
     const f = (await getFunds())?.get(q.symbol)
     return f ? tefasQuote(f) : null
   }
-  return parseYahooChart(await getJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol(q))}?range=1d&interval=1d`))
+  const ys = yahooSymbol(q)
+  return ys ? parseYahooChart(await getJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ys)}?range=1d&interval=1d`)) : null
 }
 
 /** Ortak önbellek tablosu (ha_price_cache) kuruluysa oradan okur; yoksa yalnızca bellek önbelleği kullanılır. */
@@ -136,13 +137,17 @@ async function cachedQuotes(keys: string[]): Promise<Map<string, { at: number; q
 
 async function storeQuotes(rows: { key: string; q: RawQuote }[]): Promise<void> {
   if (!rows.length) return
-  try {
-    await serviceClient()
-      .from('ha_price_cache')
-      .upsert(rows.map(({ key, q }) => ({ key, price: q.price, currency: q.currency, name: q.name, as_of: q.date, provider: q.provider, fetched_at: new Date().toISOString() })))
-  } catch {
-    /* tablo yok */
-  }
+  // Satır satır yazılır: tablo kısıtına uymayan bir satır diğerlerini engellemesin
+  const db = serviceClient()
+  await Promise.all(
+    rows.map(async ({ key, q }) => {
+      try {
+        await db.from('ha_price_cache').upsert({ key, price: q.price, currency: q.currency, name: q.name, as_of: q.date, provider: q.provider, fetched_at: new Date().toISOString() })
+      } catch {
+        /* tablo yok */
+      }
+    }),
+  )
 }
 
 async function search(market: QuoteMarket, q: string): Promise<Suggestion[]> {
@@ -176,6 +181,9 @@ const CHECK_SYMBOLS: QuoteRequest[] = [
   { market: 'crypto', symbol: 'BTC' },
   { market: 'gold', symbol: 'XAU' },
   { market: 'tefas', symbol: 'TTE' },
+  { market: 'commodity', symbol: 'XAG' },
+  { market: 'commodity', symbol: 'BRENT' },
+  { market: 'commodity', symbol: 'COPPER' },
 ]
 
 const ERROR_TEXT: Record<QuoteMarket, string> = {
@@ -184,9 +192,10 @@ const ERROR_TEXT: Record<QuoteMarket, string> = {
   tefas: 'TEFAS fiyatı alınamadı; fon kodunu kontrol edin',
   crypto: 'Bu kripto için USDT paritesi bulunamadı',
   gold: 'Altın fiyatı alınamadı',
+  commodity: 'Emtia fiyatı alınamadı',
 }
 
-const MARKETS: QuoteMarket[] = ['bist', 'us', 'tefas', 'crypto', 'gold']
+const MARKETS: QuoteMarket[] = ['bist', 'us', 'tefas', 'crypto', 'gold', 'commodity']
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -226,7 +235,7 @@ Deno.serve(async (req) => {
         }
       }
       if (!hit) return { market: w.market, symbol: w.symbol, ok: false as const, error: ERROR_TEXT[w.market] }
-      const priceTl = toTl(hit.q, w.market, rateMap)
+      const priceTl = toTl(hit.q, w.market, rateMap, w.symbol)
       if (priceTl === null) return { market: w.market, symbol: w.symbol, ok: false as const, error: `${hit.q.currency} kuru bulunamadı` }
       return { market: w.market, symbol: w.symbol, ok: true as const, priceTl, price: hit.q.price, currency: hit.q.currency, date: hit.q.date, name: hit.q.name, provider: hit.q.provider }
     }),

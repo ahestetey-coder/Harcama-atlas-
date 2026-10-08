@@ -5,7 +5,7 @@
 -- Tekrar çalıştırmak güvenlidir.
 
 create table if not exists public.ha_price_cache (
-  key text primary key check (key ~ '^(bist|us|tefas|crypto|gold):[A-Z0-9][A-Z0-9.-]{0,14}$'),
+  key text primary key check (key ~ '^(bist|us|tefas|crypto|gold|commodity):[A-Z0-9][A-Z0-9.-]{0,14}$'),
   price numeric not null check (price > 0),
   currency text not null check (currency ~ '^[A-Z]{3}$'),
   name text,

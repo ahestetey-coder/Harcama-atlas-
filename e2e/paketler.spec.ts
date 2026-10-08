@@ -178,6 +178,33 @@ test('Plus varlıklarım: altın eklenir, fiyat güncellenir, satılır, borç n
   await expect(dlg).toBeHidden()
   await expect(sum).toContainText('Fiyatı 30 günden eski olan varlıklar: Çeyrek altın (14.08.2026)')
   await expect(page.getByRole('list', { name: 'Varlıklar' })).toContainText('Fiyat eski')
+
+  // Emtia listeden seçilir: ad, birim ve fiyat kaynağı kendiliğinden dolar; dağılımda altınla birlikte gösterilir
+  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await dlg.getByLabel('Tür').selectOption('commodity')
+  await dlg.getByLabel('Emtia').selectOption('XAG')
+  await expect(dlg.getByLabel('Ad', { exact: true })).toHaveValue('Gümüş')
+  await dlg.getByLabel('Miktar (gram)').fill('100')
+  await dlg.getByLabel('Birim alış fiyatı (TL)').fill('50')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  await expect(list).toContainText('Gümüş')
+  await expect(page.getByRole('list', { name: 'Varlık dağılımı' })).toContainText('Altın ve emtia')
+
+  // Mevduata yıllık faiz girilince bakiye her gün kendiliğinden artar
+  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await dlg.getByLabel('Tür').selectOption('deposit')
+  await dlg.getByRole('button', { name: 'Vadeli mevduat' }).click()
+  await dlg.getByLabel('Yıllık net faiz (%)').fill('40')
+  await dlg.getByLabel('Tutar (TL)').fill('10.000')
+  await dlg.getByLabel('Yatırma tarihi').fill('2026-01-01')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  const dep = list.getByRole('listitem').filter({ hasText: 'Vadeli mevduat' })
+  await expect(dep).toContainText('Faizle hesaplandı · %40 yıllık')
+  await expect(dep).toContainText('Kâr +')
 })
 
 test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve göstergeler hesaplanır', async ({ page }) => {

@@ -43,6 +43,11 @@ describe('piyasa fiyatı okuyucuları', () => {
     expect(toTl({ price: 286.25, currency: 'TRY', date: '', name: null, provider: 'Yahoo Finance' }, 'bist', rates)).toBe(286.25)
     expect(toTl({ price: 3110.34768, currency: 'USD', date: '', name: null, provider: 'Yahoo Finance' }, 'gold', rates)).toBeCloseTo(4920)
     expect(toTl({ price: 1, currency: 'CAD', date: '', name: null, provider: 'Yahoo Finance' }, 'us', rates)).toBeNull()
+    // gümüş: ons fiyatı grama; bakır: libre fiyatı kg'a
+    expect(toTl({ price: 31.1034768, currency: 'USD', date: '', name: null, provider: 'Yahoo Finance' }, 'commodity', rates, 'XAG')).toBeCloseTo(49.2)
+    expect(toTl({ price: 1, currency: 'USD', date: '', name: null, provider: 'Yahoo Finance' }, 'commodity', rates, 'COPPER')).toBeCloseTo(108.47, 1)
+    expect(toTl({ price: 1, currency: 'USD', date: '', name: null, provider: 'Yahoo Finance' }, 'commodity', rates, 'XYZ')).toBeNull()
+    expect(yahooSymbol({ market: 'commodity', symbol: 'BRENT' })).toBe('BZ=F')
   })
 
   it('fon, hisse ve kripto aramasında önerileri sıralar ve süzer', () => {

@@ -93,6 +93,7 @@ async function mockSupabase(page: Page, opts: { google?: boolean; confirmEmail?:
       const b = req.postDataJSON() as { quotes?: { market: string; symbol: string }[]; search?: { market: string; q: string } }
       if (b.search) {
         bodies.arama = b
+        if (b.search.market === 'crypto' && /^bitcoin$/i.test(b.search.q)) return json({ suggestions: [{ symbol: 'BTC', name: 'Bitcoin', exchange: null }, { symbol: 'WBTC', name: 'Wrapped Bitcoin', exchange: null }] })
         return json({ suggestions: b.search.market === 'us' && /^s/i.test(b.search.q) ? [{ symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust', exchange: 'NYSEArca' }, { symbol: 'SPYG', name: 'SPDR Portfolio S&P 500 Growth ETF', exchange: 'NYSEArca' }] : [] })
       }
       bodies.kur = b
@@ -565,6 +566,7 @@ test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâ
   await expect(dlg.getByLabel('Ad', { exact: true })).toHaveValue('SPDR S&P 500 ETF Trust')
   await dlg.getByLabel('Miktar (adet)').fill('2')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('26.000')
+  await dlg.getByLabel('Alış tarihi').fill('2026-10-01')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dlg).toBeHidden()
   await expect(list).toContainText('SPY · Yabancı borsa')
@@ -597,6 +599,22 @@ test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâ
   await expect(sum).toContainText('$2.202,35')
   await expect(sum).toContainText('dolara çevrildi')
 
-  await page.getByRole('button', { name: 'Fiyatları güncelle' }).click()
+  await page.getByRole('button', { name: 'Şimdi yenile' }).click()
   await expect(page.getByText('Fiyatlar zaten güncel.')).toBeVisible()
+  // Otomatik fiyatlı varlıkta elle fiyat düğmesi yok; fiyatı alınamayanda var
+  await expect(page.getByRole('button', { name: 'Fiyatı güncelle' })).toHaveCount(1)
+
+  // Sembolsüz kripto: adından güvenle eşlenir ve fiyatı kendiliğinden gelir
+  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await dlg.getByLabel('Tür').selectOption('crypto')
+  await dlg.getByLabel('Ad', { exact: true }).fill('Bitcoin')
+  await dlg.getByLabel('Miktar (adet)').fill('0,1')
+  await dlg.getByLabel('Birim alış fiyatı (TL)').fill('3.000.000')
+  await dlg.getByLabel('Alış tarihi').fill('2026-10-01')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  await expect(list).toContainText('BTC · Kripto')
+  await expect(page.getByLabel('Güncel fiyatlar')).toContainText('Bitcoin → BTC')
+  await expect(list).toContainText('Kâr +$941,18')
 })

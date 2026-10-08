@@ -1,7 +1,7 @@
 // Varlıklarım için piyasa fiyatı okuyucuları: saf ayrıştırma kuralları. Deno'ya ya da tarayıcıya bağlı değil;
 // sunucu fonksiyonu ve birim testleri aynı kodu kullanır.
 
-export type QuoteMarket = 'bist' | 'us' | 'tefas' | 'crypto' | 'gold'
+export type QuoteMarket = 'bist' | 'us' | 'tefas' | 'crypto' | 'gold' | 'commodity'
 
 export interface QuoteRequest {
   market: QuoteMarket
@@ -17,7 +17,7 @@ export interface RawQuote {
   provider: 'Yahoo Finance' | 'Binance' | 'TEFAS'
 }
 
-export const MARKETS: QuoteMarket[] = ['bist', 'us', 'tefas', 'crypto', 'gold']
+export const MARKETS: QuoteMarket[] = ['bist', 'us', 'tefas', 'crypto', 'gold', 'commodity']
 export const MAX_QUOTES = 40
 /** Bir troy ons altının gram karşılığı. */
 export const TROY_OUNCE_GRAMS = 31.1034768
@@ -47,10 +47,25 @@ export function istanbulDate(ms: number): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date(ms))
 }
 
-/** Yahoo Finance sembolü: Borsa İstanbul için .IS eki, altın için ons vadeli (GC=F). */
-export function yahooSymbol(q: QuoteRequest): string {
+/**
+ * Emtialar: Yahoo vadeli işlem sembolü ve fiyatı uygulamadaki birime çeviren çarpan
+ * (değerli metaller ons → gram, bakır libre → kg; petrol varil, doğal gaz MMBtu olduğu gibi).
+ */
+export const COMMODITY_FUTURES: Record<string, { yahoo: string; perUnit: number }> = {
+  XAG: { yahoo: 'SI=F', perUnit: 1 / TROY_OUNCE_GRAMS },
+  XPT: { yahoo: 'PL=F', perUnit: 1 / TROY_OUNCE_GRAMS },
+  XPD: { yahoo: 'PA=F', perUnit: 1 / TROY_OUNCE_GRAMS },
+  BRENT: { yahoo: 'BZ=F', perUnit: 1 },
+  WTI: { yahoo: 'CL=F', perUnit: 1 },
+  COPPER: { yahoo: 'HG=F', perUnit: 2.20462262 },
+  NATGAS: { yahoo: 'NG=F', perUnit: 1 },
+}
+
+/** Yahoo Finance sembolü: Borsa İstanbul için .IS eki, altın ve emtialar için vadeli işlem sembolü. */
+export function yahooSymbol(q: QuoteRequest): string | null {
   if (q.market === 'bist') return `${q.symbol}.IS`
   if (q.market === 'gold') return 'GC=F'
+  if (q.market === 'commodity') return COMMODITY_FUTURES[q.symbol]?.yahoo ?? null
   return q.symbol
 }
 
@@ -224,9 +239,14 @@ export function parseBinanceAll(json: unknown): Map<string, number> {
  * Fiyatı TL'ye çevirir. Altında ons fiyatı grama bölünür. Kuru bilinmeyen para biriminde null döner.
  * rates: 1 birimin TL karşılığı (TCMB).
  */
-export function toTl(q: RawQuote, market: QuoteMarket, rates: Map<string, number>): number | null {
+export function toTl(q: RawQuote, market: QuoteMarket, rates: Map<string, number>, symbol?: string): number | null {
   const fx = q.currency === 'TRY' ? 1 : rates.get(q.currency)
   if (!fx) return null
   const tl = q.price * fx
-  return market === 'gold' ? tl / TROY_OUNCE_GRAMS : tl
+  if (market === 'gold') return tl / TROY_OUNCE_GRAMS
+  if (market === 'commodity') {
+    const c = symbol ? COMMODITY_FUTURES[symbol] : undefined
+    return c ? tl * c.perUnit : null
+  }
+  return tl
 }

@@ -4,16 +4,17 @@ import type { IsoDate } from './types'
  * Plus "Varlıklarım": varlıklar ve borçlar. Döviz TCMB kurundan, sembolü girilen hisse, ETF, fon, kripto ve
  * gram altın piyasa fiyatından otomatik güncellenir; diğerlerinin fiyatını kullanıcı girer.
  */
-export type AssetKind = 'deposit' | 'fx' | 'fund' | 'gold' | 'stock' | 'foreign' | 'cash' | 'other' | 'crypto' | 'debt'
+export type AssetKind = 'deposit' | 'fx' | 'fund' | 'gold' | 'commodity' | 'stock' | 'foreign' | 'cash' | 'other' | 'crypto' | 'debt'
 
 /** Sabit sıra: dağılımda renk türe bağlıdır, sıralamaya göre verilmez. "Diğer" en sonda ve gri. */
-export const ASSET_KINDS: Exclude<AssetKind, 'debt'>[] = ['deposit', 'fx', 'fund', 'gold', 'stock', 'cash', 'foreign', 'crypto', 'other']
+export const ASSET_KINDS: Exclude<AssetKind, 'debt'>[] = ['deposit', 'fx', 'fund', 'gold', 'commodity', 'stock', 'cash', 'foreign', 'crypto', 'other']
 
 export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
   deposit: 'Mevduat',
   fx: 'Döviz',
   fund: 'Fon',
   gold: 'Altın',
+  commodity: 'Emtia',
   stock: 'Hisse (BIST)',
   foreign: 'Yabancı hisse / ETF',
   cash: 'Nakit',
@@ -28,6 +29,7 @@ export const DEFAULT_UNIT: Record<AssetKind, string> = {
   fx: 'USD',
   fund: 'pay',
   gold: 'gram',
+  commodity: 'gram',
   stock: 'lot',
   foreign: 'adet',
   cash: 'TL',
@@ -59,7 +61,7 @@ export interface AssetValuation {
 export type ValuationSource = 'manual' | 'tcmb' | 'piyasa'
 
 /** Otomatik fiyat için piyasa: Borsa İstanbul, yabancı borsalar ('us': ABD ve diğerleri; hisse ve ETF), TEFAS fonu, kripto, gram altın. */
-export type QuoteMarket = 'bist' | 'us' | 'tefas' | 'crypto' | 'gold'
+export type QuoteMarket = 'bist' | 'us' | 'tefas' | 'crypto' | 'gold' | 'commodity'
 
 export interface AssetQuote {
   market: QuoteMarket
@@ -73,7 +75,19 @@ export const QUOTE_MARKET_LABEL: Record<QuoteMarket, string> = {
   tefas: 'TEFAS',
   crypto: 'Kripto',
   gold: 'Altın (ons)',
+  commodity: 'Emtia',
 }
+
+/** Emtialar: sembol, ad, birim ve adın tanınması için desen. Fiyat vadeli işlem fiyatından birime çevrilir. */
+export const COMMODITIES: { symbol: string; name: string; unit: string; match: RegExp }[] = [
+  { symbol: 'XAG', name: 'Gümüş', unit: 'gram', match: /gümüş|gumus|silver/i },
+  { symbol: 'XPT', name: 'Platin', unit: 'gram', match: /platin/i },
+  { symbol: 'XPD', name: 'Paladyum', unit: 'gram', match: /paladyum|palladium/i },
+  { symbol: 'BRENT', name: 'Brent petrol', unit: 'varil', match: /brent/i },
+  { symbol: 'WTI', name: 'Ham petrol (WTI)', unit: 'varil', match: /wti|ham petrol|petrol/i },
+  { symbol: 'COPPER', name: 'Bakır', unit: 'kg', match: /bakır|bakir|copper/i },
+  { symbol: 'NATGAS', name: 'Doğal gaz', unit: 'MMBtu', match: /doğal ?gaz|dogal ?gaz|natural gas/i },
+]
 
 /** Sembolü sadeleştirir; geçersizse null. */
 export function normalizeSymbol(input: string): string | null {
@@ -91,6 +105,8 @@ export interface Asset {
   note?: string
   /** Otomatik fiyat için piyasa ve sembol; yoksa fiyat elle girilir (döviz ve gram altın kendiliğinden eşlenir). */
   quote?: AssetQuote
+  /** Yalnızca mevduatta: yıllık net faiz (%). Girilirse bakiye her gün kendiliğinden büyür. */
+  interestRatePct?: number
   /** Yalnızca borçlarda: aylık faiz ve aylık asgari ödeme/taksit (koçun borç planı için). */
   debtTerms?: DebtTerms
   archived: boolean
@@ -108,7 +124,8 @@ export interface DebtTerms {
 export interface PriceInfo {
   unitPriceKurus: number
   date: IsoDate
-  source: ValuationSource | 'trade'
+  /** faiz: mevduatta son bakiyeden yıllık faizle hesaplanan değer. */
+  source: ValuationSource | 'trade' | 'faiz'
 }
 
 export interface HoldingSummary {
@@ -133,6 +150,17 @@ export function priceAt(asset: Asset, date: IsoDate): PriceInfo | null {
   for (const v of asset.valuations) if (v.date <= date && (!best || v.date >= best.date)) best = { unitPriceKurus: v.unitPriceKurus, date: v.date, source: v.source }
   for (const t of asset.trades) if (t.date <= date && (!best || t.date > best.date)) best = { unitPriceKurus: t.unitPriceKurus, date: t.date, source: 'trade' }
   return best
+}
+
+const DAY_MS = 86400000
+
+/** Mevduatta faiz oranı girilmişse son bilinen bakiyeyi bugüne kadar basit yıllık faizle büyütür. */
+function withInterest(asset: Asset, price: PriceInfo | null, today: IsoDate): PriceInfo | null {
+  const rate = asset.kind === 'deposit' ? asset.interestRatePct : undefined
+  if (!price || !rate || rate <= 0) return price
+  const days = Math.max(0, Math.round((Date.parse(today) - Date.parse(price.date)) / DAY_MS))
+  if (days === 0) return price
+  return { unitPriceKurus: price.unitPriceKurus * (1 + (rate / 100) * (days / 365)), date: today, source: 'faiz' }
 }
 
 /** Ortalama maliyet yöntemiyle özet. */
@@ -161,7 +189,7 @@ export function holdingSummary(asset: Asset, today: IsoDate): HoldingSummary {
     qty = 0
     cost = 0
   }
-  const price = priceAt(asset, today)
+  const price = withInterest(asset, priceAt(asset, today), today)
   const value = price ? Math.round(qty * price.unitPriceKurus) : Math.round(cost)
   return {
     quantity: qty,
@@ -213,14 +241,16 @@ export function portfolio(assets: Asset[], today: IsoDate, extraDebtKurus = 0): 
       continue
     }
     assetsTotal += s.valueKurus
-    byKind.set(a.kind, (byKind.get(a.kind) ?? 0) + s.valueKurus)
+    // Emtia, dağılımda altınla aynı dilimdedir (kategorik renk sayısı sınırlı)
+    const slice = a.kind === 'commodity' ? 'gold' : a.kind
+    byKind.set(slice, (byKind.get(slice) ?? 0) + s.valueKurus)
     contributed += s.contributedKurus
     realized += s.realizedKurus
     // Mevduat/nakit faizi de kazanç sayılır (bakiye − yatırılan)
     unrealized += s.unrealizedKurus
     if (s.quantity > 0 && s.price && (!oldest || s.price.date < oldest)) oldest = s.price.date
   }
-  const allocation = ASSET_KINDS.map((kind) => ({ kind, valueKurus: byKind.get(kind) ?? 0, share: assetsTotal > 0 ? (byKind.get(kind) ?? 0) / assetsTotal : 0 })).filter((x) => x.valueKurus > 0)
+  const allocation = ASSET_KINDS.filter((k) => k !== 'commodity').map((kind) => ({ kind, valueKurus: byKind.get(kind) ?? 0, share: assetsTotal > 0 ? (byKind.get(kind) ?? 0) / assetsTotal : 0 })).filter((x) => x.valueKurus > 0)
   return { assetsKurus: assetsTotal, debtsKurus: debts, netWorthKurus: assetsTotal - debts, contributedKurus: contributed, unrealizedKurus: unrealized, realizedKurus: realized, allocation, oldestPriceDate: oldest }
 }
 
@@ -300,9 +330,40 @@ export function autoPriceCode(asset: Pick<Asset, 'kind' | 'unit'>): string | nul
   return /^[A-Z]{3}$/.test(code) ? code : null
 }
 
-/** Piyasa fiyatı istenecek sembol: kayıtlı sembol, yoksa birimi gram olan altın. */
-export function autoQuote(asset: Pick<Asset, 'kind' | 'unit' | 'quote'>): AssetQuote | null {
-  if (asset.kind === 'gold') return asset.unit.trim().toLocaleLowerCase('tr') === 'gram' ? { market: 'gold', symbol: 'XAU' } : null
+/** Bir birimdeki saf altın (gram). Ziynet altınları darphane ağırlığı × 22 ayar (0,916); yaklaşık değerdir. */
+const COIN_FINE_GRAMS: [RegExp, number][] = [
+  [/çeyrek|ceyrek/, 1.754 * 0.916],
+  [/yarım|yarim/, 3.508 * 0.916],
+  [/gremse|iki buçuk|2[,.]5/, 17.54 * 0.916],
+  [/cumhuriyet|ata|reşat|resat|hamit|aziz/, 7.216 * 0.916],
+  [/tam/, 7.016 * 0.916],
+]
+
+/**
+ * Altında 1 birimin kaç gram saf (24 ayar) altına denk geldiği: gram altın 1; 22/18/14 ayar gram ya da bilezik
+ * ayarıyla; çeyrek, yarım, tam, cumhuriyet adetle. Tanınmayan altında null (fiyat elle girilir).
+ */
+export function goldFactor(asset: Pick<Asset, 'kind' | 'unit' | 'name'>): number | null {
+  if (asset.kind !== 'gold') return null
+  const unit = asset.unit.trim().toLocaleLowerCase('tr')
+  const name = asset.name.toLocaleLowerCase('tr')
+  if (unit === 'gram' || unit === 'gr' || unit === 'g') {
+    if (/22\s*ayar|bilezik/.test(name)) return 0.916
+    if (/18\s*ayar/.test(name)) return 0.75
+    if (/14\s*ayar/.test(name)) return 0.585
+    return 1
+  }
+  if (unit === 'adet') for (const [re, g] of COIN_FINE_GRAMS) if (re.test(name)) return g
+  return null
+}
+
+/** Piyasa fiyatı istenecek sembol: kayıtlı sembol, altında gram ya da tanınan ziynet altını. */
+export function autoQuote(asset: Pick<Asset, 'kind' | 'unit' | 'quote' | 'name'>): AssetQuote | null {
+  if (asset.kind === 'gold') return goldFactor(asset) ? { market: 'gold', symbol: 'XAU' } : null
+  if (asset.kind === 'commodity') {
+    const c = COMMODITIES.find((x) => x.symbol === asset.quote?.symbol) ?? COMMODITIES.find((x) => x.match.test(asset.name))
+    return c ? { market: 'commodity', symbol: c.symbol } : null
+  }
   if (!asset.quote) return null
   const allowed: Partial<Record<AssetKind, QuoteMarket[]>> = { stock: ['bist'], foreign: ['us'], fund: ['tefas'], crypto: ['crypto'] }
   return allowed[asset.kind]?.includes(asset.quote.market) ? asset.quote : null
@@ -352,7 +413,8 @@ export function quoteUpdates(assets: Asset[], quotes: MarketQuote[]): RateUpdate
     if (a.archived) continue
     const want = autoQuote(a)
     const q = want ? byKey.get(quoteKey(want)) : undefined
-    const u = q ? update(a, q.date, q.priceTl, 'piyasa') : null
+    const factor = a.kind === 'gold' ? goldFactor(a) : 1
+    const u = q && factor ? update(a, q.date, q.priceTl * factor, 'piyasa') : null
     if (u) out.push(u)
   }
   return out
@@ -361,4 +423,48 @@ export function quoteUpdates(assets: Asset[], quotes: MarketQuote[]): RateUpdate
 /** Eski kayıtlar: ABD sembollü "Hisse" artık "Yabancı hisse / ETF" türüdür. */
 export function migrateAssetKind<T extends Pick<Asset, 'kind' | 'quote'>>(a: T): T {
   return a.kind === 'stock' && a.quote?.market === 'us' ? { ...a, kind: 'foreign' } : a
+}
+
+/** Sembol girilebilen (otomatik eşlenebilen) türler. */
+export const SYMBOL_KINDS: AssetKind[] = ['stock', 'foreign', 'fund', 'crypto']
+
+export const defaultMarket = (k: AssetKind): QuoteMarket => (k === 'fund' ? 'tefas' : k === 'crypto' ? 'crypto' : k === 'foreign' ? 'us' : 'bist')
+
+/** Türkçe harf ve büyük-küçük harf duyarsız karşılaştırma için sadeleştirme. */
+export function foldText(s: string): string {
+  return s
+    .toLocaleUpperCase('tr')
+    .replace(/İ/g, 'I')
+    .replace(/Ş/g, 'S')
+    .replace(/Ğ/g, 'G')
+    .replace(/Ü/g, 'U')
+    .replace(/Ö/g, 'O')
+    .replace(/Ç/g, 'C')
+    .replace(/[^A-Z0-9& ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Sembolü olmayan varlık için adından güvenle eşlenebilecek öneri: ad sembolün kendisiyse, tek sonuç
+ * varsa ya da ilk sonucun adı varlığın adıyla başlıyorsa. Emin olunamazsa null (yanlış fiyat yazılmaz).
+ */
+export function confidentMatch<T extends { symbol: string; name: string }>(name: string, list: T[]): T | null {
+  const n = foldText(name)
+  if (!n || list.length === 0) return null
+  const exact = list.find((s) => foldText(s.symbol) === n)
+  if (exact) return exact
+  if (list.length === 1) return list[0]
+  const top = list[0]
+  return foldText(top.name).startsWith(n) && n.length >= 3 ? top : null
+}
+
+/**
+ * Elle güncellenmesi gereken (fiyatı otomatik gelemeyen) ve 30 günden eski fiyatlı varlık mı?
+ * Nakit, borç, "diğer" ve mevduat tutarla izlenir; mevduatta faiz oranı varsa bakiye zaten kendiliğinden büyür.
+ */
+export function needsPrice(asset: Asset, s: HoldingSummary, today: IsoDate, staleDays = 30): boolean {
+  if (!['fx', 'fund', 'gold', 'commodity', 'stock', 'foreign', 'crypto'].includes(asset.kind)) return false
+  if (!s.price || s.quantity <= 0) return false
+  return (Date.parse(today) - Date.parse(s.price.date)) / DAY_MS > staleDays
 }

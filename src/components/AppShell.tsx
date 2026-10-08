@@ -7,6 +7,8 @@ import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
 import { useIsAdmin } from '../state/admin'
 import { useFollowCurrentPeriod } from '../state/cycle'
+import { useLivePriceSync } from '../state/livePrices'
+import { usePlan } from '../state/plan'
 import { useTheme } from '../state/theme'
 import { useData } from '../state/data'
 import { useUi } from '../state/ui'
@@ -90,6 +92,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   useFollowCurrentPeriod()
+  // Varlık fiyatları hangi sayfada olunursa olsun kendiliğinden güncellenir
+  useLivePriceSync(usePlan().has('assets') && !isDemo)
   const admin = useIsAdmin()
   const sections: typeof SECTIONS = admin ? [...SECTIONS.slice(0, -1), { ...SECTIONS[SECTIONS.length - 1], items: [...SECTIONS[SECTIONS.length - 1].items, ITEMS.admin] }] : SECTIONS
   const inMenu = !DOCK_PATHS.some((p) => (p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)))

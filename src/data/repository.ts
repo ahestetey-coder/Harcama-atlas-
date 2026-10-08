@@ -564,7 +564,7 @@ export class AtlasRepository {
 
   // ---------- Varlıklarım (Plus) ----------
 
-  async saveAsset(input: { id?: string; kind: AssetKind; name: string; unit: string; note?: string; archived?: boolean; debtTerms?: DebtTerms | null; quote?: AssetQuote | null }, firstTrade?: Omit<AssetTrade, 'id' | 'side'>): Promise<Asset> {
+  async saveAsset(input: { id?: string; kind: AssetKind; name: string; unit: string; note?: string; archived?: boolean; debtTerms?: DebtTerms | null; quote?: AssetQuote | null; interestRatePct?: number | null }, firstTrade?: Omit<AssetTrade, 'id' | 'side'>): Promise<Asset> {
     const name = input.name.trim().slice(0, 60)
     if (!name) throw new UserFacingError('Bir ad girin.')
     const unit = input.unit.trim().slice(0, 16) || 'adet'
@@ -579,6 +579,7 @@ export class AtlasRepository {
       note: input.note?.trim().slice(0, 200) || undefined,
       debtTerms: (prev?.kind ?? input.kind) !== 'debt' ? undefined : input.debtTerms === undefined ? prev?.debtTerms : (input.debtTerms ?? undefined),
       quote: input.quote === undefined ? prev?.quote : (input.quote ?? undefined),
+      interestRatePct: (prev?.kind ?? input.kind) !== 'deposit' ? undefined : input.interestRatePct === undefined ? prev?.interestRatePct : (input.interestRatePct ?? undefined),
       trades: prev?.trades ?? (firstTrade ? [{ ...firstTrade, side: 'buy', id: newId() }] : []),
       valuations: prev?.valuations ?? [],
       archived: input.archived ?? prev?.archived ?? false,

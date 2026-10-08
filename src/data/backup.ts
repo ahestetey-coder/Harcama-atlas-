@@ -139,12 +139,13 @@ const goalSchema = z.object({
 
 const assetSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(['deposit', 'fx', 'fund', 'gold', 'stock', 'foreign', 'cash', 'other', 'crypto', 'debt']),
+  kind: z.enum(['deposit', 'fx', 'fund', 'gold', 'commodity', 'stock', 'foreign', 'cash', 'other', 'crypto', 'debt']),
   name: z.string(),
   unit: z.string(),
   trades: z.array(z.object({ id: z.string().min(1), date: isoDate, side: z.enum(['buy', 'sell']), quantity: z.number().positive(), unitPriceKurus: z.number().nonnegative() })),
   valuations: z.array(z.object({ date: isoDate, unitPriceKurus: z.number().nonnegative(), source: z.enum(['manual', 'tcmb', 'piyasa']) })),
-  quote: z.object({ market: z.enum(['bist', 'us', 'tefas', 'crypto', 'gold']), symbol: z.string().min(1).max(15) }).optional(),
+  quote: z.object({ market: z.enum(['bist', 'us', 'tefas', 'crypto', 'gold', 'commodity']), symbol: z.string().min(1).max(15) }).optional(),
+  interestRatePct: z.number().min(0).max(1000).optional(),
   note: z.string().optional(),
   debtTerms: z.object({ monthlyRatePct: z.number().min(0).max(100), minPaymentKurus: z.number().int().nonnegative().nullable() }).optional(),
   archived: z.boolean(),

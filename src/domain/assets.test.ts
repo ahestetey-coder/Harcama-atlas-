@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoPriceCode, autoQuote, holdingSummary, migrateAssetKind, normalizeSymbol, quoteUpdates, parseQuantity, portfolio, priceAt, rateUpdates, valueHistory, type Asset, type AssetTrade } from './assets'
+import { autoPriceCode, autoQuote, confidentMatch, goldFactor, holdingSummary, needsPrice, migrateAssetKind, normalizeSymbol, quoteUpdates, parseQuantity, portfolio, priceAt, rateUpdates, valueHistory, type Asset, type AssetTrade } from './assets'
 
 let seq = 0
 const asset = (kind: Asset['kind'], trades: Omit<AssetTrade, 'id'>[], valuations: [string, number][] = []): Asset => ({
@@ -113,8 +113,14 @@ describe('piyasa fiyatıyla otomatik güncelleme', () => {
     expect(autoQuote(stock({ market: 'us', symbol: 'AAPL' }))).toBeNull() // BIST hissesi yabancı borsaya bakmaz
     expect(migrateAssetKind(stock({ market: 'us', symbol: 'AAPL' })).kind).toBe('foreign')
     expect(migrateAssetKind(stock({ market: 'bist', symbol: 'THYAO' })).kind).toBe('stock')
-    expect(autoQuote({ kind: 'gold', unit: 'gram' })).toEqual({ market: 'gold', symbol: 'XAU' })
-    expect(autoQuote({ kind: 'gold', unit: 'adet' })).toBeNull()
+    expect(autoQuote({ kind: 'gold', unit: 'gram', name: 'Gram altın' })).toEqual({ market: 'gold', symbol: 'XAU' })
+    expect(autoQuote({ kind: 'gold', unit: 'adet', name: 'Çeyrek altın' })).toEqual({ market: 'gold', symbol: 'XAU' })
+    expect(autoQuote({ kind: 'gold', unit: 'adet', name: 'Hatıra parası' })).toBeNull()
+    expect(goldFactor({ kind: 'gold', unit: 'adet', name: 'Çeyrek altın' })).toBeCloseTo(1.6067, 3)
+    expect(goldFactor({ kind: 'gold', unit: 'gram', name: '22 ayar bilezik' })).toBe(0.916)
+    expect(autoQuote({ kind: 'commodity', unit: 'gram', name: 'Gümüş' })).toEqual({ market: 'commodity', symbol: 'XAG' })
+    expect(autoQuote({ kind: 'commodity', unit: 'varil', name: 'Brent petrol' })).toEqual({ market: 'commodity', symbol: 'BRENT' })
+    expect(autoQuote({ kind: 'commodity', unit: 'kg', name: 'Pamuk' })).toBeNull()
     expect(normalizeSymbol(' thyao.is ')).toBe('THYAO')
     expect(normalizeSymbol('a b')).toBeNull()
   })
@@ -127,5 +133,35 @@ describe('piyasa fiyatıyla otomatik güncelleme', () => {
     expect(u).toEqual([{ assetId: a.id, valuation: { date: '2026-10-07', unitPriceKurus: 33050, source: 'piyasa' } }])
     const s = holdingSummary({ ...a, valuations: [u[0].valuation] }, '2026-10-07')
     expect(s.unrealizedKurus).toBe(330500 - 300000)
+  })
+})
+
+describe('kendiliğinden güncelleme', () => {
+  it('mevduat faiz oranıyla bugüne kadar büyür ve eski fiyat sayılmaz', () => {
+    const d = { ...asset('deposit', [{ date: '2026-01-01', side: 'buy', quantity: 1000, unitPriceKurus: 100 }]), interestRatePct: 36.5 }
+    const s = holdingSummary(d, '2026-01-11')
+    // 100.000 kuruş × (1 + 0,365 × 10/365) = 101.000
+    expect(s.valueKurus).toBe(101000)
+    expect(s.price?.source).toBe('faiz')
+    expect(needsPrice(d, holdingSummary(d, '2026-10-07'), '2026-10-07')).toBe(false)
+  })
+
+  it('sembolsüz varlığı yalnızca eminse eşler', () => {
+    const list = [
+      { symbol: 'ASELS', name: 'ASELSAN ELEKTRONİK SANAYİ' },
+      { symbol: 'ASTOR', name: 'ASTOR ENERJİ' },
+    ]
+    expect(confidentMatch('Aselsan', list)?.symbol).toBe('ASELS')
+    expect(confidentMatch('astor', list)?.symbol).toBe('ASTOR')
+    expect(confidentMatch('As', list)).toBeNull()
+    expect(confidentMatch('Enerji', list)).toBeNull()
+    expect(confidentMatch('Teknoloji fonu', [{ symbol: 'TTE', name: 'İŞ PORTFÖY TEKNOLOJİ' }])?.symbol).toBe('TTE')
+  })
+
+  it('fiyatı otomatik gelmesi gereken eski varlıkları işaretler', () => {
+    const g = asset('gold', [{ date: '2026-08-14', side: 'buy', quantity: 1, unitPriceKurus: 100 }])
+    expect(needsPrice(g, holdingSummary(g, '2026-10-07'), '2026-10-07')).toBe(true)
+    const o = asset('other', [{ date: '2026-08-14', side: 'buy', quantity: 1, unitPriceKurus: 100 }])
+    expect(needsPrice(o, holdingSummary(o, '2026-10-07'), '2026-10-07')).toBe(false)
   })
 })

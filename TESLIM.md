@@ -469,3 +469,15 @@ osman'ın isteğiyle "piyasa verisinde yalnızca TCMB" kararı genişletildi.
 - Ad ve sembol alanında yazarken öneri: BIST ve yabancı için Yahoo Finance araması, fon için TEFAS listesi (kod ya da adın parçası, Türkçe harf duyarsız), kripto için CoinGecko araması (yalnızca Binance'te USDT paritesi olanlar). Seçilince ad ve sembol birlikte dolar. Arama için giriş gerekir; istek yalnızca arama metnini taşır.
 - Canlı denemede Yahoo araması "aselsan" için ASELS.IS döndürdü; arama uç noktası girişli kullanıcı istediği için uygulama içinden canlı denenemedi, e2e'de sahte yanıtla sınandı.
 - Önceki sürümde kripto rengi (--asset-8) CSS'te tanımlı değildi; düzeltildi.
+
+## 34. Otomatik fiyat güncelleme ve emtia (08.10.2026)
+
+- Fiyatlar artık kullanıcı Varlıklarım'a girmeden güncellenir: uygulama açılınca, varlık listesi değişince ve uygulama açık kaldıkça 15 dakikada bir (ön plandayken). Eşitleyici uygulama kabuğunda çalışır (`src/state/livePrices.ts`); Plus paketi ve giriş gerekir, demo modunda çalışmaz.
+- Sembolü girilmemiş hisse, fon ve kripto, adından aranır; tam sembol eşleşmesi, tek sonuç ya da adın başıyla eşleşen ilk sonuç varsa sembol kendiliğinden eklenir (her varlık oturumda bir kez denenir). Emin olunamazsa dokunulmaz.
+- Çeyrek, yarım, tam, cumhuriyet, ata, reşat, gremse ve 22/18/14 ayar altın, has altın gramına çevrilerek ons fiyatından hesaplanır (yaklaşık; işçilik ve makas dahil değil).
+- Mevduata "Yıllık net faiz (%)" girilirse bakiye her gün basit faizle kendiliğinden artar.
+- Otomatik fiyatı gelen satırlarda elle "Fiyatı güncelle" düğmesi gizlenir; yalnızca fiyatı alınamayan veya otomatik kaynağı olmayan varlıklarda görünür. 30 günden eski fiyat uyarısı yalnızca piyasa fiyatlı türler için çıkar.
+- Yeni tür "Emtia": gümüş, platin, paladyum (gram), Brent ve WTI petrol (varil), bakır (kg), doğal gaz (MMBtu). Fiyat Yahoo Finance vadeli fiyatı × TCMB USD kuru. Listede olmayan emtia "Diğer" seçilip elle fiyatlanır. Dağılımda altınla aynı dilimde ("Altın ve emtia") gösterilir.
+- `market-rates` sürüm 5 yayınlandı (dosyalar diskle birebir karşılaştırıldı). Canlı ön bellek tablosunun anahtar kuralı emtiayı da kabul edecek şekilde güncellendi.
+- Canlı deneme (08.10.2026, Supabase sunucusundan): gümüş 94,91 ₺/gram, Brent 4.980,77 ₺/varil, bakır 722,20 ₺/kg; THYAO, AAPL, SPY, BTC, altın ve TTE de alındı; emtia önbellek satırları yazıldı.
+- Testler: 228 birim testi; e2e'de sembolsüz "Bitcoin"in kendiliğinden BTC'ye eşlenmesi, emtia ekleme ve mevduat faizi sınandı. Uygulama içinden girişli canlı deneme yapılamadı.
