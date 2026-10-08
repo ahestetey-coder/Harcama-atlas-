@@ -95,3 +95,25 @@ describe('koç: plan', () => {
     expect(m[0].link?.to).toBe('/yolculuk')
   })
 })
+
+describe('borç takvimi (Özgürlük Rotası)', () => {
+  it('her ayın ödemesi ve faizi kaydedilir; ödemeler − faiz = başlangıç bakiyesi', () => {
+    const debts: CoachDebt[] = [
+      { id: 'a', name: 'Kart', balanceKurus: 1000000, monthlyRatePct: 4, minPaymentKurus: 100000 },
+      { id: 'b', name: 'Taksit', balanceKurus: 300000, monthlyRatePct: 0, minPaymentKurus: 100000, fixed: true },
+    ]
+    const r = simulateDebts(debts, 400000, 'avalanche')
+    expect(r.payments).toHaveLength(r.months!)
+    expect(r.interest).toHaveLength(r.months!)
+    const paid = r.payments.reduce((s, x) => s + x, 0)
+    const interest = r.interest.reduce((s, x) => s + x, 0)
+    expect(paid - interest).toBe(1300000)
+    expect(interest).toBe(r.totalInterestKurus)
+    // Faizsiz taksit planına göre 3 ayda kapanır; fazla ödeme yalnızca faizli borca gider
+    expect(r.debts.find((d) => d.id === 'b')!.paidOffMonth).toBe(3)
+    // Önce en küçük borç: aynı bütçeyle daha çok faiz
+    expect(simulateDebts([...debts, { id: 'c', name: 'KMH', balanceKurus: 200000, monthlyRatePct: 1, minPaymentKurus: 20000 }], 400000, 'snowball').totalInterestKurus).toBeGreaterThanOrEqual(
+      simulateDebts([...debts, { id: 'c', name: 'KMH', balanceKurus: 200000, monthlyRatePct: 1, minPaymentKurus: 20000 }], 400000, 'avalanche').totalInterestKurus,
+    )
+  })
+})

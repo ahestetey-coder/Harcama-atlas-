@@ -453,8 +453,8 @@ test('Plus+ koç ve araştırma: rapor kaynaklı görünür, hafıza düzenlenir
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
 
   await page.goto('./#/yolculuk')
-  await takeFreedomTest(page, { income: '50.000', essential: '20.000', target: '25.000' })
-  await expect(page.getByRole('region', { name: 'Finansal güvence' })).toBeVisible()
+  await takeFreedomTest(page, { income: '50.000', essential: '20.000' })
+  await expect(page.getByRole('region', { name: 'Özgürlük hedefi' })).toBeVisible()
 
   await page.goto('./#/koc')
   const chat = page.getByRole('region', { name: 'Koç mesajları' })

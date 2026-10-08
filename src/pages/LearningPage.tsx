@@ -1,4 +1,7 @@
-import { BookOpen, ChevronDown, Newspaper } from "lucide-react";
+import { BookOpen, ChevronDown, Newspaper, Scale } from "lucide-react";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { ASSUMPTIONS } from "../domain/assumptions";
 import { PageHeader } from "../components/AppShell";
 import { useState } from "react";
 import { ReportMeta, ReportView } from "../components/Report";
@@ -162,6 +165,8 @@ export default function LearningPage() {
             </div>
           </section>
 
+          <Assumptions />
+
           <section aria-label="Ekonomi gündemi">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 font-display text-base font-semibold">
@@ -224,5 +229,37 @@ export default function LearningPage() {
         </div>
       </PlanGate>
     </div>
+  );
+}
+
+/** Özgürlük Rotası'nın varsayımları ve kaynakları (src/domain/assumptions.ts). */
+function Assumptions() {
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash === "#varsayimlar")
+      document.getElementById("varsayimlar")?.scrollIntoView({ block: "start" });
+  }, [hash]);
+  return (
+    <section id="varsayimlar" aria-label="Varsayımlar ve kaynaklar" className="scroll-mt-20">
+      <h2 className="mb-1 flex items-center gap-2 font-display text-base font-semibold">
+        <Scale className="size-5 text-accent" /> Varsayımlar ve kaynaklar
+      </h2>
+      <p className="mb-3 text-[12.5px] text-muted">
+        Özgürlük Rotası'ndaki bütün hesaplar bu varsayımlara dayanır. Sonuçlar
+        eğitim ve benzetim amaçlıdır; kişiye özel yatırım tavsiyesi değildir.
+      </p>
+      <Card className="p-0">
+        <ul className="divide-y divide-line">
+          {ASSUMPTIONS.map((a) => (
+            <li key={a.id} className="p-4">
+              <div className="font-semibold text-ink">{a.title}</div>
+              <p className="mt-1 text-[13px] text-ink">{a.value}</p>
+              <p className="mt-1 text-[12.5px] text-muted">{a.reason}</p>
+              <p className="mt-1 text-[12px] text-subtle">Kaynak: {a.source}</p>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </section>
   );
 }

@@ -3,7 +3,9 @@ import { listPublishedReports, type Report } from '../cloud/research'
 import { holdingSummary } from '../domain/assets'
 import { buildCoachPlan, coachMessages, estimatedMinPayment, type CoachDebt, type CoachMessage, type CoachPlan } from '../domain/coach'
 import { currentPeriod, todayIso } from '../domain/dates'
-import { buildJourney, emergencyMonthsFor, type JourneyFacts, type JourneyProfile, type JourneyResult } from '../domain/journey'
+import { RISK_PROFILES } from '../domain/assumptions'
+import { MONTH_NAMES } from '../domain/dates'
+import { buildJourney, emergencyMonthsFor, reachDateLabel, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult } from '../domain/journey'
 import { futureLoad, installmentPlans } from '../domain/recurring'
 import type { CoachSettings, CoachShare } from '../domain/types'
 import { useAuth } from './auth'
@@ -90,7 +92,7 @@ export function useCoach(): CoachState | null {
     const cs = settings.coach ?? DEFAULT_COACH
     const profile = settings.journey ?? null
     const plan = profile ? buildCoachPlan({ profile, facts, debts, debtsInExpenses: cs.debtsInExpenses, strategy: cs.strategy, emergencyMonths: emergencyMonthsFor(profile) }) : null
-    const journey = profile ? buildJourney(profile, facts, { USD: usd ?? (profile.base === 'USD' ? profile.baseRateTl : null), XAU: gold ?? (profile.base === 'XAU' ? profile.baseRateTl : null) }) : null
+    const journey = profile ? buildJourney(profile, facts, { USD: usd ?? (profile.base === 'USD' ? profile.baseRateTl : null), XAU: gold ?? (profile.base === 'XAU' ? profile.baseRateTl : null) }, { strategy: cs.strategy }) : null
     const route = journey ? { level: journey.level, total: journey.stages.length, current: journey.current } : undefined
     const read = new Set(cs.dismissed)
     const messages = coachMessages({ plan, hasProfile: !!profile, budget, due, month, today: todayIso(), closedDebts: closed, route }).map((m) => ({ ...m, read: read.has(m.id) }))
@@ -157,6 +159,7 @@ export function coachSummary(s: CoachState) {
             ilerlemeYuzde: Math.round(s.journey.indicators.goalRatio * 100),
             riskTutumu: s.profile.risk ?? null,
             acilFonHedefAy: s.journey.indicators.emergencyMonths,
+            ...freedomSummary(s.journey.plan, s.settings.strategy, todayIso()),
           },
         }
       : {}),
@@ -168,4 +171,37 @@ export function coachSummary(s: CoachState) {
 export function coachMemoryText(s: CoachState): string[] {
   const label = { hedef: 'Hedef', tercih: 'Tercih', not: 'Not', sohbet: 'Önceki sohbetten' } as const
   return (s.settings.memory ?? []).map((m) => `${label[m.kind]}: ${m.text}`)
+}
+
+/** Özgürlük Rotası v2 alanları (koç özeti): yalnızca toplamlar ve tarihler; borç adları gönderilmez. */
+export function freedomSummary(p: FreedomPlan, strategy: CoachSettings['strategy'], today: string) {
+  const tl = (k: number | null | undefined) => (k == null ? null : Math.round(k / 100))
+  const when = (m: number | null) => (m === null ? null : reachDateLabel(m, today))
+  const [y, mo] = today.split('-').map(Number)
+  return {
+    hedefYas: p.targetAge,
+    paraninYetmesiGerekenYas: p.lifeAge,
+    hedefTarihi: `${MONTH_NAMES[mo - 1]} ${y + p.yearsToTarget}`,
+    gerekenAylikBirikim: tl(p.requiredMonthlyKurus),
+    mevcutAylikBirikim: tl(p.monthlySavingKurus),
+    aylikFark: tl(p.gapKurus),
+    tasarrufOraniYuzde: Math.round(p.savingRate * 100),
+    hedefSermaye: { lean: tl(p.leanKurus), fi: tl(p.fiKurus), fat: tl(p.fatKurus) },
+    bugunkuHizlaUlasmaYasi: p.reachAge === null ? null : Math.ceil(p.reachAge),
+    beklenenSenaryo: { profil: p.risk.profile.label, hisseYuzde: Math.round(p.risk.profile.equity * 100), reelGetiriYuzde: p.risk.profile.realReturnPct, oynaklikYuzde: p.risk.profile.volatilityPct },
+    riskToleransi: p.risk.tolerance === null ? null : RISK_PROFILES[p.risk.tolerance].label,
+    riskKapasitesi: RISK_PROFILES[p.risk.capacity].label,
+    cekimOraniOnerisi: p.withdrawal.recommendedPct,
+    kullanilanCekimOrani: p.withdrawal.usedPct,
+    coastFiTl: tl(p.coastKurus),
+    coastGecildi: p.coastPassed,
+    basariOlasiligiYuzde: Math.round(p.successRate * 100),
+    basariNotu: 'Varsayıma dayalı benzetim; gerçek olasılık değildir.',
+    borcStratejisi: strategy === 'avalanche' ? 'önce en yüksek faiz' : 'önce en küçük borç',
+    borcsuzOlmaTarihi: p.debtFreeMonth === 0 ? 'borç yok' : when(p.debtFreeMonth),
+    borcBitisTakvimi: p.debtEnds.map((d, i) => ({ borc: `Borç ${i + 1}`, bitis: when(d.month), serbestKalanTaksit: tl(d.freedKurus) })),
+    duzenliOdemeBitisleri: p.recurringEnds.map((r) => ({ bitis: when(r.month), serbestKalan: tl(r.freedKurus) })),
+    kaldiraclar: { tekBasinaYeterliEkBirikim: tl(p.levers.extraMonthlyKurus), tekBasinaYeterliHedefYas: p.levers.targetAge, tekBasinaYeterliHarcamaYuzde: p.levers.spendPct },
+    gelecekHedef: { tlNominal: tl(p.future.tlNominalKurus), usd: p.future.usd, altinGr: p.future.goldGr, enflasyonVarsayimiYuzde: p.future.inflationPct },
+  }
 }
