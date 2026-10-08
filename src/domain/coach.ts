@@ -269,13 +269,15 @@ export interface MessageInput {
   today: string
   /** Kapanan borçlar (önceden kayıtlıydı, bakiyesi sıfırlandı). */
   closedDebts: string[]
+  /** Finansal özgürlük rotasındaki konum. */
+  route?: { level: number; total: number; current: { id: string; title: string; next: string } | null }
 }
 
 /** Belirli kurallarla kişiye gönderilen koç mesajları (önem sırasıyla). */
 export function coachMessages(i: MessageInput): CoachMessage[] {
   const out: CoachMessage[] = []
   if (!i.hasProfile) {
-    out.push({ id: 'survey', tone: 'plan', title: 'Sizi tanıyalım', body: 'Gelirinizi, zorunlu giderlerinizi ve hedefinizi birkaç soruda girin; planınızı ona göre hazırlayayım.', link: { to: '/yolculuk', label: 'Ankete git' } })
+    out.push({ id: 'survey', tone: 'plan', title: 'Sizi tanıyalım', body: 'Finansal özgürlük testini yapın; gelirinizi, giderlerinizi, güvencelerinizi ve hedefinizi öğrenip planınızı rotanıza göre hazırlayayım.', link: { to: '/yolculuk', label: 'Teste git' } })
     return out
   }
   const p = i.plan
@@ -298,6 +300,15 @@ export function coachMessages(i: MessageInput): CoachMessage[] {
   for (const d of i.due.slice(0, 2)) {
     out.push({ id: `due-${d.id}-${d.date}`, tone: 'info', title: `${d.name} ödemesi yaklaşıyor`, body: `${tl(d.amountKurus)}, son gün ${d.date.split('-').reverse().join('.')}.`, link: { to: '/odemeler', label: 'Ödemeler' } })
   }
+  if (i.route?.current)
+    out.push({
+      id: `route-${i.route.current.id}-${i.month}`,
+      tone: 'plan',
+      title: `Rotanızda sıradaki: ${i.route.current.title}`,
+      body: `Seviye ${i.route.level}/${i.route.total}. ${i.route.current.next}.`,
+      link: { to: '/yolculuk', label: 'Rotama git' },
+    })
+  else if (i.route) out.push({ id: 'route-done', tone: 'win', title: 'Rotanın sonuna ulaştınız', body: 'Finansal özgürlük rotasındaki bütün aşamaları tamamladınız. Hedefinizi testte güncelleyebilirsiniz.', link: { to: '/yolculuk', label: 'Rotama git' } })
   for (const name of i.closedDebts) out.push({ id: `closed-${name}`, tone: 'win', title: `${name} kapandı!`, body: 'Bu borca giden tutar artık sıradaki hedefe akıyor.' })
   if (p) {
     const phase = p.phases[0]
@@ -310,9 +321,9 @@ export function coachMessages(i: MessageInput): CoachMessage[] {
         body: `Borçlara toplam ${tl(phase.monthlyKurus)} ödeyin. ${first ? `İlk kapanacak borç: ${first.name}${first.paidOffMonth ? ` (${first.paidOffMonth}. ay)` : ''}.` : ''}`,
       })
     } else if (phase?.id === 'emergency') {
-      out.push({ id: `plan-em-${i.month}`, tone: 'plan', title: 'Bu ayın planı', body: `Acil durum birikimine ${tl(phase.monthlyKurus)} ekleyin; ${tl(p.emergencyGapKurus)} kaldı.`, link: { to: '/varliklar', label: 'Varlıklarım' } })
+      out.push({ id: `plan-em-${i.month}`, tone: 'plan', title: 'Bu ayın planı', body: `Acil durum birikimine ${tl(phase.monthlyKurus)} ekleyin; ${tl(p.emergencyGapKurus)} kaldı.`, link: { to: '/yatirimlar', label: 'Yatırımlarım' } })
     } else if (phase?.id === 'invest') {
-      out.push({ id: `plan-inv-${i.month}`, tone: 'plan', title: 'Bu ayın planı', body: `Yatırıma ${tl(phase.monthlyKurus)} ayırın ve Varlıklarım'a ekleyin.`, link: { to: '/varliklar', label: 'Varlıklarım' } })
+      out.push({ id: `plan-inv-${i.month}`, tone: 'plan', title: 'Bu ayın planı', body: `Yatırıma ${tl(phase.monthlyKurus)} ayırın ve Yatırımlarım'a ekleyin.`, link: { to: '/yatirimlar', label: 'Yatırımlarım' } })
     }
   }
   return out
@@ -335,7 +346,7 @@ const monthsText = (m: number) => (m < 12 ? `${m} ay` : m % 12 === 0 ? `${m / 12
 export function answer(q: QuestionId, p: CoachPlan, facts: JourneyFacts, budget: BudgetStatus | null): string {
   switch (q) {
     case 'debtFree': {
-      if (!p.debts.length) return 'Kayıtlı borcunuz yok. Varlıklarım sayfasında borç eklerseniz kapatma planını hemen çıkarırım.'
+      if (!p.debts.length) return 'Kayıtlı borcunuz yok. Borçlarım sayfasında borç eklerseniz kapatma planını hemen çıkarırım.'
       if (!p.payoff?.months) return `Bu ödeme tutarıyla borçlar kapanmıyor: faiz, ödemeden hızlı büyüyor. Aylık ödemeyi artırmak veya daha düşük faizle yapılandırmak gerekiyor.`
       const s = p.interestSavedKurus > 0 ? ` Sadece asgari ödeseydiniz ${tl(p.interestSavedKurus)} daha fazla faiz öderdiniz.` : ''
       return `Ayda ${tl(p.phases[0].monthlyKurus)} ödemeyle bütün borçlar ${monthsText(p.payoff.months)} içinde kapanır; toplam faiz ${tl(p.payoff.totalInterestKurus)}.${s}`

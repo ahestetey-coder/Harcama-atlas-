@@ -1,6 +1,6 @@
 import { MotionConfig } from 'motion/react'
 import { lazy, Suspense, useEffect } from 'react'
-import { createHashRouter, Outlet, RouterProvider } from 'react-router-dom'
+import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { TransactionFormHost } from './components/TransactionForm'
 import { Spinner } from './components/ui/primitives'
@@ -31,6 +31,7 @@ const loaders = {
   goals: () => import('./pages/GoalsPage'),
   reports: () => import('./pages/ReportsPage'),
   assets: () => import('./pages/AssetsPage'),
+  debts: () => import('./pages/DebtsPage'),
   journey: () => import('./pages/JourneyPage'),
   scenarios: () => import('./pages/ScenariosPage'),
   learning: () => import('./pages/LearningPage'),
@@ -52,6 +53,7 @@ const PaymentsPage = lazy(loaders.payments)
 const GoalsPage = lazy(loaders.goals)
 const ReportsPage = lazy(loaders.reports)
 const AssetsPage = lazy(loaders.assets)
+const DebtsPage = lazy(loaders.debts)
 const JourneyPage = lazy(loaders.journey)
 const ScenariosPage = lazy(loaders.scenarios)
 const LearningPage = lazy(loaders.learning)
@@ -103,6 +105,12 @@ function NotFound() {
   )
 }
 
+/** Eski "Varlıklarım" bağlantıları Yatırımlarım'a gider. */
+function OldAssetsRoute() {
+  const { search } = useLocation()
+  return <Navigate to={`/yatirimlar${search}`} replace />
+}
+
 const router = createHashRouter([
   {
     element: <Layout />,
@@ -123,7 +131,9 @@ const router = createHashRouter([
       { path: '/odemeler', element: <PaymentsPage /> },
       { path: '/hedefler', element: <GoalsPage /> },
       { path: '/raporlar', element: <ReportsPage /> },
-      { path: '/varliklar', element: <AssetsPage /> },
+      { path: '/yatirimlar', element: <AssetsPage /> },
+      { path: '/varliklar', element: <OldAssetsRoute /> },
+      { path: '/borclar', element: <DebtsPage /> },
       { path: '/yolculuk', element: <JourneyPage /> },
       { path: '/senaryolar', element: <ScenariosPage /> },
       { path: '/ogren', element: <LearningPage /> },

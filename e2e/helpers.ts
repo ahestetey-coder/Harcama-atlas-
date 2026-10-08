@@ -57,3 +57,18 @@ export async function filterCategory(page: Page, label: string | null) {
   await dlg.getByRole('button', { name: /^Göster/ }).click()
   await expect(dlg).toBeHidden()
 }
+
+/** Finansal özgürlük testini (5 adım) verilen tutarlarla tamamlar; diğer yanıtlar varsayılandır. */
+export async function takeFreedomTest(page: Page, o: { income: string; essential: string; target: string; age?: string }) {
+  const t = page.getByRole('region', { name: 'Finansal özgürlük testi' })
+  await t.getByLabel('Yaşınız').fill(o.age ?? '32')
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await t.getByLabel(/Aylık net gelir/).fill(o.income)
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await t.getByLabel(/Zorunlu aylık giderler/).fill(o.essential)
+  await t.getByLabel(/Hedefteki aylık yaşam gideri/).fill(o.target)
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await t.getByRole('button', { name: /Testi tamamla/ }).click()
+  await expect(t).toBeHidden()
+}

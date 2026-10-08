@@ -20,9 +20,11 @@ export interface LiveState {
   /** Adından kendiliğinden sembol eklenen varlıklar: id → sembol. */
   linked: Record<string, string>
   usd: { valueTl: number; date: string } | null
+  /** Has altının gram fiyatı (TL); yolculuk planını altın bazında göstermek için. */
+  goldGram: { valueTl: number; date: string } | null
 }
 
-let state: LiveState = { busy: false, failed: {}, linked: {}, usd: null }
+let state: LiveState = { busy: false, failed: {}, linked: {}, usd: null, goldGram: null }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<LiveState>) => {
   state = { ...state, ...patch }
@@ -91,6 +93,8 @@ export function useLivePriceSync(enabled: boolean) {
       }
       // 2) Kurlar ve piyasa fiyatları
       const wanted = new Map<string, AssetQuote>()
+      // Altın gram fiyatı, altın varlığı olmasa da plan birimi için alınır
+      wanted.set('gold:XAU', { market: 'gold', symbol: 'XAU' })
       for (const a of list) {
         const q = autoQuote(a)
         if (q) wanted.set(quoteKey(q), q)
@@ -107,8 +111,9 @@ export function useLivePriceSync(enabled: boolean) {
         if (e) failed[a.id] = e
       }
       const usd = data.rates.find((r) => r.code === 'USD')
+      const gold = ok.find((q) => q.market === 'gold' && q.symbol === 'XAU')
       lastRun = Date.now()
-      set({ busy: false, at: new Date().toISOString(), failed, linked, usd: usd && data.date ? { valueTl: usd.valueTl, date: data.date } : state.usd })
+      set({ busy: false, at: new Date().toISOString(), failed, linked, usd: usd && data.date ? { valueTl: usd.valueTl, date: data.date } : state.usd, goldGram: gold ? { valueTl: gold.priceTl, date: gold.date } : state.goldGram })
       return updates.length
     } catch (e) {
       set({ busy: false, error: e instanceof Error ? e.message : 'Güncel fiyatlar alınamadı.' })

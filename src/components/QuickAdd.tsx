@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowLeftRight, Bot, Camera, FileSpreadsheet, FileUp, FolderPlus, Image as ImageIcon, PiggyBank, Receipt, Repeat, Tag, Target, Undo2, UserPlus, Wallet } from 'lucide-react'
+import { ArrowDownLeft, ArrowLeftRight, Bot, Camera, CreditCard, FileSpreadsheet, FileUp, FolderPlus, Image as ImageIcon, PiggyBank, Receipt, Repeat, Tag, Target, Undo2, UserPlus, Wallet } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useRef, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -71,7 +71,8 @@ export function QuickAddSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const plan: Action[] = [
     { key: 'recurring', label: 'Düzenli ödeme', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', run: go('/odemeler?yeni=1'), feature: 'subscriptions' },
     { key: 'goal', label: 'Birikim hedefi', icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', run: go('/hedefler?yeni=1'), feature: 'goals' },
-    { key: 'asset', label: 'Varlık / borç', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', run: go('/varliklar?yeni=1'), feature: 'assets' },
+    { key: 'asset', label: 'Yatırım', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', run: go('/yatirimlar?yeni=1'), feature: 'assets' },
+    { key: 'debt', label: 'Borç', icon: <CreditCard />, tone: 'from-rose-500 to-red-600', run: go('/borclar?yeni=1'), feature: 'assets' },
     { key: 'budget', label: 'Bütçe limiti', icon: <Target />, tone: 'from-amber-500 to-orange-600', run: go('/butce'), feature: 'advancedBudget' },
   ]
   const more: Action[] = [

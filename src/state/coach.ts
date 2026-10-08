@@ -3,12 +3,13 @@ import { listPublishedReports, type Report } from '../cloud/research'
 import { holdingSummary } from '../domain/assets'
 import { buildCoachPlan, coachMessages, estimatedMinPayment, type CoachDebt, type CoachMessage, type CoachPlan } from '../domain/coach'
 import { currentPeriod, todayIso } from '../domain/dates'
-import type { JourneyFacts, JourneyProfile } from '../domain/journey'
+import { buildJourney, emergencyMonthsFor, type JourneyFacts, type JourneyProfile, type JourneyResult } from '../domain/journey'
 import { futureLoad, installmentPlans } from '../domain/recurring'
 import type { CoachSettings, CoachShare } from '../domain/types'
 import { useAuth } from './auth'
 import { useBudgetStatus, useDuePayments, useInstallmentDebt, useJourneyFacts } from './budget'
 import { usePersonalCycle } from './cycle'
+import { useLiveState } from './livePrices'
 import { useAssets, useRecurring, useSettings } from './data'
 import { usePersonalTransactions } from './personal'
 
@@ -21,7 +22,7 @@ export interface CoachDebtInfo extends CoachDebt {
   missingRate: boolean
 }
 
-/** Koçun borç listesi: Varlıklarım'daki borçlar ve düzenli ödemelerdeki kalan taksitler. */
+/** Koçun borç listesi: Borçlarım'daki borçlar ve düzenli ödemelerdeki kalan taksitler. */
 export function useCoachDebts(): CoachDebtInfo[] | null {
   const assets = useAssets()
   const installmentDebt = useInstallmentDebt()
@@ -65,6 +66,8 @@ export interface CoachState {
   settings: CoachSettings
   debts: CoachDebtInfo[]
   plan: CoachPlan | null
+  /** Finansal özgürlük rotası (test yapılmışsa). */
+  journey: JourneyResult | null
   /** Okunmamış mesajlar önce. */
   messages: Array<CoachMessage & { read: boolean }>
   budget: ReturnType<typeof useBudgetStatus>
@@ -79,16 +82,21 @@ export function useCoach(): CoachState | null {
   const budget = useBudgetStatus(month)
   const due = useDuePayments()
   const closed = useClosedDebts()
+  const live = useLiveState()
+  const usd = live.usd?.valueTl ?? null
+  const gold = live.goldGram?.valueTl ?? null
   return useMemo(() => {
     if (!settings || !facts || !debts) return null
     const cs = settings.coach ?? DEFAULT_COACH
     const profile = settings.journey ?? null
-    const plan = profile ? buildCoachPlan({ profile, facts, debts, debtsInExpenses: cs.debtsInExpenses, strategy: cs.strategy }) : null
+    const plan = profile ? buildCoachPlan({ profile, facts, debts, debtsInExpenses: cs.debtsInExpenses, strategy: cs.strategy, emergencyMonths: emergencyMonthsFor(profile) }) : null
+    const journey = profile ? buildJourney(profile, facts, { USD: usd ?? (profile.base === 'USD' ? profile.baseRateTl : null), XAU: gold ?? (profile.base === 'XAU' ? profile.baseRateTl : null) }) : null
+    const route = journey ? { level: journey.level, total: journey.stages.length, current: journey.current } : undefined
     const read = new Set(cs.dismissed)
-    const messages = coachMessages({ plan, hasProfile: !!profile, budget, due, month, today: todayIso(), closedDebts: closed }).map((m) => ({ ...m, read: read.has(m.id) }))
+    const messages = coachMessages({ plan, hasProfile: !!profile, budget, due, month, today: todayIso(), closedDebts: closed, route }).map((m) => ({ ...m, read: read.has(m.id) }))
     messages.sort((a, b) => Number(a.read) - Number(b.read))
-    return { profile, facts, settings: cs, debts, plan, messages, budget }
-  }, [settings, facts, debts, budget, due, month, closed])
+    return { profile, facts, settings: cs, debts, plan, journey, messages, budget }
+  }, [settings, facts, debts, budget, due, month, closed, usd, gold])
 }
 
 /** Editör onaylı, yayınlanmış ortak ekonomi raporları (hesapla giriş yapılmışsa). */
@@ -132,6 +140,23 @@ export function coachSummary(s: CoachState) {
             asamalar: p.phases.map((x) => ({ asama: x.title, baslangicAyi: x.startMonth, bitisAyi: x.endMonth, aylik: tl(x.monthlyKurus) })),
             hedefBirikim: tl(p.goalKurus),
             hedefeKalanAyOrtaVarsayim: p.targetMonths,
+          },
+        }
+      : {}),
+    ...(share.goals && s.journey && s.profile
+      ? {
+          ozgurlukRotasi: {
+            seviye: `${s.journey.level}/${s.journey.stages.length}`,
+            tamamlananlar: s.journey.stages.filter((x) => x.done).map((x) => x.title),
+            siradakiAsama: s.journey.current ? { ad: s.journey.current.title, olcut: s.journey.current.criterion, durum: s.journey.current.status, sonrakiAdim: s.journey.current.next } : null,
+            ekOlcutler: s.journey.checks.map((c) => ({ ad: c.title, durum: c.done === null ? 'bilinmiyor' : c.done ? 'sağlanıyor' : 'sağlanmıyor' })),
+            hedef: s.profile.goal === 'custom' && s.profile.goalName ? s.profile.goalName : s.profile.goal,
+            hedefSuresiYil: s.profile.horizonYears,
+            planBirimi: s.profile.base ?? 'TRY',
+            gerekenBirikimTl: tl(s.journey.indicators.goalKurus),
+            ilerlemeYuzde: Math.round(s.journey.indicators.goalRatio * 100),
+            riskTutumu: s.profile.risk ?? null,
+            acilFonHedefAy: s.journey.indicators.emergencyMonths,
           },
         }
       : {}),

@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { budgetStatus, DEFAULT_BUDGET_PLAN, type BudgetStatus } from '../domain/budget'
 import { todayIso } from '../domain/dates'
 import { addMonthsClamped, fixedPayments, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
-import { holdingSummary, portfolio } from '../domain/assets'
+import { CONSUMER_DEBT, debtTypeOf, holdingSummary, portfolio } from '../domain/assets'
+import { estimatedMinPayment } from '../domain/coach'
 import { averageMonthlyExpense, type JourneyFacts } from '../domain/journey'
 import { usePersonalCycle } from './cycle'
 import { useAssets, useRecurring, useSettings } from './data'
@@ -70,6 +71,18 @@ export function useJourneyFacts(): JourneyFacts | null {
     const p = portfolio(assets, today, installmentDebt)
     let liquid = 0
     let recent = 0
+    let consumer = 0
+    // Aylık borç ödemeleri: girilen asgari/taksit (yoksa tahmini asgari) + bu ayki kart ve elle eklenen taksitler
+    const manualKeys = new Set(recurring.filter((r) => r.kind === 'installment' && r.matchKey).map((r) => r.matchKey!))
+    let payments = installmentPlans(personal.counted, manualKeys).reduce((s, x) => s + x.monthlyKurus, 0)
+    for (const r of recurring) if (r.kind === 'installment' && r.active && (progressOf(r, today).remaining ?? 0) > 0) payments += r.amountKurus
+    for (const a of assets) {
+      if (a.archived || a.kind !== 'debt') continue
+      const bal = holdingSummary(a, today).valueKurus
+      if (bal <= 0) continue
+      if (CONSUMER_DEBT.includes(debtTypeOf(a))) consumer += bal
+      payments += Math.min(bal, a.debtTerms?.minPaymentKurus ?? estimatedMinPayment(bal, a.debtTerms?.monthlyRatePct ?? 0))
+    }
     const since = addMonthsClamped(today, -3)
     for (const a of assets) {
       if (a.archived || a.kind === 'debt') continue
@@ -83,6 +96,8 @@ export function useJourneyFacts(): JourneyFacts | null {
       liquidKurus: liquid,
       assetsKurus: p.assetsKurus,
       debtsKurus: p.debtsKurus,
+      consumerDebtKurus: consumer,
+      monthlyDebtPaymentKurus: payments,
       contributedKurus: p.contributedKurus,
       marketGainKurus: p.unrealizedKurus + p.realizedKurus,
       recentMonthlyContributionKurus: Math.round(recent / 3),

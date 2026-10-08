@@ -493,7 +493,7 @@ function Shortcuts({ className }: { className?: string }) {
     { to: '/butce', label: 'Bütçe', icon: <Target />, tone: 'from-amber-500 to-orange-600', feature: 'advancedBudget', badge: warnings ? `${warnings} uyarı` : undefined },
     { to: '/odemeler', label: 'Ödemeler', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', feature: 'subscriptions', badge: due ? `${due} yaklaşan` : undefined },
     { to: '/hedefler', label: 'Hedefler', icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', feature: 'goals' },
-    { to: '/varliklar', label: 'Varlıklar', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', feature: 'assets' },
+    { to: '/yatirimlar', label: 'Yatırımlar', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', feature: 'assets' },
     { to: '/raporlar', label: 'Raporlar', icon: <ChartColumn />, tone: 'from-indigo-500 to-blue-700', feature: 'reports' },
     { to: '/koc', label: 'Koçum', icon: <Bot />, tone: 'from-cyan-500 to-emerald-500', feature: 'aiCoach' },
   ]

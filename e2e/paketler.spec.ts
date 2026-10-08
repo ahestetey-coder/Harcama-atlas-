@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { addExpense, open } from './helpers'
+import { addExpense, open, takeFreedomTest } from './helpers'
 
 test('Plus bütçe: ücretsizde kilitli; önizlemede kategori limiti, uyarı ve tahmin çalışır', async ({ page }) => {
   await open(page, 'butce')
@@ -113,14 +113,15 @@ test('Plus birikim hedefi ve raporlar: hedef eklenir, para eklenip çekilir; rap
   await expect(page.getByText('Karşılaştırma için önceki dönemlerden kayıt gerekiyor.', { exact: false })).toBeVisible()
 })
 
-test('Plus varlıklarım: altın eklenir, fiyat güncellenir, satılır, borç net varlıktan düşer', async ({ page }) => {
+test('Plus yatırımlarım ve borçlarım: altın eklenir, fiyat güncellenir, satılır; borç ayrı sayfada türüne göre izlenir', async ({ page }) => {
   await open(page, 'paketler')
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
   await page.goto('./#/varliklar')
-  await expect(page.getByText('Henüz varlık eklenmedi')).toBeVisible()
+  await expect(page).toHaveURL(/#\/yatirimlar/)
+  await expect(page.getByText('Henüz yatırım eklenmedi')).toBeVisible()
 
   await page.getByRole('button', { name: 'Altın', exact: true }).click()
-  let dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  let dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByRole('button', { name: 'Gram altın' }).click()
   await dlg.getByLabel('Miktar (gram)').fill('10')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('4.000')
@@ -152,24 +153,18 @@ test('Plus varlıklarım: altın eklenir, fiyat güncellenir, satılır, borç n
   await tr.getByRole('button', { name: 'Kaydet' }).click()
   await expect(tr).toBeHidden()
 
-  await page.getByRole('button', { name: 'Borç ekle' }).click()
-  dlg = page.getByRole('dialog', { name: 'Borç ekle' })
-  await dlg.getByRole('button', { name: 'Kredi kartı borcu' }).click()
-  await dlg.getByLabel('Kalan borç (TL)').fill('6.000')
-  await dlg.getByRole('button', { name: 'Kaydet' }).click()
-  await expect(dlg).toBeHidden()
-
-  const sum = page.getByRole('region', { name: 'Net varlık' })
-  // 8 gram × 4.500 = 36.000; − 6.000 borç
-  await expect(sum).toContainText('30.000,00 ₺')
+  const sum = page.getByRole('region', { name: 'Yatırım özeti' })
+  // 8 gram × 4.500 = 36.000; borçlar bu sayfada yok
+  await expect(sum).toContainText('36.000,00 ₺')
+  await expect(sum).not.toContainText('Borç')
   await expect(sum).toContainText('Gerçekleşen +1.000,00 ₺')
   await expect(page.getByRole('list', { name: 'Varlık dağılımı' })).toContainText('Altın')
   await expect(page.getByRole('table')).toContainText('36.000,00 ₺')
   await expect(sum).not.toContainText('günden eski')
 
   // Fiyatı 30 günden eski varlık uyarıda adıyla ve tarihiyle görünür
-  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
-  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByRole('button', { name: 'Çeyrek altın' }).click()
   await dlg.getByLabel('Miktar (adet)').fill('1')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('10.000')
@@ -180,8 +175,8 @@ test('Plus varlıklarım: altın eklenir, fiyat güncellenir, satılır, borç n
   await expect(page.getByRole('list', { name: 'Varlıklar' })).toContainText('Fiyat eski')
 
   // Emtia listeden seçilir: ad, birim ve fiyat kaynağı kendiliğinden dolar; dağılımda altınla birlikte gösterilir
-  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
-  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByLabel('Tür').selectOption('commodity')
   await dlg.getByLabel('Emtia').selectOption('XAG')
   await expect(dlg.getByLabel('Ad', { exact: true })).toHaveValue('Gümüş')
@@ -193,8 +188,8 @@ test('Plus varlıklarım: altın eklenir, fiyat güncellenir, satılır, borç n
   await expect(page.getByRole('list', { name: 'Varlık dağılımı' })).toContainText('Altın ve emtia')
 
   // Mevduata yıllık faiz girilince bakiye her gün kendiliğinden artar
-  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
-  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByLabel('Tür').selectOption('deposit')
   await dlg.getByRole('button', { name: 'Vadeli mevduat' }).click()
   await dlg.getByLabel('Yıllık net faiz (%)').fill('40')
@@ -205,6 +200,28 @@ test('Plus varlıklarım: altın eklenir, fiyat güncellenir, satılır, borç n
   const dep = list.getByRole('listitem').filter({ hasText: 'Vadeli mevduat' })
   await expect(dep).toContainText('Faizle hesaplandı · %40 yıllık')
   await expect(dep).toContainText('Kâr +')
+
+  // Borçlar ayrı sayfada, türüne göre
+  await page.goto('./#/borclar')
+  await page.getByRole('button', { name: 'Borç ekle', exact: true }).click()
+  dlg = page.getByRole('dialog', { name: 'Borç ekle' })
+  await expect(dlg.getByLabel('Borç türü')).toHaveValue('card')
+  await expect(dlg.getByLabel('Ad', { exact: true })).toHaveValue('Kredi kartı')
+  await dlg.getByLabel('Kalan borç (TL)').fill('6.000')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  await page.getByRole('button', { name: 'Konut kredisi' }).click()
+  dlg = page.getByRole('dialog', { name: 'Borç ekle' })
+  await expect(dlg.getByLabel('Borç türü')).toHaveValue('mortgage')
+  await dlg.getByLabel('Kalan borç (TL)').fill('100.000')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  const debtSum = page.getByRole('region', { name: 'Borç özeti' })
+  await expect(debtSum).toContainText('106.000,00 ₺')
+  // Yüksek faizli borç yalnızca kart
+  await expect(debtSum).toContainText('6.000,00 ₺')
+  await expect(page.getByRole('list', { name: 'Kredi kartı borçları' })).toContainText('Kredi kartı')
+  await expect(page.getByRole('list', { name: 'Konut kredisi borçları' })).toContainText('100.000,00 ₺')
 })
 
 test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve göstergeler hesaplanır', async ({ page }) => {
@@ -212,7 +229,7 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
   await page.goto('./#/varliklar')
   await page.getByRole('button', { name: 'Altın', exact: true }).click()
-  const dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  const dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByRole('button', { name: 'Gram altın' }).click()
   await dlg.getByLabel('Miktar (gram)').fill('10')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('4.000')
@@ -224,30 +241,55 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await expect(page.getByRole('heading', { name: 'Önce yolculuğunuzu oluşturun' })).toBeVisible()
 
   await page.goto('./#/yolculuk')
-  const survey = page.getByRole('region', { name: 'Yolculuk anketi' })
-  await expect(survey).toContainText('Eksik')
-  await expect(survey).toContainText('40.000,00 ₺')
-  await survey.getByRole('button', { name: 'Doğruladım, rotamı oluştur' }).click()
-  await expect(survey.getByRole('alert')).toContainText('Hedefte aylık yaşam gideri için geçerli bir tutar girin.')
-  await survey.getByLabel(/Hedefte aylık yaşam gideri/).fill('25.000')
-  await survey.getByLabel(/Aylık net gelir/).fill('50.000')
-  await survey.getByLabel(/Zorunlu aylık giderler/).fill('20.000')
-  await survey.getByRole('button', { name: 'Doğruladım, rotamı oluştur' }).click()
+  const t = page.getByRole('region', { name: 'Finansal özgürlük testi' })
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await expect(t.getByRole('alert')).toContainText('Yaşınızı 15 ile 100 arasında girin.')
+  await t.getByLabel('Yaşınız').fill('32')
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await expect(t).toContainText('Eksik')
+  await t.getByRole('button', { name: 'Geri' }).click()
+  await expect(t.getByLabel('Yaşınız')).toHaveValue('32')
+  await takeFreedomTest(page, { income: '50.000', essential: '20.000', target: '25.000' })
 
   // 40.000 / 20.000 = 2 ay; hedef 25.000 × 12 / %4 = 7.500.000
   await expect(page.getByRole('region', { name: 'Finansal güvence' })).toContainText('2 ay')
   await expect(page.getByRole('region', { name: 'Hedef ilerlemesi' })).toContainText('7.500.000,00 ₺')
   await expect(page.getByRole('region', { name: 'Tahmini rota' })).toContainText('Ayda 30.000,00 ₺ birikimle')
+  // Denge ve başlangıç fonu tamam, borç yok: sıradaki acil durum fonu
+  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toContainText('Seviye 3/8')
+  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toContainText('sıradaki aşama Acil durum fonu')
   const stages = page.getByRole('list', { name: 'Aşamalar' })
+  await expect(stages.getByRole('listitem')).toHaveCount(8)
   await expect(stages.getByRole('listitem').filter({ hasText: 'Bütçe dengesi' })).toContainText('Tamamlandı')
-  await expect(stages.getByRole('listitem').filter({ hasText: 'Acil durum birikimi' })).toContainText('20.000 ₺ daha biriktirin')
+  await expect(stages.getByRole('listitem').filter({ hasText: 'Acil durum fonu' })).toContainText('20.000 ₺ daha biriktirin')
   await expect(stages.getByRole('listitem').filter({ hasText: 'Düzenli birikim' })).toContainText('Tamamlandı')
   await expect(page.getByText(/Kilometre taşı:/)).toBeVisible()
 
-  // Bilgileri düzenleme anketi doldurulmuş açar
-  await page.getByRole('button', { name: 'Bilgilerimi düzenle' }).click()
-  await expect(page.getByLabel(/Aylık net gelir/)).toHaveValue('50.000,00')
-  await page.getByRole('button', { name: 'Vazgeç' }).click()
+  // Sekmeler: yatırımlar, borçlar, bu ay ve bütün ölçütler
+  const tabs = page.getByRole('tablist', { name: 'Yolculuk bölümleri' })
+  await tabs.getByRole('tab', { name: 'Yatırımlarım' }).click()
+  await expect(page.getByRole('tabpanel')).toContainText('Toplam yatırım')
+  await tabs.getByRole('tab', { name: 'Borçlarım' }).click()
+  await expect(page.getByRole('tabpanel')).toContainText('Kayıtlı borç ya da kalan taksit yok')
+  await tabs.getByRole('tab', { name: 'Bu ay' }).click()
+  await expect(page.getByRole('tabpanel')).toContainText('Testteki aylık gelir')
+  await tabs.getByRole('tab', { name: 'Kriterler' }).click()
+  const criteria = page.getByRole('list', { name: 'Ölçütler' })
+  await expect(criteria.getByRole('listitem')).toHaveCount(10)
+  await expect(criteria).toContainText('%4 kuralı')
+  await expect(criteria).toContainText('50/30/20')
+  await expect(page.getByRole('region', { name: 'Test yanıtlarınız' })).toContainText('Bu ay 1 test hakkınız kaldı')
+
+  // USD bazı fiyat olmadan seçilemez (giriş yok)
+  await page.getByRole('radiogroup', { name: 'Plan birimi' }).getByRole('radio', { name: 'USD' }).click()
+  await expect(page.getByText('USD fiyatı henüz alınamadı.')).toBeVisible()
+
+  // Test yeniden yapılır: yanıtlar dolu gelir; ay içindeki ikinci testten sonra hak kalmaz
+  await page.getByRole('button', { name: 'Testi yeniden yap' }).click()
+  await expect(page.getByRole('region', { name: 'Finansal özgürlük testi' })).toContainText('Bu ay 1 test hakkınız var')
+  await takeFreedomTest(page, { income: '50.000', essential: '20.000', target: '25.000' })
+  await page.getByRole('tablist', { name: 'Yolculuk bölümleri' }).getByRole('tab', { name: 'Kriterler' }).click()
+  await expect(page.getByRole('button', { name: 'Testi yeniden yap' })).toBeDisabled()
 
   await page.getByRole('link', { name: 'Senaryolar' }).first().click()
   await expect(page).toHaveURL(/#\/senaryolar/)
@@ -274,22 +316,18 @@ test('Plus+ koç: borç önce kapanır, yatırım tutarı ve yapılandırma hesa
   await expect(page.getByRole('region', { name: 'Koç özeti' })).toContainText('Sizi tanıyınca')
   await expect(page.getByRole('region', { name: 'Koç mesajları' })).toContainText('Sizi tanıyalım')
 
-  await page.goto('./#/varliklar')
-  await page.getByRole('button', { name: 'Borç ekle' }).click()
+  await page.goto('./#/borclar')
+  await page.getByRole('button', { name: 'Borç ekle', exact: true }).click()
   const dlg = page.getByRole('dialog', { name: 'Borç ekle' })
-  await dlg.getByRole('button', { name: 'Kredi kartı borcu' }).click()
   await dlg.getByLabel('Kalan borç (TL)').fill('30.000')
   await dlg.getByLabel('Aylık faiz (%)').fill('4,25')
   await dlg.getByLabel('Aylık ödeme (TL)').fill('3.000')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dlg).toBeHidden()
-  await expect(page.getByRole('list', { name: 'Borçlar' })).toContainText('Aylık %4,25 faiz · aylık ödeme 3.000,00 ₺')
+  await expect(page.getByRole('list', { name: 'Kredi kartı borçları' })).toContainText('Aylık %4,25 faiz · aylık ödeme 3.000,00 ₺')
 
   await page.goto('./#/yolculuk')
-  await page.getByLabel(/Hedefte aylık yaşam gideri/).fill('25.000')
-  await page.getByLabel(/Aylık net gelir/).fill('50.000')
-  await page.getByLabel(/Zorunlu aylık giderler/).fill('40.000')
-  await page.getByRole('button', { name: 'Doğruladım, rotamı oluştur' }).click()
+  await takeFreedomTest(page, { income: '50.000', essential: '40.000', target: '25.000' })
   await expect(page.getByRole('region', { name: 'Finansal güvence' })).toBeVisible()
 
   await page.goto('./#/koc')
@@ -304,6 +342,8 @@ test('Plus+ koç: borç önce kapanır, yatırım tutarı ve yapılandırma hesa
 
   const chat = page.getByRole('region', { name: 'Koç mesajları' })
   await expect(chat).toContainText('Bu ayın planı')
+  // Koç rotadaki sıradaki aşamayı söyler (kart borcu yüksek faizli)
+  await expect(chat).toContainText('Rotanızda sıradaki')
   await chat.getByRole('button', { name: 'Her ay ne kadar yatırıma ayırmalıyım?' }).click()
   await expect(chat).toContainText('Ayda 9.000 ₺ ayırabilirsiniz')
   await expect(chat.getByLabel('Koça yazın')).toBeDisabled()

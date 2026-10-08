@@ -54,7 +54,7 @@ const TOPICS: Topic[] = [
       "Bir ürünü karşılaştırırken getiriyi masraflar ve vergiler düşüldükten sonra değerlendirmek gerekir.",
     ],
     inApp:
-      "Varlıklarım sayfasında alış ve satışları gerçek ödediğiniz fiyatla girerseniz kâr/zarar hesabı masrafları da yansıtır.",
+      "Yatırımlarım sayfasında alış ve satışları gerçek ödediğiniz fiyatla girerseniz kâr/zarar hesabı masrafları da yansıtır.",
   },
   {
     id: "diversification",
@@ -67,7 +67,7 @@ const TOPICS: Topic[] = [
       "Aynı türden çok sayıda araç (ör. aynı sektördeki hisseler) gerçek bir çeşitlendirme sağlamayabilir.",
     ],
     inApp:
-      "Varlıklarım sayfasındaki dağılım listesi, birikiminizin türlere göre nasıl dağıldığını gösterir.",
+      "Yatırımlarım sayfasındaki dağılım listesi, birikiminizin türlere göre nasıl dağıldığını gösterir.",
   },
   {
     id: "inflation",

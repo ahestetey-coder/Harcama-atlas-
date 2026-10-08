@@ -109,9 +109,43 @@ export interface Asset {
   interestRatePct?: number
   /** Yalnızca borçlarda: aylık faiz ve aylık asgari ödeme/taksit (koçun borç planı için). */
   debtTerms?: DebtTerms
+  /** Yalnızca borçlarda: borç türü (yoksa adından tahmin edilir). */
+  debtType?: DebtType
   archived: boolean
   createdAt: string
   updatedAt: string
+}
+
+export type DebtType = 'card' | 'loan' | 'overdraft' | 'mortgage' | 'auto' | 'personal' | 'tax' | 'other'
+
+export const DEBT_TYPES: DebtType[] = ['card', 'loan', 'overdraft', 'mortgage', 'auto', 'personal', 'tax', 'other']
+
+export const DEBT_TYPE_LABEL: Record<DebtType, string> = {
+  card: 'Kredi kartı',
+  loan: 'İhtiyaç kredisi',
+  overdraft: 'Kredili mevduat (KMH)',
+  mortgage: 'Konut kredisi',
+  auto: 'Taşıt kredisi',
+  personal: 'Kişisel borç',
+  tax: 'Vergi / SGK borcu',
+  other: 'Diğer borç',
+}
+
+/** Yüksek faizli tüketici borcu sayılan türler (finansal özgürlük rotasında önce kapatılır). */
+export const CONSUMER_DEBT: DebtType[] = ['card', 'loan', 'overdraft', 'personal']
+
+/** Borç türü: kayıtlıysa o, değilse adından tahmin. */
+export function debtTypeOf(a: Pick<Asset, 'name' | 'debtType'>): DebtType {
+  if (a.debtType) return a.debtType
+  const n = a.name.toLocaleLowerCase('tr')
+  if (/kart/.test(n)) return 'card'
+  if (/kmh|ek hesap|kredili mevduat|artı para/.test(n)) return 'overdraft'
+  if (/konut|ev kredi|mortgage/.test(n)) return 'mortgage'
+  if (/taşıt|araç|araba|oto/.test(n)) return 'auto'
+  if (/ihtiyaç|tüketici|kredi/.test(n)) return 'loan'
+  if (/vergi|sgk|bağ-?kur/.test(n)) return 'tax'
+  if (/arkadaş|aile|akraba|kişisel|annem|babam|kardeş/.test(n)) return 'personal'
+  return 'other'
 }
 
 export interface DebtTerms {

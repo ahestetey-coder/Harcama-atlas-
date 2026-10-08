@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { takeFreedomTest } from '../e2e/helpers'
 
 const SUPABASE = 'https://test-proje.supabase.co'
 
@@ -452,10 +453,7 @@ test('Plus+ koç ve araştırma: rapor kaynaklı görünür, hafıza düzenlenir
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
 
   await page.goto('./#/yolculuk')
-  await page.getByLabel(/Hedefte aylık yaşam gideri/).fill('25.000')
-  await page.getByLabel(/Aylık net gelir/).fill('50.000')
-  await page.getByLabel(/Zorunlu aylık giderler/).fill('20.000')
-  await page.getByRole('button', { name: 'Doğruladım, rotamı oluştur' }).click()
+  await takeFreedomTest(page, { income: '50.000', essential: '20.000', target: '25.000' })
   await expect(page.getByRole('region', { name: 'Finansal güvence' })).toBeVisible()
 
   await page.goto('./#/koc')
@@ -531,17 +529,17 @@ test('Plus+ koç ve araştırma: rapor kaynaklı görünür, hafıza düzenlenir
   await expect(page.getByText('Geçti')).toBeVisible()
 })
 
-test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâr/zarar ve USD görünümü; istek yalnızca sembol taşır', async ({ page }) => {
+test('Yatırımlarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâr/zarar ve USD görünümü; istek yalnızca sembol taşır', async ({ page }) => {
   const calls = await mockSupabase(page, { admin: true })
   await page.goto('./')
   await signIn(page, 'osman@ornek.com')
   await expect(page.getByRole('navigation', { name: 'Ana menü' })).toBeVisible()
   await page.goto('./#/paketler')
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
-  await page.goto('./#/varliklar')
+  await page.goto('./#/yatirimlar')
 
   await page.getByRole('button', { name: 'Döviz', exact: true }).click()
-  let dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  let dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByRole('button', { name: 'Dolar' }).click()
   await dlg.getByLabel('Miktar (USD)').fill('1.000')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('40')
@@ -555,8 +553,8 @@ test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâ
   await expect(list).toContainText('TCMB kuru')
 
   // ABD ETF: sembolle eklenir, fiyatı otomatik gelir
-  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
-  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByLabel('Tür').selectOption('foreign')
   await expect(dlg.getByLabel('Kaynak')).toHaveValue('Yabancı borsa')
   // Ad yazılırken öneri çıkar; seçilince ad ve sembol dolar
@@ -575,8 +573,8 @@ test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâ
   await expect(list).toContainText('Yahoo Finance')
 
   // Bilinmeyen kripto: fiyat alınamadı uyarısı
-  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
-  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByLabel('Tür').selectOption('crypto')
   await dlg.getByLabel('Ad', { exact: true }).fill('Bilinmeyen')
   await dlg.getByLabel('Sembol').fill('XYZ')
@@ -594,7 +592,7 @@ test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâ
   expect(JSON.stringify(calls.bodies.arama)).toBe('{"search":{"market":"crypto","q":"XYZ"}}')
 
   // USD görünümü: 42.500 + 51.000 + 100 = 93.600 ₺ / 42,5 = 2.202,35 $
-  const sum = page.getByRole('region', { name: 'Net varlık' })
+  const sum = page.getByRole('region', { name: 'Yatırım özeti' })
   await sum.getByRole('radiogroup', { name: 'Para birimi' }).getByRole('radio', { name: '$ USD' }).click()
   await expect(sum).toContainText('$2.202,35')
   await expect(sum).toContainText('dolara çevrildi')
@@ -605,8 +603,8 @@ test('Varlıklarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, kâ
   await expect(page.getByRole('button', { name: 'Fiyatı güncelle' })).toHaveCount(1)
 
   // Sembolsüz kripto: adından güvenle eşlenir ve fiyatı kendiliğinden gelir
-  await page.getByRole('button', { name: 'Varlık ekle' }).first().click()
-  dlg = page.getByRole('dialog', { name: 'Varlık ekle' })
+  await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
+  dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await dlg.getByLabel('Tür').selectOption('crypto')
   await dlg.getByLabel('Ad', { exact: true }).fill('Bitcoin')
   await dlg.getByLabel('Miktar (adet)').fill('0,1')

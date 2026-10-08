@@ -591,8 +591,8 @@ function DebtPanel({ state, plan, onChange }: { state: CoachState; plan: CoachPl
           Kayıtlı borcunuz bulunmuyor. Plan doğrudan {plan.emergencyGapKurus > 0 ? 'acil durum birikimi ve ardından ' : ''}yatırımla başlıyor: ayda <span className="num font-semibold text-ink">{formatKurus(plan.monthlyPlanKurus)}</span>.
         </p>
         {plan.bufferKurus > 0 && <p className="mt-1 text-[12.5px] text-subtle">Gelir düzeniniz nedeniyle ayda {formatKurus(plan.bufferKurus)} tampon olarak bırakıldı.</p>}
-        <Link to="/varliklar" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-accent">
-          Borç eklemek için Varlıklarım <ArrowRight className="size-3.5" />
+        <Link to="/borclar" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-accent">
+          Borç eklemek için Borçlarım <ArrowRight className="size-3.5" />
         </Link>
       </Card>
     )
@@ -645,7 +645,7 @@ function DebtPanel({ state, plan, onChange }: { state: CoachState; plan: CoachPl
       {missing.length > 0 && (
         <p className="mt-2 text-[12px] text-warning">
           {missing.map((d) => d.name).join(', ')} için faiz veya aylık ödeme girilmedi; tahmin kullanıldı.{' '}
-          <Link to="/varliklar" className="font-semibold underline">
+          <Link to="/borclar" className="font-semibold underline">
             Düzenle
           </Link>
         </p>

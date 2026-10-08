@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpen, Bot, ChartColumn, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Repeat, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BookOpen, Bot, ChartColumn, CreditCard, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Repeat, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -36,7 +36,8 @@ const ITEMS = {
   payments: { to: '/odemeler', label: 'Düzenli ödemeler', short: 'Ödemeler', icon: Repeat, tone: 'from-violet-500 to-purple-600' },
   goals: { to: '/hedefler', label: 'Birikim hedefleri', short: 'Hedefler', icon: PiggyBank, tone: 'from-pink-500 to-rose-600' },
   reports: { to: '/raporlar', label: 'Raporlar', icon: ChartColumn, tone: 'from-indigo-500 to-blue-700' },
-  assets: { to: '/varliklar', label: 'Varlıklarım', short: 'Varlık', icon: Wallet, tone: 'from-emerald-600 to-green-700' },
+  assets: { to: '/yatirimlar', label: 'Yatırımlarım', short: 'Yatırım', icon: Wallet, tone: 'from-emerald-600 to-green-700' },
+  debts: { to: '/borclar', label: 'Borçlarım', short: 'Borç', icon: CreditCard, tone: 'from-rose-500 to-red-600' },
   coach: { to: '/koc', label: 'Koçum', short: 'Koç', icon: Bot, tone: 'from-cyan-500 to-emerald-500' },
   journey: { to: '/yolculuk', label: 'Finansal yolculuğum', short: 'Yolculuğum', icon: Mountain, tone: 'from-orange-500 to-red-600' },
   scenarios: { to: '/senaryolar', label: 'Gelecek senaryoları', short: 'Senaryolar', icon: TrendingUp, tone: 'from-fuchsia-500 to-purple-600' },
@@ -53,7 +54,7 @@ const ITEMS = {
 const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   { title: 'Günlük', items: [ITEMS.home, ITEMS.txs, ITEMS.categories] },
   { title: 'Planlama', items: [ITEMS.budget, ITEMS.payments, ITEMS.goals, ITEMS.reports] },
-  { title: 'Varlık ve gelecek', items: [ITEMS.assets, ITEMS.coach, ITEMS.journey, ITEMS.scenarios, ITEMS.learning] },
+  { title: 'Yatırım ve gelecek', items: [ITEMS.journey, ITEMS.assets, ITEMS.debts, ITEMS.coach, ITEMS.scenarios, ITEMS.learning] },
   { title: 'Hesap ve veri', items: [ITEMS.members, ITEMS.history, ITEMS.backup, ITEMS.settings, ITEMS.plans] },
 ]
 /** Mobil alt menüdeki sekmeler ("+" düğmesinin solu ve sağı). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { averageMonthlyExpense, buildJourney, monthsToTarget, projectScenario, targetCapital, type JourneyFacts, type JourneyProfile } from './journey'
+import { averageMonthlyExpense, buildJourney, emergencyMonthsFor, formatInBase, indexFactor, monthsToTarget, projectScenario, rebase, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
 import { normalizeText } from './normalize'
 import type { Transaction } from './types'
 
@@ -34,23 +34,61 @@ describe('finansal özgürlük yolculuğu', () => {
   it('hedef sermaye yıllık gider ÷ çekim oranıdır', () => {
     expect(targetCapital({ targetMonthlyExpenseKurus: 4000000, withdrawalRatePct: 4 })).toBe(1200000000)
   })
-  it('aşamaları ve göstergeleri gerçek verilerden hesaplar', () => {
-    const j = buildJourney(profile(), facts())
+  it('uzman ölçütlerine göre sekiz seviyeyi gerçek verilerden hesaplar', () => {
+    const j = buildJourney(profile(), facts({ consumerDebtKurus: 0, monthlyDebtPaymentKurus: 500000 }))
     const by = Object.fromEntries(j.stages.map((s) => [s.id, s]))
+    expect(j.stages.map((s) => s.id)).toEqual(['balance', 'starter', 'debt', 'emergency', 'saving', 'security', 'independence', 'freedom'])
     expect(by.balance.done).toBe(true)
-    // 60.000 likit / (3 × 30.000) = 2/3
+    // 60.000 likit ≥ 1 aylık zorunlu gider (30.000)
+    expect(by.starter.done).toBe(true)
+    // tüketici borcu yok, borç ödemesi gelirin %8'i
+    expect(by.debt.done).toBe(true)
+    // 60.000 / (3 × 30.000) = 2/3
     expect(by.emergency.done).toBe(false)
     expect(by.emergency.progress).toBeCloseTo(2 / 3)
-    expect(by.debt.done).toBe(true)
-    // birikim oranı 15.000 / 60.000 = %25
+    // birikim oranı 15.000 / 60.000 = %25 ≥ %20
     expect(by.saving.done).toBe(true)
+    // güvence sermayesi: 30.000 × 12 / %4 = 9.000.000
+    expect(j.indicators.securityCapitalKurus).toBe(900000000)
     expect(j.indicators.securityMonths).toBe(2)
     expect(j.indicators.progressKurus).toBe(18000000)
     expect(j.indicators.monthlySavingKurus).toBe(1500000)
-    // rota: ilk aşama tamam, ikincide 2/3
-    expect(j.position).toBeCloseTo(1 + 2 / 3)
-    // olumlu senaryo temkinliden önce biter
+    expect(j.position).toBeCloseTo(3 + 2 / 3)
+    expect(j.level).toBe(3)
+    expect(j.current?.id).toBe('emergency')
     expect(j.indicators.route.optimistic!).toBeLessThan(j.indicators.route.cautious!)
+  })
+  it('tüketici borcu ya da yüksek borç/gelir oranı borç aşamasını açık bırakır', () => {
+    expect(buildJourney(profile(), facts({ consumerDebtKurus: 100000 })).stages[2].done).toBe(false)
+    expect(buildJourney(profile(), facts({ consumerDebtKurus: 0, monthlyDebtPaymentKurus: 3000000 })).stages[2].done).toBe(false)
+  })
+  it('düzensiz gelirde ve bakmakla yükümlü kişi varken acil fon daha uzun', () => {
+    expect(emergencyMonthsFor({ incomeStability: 'regular' })).toBe(3)
+    expect(emergencyMonthsFor({ incomeStability: 'regular', dependents: 2 })).toBe(6)
+    expect(emergencyMonthsFor({ incomeStability: 'irregular' })).toBe(9)
+  })
+  it('pasif gelir gereken sermayeyi azaltır', () => {
+    expect(targetCapital({ targetMonthlyExpenseKurus: 4000000, withdrawalRatePct: 4, passiveIncomeKurus: 1000000 })).toBe(900000000)
+  })
+  it('USD ya da altın bazlı planda hedefin TL karşılığı kurla artar; birim değişince bugünkü TL korunur', () => {
+    const p = profile({ base: 'USD', baseRateTl: 40 })
+    expect(indexFactor(p, { USD: 50 })).toBeCloseTo(1.25)
+    expect(indexFactor(p, {})).toBe(1)
+    const j = buildJourney(p, facts(), { USD: 50 })
+    expect(j.indicators.securityCapitalKurus).toBe(Math.round((3000000 * 1.25 * 12) / 0.04))
+    const g = rebase(p, 'XAU', { USD: 50, XAU: 5000 })!
+    expect(g.base).toBe('XAU')
+    expect(g.baseRateTl).toBe(5000)
+    expect(g.essentialMonthlyKurus).toBe(3750000)
+    expect(rebase(p, 'XAU', { USD: 50 })).toBeNull()
+    expect(formatInBase(500000, 'XAU', { XAU: 5000 })).toBe('1 gr altın')
+    expect(formatInBase(500000, 'USD', { USD: 50 })).toBe('100 $')
+  })
+  it('test ayda iki kez yapılabilir', () => {
+    expect(testsLeft(null, '2026-10-08')).toBe(2)
+    expect(testsLeft({ tests: ['2026-09-30', '2026-10-01'] }, '2026-10-08')).toBe(1)
+    expect(testsLeft({ tests: ['2026-10-01', '2026-10-05'] }, '2026-10-08')).toBe(0)
+    expect(testsLeft({ tests: ['2026-10-01', '2026-10-05'] }, '2026-11-01')).toBe(2)
   })
   it('gider gelirden fazlaysa denge aşaması açık kalır ve rota ulaşılamaz olur', () => {
     const j = buildJourney(profile({ monthlyIncomeKurus: 4000000 }), facts({ assetsKurus: 0, debtsKurus: 0, liquidKurus: 0 }))

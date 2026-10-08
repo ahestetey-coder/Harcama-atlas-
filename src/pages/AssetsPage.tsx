@@ -1,4 +1,4 @@
-import { ArrowDownUp, ChevronDown, Landmark, Pencil, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react'
+import { ArrowDownUp, ChevronDown, Pencil, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, WealthLine } from '../components/charts/Charts'
@@ -32,12 +32,15 @@ import {
   type AssetQuote,
   type QuoteMarket,
   type DebtTerms,
+  type DebtType,
+  DEBT_TYPE_LABEL,
+  DEBT_TYPES,
+  debtTypeOf,
   type HoldingSummary,
 } from '../domain/assets'
 import { formatDate, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { cn } from '../lib/cn'
-import { useInstallmentDebt } from '../state/budget'
 import { useAssets, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
 import { useStartNew } from '../lib/useStartNew'
@@ -79,11 +82,6 @@ const PRESETS: Partial<Record<AssetKind, { name: string; unit: string; symbol?: 
   ],
   deposit: [{ name: 'Vadeli mevduat', unit: 'TL' }],
   cash: [{ name: 'Nakit', unit: 'TL' }],
-  debt: [
-    { name: 'Kredi kartı borcu', unit: 'TL' },
-    { name: 'İhtiyaç kredisi', unit: 'TL' },
-    { name: 'Konut kredisi', unit: 'TL' },
-  ],
 }
 
 const STALE_DAYS = 30
@@ -91,8 +89,8 @@ const SOURCE_TEXT: Partial<Record<AssetKind, string>> = { stock: 'Borsa İstanbu
 const SYMBOL_PLACEHOLDER: Partial<Record<AssetKind, string>> = { stock: 'Örn. THYAO', foreign: 'Örn. AAPL, SPY, SAP.DE', fund: 'Örn. TTE', crypto: 'Örn. BTC' }
 const NAME_PLACEHOLDER: Partial<Record<AssetKind, string>> = { stock: 'Örn. Aselsan', foreign: 'Örn. Apple, S&P 500', fund: 'Örn. İş Portföy teknoloji', crypto: 'Örn. Bitcoin' }
 
-type Editing = { kind: AssetKind; asset?: Asset } | null
-type Acting = { asset: Asset; mode: 'trade' | 'price' } | null
+export type Editing = { kind: AssetKind; asset?: Asset; debtType?: DebtType } | null
+export type Acting = { asset: Asset; mode: 'trade' | 'price' } | null
 
 const signedWith = (fmt: (k: number) => string) => (k: number) => `${k > 0 ? '+' : k < 0 ? '−' : ''}${fmt(Math.abs(k))}`
 const signed = signedWith(formatKurus)
@@ -114,24 +112,24 @@ export default function AssetsPage() {
   return (
     <div>
       <PageHeader
-        title="Varlıklarım"
+        title="Yatırımlarım"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Altın, döviz, fon, hisse, mevduat ve borçlar
+            <PlanBadge plan="plus" /> Aylık gelir ve giderden bağımsız yatırım paneli
           </span>
         }
         actions={
           <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEditing({ kind: 'gold' })}>
-            Varlık ekle
+            Yatırım ekle
           </Button>
         }
       />
       <PlanGate
         feature="assets"
-        title="Varlıklarım"
+        title="Yatırımlarım"
         points={[
-          'Altın, döviz, fon, hisse ve mevduatlarınızı miktar, alış tarihi ve maliyetiyle kaydedin',
-          'Toplam değeri, dağılımı ve borçlar düşülmüş net varlığınızı görün',
+          'Altın, döviz, fon, hisse, kripto, emtia ve mevduatlarınızı miktar, alış tarihi ve maliyetiyle kaydedin',
+          'Toplam değeri ve dağılımı görün',
           'Yatırdığınız parayı ve yatırım kazancını ayrı ayrı izleyin',
           'Döviz, hisse, ETF, fon, kripto ve gram altın güncel fiyatla otomatik güncellenir; kâr/zarar anında görünür',
           'Toplam varlığınızı TL ya da USD olarak görün',
@@ -148,8 +146,6 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   const assets = useAssets()
   const repo = useRepo()
   const { toast } = useUi()
-  const installmentDebt = useInstallmentDebt()
-  const [includeInstallments, setIncludeInstallments] = useState(true)
   const [acting, setActing] = useState<Acting>(null)
   const [del, setDel] = useState<Asset | null>(null)
   const [ccy, setCcy] = useState<'TRY' | 'USD'>('TRY')
@@ -157,13 +153,11 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   const { backend, user } = useAuth()
   const signedIn = !!(backend && user)
   const today = todayIso()
-  const extraDebt = includeInstallments ? installmentDebt : 0
-  const p = useMemo(() => portfolio(assets ?? [], today, extraDebt), [assets, today, extraDebt])
+  const p = useMemo(() => portfolio((assets ?? []).filter((a) => a.kind !== 'debt'), today), [assets, today])
   const history = useMemo(() => valueHistory(assets ?? [], today), [assets, today])
   if (!assets) return null
 
   const holdings = assets.filter((a) => a.kind !== 'debt' && !a.archived)
-  const debts = assets.filter((a) => a.kind === 'debt' && !a.archived)
   const gain = p.unrealizedKurus + p.realizedKurus
   const staleList = holdings.flatMap((a) => {
     const h = holdingSummary(a, today)
@@ -177,11 +171,11 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   const hasCommodity = holdings.some((a) => a.kind === 'commodity')
   const sliceLabel = (k: AssetKind) => (k === 'gold' && hasCommodity ? 'Altın ve emtia' : ASSET_KIND_LABEL[k])
 
-  if (assets.length === 0 && installmentDebt === 0)
+  if (holdings.length === 0)
     return (
       <Card className="p-5">
-        <EmptyState icon={<Wallet className="size-6" />} title="Henüz varlık eklenmedi" className="py-6">
-          Altın, döviz, fon, hisse veya mevduatınızı ve borçlarınızı ekleyin. Döviz, hisse, ETF, fon, kripto ve gram altının güncel fiyatı otomatik gelir; bilgiler yalnızca bu cihazda kalır.
+        <EmptyState icon={<Wallet className="size-6" />} title="Henüz yatırım eklenmedi" className="py-6">
+          Altın, döviz, fon, hisse, kripto, emtia veya mevduatınızı ekleyin. Güncel fiyatlar kendiliğinden gelir; bilgiler yalnızca bu cihazda kalır. Borçlarınızı Borçlarım sayfasında izlersiniz.
         </EmptyState>
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           {ASSET_KINDS.filter((k) => k !== 'other').map((k) => (
@@ -189,16 +183,13 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
               {ASSET_KIND_LABEL[k]}
             </Button>
           ))}
-          <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => onEdit({ kind: 'debt' })}>
-            Borç ekle
-          </Button>
         </div>
       </Card>
     )
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card className="p-5 lg:col-span-2" aria-label="Net varlık">
+      <Card className="p-5 lg:col-span-2" aria-label="Yatırım özeti">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-base font-semibold">Özet</h2>
           {usd && (
@@ -215,12 +206,10 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
         </div>
         <div className="flex flex-wrap gap-x-10 gap-y-4">
           <div>
-            <div className="text-[12.5px] text-muted">Net varlık</div>
-            <div className="num font-display text-2xl font-semibold">{money(p.netWorthKurus)}</div>
-            <div className="mt-0.5 text-[12px] text-subtle">Varlıklar − borçlar</div>
+            <div className="text-[12.5px] text-muted">Toplam yatırım</div>
+            <div className="num font-display text-2xl font-semibold">{money(p.assetsKurus)}</div>
+            <div className="mt-0.5 text-[12px] text-subtle">Güncel değer</div>
           </div>
-          <Figure label="Toplam varlık" value={money(p.assetsKurus)} />
-          <Figure label="Borçlar" value={money(p.debtsKurus)} />
           <Figure label="Yatırdığınız (net)" value={money(p.contributedKurus)} />
           <Figure
             label="Yatırım kazancı / kaybı"
@@ -299,14 +288,14 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
       <Card className="p-5 lg:col-span-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Wallet className="size-5 text-accent" /> Varlıklar
+            <Wallet className="size-5 text-accent" /> Yatırımlar
           </h2>
           <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => onEdit({ kind: 'gold' })}>
             Ekle
           </Button>
         </div>
         {holdings.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">Henüz varlık yok.</p>
+          <p className="mt-2 text-sm text-muted">Henüz yatırım yok.</p>
         ) : (
           <ul className="mt-2 divide-y divide-line" aria-label="Varlıklar">
             {ASSET_KINDS.flatMap((k) => holdings.filter((a) => a.kind === k)).map((a) => (
@@ -316,45 +305,15 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
         )}
       </Card>
 
-      <Card className="p-5 lg:col-span-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Landmark className="size-5 text-accent" /> Borçlar
-          </h2>
-          <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => onEdit({ kind: 'debt' })}>
-            Borç ekle
-          </Button>
-        </div>
-        <ul className="mt-2 divide-y divide-line" aria-label="Borçlar">
-          {installmentDebt > 0 && (
-            <li className="flex flex-wrap items-center gap-3 py-3">
-              <div className="min-w-0 basis-full sm:basis-auto sm:flex-1">
-                <div className="font-medium text-ink">Kalan taksitler</div>
-                <div className="text-[12px] text-muted">Düzenli ödemeler sayfasındaki taksitlerden otomatik</div>
-              </div>
-              <label className="flex flex-1 items-center gap-1.5 text-[12.5px] text-muted sm:flex-none">
-                <input type="checkbox" className="accent-[var(--accent)]" checked={includeInstallments} onChange={(e) => setIncludeInstallments(e.target.checked)} />
-                Net varlığa kat
-              </label>
-              <span className="num w-32 text-right font-semibold">{money(installmentDebt)}</span>
-            </li>
-          )}
-          {debts.map((a) => (
-            <HoldingRow key={a.id} asset={a} s={holdingSummary(a, today)} money={money} onAct={(mode) => setActing({ asset: a, mode })} onEdit={() => onEdit({ kind: 'debt', asset: a })} onDelete={() => setDel(a)} />
-          ))}
-          {installmentDebt === 0 && debts.length === 0 && <li className="py-2 text-sm text-muted">Kayıtlı borç yok.</li>}
-        </ul>
-      </Card>
-
       <p className="text-[12.5px] text-subtle lg:col-span-2">
-        Fiyatlar uygulama açılınca ve açık kaldıkça 15 dakikada bir kendiliğinden güncellenir. Döviz TCMB gösterge kurundan; Borsa İstanbul, yabancı hisse ve ETF'ler, altın (ons fiyatı × kur) ve emtialar Yahoo Finance'ten; kripto Binance'ten (USDT paritesi × kur); fonlar TEFAS'tan alınır. Fiyatlar gecikmeli olabilir. Fiyat isteği yalnızca sembolleri içerir; miktar ve maliyetleriniz gönderilmez. Bu sayfa yatırım tavsiyesi vermez. Bilgiler yalnızca bu cihazda tutulur.
+        Fiyatlar uygulama açılınca ve açık kaldıkça 15 dakikada bir kendiliğinden güncellenir. Döviz TCMB gösterge kurundan; Borsa İstanbul, yabancı hisse ve ETF'ler, altın (ons fiyatı × kur) ve emtialar Yahoo Finance'ten; kripto Binance'ten (USDT paritesi × kur); fonlar TEFAS'tan alınır. Fiyatlar gecikmeli olabilir. Fiyat isteği yalnızca sembolleri içerir; miktar ve maliyetleriniz gönderilmez. Bu sayfa yatırım tavsiyesi vermez. Bilgiler yalnızca bu cihazda tutulur. Borçlar bu sayfada değil, Borçlarım'da izlenir.
       </p>
 
       <ActionDialog acting={acting} onClose={() => setActing(null)} />
       <ConfirmDialog
         open={!!del}
         onOpenChange={(o) => !o && setDel(null)}
-        title={del?.kind === 'debt' ? 'Borç silinsin mi?' : 'Varlık silinsin mi?'}
+        title="Yatırım silinsin mi?"
         confirmLabel="Sil"
         danger
         onConfirm={async () => {
@@ -444,7 +403,7 @@ function priceSourceLabel(asset: Asset, s: HoldingSummary['price'], balance: boo
   return `${balance ? 'Son hareket' : 'İşlem fiyatı'} · ${formatDate(s.date)}`
 }
 
-function HoldingRow({
+export function HoldingRow({
   asset,
   s,
   money = formatKurus,
@@ -600,7 +559,7 @@ function parsePriceKurus(input: string): number | null {
   return q === null ? null : Math.round(q * 100 * 1e4) / 1e4
 }
 
-function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () => void }) {
+export function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () => void }) {
   const repo = useRepo()
   const { toast } = useUi()
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
@@ -719,10 +678,10 @@ function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () => void
   )
 }
 
-function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => void }) {
+export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => void }) {
   const repo = useRepo()
   const { toast } = useUi()
-  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '', market: 'bist' as QuoteMarket, symbol: '', interest: '' })
+  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '', market: 'bist' as QuoteMarket, symbol: '', interest: '', debtType: 'card' as DebtType })
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [shown, setShown] = useState<Editing>(null)
@@ -733,7 +692,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
       const t = a?.debtTerms
       setF({
         kind: editing.kind,
-        name: a?.name ?? '',
+        name: a?.name ?? (editing.kind === 'debt' ? DEBT_TYPE_LABEL[editing.debtType ?? 'card'] : ''),
         unit: a?.unit ?? DEFAULT_UNIT[editing.kind],
         qty: '',
         price: '',
@@ -744,6 +703,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
         market: a?.quote?.market ?? defaultMarket(editing.kind),
         symbol: a?.quote?.symbol ?? '',
         interest: a?.interestRatePct !== undefined ? String(a.interestRatePct).replace('.', ',') : '',
+        debtType: a ? debtTypeOf(a) : (editing.debtType ?? 'card'),
       })
       setError(undefined)
     }
@@ -803,7 +763,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
     }
     setBusy(true)
     try {
-      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms, quote, interestRatePct }, first)
+      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms, quote, interestRatePct, debtType: debt ? f.debtType : undefined }, first)
       toast(isNew ? `${f.name.trim()} eklendi.` : 'Kaydedildi.')
       onClose()
     } catch (e) {
@@ -818,7 +778,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
     <Modal
       open={!!editing}
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? (debt ? 'Borç ekle' : 'Varlık ekle') : debt ? 'Borcu düzenle' : 'Varlığı düzenle'}
+      title={isNew ? (debt ? 'Borç ekle' : 'Yatırım ekle') : debt ? 'Borcu düzenle' : 'Yatırımı düzenle'}
       size="sm"
       footer={
         <Button variant="primary" loading={busy} onClick={() => void save()}>
@@ -840,6 +800,24 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
               {ASSET_KINDS.map((k) => (
                 <option key={k} value={k}>
                   {ASSET_KIND_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+        {debt && (
+          <Field label="Borç türü" htmlFor="debt-type">
+            <Select
+              id="debt-type"
+              value={f.debtType}
+              onChange={(e) => {
+                const t = e.target.value as DebtType
+                setF((p) => ({ ...p, debtType: t, name: !p.name || DEBT_TYPES.some((x) => DEBT_TYPE_LABEL[x] === p.name) ? DEBT_TYPE_LABEL[t] : p.name }))
+              }}
+            >
+              {DEBT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {DEBT_TYPE_LABEL[t]}
                 </option>
               ))}
             </Select>
@@ -878,7 +856,7 @@ function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => vo
           {SYMBOL_KINDS.includes(f.kind) ? (
             <SuggestInput id="asset-name" value={f.name} maxLength={60} market={f.market} minChars={2} placeholder={NAME_PLACEHOLDER[f.kind]} onChange={(v) => set('name', v)} onPick={pick} />
           ) : (
-            <Input id="asset-name" value={f.name} maxLength={60} onChange={(e) => set('name', e.target.value)} placeholder={debt ? 'Örn. Taşıt kredisi' : ''} />
+            <Input id="asset-name" value={f.name} maxLength={60} onChange={(e) => set('name', e.target.value)} placeholder={debt ? 'Örn. X Bankası kartı' : ''} />
           )}
         </Field>
         {SYMBOL_KINDS.includes(f.kind) && (
