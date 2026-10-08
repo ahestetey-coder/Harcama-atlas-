@@ -475,7 +475,7 @@ osman'ın isteğiyle "piyasa verisinde yalnızca TCMB" kararı genişletildi.
 - Fiyatlar artık kullanıcı Varlıklarım'a girmeden güncellenir: uygulama açılınca, varlık listesi değişince ve uygulama açık kaldıkça 15 dakikada bir (ön plandayken). Eşitleyici uygulama kabuğunda çalışır (`src/state/livePrices.ts`); Plus paketi ve giriş gerekir, demo modunda çalışmaz.
 - Sembolü girilmemiş hisse, fon ve kripto, adından aranır; tam sembol eşleşmesi, tek sonuç ya da adın başıyla eşleşen ilk sonuç varsa sembol kendiliğinden eklenir (her varlık oturumda bir kez denenir). Emin olunamazsa dokunulmaz.
 - Çeyrek, yarım, tam, cumhuriyet, ata, reşat, gremse ve 22/18/14 ayar altın, has altın gramına çevrilerek ons fiyatından hesaplanır (yaklaşık; işçilik ve makas dahil değil).
-- Mevduata "Yıllık net faiz (%)" girilirse bakiye her gün basit faizle kendiliğinden artar.
+- (08.10.2026 sonradan kaldırıldı, bkz. bölüm 36) Mevduata faiz oranı girilip bakiyenin kendiliğinden artması.
 - Otomatik fiyatı gelen satırlarda elle "Fiyatı güncelle" düğmesi gizlenir; yalnızca fiyatı alınamayan veya otomatik kaynağı olmayan varlıklarda görünür. 30 günden eski fiyat uyarısı yalnızca piyasa fiyatlı türler için çıkar.
 - Yeni tür "Emtia": gümüş, platin, paladyum (gram), Brent ve WTI petrol (varil), bakır (kg), doğal gaz (MMBtu). Fiyat Yahoo Finance vadeli fiyatı × TCMB USD kuru. Listede olmayan emtia "Diğer" seçilip elle fiyatlanır. Dağılımda altınla aynı dilimde ("Altın ve emtia") gösterilir.
 - `market-rates` sürüm 5 yayınlandı (dosyalar diskle birebir karşılaştırıldı). Canlı ön bellek tablosunun anahtar kuralı emtiayı da kabul edecek şekilde güncellendi.
@@ -494,3 +494,9 @@ osman'ın isteğiyle "piyasa verisinde yalnızca TCMB" kararı genişletildi.
   - Plan birimi TL, USD ya da gram altın: hedefler seçilen birimde sabitlenir, TL karşılığı güncel TCMB kuru ya da gram altın fiyatıyla hesaplanır. Birim değişince hedefin bugünkü TL karşılığı korunur. Fiyat alınamıyorsa (giriş yoksa) USD/altın seçilemez.
 - Koç: rota seviyesi, sıradaki aşama, ek ölçütler, hedef, plan birimi ve risk tutumu, kullanıcı "hedefler" paylaşımını açık tuttuysa yapay zekâ özetine eklenir; sistem talimatı yönlendirmeyi sıradaki aşamaya göre yapmasını, risk tutumunu yalnızca anlatım tonu için kullanmasını söyler. Kural tabanlı koç mesajlarına "Rotanızda sıradaki: …" eklendi; acil fon süresi rotayla aynı kuraldan gelir.
 - Testler: 233 birim testi ve 39 e2e testi geçti; girişli e2e'de yatırım ve koç testleri geçti (koç/araştırma testindeki yönetici bölümü tüm takım birlikte koşunca daha önce de görülen kararsızlıkla bir kez düştü, tek başına geçti). Ölçütlerin uzman kaynaklarına dayandırılması genel kabul görmüş kurallardır; kişisel finansal danışmanlık yerine geçmez.
+
+## 36. Yatırım ekleme paneli yenilendi; mevduatta faiz yok (08.10.2026)
+
+- osman'ın isteğiyle ekleme paneli sadeleşti: tür seçimi açılır liste yerine simgeli kutular (Altın, Döviz, Mevduat, Fon, BIST hisse, Yabancı hisse, Kripto, Emtia, Nakit, Diğer); hazır seçenekler seçili olduğu belli olan çiplerle; altında gram/adet seçimi; miktar ve birim fiyat yan yana ve canlı "Toplam maliyet"; otomatik fiyatlı türlerde tek satırlık bilgi notu. "Birim" alanı yalnızca Diğer, döviz kodu ve listede olmayan emtia için görünür.
+- Mevduat eklemede faiz alanı kaldırıldı ve faizle kendiliğinden büyüme hesabı da kaldırıldı; mevduat bakiyesi girilen tutar ve güncellemelerle izlenir. Eski kayıtlarda kalan oran yok sayılır, mevduat düzenlenip kaydedilince silinir.
+- Koç sunucu fonksiyonları (coach-chat v4, coach-eval v2) rota kuralıyla yayınlandı; dosyalar diskle birebir karşılaştırıldı.

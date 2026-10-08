@@ -137,12 +137,9 @@ describe('piyasa fiyatıyla otomatik güncelleme', () => {
 })
 
 describe('kendiliğinden güncelleme', () => {
-  it('mevduat faiz oranıyla bugüne kadar büyür ve eski fiyat sayılmaz', () => {
+  it('mevduat faizle büyümez (eski kayıttaki oran yok sayılır) ve eski fiyat sayılmaz', () => {
     const d = { ...asset('deposit', [{ date: '2026-01-01', side: 'buy', quantity: 1000, unitPriceKurus: 100 }]), interestRatePct: 36.5 }
-    const s = holdingSummary(d, '2026-01-11')
-    // 100.000 kuruş × (1 + 0,365 × 10/365) = 101.000
-    expect(s.valueKurus).toBe(101000)
-    expect(s.price?.source).toBe('faiz')
+    expect(holdingSummary(d, '2026-01-11').valueKurus).toBe(100000)
     expect(needsPrice(d, holdingSummary(d, '2026-10-07'), '2026-10-07')).toBe(false)
   })
 

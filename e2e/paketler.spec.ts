@@ -177,29 +177,30 @@ test('Plus yatırımlarım ve borçlarım: altın eklenir, fiyat güncellenir, s
   // Emtia listeden seçilir: ad, birim ve fiyat kaynağı kendiliğinden dolar; dağılımda altınla birlikte gösterilir
   await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
   dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
-  await dlg.getByLabel('Tür').selectOption('commodity')
-  await dlg.getByLabel('Emtia').selectOption('XAG')
+  await dlg.getByRole('radiogroup', { name: 'Tür' }).getByRole('radio', { name: 'Emtia', exact: true }).click()
+  await dlg.getByRole('combobox', { name: 'Emtia' }).selectOption('XAG')
   await expect(dlg.getByLabel('Ad', { exact: true })).toHaveValue('Gümüş')
   await dlg.getByLabel('Miktar (gram)').fill('100')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('50')
+  await expect(dlg.getByLabel('Toplam maliyet')).toContainText('5.000,00 ₺')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dlg).toBeHidden()
   await expect(list).toContainText('Gümüş')
   await expect(page.getByRole('list', { name: 'Varlık dağılımı' })).toContainText('Altın ve emtia')
 
-  // Mevduata yıllık faiz girilince bakiye her gün kendiliğinden artar
+  // Mevduatta faiz alanı yok; bakiye girilen tutardır
   await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
   dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
-  await dlg.getByLabel('Tür').selectOption('deposit')
+  await dlg.getByRole('radiogroup', { name: 'Tür' }).getByRole('radio', { name: 'Mevduat', exact: true }).click()
   await dlg.getByRole('button', { name: 'Vadeli mevduat' }).click()
-  await dlg.getByLabel('Yıllık net faiz (%)').fill('40')
+  await expect(dlg.getByLabel('Yıllık net faiz (%)')).toHaveCount(0)
   await dlg.getByLabel('Tutar (TL)').fill('10.000')
   await dlg.getByLabel('Yatırma tarihi').fill('2026-01-01')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dlg).toBeHidden()
   const dep = list.getByRole('listitem').filter({ hasText: 'Vadeli mevduat' })
-  await expect(dep).toContainText('Faizle hesaplandı · %40 yıllık')
-  await expect(dep).toContainText('Kâr +')
+  await expect(dep).toContainText('10.000,00 ₺')
+  await expect(dep).not.toContainText('Faiz')
 
   // Borçlar ayrı sayfada, türüne göre
   await page.goto('./#/borclar')

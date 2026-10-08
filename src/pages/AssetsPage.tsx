@@ -1,5 +1,5 @@
-import { ArrowDownUp, ChevronDown, Pencil, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ArrowDownUp, Banknote, Bitcoin, ChartCandlestick, ChartPie, Check, ChevronDown, Coins, DollarSign, Gem, Globe, Landmark, Package, Pencil, Sparkles, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, WealthLine } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
@@ -85,6 +85,32 @@ const PRESETS: Partial<Record<AssetKind, { name: string; unit: string; symbol?: 
 }
 
 const STALE_DAYS = 30
+
+/** Ekleme panelindeki tür kutuları: simge ve kısa ad. */
+const KIND_TILE: Record<Exclude<AssetKind, 'debt'>, { icon: ReactNode; label: string }> = {
+  gold: { icon: <Coins />, label: 'Altın' },
+  fx: { icon: <DollarSign />, label: 'Döviz' },
+  deposit: { icon: <Landmark />, label: 'Mevduat' },
+  fund: { icon: <ChartPie />, label: 'Fon' },
+  stock: { icon: <ChartCandlestick />, label: 'BIST hisse' },
+  foreign: { icon: <Globe />, label: 'Yabancı hisse' },
+  crypto: { icon: <Bitcoin />, label: 'Kripto' },
+  commodity: { icon: <Gem />, label: 'Emtia' },
+  cash: { icon: <Banknote />, label: 'Nakit' },
+  other: { icon: <Package />, label: 'Diğer' },
+}
+const TILE_ORDER: Exclude<AssetKind, 'debt'>[] = ['gold', 'fx', 'deposit', 'fund', 'stock', 'foreign', 'crypto', 'commodity', 'cash', 'other']
+
+/** Fiyatı kendiliğinden güncellenen türler için kısa not. */
+const AUTO_NOTE: Partial<Record<AssetKind, string>> = {
+  gold: 'Gram, çeyrek, yarım, tam ve ayar altının fiyatı ons ve kurdan kendiliğinden güncellenir.',
+  fx: 'Kur her gün TCMB’den kendiliğinden güncellenir.',
+  fund: 'Fon fiyatı TEFAS’tan kendiliğinden güncellenir.',
+  stock: 'Fiyat Borsa İstanbul’dan kendiliğinden güncellenir.',
+  foreign: 'Fiyat yabancı borsadan kendiliğinden güncellenir ve TL’ye çevrilir.',
+  crypto: 'Fiyat Binance’ten kendiliğinden güncellenir ve TL’ye çevrilir.',
+  commodity: 'Listeden seçilen emtianın fiyatı kendiliğinden güncellenir.',
+}
 const SOURCE_TEXT: Partial<Record<AssetKind, string>> = { stock: 'Borsa İstanbul', foreign: 'Yabancı borsa', fund: 'TEFAS', crypto: 'Kripto (USDT)' }
 const SYMBOL_PLACEHOLDER: Partial<Record<AssetKind, string>> = { stock: 'Örn. THYAO', foreign: 'Örn. AAPL, SPY, SAP.DE', fund: 'Örn. TTE', crypto: 'Örn. BTC' }
 const NAME_PLACEHOLDER: Partial<Record<AssetKind, string>> = { stock: 'Örn. Aselsan', foreign: 'Örn. Apple, S&P 500', fund: 'Örn. İş Portföy teknoloji', crypto: 'Örn. Bitcoin' }
@@ -399,7 +425,6 @@ function priceSourceLabel(asset: Asset, s: HoldingSummary['price'], balance: boo
   }
   if (s.source === 'manual') return `${balance ? 'Bakiye' : 'Fiyat'} elle girildi · ${formatDate(s.date)}`
   if (s.source === 'tcmb') return `TCMB kuru · ${formatDate(s.date)}`
-  if (s.source === 'faiz') return `Faizle hesaplandı · %${asset.interestRatePct?.toLocaleString('tr-TR')} yıllık`
   return `${balance ? 'Son hareket' : 'İşlem fiyatı'} · ${formatDate(s.date)}`
 }
 
@@ -440,7 +465,7 @@ export function HoldingRow({
                 {quote.symbol} · {QUOTE_MARKET_LABEL[quote.market]}
               </span>
             )}
-            {(s.price?.source === 'tcmb' || s.price?.source === 'piyasa' || s.price?.source === 'faiz') && <Badge tone="accent">Otomatik</Badge>}
+            {(s.price?.source === 'tcmb' || s.price?.source === 'piyasa') && <Badge tone="accent">Otomatik</Badge>}
             {failed && (
               <span title={failed}>
                 <Badge tone="warning">Fiyat alınamadı</Badge>
@@ -681,7 +706,7 @@ export function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () 
 export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => void }) {
   const repo = useRepo()
   const { toast } = useUi()
-  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '', market: 'bist' as QuoteMarket, symbol: '', interest: '', debtType: 'card' as DebtType })
+  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '', market: 'bist' as QuoteMarket, symbol: '', debtType: 'card' as DebtType })
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [shown, setShown] = useState<Editing>(null)
@@ -702,7 +727,6 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
         minPay: t?.minPaymentKurus ? formatKurusPlain(t.minPaymentKurus) : '',
         market: a?.quote?.market ?? defaultMarket(editing.kind),
         symbol: a?.quote?.symbol ?? '',
-        interest: a?.interestRatePct !== undefined ? String(a.interestRatePct).replace('.', ',') : '',
         debtType: a ? debtTypeOf(a) : (editing.debtType ?? 'card'),
       })
       setError(undefined)
@@ -744,11 +768,8 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
       const c = COMMODITIES.find((x) => x.symbol === f.symbol)
       quote = c ? { market: 'commodity', symbol: c.symbol } : null
     }
-    let interestRatePct: number | null | undefined
-    if (f.kind === 'deposit') {
-      interestRatePct = f.interest.trim() ? Number(f.interest.trim().replace(',', '.')) : null
-      if (interestRatePct !== null && (!Number.isFinite(interestRatePct) || interestRatePct < 0 || interestRatePct > 500)) return setError('Yıllık faiz oranı 0 ile 500 arasında olmalı.')
-    }
+    // Mevduatta faiz girilmez; eski kayıtlardaki oran da kaldırılır
+    const interestRatePct = f.kind === 'deposit' ? null : undefined
     let debtTerms: DebtTerms | null | undefined
     if (debt) {
       const rate = f.rate.trim() ? Number(f.rate.trim().replace(',', '.')) : null
@@ -774,6 +795,9 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
   }
 
   const presets = PRESETS[f.kind] ?? []
+  const q = parseQuantity(f.qty)
+  const pr = parsePriceKurus(f.price)
+  const cost = q !== null && pr !== null && q > 0 ? Math.round(q * pr) : null
   return (
     <Modal
       open={!!editing}
@@ -788,22 +812,28 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
     >
       <div className="flex flex-col gap-3">
         {isNew && !debt && (
-          <Field label="Tür" htmlFor="asset-kind">
-            <Select
-              id="asset-kind"
-              value={f.kind}
-              onChange={(e) => {
-                const k = e.target.value as AssetKind
-                setF((p) => ({ ...p, kind: k, unit: DEFAULT_UNIT[k], name: '', symbol: '', market: k === 'commodity' ? 'commodity' : defaultMarket(k) }))
-              }}
-            >
-              {ASSET_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {ASSET_KIND_LABEL[k]}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div role="radiogroup" aria-label="Tür" className="grid grid-cols-5 gap-1.5">
+            {TILE_ORDER.map((k) => {
+              const on = f.kind === k
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={ASSET_KIND_LABEL[k]}
+                  onClick={() => setF((p) => ({ ...p, kind: k, unit: DEFAULT_UNIT[k], name: '', symbol: '', market: k === 'commodity' ? 'commodity' : defaultMarket(k) }))}
+                  className={cn(
+                    'flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 text-[11.5px] font-medium leading-tight transition-colors [&_svg]:size-5',
+                    on ? 'border-accent bg-accent-soft text-accent-strong dark:text-accent' : 'border-line text-muted hover:border-border-strong hover:text-ink',
+                  )}
+                >
+                  {KIND_TILE[k].icon}
+                  <span className="text-center">{KIND_TILE[k].label}</span>
+                </button>
+              )
+            })}
+          </div>
         )}
         {debt && (
           <Field label="Borç türü" htmlFor="debt-type">
@@ -825,11 +855,21 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
         )}
         {isNew && presets.length > 0 && (
           <div className="flex flex-wrap gap-1.5" aria-label="Hazır seçenekler">
-            {presets.map((p) => (
-              <Button key={p.name} size="sm" variant={f.name === p.name ? 'soft' : 'ghost'} onClick={() => setF((x) => ({ ...x, name: p.name, unit: p.unit, symbol: p.symbol ?? x.symbol }))}>
-                {p.name}
-              </Button>
-            ))}
+            {presets.map((p) => {
+              const on = f.name === p.name
+              return (
+                <button
+                  key={p.name}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setF((x) => ({ ...x, name: p.name, unit: p.unit, symbol: p.symbol ?? x.symbol }))}
+                  className={cn('inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors', on ? 'border-accent bg-accent text-white' : 'border-line bg-surface-2 text-ink hover:border-border-strong')}
+                >
+                  {on && <Check className="size-3.5" />}
+                  {p.name}
+                </button>
+              )
+            })}
           </div>
         )}
         {f.kind === 'commodity' && (
@@ -879,15 +919,20 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
             </Field>
           </div>
         )}
-        {f.kind === 'gold' && <p className="text-[12px] text-muted">Gram, çeyrek, yarım, tam, cumhuriyet ve 22/18/14 ayar altının güncel fiyatı ons fiyatı ve dolar kurundan otomatik hesaplanır (yaklaşık; kuyumcu işçiliği ve makas dahil değil).</p>}
-        {f.kind === 'deposit' && (
-          <Field label="Yıllık net faiz (%)" htmlFor="asset-interest" hint="Girerseniz bakiye her gün faizle kendiliğinden artar (stopaj sonrası oranı girin)">
-            <Input id="asset-interest" inputMode="decimal" value={f.interest} onChange={(e) => set('interest', e.target.value)} placeholder="Örn. 42" />
-          </Field>
+        {f.kind === 'gold' && (
+          <Segmented
+            label="Birim"
+            value={f.unit === 'adet' ? 'adet' : 'gram'}
+            onChange={(u) => set('unit', u)}
+            options={[
+              { value: 'gram', label: 'Gram' },
+              { value: 'adet', label: 'Adet' },
+            ]}
+          />
         )}
-        {!balance && !(f.kind === 'commodity' && f.symbol) && (
-          <Field label="Birim" htmlFor="asset-unit" hint="Fiyatı hangi birim için gireceğiniz (gram, adet, USD, pay…)">
-            <Input id="asset-unit" value={f.unit} maxLength={16} onChange={(e) => set('unit', e.target.value)} />
+        {(f.kind === 'other' || f.kind === 'fx' || (f.kind === 'commodity' && !f.symbol)) && (
+          <Field label={f.kind === 'fx' ? 'Döviz kodu' : 'Birim'} htmlFor="asset-unit" hint={f.kind === 'fx' ? 'USD, EUR, GBP gibi; kur kendiliğinden gelir' : 'Fiyatı hangi birim için gireceğiniz (gram, adet, pay…)'}>
+            <Input id="asset-unit" value={f.unit} maxLength={16} onChange={(e) => set('unit', f.kind === 'fx' ? e.target.value.toUpperCase() : e.target.value)} />
           </Field>
         )}
         {isNew &&
@@ -897,12 +942,21 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
             </Field>
           ) : (
             <>
-              <Field label={`Miktar (${f.unit || 'birim'})`} htmlFor="asset-first-qty">
-                <Input id="asset-first-qty" inputMode="decimal" value={f.qty} onChange={(e) => set('qty', e.target.value)} placeholder="0" />
-              </Field>
-              <Field label="Birim alış fiyatı (TL)" htmlFor="asset-first-price" hint={f.kind === 'crypto' || f.kind === 'foreign' ? 'Dövizle aldıysanız alış günündeki kurla TL karşılığını girin' : undefined}>
-                <Input id="asset-first-price" inputMode="decimal" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="0,00" />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={`Miktar (${f.unit || 'birim'})`} htmlFor="asset-first-qty">
+                  <Input id="asset-first-qty" inputMode="decimal" value={f.qty} onChange={(e) => set('qty', e.target.value)} placeholder="0" />
+                </Field>
+                <Field label="Birim alış fiyatı (TL)" htmlFor="asset-first-price">
+                  <Input id="asset-first-price" inputMode="decimal" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="0,00" />
+                </Field>
+              </div>
+              {(f.kind === 'crypto' || f.kind === 'foreign') && <p className="-mt-1 text-[12px] text-subtle">Dövizle aldıysanız alış günündeki kurla TL karşılığını girin.</p>}
+              {cost !== null && (
+                <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2 text-[13px]" aria-label="Toplam maliyet">
+                  <span className="text-muted">Toplam maliyet</span>
+                  <span className="num font-semibold text-ink">{formatKurus(cost)}</span>
+                </div>
+              )}
             </>
           ))}
         {debt && (
@@ -919,6 +973,11 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
           <Field label={debt ? 'Tarih' : balance ? 'Yatırma tarihi' : 'Alış tarihi'} htmlFor="asset-first-date">
             <Input id="asset-first-date" type="date" value={f.date} max={todayIso()} onChange={(e) => set('date', e.target.value)} />
           </Field>
+        )}
+        {AUTO_NOTE[f.kind] && !(f.kind === 'commodity' && !f.symbol) && (
+          <p className="flex items-start gap-2 rounded-xl bg-accent-soft px-3 py-2 text-[12.5px] text-accent-strong dark:text-accent">
+            <Sparkles className="mt-0.5 size-3.5 shrink-0" /> {AUTO_NOTE[f.kind]}
+          </p>
         )}
         {error && (
           <p className="text-[12.5px] font-medium text-danger" role="alert">

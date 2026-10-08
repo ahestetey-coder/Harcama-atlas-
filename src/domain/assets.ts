@@ -105,7 +105,7 @@ export interface Asset {
   note?: string
   /** Otomatik fiyat için piyasa ve sembol; yoksa fiyat elle girilir (döviz ve gram altın kendiliğinden eşlenir). */
   quote?: AssetQuote
-  /** Yalnızca mevduatta: yıllık net faiz (%). Girilirse bakiye her gün kendiliğinden büyür. */
+  /** Eski sürümlerden kalan mevduat faizi; artık kullanılmaz. */
   interestRatePct?: number
   /** Yalnızca borçlarda: aylık faiz ve aylık asgari ödeme/taksit (koçun borç planı için). */
   debtTerms?: DebtTerms
@@ -159,7 +159,7 @@ export interface PriceInfo {
   unitPriceKurus: number
   date: IsoDate
   /** faiz: mevduatta son bakiyeden yıllık faizle hesaplanan değer. */
-  source: ValuationSource | 'trade' | 'faiz'
+  source: ValuationSource | 'trade'
 }
 
 export interface HoldingSummary {
@@ -188,15 +188,6 @@ export function priceAt(asset: Asset, date: IsoDate): PriceInfo | null {
 
 const DAY_MS = 86400000
 
-/** Mevduatta faiz oranı girilmişse son bilinen bakiyeyi bugüne kadar basit yıllık faizle büyütür. */
-function withInterest(asset: Asset, price: PriceInfo | null, today: IsoDate): PriceInfo | null {
-  const rate = asset.kind === 'deposit' ? asset.interestRatePct : undefined
-  if (!price || !rate || rate <= 0) return price
-  const days = Math.max(0, Math.round((Date.parse(today) - Date.parse(price.date)) / DAY_MS))
-  if (days === 0) return price
-  return { unitPriceKurus: price.unitPriceKurus * (1 + (rate / 100) * (days / 365)), date: today, source: 'faiz' }
-}
-
 /** Ortalama maliyet yöntemiyle özet. */
 export function holdingSummary(asset: Asset, today: IsoDate): HoldingSummary {
   let qty = 0
@@ -223,7 +214,7 @@ export function holdingSummary(asset: Asset, today: IsoDate): HoldingSummary {
     qty = 0
     cost = 0
   }
-  const price = withInterest(asset, priceAt(asset, today), today)
+  const price = priceAt(asset, today)
   const value = price ? Math.round(qty * price.unitPriceKurus) : Math.round(cost)
   return {
     quantity: qty,

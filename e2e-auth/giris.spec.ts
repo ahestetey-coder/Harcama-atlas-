@@ -555,7 +555,7 @@ test('Yatırımlarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, k
   // ABD ETF: sembolle eklenir, fiyatı otomatik gelir
   await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
   dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
-  await dlg.getByLabel('Tür').selectOption('foreign')
+  await dlg.getByRole('radiogroup', { name: 'Tür' }).getByRole('radio', { name: 'Yabancı hisse / ETF', exact: true }).click()
   await expect(dlg.getByLabel('Kaynak')).toHaveValue('Yabancı borsa')
   // Ad yazılırken öneri çıkar; seçilince ad ve sembol dolar
   await dlg.getByLabel('Ad', { exact: true }).fill('s&p')
@@ -575,7 +575,7 @@ test('Yatırımlarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, k
   // Bilinmeyen kripto: fiyat alınamadı uyarısı
   await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
   dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
-  await dlg.getByLabel('Tür').selectOption('crypto')
+  await dlg.getByRole('radiogroup', { name: 'Tür' }).getByRole('radio', { name: 'Kripto', exact: true }).click()
   await dlg.getByLabel('Ad', { exact: true }).fill('Bilinmeyen')
   await dlg.getByLabel('Sembol').fill('XYZ')
   await dlg.getByLabel('Miktar (adet)').fill('1')
@@ -605,7 +605,7 @@ test('Yatırımlarım: döviz, ABD ETF ve kripto güncel fiyatla güncellenir, k
   // Sembolsüz kripto: adından güvenle eşlenir ve fiyatı kendiliğinden gelir
   await page.getByRole('button', { name: 'Yatırım ekle' }).first().click()
   dlg = page.getByRole('dialog', { name: 'Yatırım ekle' })
-  await dlg.getByLabel('Tür').selectOption('crypto')
+  await dlg.getByRole('radiogroup', { name: 'Tür' }).getByRole('radio', { name: 'Kripto', exact: true }).click()
   await dlg.getByLabel('Ad', { exact: true }).fill('Bitcoin')
   await dlg.getByLabel('Miktar (adet)').fill('0,1')
   await dlg.getByLabel('Birim alış fiyatı (TL)').fill('3.000.000')
