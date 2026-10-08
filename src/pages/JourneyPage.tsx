@@ -1,10 +1,10 @@
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, CircleDashed, CircleX, ClipboardCheck, CreditCard, Flag, Info, RotateCcw, ShieldCheck, Sparkles, Target, TrendingUp, Wallet } from 'lucide-react'
+import { ArrowRight, Check, CheckCircle2, ChevronDown, CircleDashed, CircleX, ClipboardCheck, CreditCard, Flag, Info, RotateCcw, Sparkles, Wallet } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
-import { Alert, Badge, Button, Card, Field, Input, Segmented, Select } from '../components/ui/primitives'
+import { Alert, Badge, Button, Card, Segmented } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import { holdingSummary, portfolio } from '../domain/assets'
 import { currentPeriod, periodLabel, todayIso } from '../domain/dates'
@@ -12,42 +12,33 @@ import type { IsoDate } from '../domain/types'
 import {
   BASE_LABEL,
   buildJourney,
-  DEFAULT_WITHDRAWAL_PCT,
   DTI_LIMIT,
   durationLabel,
   formatInBase,
-  HEALTH_LABEL,
   HOUSING_LABEL,
   JOURNEY_GOAL_LABEL,
-  PENSION_LABEL,
   reachDateLabel,
   rebase,
   RISK_LABEL,
-  SCENARIOS,
   STABILITY_LABEL,
-  TESTS_PER_MONTH,
   testsLeft,
   type BaseRates,
   type Condition,
-  type HealthCover,
-  type Housing,
-  type IncomeStability,
   type JourneyFacts,
-  type JourneyGoal,
   type JourneyProfile,
   type JourneyResult,
-  type Pension,
   type PlanBase,
-  type RiskStance,
   type StageId,
 } from '../domain/journey'
-import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
+import { formatKurus } from '../domain/money'
 import { summarizeMonth } from '../domain/summary'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
 import { useInstallmentDebt, useJourneyFacts } from '../state/budget'
 import { usePersonalCycle } from '../state/cycle'
-import { useAssets, useCategories, useRepo, useSettings } from '../state/data'
+import { useAssets, useRepo, useSettings } from '../state/data'
+import { FreedomResult } from './FreedomResult'
+import { FreedomTest } from './FreedomTest'
 import { useBaseRates } from '../state/livePrices'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
@@ -90,353 +81,6 @@ function JourneyContent() {
   return <Dashboard profile={profile} facts={facts} rates={rates} onRetake={() => setTesting(true)} />
 }
 
-// ---------- Finansal özgürlük testi ----------
-
-const STEPS = ['Siz ve haneniz', 'Gelir', 'Giderler', 'Güvenceler', 'Hedef ve plan birimi'] as const
-
-function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts: JourneyFacts; rates: BaseRates; initial?: JourneyProfile; onDone: () => void; onCancel?: () => void }) {
-  const repo = useRepo()
-  const settings = useSettings()
-  const categories = useCategories()
-  const { toast } = useUi()
-  const reduced = useReducedMotion()
-  const today = todayIso()
-  const left = testsLeft(initial, today)
-  const plain = (k: number | null | undefined) => (k ? formatKurusPlain(k) : '')
-  const [step, setStep] = useState(0)
-  const [dir, setDir] = useState(1)
-  const [f, setF] = useState(() => ({
-    age: initial?.age ? String(initial.age) : '',
-    dependents: String(initial?.dependents ?? 0),
-    housing: initial?.housing ?? ('rent' as Housing),
-    income: plain(initial?.monthlyIncomeKurus),
-    stability: initial?.incomeStability ?? ('regular' as IncomeStability),
-    passive: plain(initial?.passiveIncomeKurus),
-    essential: plain(initial?.essentialMonthlyKurus ?? (facts.recurringMonthlyKurus || null)),
-    target: plain(initial?.targetMonthlyExpenseKurus ?? facts.averageExpenseKurus),
-    priorities: initial?.priorities ?? [],
-    health: initial?.health ?? ('public' as HealthCover),
-    pension: initial?.pension ?? ('sgk' as Pension),
-    risk: initial?.risk ?? ('balanced' as RiskStance),
-    goal: initial?.goal ?? ('independence' as JourneyGoal),
-    goalName: initial?.goalName ?? '',
-    horizon: String(initial?.horizonYears ?? 15),
-    base: initial?.base ?? ('TRY' as PlanBase),
-    withdrawal: String(initial?.withdrawalRatePct ?? DEFAULT_WITHDRAWAL_PCT).replace('.', ','),
-  }))
-  const [error, setError] = useState<string>()
-  const [busy, setBusy] = useState(false)
-  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }))
-  const fromApp = (has: boolean) => (has ? <Badge tone="accent">Uygulamadan</Badge> : <Badge tone="warning">Eksik</Badge>)
-
-  const money = (s: string, label: string, optional = false) => {
-    if (optional && !s.trim()) return 0
-    const p = parseUserAmount(s)
-    if (!p.ok || p.kurus < 0 || (!optional && p.kurus === 0)) throw new Error(`${label} için geçerli bir tutar girin.`)
-    return p.kurus
-  }
-  /** Adımı doğrular; hata varsa mesajı döner. */
-  const check = (i: number): string | null => {
-    try {
-      if (i === 0) {
-        const age = Number(f.age)
-        if (!Number.isInteger(age) || age < 15 || age > 100) return 'Yaşınızı 15 ile 100 arasında girin.'
-        const d = Number(f.dependents)
-        if (!Number.isInteger(d) || d < 0 || d > 20) return 'Bakmakla yükümlü olduğunuz kişi sayısını girin (0 olabilir).'
-      }
-      if (i === 1) {
-        money(f.income, 'Aylık net gelir')
-        money(f.passive, 'Pasif gelir', true)
-      }
-      if (i === 2) {
-        money(f.essential, 'Zorunlu giderler')
-        money(f.target, 'Hedefteki aylık yaşam gideri')
-      }
-      if (i === 4) {
-        const h = Number(f.horizon)
-        if (!Number.isInteger(h) || h < 1 || h > 60) return 'Hedef süresi 1 ile 60 yıl arasında olmalı.'
-        const w = Number(f.withdrawal.replace(',', '.'))
-        if (!Number.isFinite(w) || w < 0.5 || w > 10) return 'Çekim oranı %0,5 ile %10 arasında olmalı.'
-        if (f.base !== 'TRY' && !rates[f.base]) return `${BASE_LABEL[f.base]} fiyatı henüz alınamadı; giriş yaptığınızdan emin olun ya da TL seçin.`
-      }
-    } catch (e) {
-      return e instanceof Error ? e.message : 'Geçersiz bilgi.'
-    }
-    return null
-  }
-  const go = (to: number) => {
-    if (to > step) {
-      const e = check(step)
-      if (e) return setError(e)
-    }
-    setError(undefined)
-    setDir(to > step ? 1 : -1)
-    setStep(to)
-  }
-
-  const save = async () => {
-    for (let i = 0; i < STEPS.length; i++) {
-      const e = check(i)
-      if (e) {
-        setStep(i)
-        return setError(e)
-      }
-    }
-    setError(undefined)
-    const base: JourneyProfile = {
-      goal: f.goal,
-      goalName: f.goal === 'custom' ? f.goalName.trim().slice(0, 60) || undefined : undefined,
-      horizonYears: Number(f.horizon),
-      targetMonthlyExpenseKurus: money(f.target, ''),
-      monthlyIncomeKurus: money(f.income, ''),
-      essentialMonthlyKurus: money(f.essential, ''),
-      incomeStability: f.stability,
-      priorities: f.priorities,
-      withdrawalRatePct: Number(f.withdrawal.replace(',', '.')),
-      celebrated: initial?.celebrated ?? [],
-      confirmedAt: new Date().toISOString(),
-      age: Number(f.age),
-      dependents: Number(f.dependents),
-      housing: f.housing,
-      passiveIncomeKurus: money(f.passive, '', true) || undefined,
-      pension: f.pension,
-      health: f.health,
-      risk: f.risk,
-      base: f.base,
-      baseRateTl: f.base === 'TRY' ? undefined : (rates[f.base] ?? undefined),
-      tests: [...(initial?.tests ?? []), today].slice(-24),
-    }
-    try {
-      setBusy(true)
-      await repo.saveSettings({ journey: base })
-      toast(initial ? 'Test yenilendi; rotanız güncellendi.' : 'Rotanız hazır.')
-      onDone()
-    } catch (e) {
-      setError(toUserMessage(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (initial && left === 0)
-    return (
-      <Card className="p-5">
-        <p className="text-[13.5px] text-muted">Bu ayki {TESTS_PER_MONTH} test hakkınızı kullandınız. Gelecek ay yeniden yapabilirsiniz.</p>
-        {onCancel && (
-          <Button className="mt-3" variant="ghost" onClick={onCancel}>
-            Rotama dön
-          </Button>
-        )}
-      </Card>
-    )
-
-  const topCats = (categories ?? []).filter((c) => !c.archived).slice(0, 14)
-  const last = step === STEPS.length - 1
-  return (
-    <Card className="overflow-hidden p-5" aria-label="Finansal özgürlük testi">
-      <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
-        <ClipboardCheck className="size-5 text-accent" /> Finansal özgürlük testi
-      </h2>
-      <p className="mt-1 text-[13.5px] text-muted">
-        Rotanızdaki bütün ölçütler bu yanıtlarla hesaplanır. Uygulamada bulunan bilgiler getirildi; doğrulayın veya düzeltin. Tutarları bugünün parasıyla yazın.
-        {initial ? ` Bu ay ${left} test hakkınız var.` : ` Testi ayda ${TESTS_PER_MONTH} kez yenileyebilirsiniz.`}
-      </p>
-      <ol className="mt-4 grid grid-cols-5 gap-1.5" aria-label="Test adımları">
-        {STEPS.map((t, i) => (
-          <li key={t}>
-            <button type="button" className="w-full text-left" onClick={() => i < step && go(i)} aria-current={i === step ? 'step' : undefined} disabled={i > step}>
-              <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
-                <motion.div className="h-full rounded-full bg-accent" initial={false} animate={{ width: i <= step ? '100%' : '0%' }} transition={{ duration: reduced ? 0 : 0.35 }} />
-              </div>
-              <div className={cn('mt-1 hidden text-[11.5px] sm:block', i === step ? 'font-semibold text-ink' : 'text-muted')}>{t}</div>
-            </button>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-2 text-[12.5px] font-medium text-muted sm:hidden">
-        Adım {step + 1}/{STEPS.length}: {STEPS[step]}
-      </p>
-      <AnimatePresence mode="wait" initial={false} custom={dir}>
-        <motion.div
-          key={step}
-          custom={dir}
-          initial={reduced ? false : { opacity: 0, x: 24 * dir }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={reduced ? undefined : { opacity: 0, x: -24 * dir }}
-          transition={{ duration: 0.22 }}
-          className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
-        >
-          {step === 0 && (
-            <>
-              <Field label="Yaşınız" htmlFor="t-age">
-                <Input id="t-age" inputMode="numeric" value={f.age} onChange={(e) => set('age', e.target.value.replace(/\D/g, ''))} placeholder="Örn. 32" />
-              </Field>
-              <Field label="Bakmakla yükümlü olduğunuz kişi sayısı" htmlFor="t-dependents" hint="Çocuk, eş, ebeveyn… Yoksa 0.">
-                <Input id="t-dependents" inputMode="numeric" value={f.dependents} onChange={(e) => set('dependents', e.target.value.replace(/\D/g, ''))} />
-              </Field>
-              <Field label="Konut durumunuz" htmlFor="t-housing">
-                <Select id="t-housing" value={f.housing} onChange={(e) => set('housing', e.target.value as Housing)}>
-                  {(Object.keys(HOUSING_LABEL) as Housing[]).map((k) => (
-                    <option key={k} value={k}>
-                      {HOUSING_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </>
-          )}
-          {step === 1 && (
-            <>
-              <Field label={<span className="inline-flex items-center gap-2">Aylık net gelir (TL) {fromApp(!!initial)}</span>} htmlFor="t-income" hint="Maaş ve düzenli iş geliri.">
-                <Input id="t-income" inputMode="decimal" value={f.income} onChange={(e) => set('income', e.target.value)} placeholder="0,00" />
-              </Field>
-              <Field label="Gelir düzeni" htmlFor="t-stability">
-                <Select id="t-stability" value={f.stability} onChange={(e) => set('stability', e.target.value as IncomeStability)}>
-                  {(Object.keys(STABILITY_LABEL) as IncomeStability[]).map((k) => (
-                    <option key={k} value={k}>
-                      {STABILITY_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Aylık pasif gelir (TL)" htmlFor="t-passive" hint="Kira, temettü, faiz gibi çalışmadan gelen gelir. Yoksa boş bırakın.">
-                <Input id="t-passive" inputMode="decimal" value={f.passive} onChange={(e) => set('passive', e.target.value)} placeholder="0,00" />
-              </Field>
-            </>
-          )}
-          {step === 2 && (
-            <>
-              <Field
-                label={<span className="inline-flex items-center gap-2">Zorunlu aylık giderler (TL) {fromApp(facts.recurringMonthlyKurus > 0 || !!initial)}</span>}
-                htmlFor="t-essential"
-                hint={facts.recurringMonthlyKurus > 0 ? `Düzenli ödemelerin aylık toplamı ${formatKurus(facts.recurringMonthlyKurus)}. Kira, fatura, gıda, ulaşım gibi vazgeçilemeyenleri ekleyin.` : 'Kira, fatura, gıda, ulaşım gibi vazgeçilemeyen giderler.'}
-              >
-                <Input id="t-essential" inputMode="decimal" value={f.essential} onChange={(e) => set('essential', e.target.value)} placeholder="0,00" />
-              </Field>
-              <Field
-                label={<span className="inline-flex items-center gap-2">Hedefteki aylık yaşam gideri (TL) {fromApp(facts.averageExpenseKurus !== null)}</span>}
-                htmlFor="t-target"
-                hint={facts.averageExpenseKurus !== null ? `Son ${facts.expenseMonths} dönemin ortalama gideri ${formatKurus(facts.averageExpenseKurus)}. Özgür olduğunuzda nasıl yaşamak istediğinizi düşünün.` : 'Özgür olduğunuzda nasıl yaşamak istediğinizi düşünün.'}
-              >
-                <Input id="t-target" inputMode="decimal" value={f.target} onChange={(e) => set('target', e.target.value)} placeholder="0,00" />
-              </Field>
-              <fieldset className="md:col-span-2">
-                <legend className="text-[13px] font-medium text-muted">Korumak istediğiniz harcama öncelikleri</legend>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {topCats.map((c) => {
-                    const on = f.priorities.includes(c.id)
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => set('priorities', on ? f.priorities.filter((x) => x !== c.id) : [...f.priorities, c.id])}
-                        className={cn('rounded-full border px-3 py-1 text-[13px]', on ? 'border-accent bg-accent-soft text-accent-strong dark:text-accent' : 'border-line text-muted hover:text-ink')}
-                      >
-                        {c.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              </fieldset>
-            </>
-          )}
-          {step === 3 && (
-            <>
-              <Field label="Sağlık güvenceniz" htmlFor="t-health">
-                <Select id="t-health" value={f.health} onChange={(e) => set('health', e.target.value as HealthCover)}>
-                  {(Object.keys(HEALTH_LABEL) as HealthCover[]).map((k) => (
-                    <option key={k} value={k}>
-                      {HEALTH_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Emeklilik güvenceniz" htmlFor="t-pension">
-                <Select id="t-pension" value={f.pension} onChange={(e) => set('pension', e.target.value as Pension)}>
-                  {(Object.keys(PENSION_LABEL) as Pension[]).map((k) => (
-                    <option key={k} value={k}>
-                      {PENSION_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Birikiminizin değeri düşerse ne hissedersiniz?" htmlFor="t-risk" hint="Yalnızca senaryo varsayımını ve koçun dilini belirler; ürün önerisi yapılmaz.">
-                <Select id="t-risk" value={f.risk} onChange={(e) => set('risk', e.target.value as RiskStance)}>
-                  {(Object.keys(RISK_LABEL) as RiskStance[]).map((k) => (
-                    <option key={k} value={k}>
-                      {RISK_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </>
-          )}
-          {step === 4 && (
-            <>
-              <Field label="Hedefiniz" htmlFor="t-goal">
-                <Select id="t-goal" value={f.goal} onChange={(e) => set('goal', e.target.value as JourneyGoal)}>
-                  {(Object.keys(JOURNEY_GOAL_LABEL) as JourneyGoal[]).map((g) => (
-                    <option key={g} value={g}>
-                      {JOURNEY_GOAL_LABEL[g]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              {f.goal === 'custom' && (
-                <Field label="Hedefin adı" htmlFor="t-goal-name">
-                  <Input id="t-goal-name" value={f.goalName} maxLength={60} onChange={(e) => set('goalName', e.target.value)} placeholder="Örn. Kendi işimi kurmak" />
-                </Field>
-              )}
-              <Field label="Hedef süresi (yıl)" htmlFor="t-horizon">
-                <Input id="t-horizon" inputMode="numeric" value={f.horizon} onChange={(e) => set('horizon', e.target.value.replace(/\D/g, ''))} />
-              </Field>
-              <Field label="Plan birimi" htmlFor="t-base" hint="USD ya da gram altın seçerseniz hedefleriniz o birimde sabitlenir; TL karşılığı kurla birlikte değişir.">
-                <Select id="t-base" value={f.base} onChange={(e) => set('base', e.target.value as PlanBase)}>
-                  {(Object.keys(BASE_LABEL) as PlanBase[]).map((k) => (
-                    <option key={k} value={k}>
-                      {BASE_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Birikimden yıllık çekim oranı (%)" htmlFor="t-withdrawal" hint="Gereken birikim = yıllık gider ÷ bu oran. Yaygın kabul %4; düştükçe gereken birikim artar.">
-                <Input id="t-withdrawal" inputMode="decimal" value={f.withdrawal} onChange={(e) => set('withdrawal', e.target.value)} />
-              </Field>
-            </>
-          )}
-        </motion.div>
-      </AnimatePresence>
-      {error && (
-        <p className="mt-3 text-[13px] font-medium text-danger" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        {step > 0 && (
-          <Button variant="ghost" icon={<ArrowLeft className="size-4" />} onClick={() => go(step - 1)}>
-            Geri
-          </Button>
-        )}
-        {last ? (
-          <Button variant="primary" loading={busy} onClick={() => void save()} disabled={!settings}>
-            {initial ? 'Testi tamamla, rotamı güncelle' : 'Testi tamamla, rotamı oluştur'}
-          </Button>
-        ) : (
-          <Button variant="primary" onClick={() => go(step + 1)}>
-            İleri <ArrowRight className="size-4" />
-          </Button>
-        )}
-        {onCancel && (
-          <Button variant="ghost" onClick={onCancel}>
-            Vazgeç
-          </Button>
-        )}
-      </div>
-    </Card>
-  )
-}
-
 // ---------- Yolculuk paneli ----------
 
 type Tab = 'route' | 'investments' | 'debts' | 'month' | 'criteria'
@@ -472,7 +116,8 @@ function useFmt(base: PlanBase, rates: BaseRates): Fmt {
 function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfile; facts: JourneyFacts; rates: BaseRates; onRetake: () => void }) {
   const repo = useRepo()
   const { toast } = useUi()
-  const j = useMemo(() => buildJourney(profile, facts, rates), [profile, facts, rates])
+  const strategy = useSettings()?.coach?.strategy ?? 'avalanche'
+  const j = useMemo(() => buildJourney(profile, facts, rates, { strategy }), [profile, facts, rates, strategy])
   const [celebrate, setCelebrate] = useState<StageId[]>([])
   const [tab, setTab] = useState<Tab>('route')
   const base = profile.base ?? 'TRY'
@@ -498,10 +143,6 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
   }
 
   const ind = j.indicators
-  const route = ind.route
-  const deadline = Number(today.slice(0, 4)) + profile.horizonYears
-  const yearOf = (m: number | null) => (m === null ? null : Number(reachDateLabel(m, today).split(' ')[1]))
-  const years = [yearOf(route.optimistic), yearOf(route.cautious)]
 
   return (
     <div className="flex flex-col gap-4">
@@ -519,42 +160,13 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
 
       <Hero j={j} profile={profile} fmt={fmt} base={base} left={left} tested={tested} onBase={(b) => void changeBase(b)} onRetake={onRetake} saving={ind.monthlySavingKurus} />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Card className="p-4" aria-label="Finansal güvence">
-          <div className="flex items-center gap-2 text-[12.5px] font-semibold text-muted">
-            <ShieldCheck className="size-4 text-accent" /> Acil durum güvencesi
-          </div>
-          <div className="num mt-1.5 font-display text-2xl font-semibold">{ind.securityMonths === null ? '—' : `${ind.securityMonths.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ay`}</div>
-          <p className="mt-1 text-[12.5px] text-muted">
-            Hızlı kullanılabilir birikiminiz ({formatKurus(facts.liquidKurus)}) zorunlu giderlerinizi bu kadar süre karşılar. Hedef {ind.emergencyMonths} ay.
-          </p>
-        </Card>
-        <Card className="p-4" aria-label="Hedef ilerlemesi">
-          <div className="flex items-center gap-2 text-[12.5px] font-semibold text-muted">
-            <Target className="size-4 text-accent" /> Özgürlük hedefi
-          </div>
-          <div className="num mt-1.5 font-display text-2xl font-semibold">%{(ind.goalRatio * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}</div>
-          <Bar value={ind.goalRatio} label="Özgürlük hedefi ilerlemesi" className="mt-2" />
-          <p className="num mt-1.5 text-[12.5px] text-muted">
-            {base === 'TRY' ? `${formatKurus(ind.progressKurus)} / ${formatKurus(ind.goalKurus)}` : `${fmt.base(ind.progressKurus)} / ${fmt.base(ind.goalKurus)}`}
-          </p>
-          {base !== 'TRY' && <p className="num mt-0.5 text-[12px] text-subtle">Bugünkü TL karşılığı {formatKurus(ind.goalKurus)}</p>}
-        </Card>
-        <Card className="p-4" aria-label="Tahmini rota">
-          <div className="flex items-center gap-2 text-[12.5px] font-semibold text-muted">
-            <TrendingUp className="size-4 text-accent" /> Tahmini varış
-          </div>
-          <div className="num mt-1.5 font-display text-2xl font-semibold">{years[0] === null ? 'Ulaşılamıyor' : years[0] === years[1] ? years[0] : `${years[0]} – ${years[1] ?? '…'}`}</div>
-          <p className="mt-1 text-[12.5px] text-muted">
-            {ind.monthlySavingKurus > 0 ? `Ayda ${formatKurus(ind.monthlySavingKurus)} birikimle, olumlu ve temkinli varsayımlar arasında.` : 'Şu an aylık birikim yok; gelir ve gider dengesi kurulunca tarih aralığı oluşur.'}
-          </p>
-          {route.mid !== null && (
-            <p className="mt-1 text-[12px] text-subtle">
-              Orta varsayım: {reachDateLabel(route.mid, today)} ({durationLabel(route.mid)}) · hedef süreniz: {deadline}
-            </p>
-          )}
-        </Card>
-      </div>
+      {(!profile.targetAge || !profile.spending) && tested && (
+        <Alert tone="info" icon={<Info className="size-4" />}>
+          Rotanız yeni hesaba geçti. Hedef yaşınızı, harcama gruplarınızı ve risk sorularını eklemek için testi yenileyin; o zamana kadar eski yanıtlarınız kullanılır.
+        </Alert>
+      )}
+
+      <FreedomResult profile={profile} facts={facts} rates={rates} plan={j.plan} strategy={strategy} today={today} />
 
       <div role="tablist" aria-label="Yolculuk bölümleri" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
         {TABS.map((t) => (
@@ -581,8 +193,12 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
       </div>
 
       <Alert tone="info" icon={<Info className="size-4" />}>
-        Bu rota girdiğiniz bilgilerle hesaplanan bir tahmindir: birikiminiz enflasyon kadar artar; yıllık reel getiri temkinli %{SCENARIOS.cautious.realReturnPct}, orta %{SCENARIOS.mid.realReturnPct}, olumlu %{SCENARIOS.optimistic.realReturnPct}; gereken birikim, pasif gelirle karşılanmayan yıllık giderin %{profile.withdrawalRatePct.toLocaleString('tr-TR')} çekim oranına bölünmesiyle bulunur. Aşama süreleri, aylık birikiminizin tamamının o aşamaya ayrıldığı varsayımıyla hesaplanır.
-        {base !== 'TRY' && ` Hedefler ${BASE_LABEL[base]} bazında sabittir; TL karşılıkları güncel fiyatla hesaplanır.`} Getiri veya tarih garantisi değildir ve yatırım tavsiyesi içermez. Farklı varsayımları{' '}
+        Bu rota uygulamadaki verileriniz, test yanıtlarınız ve kaynaklı varsayımlarla hesaplanan bir benzetimdir: tutarlar bugünün parasıyladır; beklenen yıllık reel getiri {j.plan.risk.profile.label} profiline göre %{j.plan.realReturnPct.toLocaleString('tr-TR')}; gereken birikim, garantili gelirle karşılanmayan yıllık giderin %{j.plan.withdrawal.usedPct.toLocaleString('tr-TR')} çekim oranına bölünmesiyle bulunur. Borç, düzenli ödeme ya da varlık değiştiğinde rota kendiliğinden yeniden hesaplanır. Aşama süreleri, aylık birikiminizin tamamının o aşamaya ayrıldığı varsayımıyla hesaplanır.
+        {base !== 'TRY' && ` Hedefler ${BASE_LABEL[base]} bazında sabittir; TL karşılıkları güncel fiyatla hesaplanır.`} Getiri veya tarih garantisi değildir; eğitim amaçlıdır ve kişiye özel yatırım tavsiyesi içermez.{' '}
+        <Link to="/ogren#varsayimlar" className="font-medium text-accent">
+          Varsayımlar ve kaynaklar
+        </Link>
+        . Farklı varsayımları{' '}
         <Link to="/senaryolar" className="font-medium text-accent">
           Senaryolar
         </Link>{' '}

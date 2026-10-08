@@ -49,6 +49,9 @@ export interface DebtPayoff {
   debts: DebtResult[]
   /** Ay sonu toplam borç (0. eleman = bugün). */
   balances: number[]
+  /** Her ay yapılan toplam ödeme ve eklenen faiz (0. eleman = 1. ay). */
+  payments: number[]
+  interest: number[]
 }
 
 const MAX_MONTHS = 600
@@ -59,15 +62,19 @@ export function simulateDebts(debts: CoachDebt[], monthlyBudgetKurus: number, st
   const order = (a: (typeof list)[number], b: (typeof list)[number]) =>
     strategy === 'avalanche' ? b.monthlyRatePct - a.monthlyRatePct || a.bal - b.bal : a.bal - b.bal || b.monthlyRatePct - a.monthlyRatePct
   const balances = [list.reduce((s, d) => s + d.bal, 0)]
+  const payments: number[] = []
+  const interest: number[] = []
   let month = 0
   while (list.some((d) => d.bal > 0) && month < MAX_MONTHS) {
     month++
     let available = monthlyBudgetKurus
+    let monthInterest = 0
     for (const d of list) {
       if (d.bal <= 0) continue
       const i = Math.round((d.bal * d.monthlyRatePct) / 100)
       d.bal += i
       d.interest += i
+      monthInterest += i
     }
     for (const d of list) {
       if (d.bal <= 0) continue
@@ -85,6 +92,8 @@ export function simulateDebts(debts: CoachDebt[], monthlyBudgetKurus: number, st
     }
     for (const d of list) if (d.bal <= 0 && d.done === null) d.done = month
     balances.push(list.reduce((s, d) => s + Math.max(0, d.bal), 0))
+    payments.push(monthlyBudgetKurus - available)
+    interest.push(monthInterest)
   }
   const all = list.every((d) => d.done !== null)
   return {
@@ -92,6 +101,8 @@ export function simulateDebts(debts: CoachDebt[], monthlyBudgetKurus: number, st
     totalInterestKurus: list.reduce((s, d) => s + d.interest, 0),
     debts: list.map((d) => ({ id: d.id, name: d.name, paidOffMonth: d.done, interestKurus: d.interest })),
     balances,
+    payments,
+    interest,
   }
 }
 

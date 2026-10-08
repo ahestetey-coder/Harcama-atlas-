@@ -1,10 +1,32 @@
+import {
+  DEFAULT_INFLATION_PCT,
+  DEFAULT_LIFE_AGE,
+  DEFAULT_TARGET_AGE,
+  DTI_LIMIT,
+  EMERGENCY_MONTHS,
+  FAT_FACTOR,
+  LEAN_FACTOR,
+  MC_RUNS,
+  MC_SEED,
+  recommendedWithdrawalPct,
+  RISK_PROFILES,
+  SAVING_RATE_TARGET,
+  STARTER_MONTHS,
+  type RiskLevel,
+  type RiskProfile,
+} from './assumptions'
+import { simulateDebts, type CoachDebt, type DebtStrategy } from './coach'
 import { addMonths, MONTH_NAMES, periodOf } from './dates'
 import { isSpending, type IsoDate, type MonthKey, type Transaction } from './types'
 
+export { DTI_LIMIT, SAVING_RATE_TARGET, STARTER_MONTHS }
+
 /**
- * Plus+ "Finansal Özgürlük Yolculuğum": anket, rota aşamaları, göstergeler ve senaryolar.
- * Bütün hesaplar bu dosyada, cihazda yapılır. Sonuçlar varsayıma dayalı tahmindir; olasılık veya
- * garanti değildir ve yatırım tavsiyesi içermez.
+ * Plus+ "Finansal Özgürlük Yolculuğum" (Özgürlük Rotası v2): test, hedef motoru, rota aşamaları,
+ * göstergeler ve senaryolar. Hedef üç girdiden üretilir: uygulamadaki veriler (işlemler, düzenli
+ * ödemeler, borçlar, varlıklar), test yanıtları ve src/domain/assumptions.ts'teki kaynaklı
+ * varsayımlar. Bütün hesaplar cihazda yapılır. Başarı olasılığı varsayıma dayalı bir benzetimdir,
+ * gerçek bir olasılık ya da garanti değildir; sonuçlar eğitim amaçlıdır ve yatırım tavsiyesi içermez.
  */
 
 export type JourneyGoal = 'independence' | 'security' | 'early-retire' | 'custom'
@@ -68,6 +90,80 @@ export interface JourneyProfile {
   baseRateTl?: number
   /** Testin yapıldığı günler (YYYY-AA-GG), en yeni sonda. */
   tests?: string[]
+  // ---- Özgürlük Rotası v2 (eski profillerde yok) ----
+  /** Çalışmayı bırakmak istenen yaş. Yoksa yaş + hedef süresi. */
+  targetAge?: number
+  /** Paranın yetmesi gereken yaş (varsayılan 90). */
+  lifeAge?: number
+  /** Testte doğrulanan aylık harcama (6 grup, test günündeki parayla; düzenli ödemeler hariç). */
+  spending?: SpendBreakdown
+  /** Hedef yaşam: bugünkü harcamanın yüzdesi (50–160). */
+  targetSpendPct?: number
+  /** Hedef yaşa kadar ev sahibi olma planı: konut gideri hedeften düşülür. */
+  ownHomePlan?: boolean
+  /** Yıllık seyahat / büyük harcama bütçesi. */
+  annualBigSpendKurus?: number
+  /** Risk toleransı soruları (her biri 1–4). */
+  riskAnswers?: number[]
+  /** Beklenen SGK/BES aylığı (bugünün parasıyla). */
+  pensionIncomeKurus?: number
+  /** Hedef yaştan sonra yarı zamanlı / serbest iş geliri. */
+  partTimeIncomeKurus?: number
+  /** Çekim oranını kullanıcı mı belirledi (yoksa süreye göre önerilen kullanılır). */
+  withdrawalCustom?: boolean
+  /** TL nominal hedef için yıllık enflasyon varsayımı (%). */
+  inflationPct?: number
+}
+
+export type SpendGroup = 'housing' | 'food' | 'transport' | 'bills' | 'fun' | 'other'
+export type SpendBreakdown = Record<SpendGroup, number>
+export const SPEND_GROUPS: SpendGroup[] = ['housing', 'food', 'transport', 'bills', 'fun', 'other']
+export const SPEND_GROUP_LABEL: Record<SpendGroup, string> = {
+  housing: 'Kira / konut',
+  food: 'Gıda ve market',
+  transport: 'Ulaşım',
+  bills: 'Faturalar ve abonelikler',
+  fun: 'Eğlence ve dışarıda yemek',
+  other: 'Diğer (sağlık, giyim, eğitim…)',
+}
+/** Zorunlu sayılan gruplar (acil durum fonu bunlarla ölçülür). */
+const ESSENTIAL_GROUPS: SpendGroup[] = ['housing', 'food', 'transport', 'bills']
+
+const GROUP_BY_ID: Record<string, SpendGroup> = {
+  'cat-kira': 'housing',
+  'cat-market': 'food',
+  'cat-akaryakit': 'transport',
+  'cat-ulasim': 'transport',
+  'cat-faturalar': 'bills',
+  'cat-abonelik': 'bills',
+  'cat-restoran': 'fun',
+  'cat-eglence': 'fun',
+}
+
+/** Uygulamadaki kategoriyi testteki 6 harcama grubuna eşler. */
+export function spendGroupOf(categoryId: string | null, name = ''): SpendGroup {
+  if (categoryId && GROUP_BY_ID[categoryId]) return GROUP_BY_ID[categoryId]
+  const n = name.toLocaleLowerCase('tr')
+  if (/kira|konut|aidat|\bev\b/.test(n)) return 'housing'
+  if (/market|gıda|bakkal|manav|kasap/.test(n)) return 'food'
+  if (/ulaşım|yakıt|akaryakıt|taksi|otopark/.test(n)) return 'transport'
+  if (/fatura|abonelik|elektrik|doğalgaz|internet|telefon/.test(n)) return 'bills'
+  if (/restoran|kafe|eğlence|yemek|sinema/.test(n)) return 'fun'
+  return 'other'
+}
+
+export const sumSpend = (b: SpendBreakdown) => SPEND_GROUPS.reduce((s, g) => s + (b[g] ?? 0), 0)
+
+/** Uygulamadaki düzenli ödeme ya da taksit (Özgürlük Rotası'nda bitiş tarihiyle birikime eklenir). */
+export interface RecurringLoad {
+  name: string
+  monthlyKurus: number
+  /** Taksit mi (bitince birikime eklenir, hedef yaşamda yer almaz). */
+  installment: boolean
+  /** Kalan ay; süresizse null. */
+  remainingMonths: number | null
+  /** Konut gideri mi (ev sahibi olma planında hedeften düşülür). */
+  housing?: boolean
 }
 
 export const DEFAULT_WITHDRAWAL_PCT = 4
@@ -116,6 +212,13 @@ export interface JourneyFacts {
   /** Son 3 ayda varlıklara net eklenen para (aylık ortalama). */
   recentMonthlyContributionKurus: number
   hasAssets: boolean
+  // ---- Özgürlük Rotası v2: canlı veriler (değişince hedef ve rota yeniden hesaplanır) ----
+  /** Borçlarım'daki borçlar (bakiye, aylık faiz, taksit). Ekstre taksitleri burada değil, recurringList'te. */
+  debtList?: CoachDebt[]
+  /** Düzenli ödemeler ve taksitler (borç taksitleri hariç). */
+  recurringList?: RecurringLoad[]
+  /** Son 3 dönemin 6 gruba göre ortalama harcaması (düzenli ödeme ve taksitler hariç). */
+  spendingByGroup?: SpendBreakdown | null
 }
 
 export type StageId = 'balance' | 'starter' | 'debt' | 'emergency' | 'saving' | 'security' | 'independence' | 'freedom'
@@ -205,32 +308,24 @@ export interface JourneyResult {
   current: Stage | null
   /** Seviye: baştan itibaren arka arkaya tamamlanan aşama sayısı. */
   level: number
+  /** Özgürlük Rotası v2 hedef motoru: hedef, gereken birikim, borç takvimi, benzetim. */
+  plan: FreedomPlan
 }
 
 const clamp01 = (x: number) => (Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0)
 const tl = (k: number) => `${Math.round(k / 100).toLocaleString('tr-TR')} ₺`
 
-export const STARTER_MONTHS = 1
-export const SAVING_RATE_TARGET = 0.2
-export const DTI_LIMIT = 0.36
-
 /** Acil durum fonu kaç aylık zorunlu gider olmalı: düzenli gelirde 3, bakmakla yükümlü kişi varsa ya da gelir değişkense 6, düzensizse 9. */
 export function emergencyMonthsFor(p: Pick<JourneyProfile, 'incomeStability' | 'dependents'>): number {
-  if (p.incomeStability === 'irregular') return 9
-  if (p.incomeStability === 'variable' || (p.dependents ?? 0) > 0) return 6
-  return 3
+  if (p.incomeStability === 'irregular') return EMERGENCY_MONTHS.irregular
+  if (p.incomeStability === 'variable' || (p.dependents ?? 0) > 0) return EMERGENCY_MONTHS.variableOrDependents
+  return EMERGENCY_MONTHS.regular
 }
 
 /** Aylık birikim: gelir − ortalama gider (bilinmiyorsa zorunlu gider). Pasif gelir de gelire katılır. */
 export function monthlySaving(p: JourneyProfile, f: JourneyFacts): number {
   const spend = f.averageExpenseKurus ?? p.essentialMonthlyKurus
   return p.monthlyIncomeKurus + (p.passiveIncomeKurus ?? 0) - spend
-}
-
-/** Gereken sermaye: pasif gelirle karşılanmayan yıllık gider ÷ çekim oranı. */
-function capitalFor(monthlyKurus: number, p: JourneyProfile): number {
-  const rate = Math.max(0.5, p.withdrawalRatePct) / 100
-  return Math.round((Math.max(0, monthlyKurus - (p.passiveIncomeKurus ?? 0)) * 12) / rate)
 }
 
 // ---------- Plan birimi (TL / USD / gram altın) ----------
@@ -308,21 +403,20 @@ function moneyCond(label: string, now: number, target: number, saving: number, v
   }
 }
 
-export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRates = {}): JourneyResult {
-  const k = indexFactor(p, rates)
+export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRates = {}, opts: Omit<FreedomOptions, 'rates'> = {}): JourneyResult {
+  const plan = buildFreedomPlan(p, f, { ...opts, rates })
   const base = p.base ?? 'TRY'
   /** Sermaye tutarları plan biriminde yazılır. */
   const big = (kurus: number) => (base === 'TRY' ? tl(kurus) : (formatInBase(kurus, base, rates) ?? tl(kurus)))
-  const essentialNow = Math.round(p.essentialMonthlyKurus * k)
-  const targetNow = Math.round(p.targetMonthlyExpenseKurus * k)
-  const saving = monthlySaving(p, f)
+  const saving = plan.monthlySavingKurus
   const income = p.monthlyIncomeKurus + (p.passiveIncomeKurus ?? 0)
-  const spend = f.averageExpenseKurus ?? p.essentialMonthlyKurus
-  const essential = Math.max(1, essentialNow)
-  const net = Math.max(0, f.assetsKurus - f.debtsKurus)
+  // Aylık gider: tüketim + taksitler + borç ödemeleri (v2 verisi yoksa ortalama gider)
+  const spend = income - plan.availableKurus + (f.debtList ?? []).reduce((s, d) => s + (d.balanceKurus > 0 ? Math.min(d.balanceKurus, d.minPaymentKurus) : 0), 0)
+  const essential = Math.max(1, plan.essentialKurus)
+  const net = Math.max(0, plan.netKurus)
 
   const balanceRatio = income > 0 ? spend / income : 1
-  const balanceDone = income > 0 && saving >= 0
+  const balanceDone = income > 0 && spend <= income
   const balance: Stage = {
     id: 'balance',
     title: 'Bütçe dengesi',
@@ -330,8 +424,8 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
     criterion: 'Aylık gider, gelirin altında',
     source: 'Bütün finansal planların ilk koşulu: harcama gelirden azdır.',
     status: income > 0 ? `Gelirin %${Math.round(balanceRatio * 100)}'i harcanıyor` : 'Gelir bilgisi yok',
-    next: saving > 0 ? 'Dengeyi koruyun; fazlayı birikime yönlendirin' : `Aylık giderleri ${tl(-saving + 1)} azaltmak dengeyi sağlar`,
-    progress: income > 0 ? clamp01(saving >= 0 ? 1 : income / spend) : 0,
+    next: balanceDone ? 'Dengeyi koruyun; fazlayı birikime yönlendirin' : `Aylık giderleri ${tl(spend - income + 1)} azaltmak dengeyi sağlar`,
+    progress: income > 0 ? clamp01(spend <= income ? 1 : income / spend) : 0,
     done: balanceDone,
     missing: f.averageExpenseKurus === null ? 'Son dönemlerde gider kaydı yok; zorunlu gider kullanıldı' : undefined,
     goal: income > 0 ? `Aylık gideriniz, ${tl(income)} gelirinizin altında kalsın` : 'Aylık gideriniz gelirinizin altında kalsın',
@@ -460,27 +554,27 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
     ],
   }
 
-  const capStage = (id: 'security' | 'independence' | 'freedom', title: string, short: string, monthly: number, what: string, source: string): Stage => {
-    const goal = capitalFor(monthly, p)
-    const cond = moneyCond('Net birikim (yatırımlar − borçlar)', net, goal, saving, `${big(goal - net)} kaldı`, true, SCENARIOS.mid.realReturnPct)
+  const swrText = `%${plan.withdrawal.usedPct.toLocaleString('tr-TR')}`
+  const capStage = (id: 'security' | 'independence' | 'freedom', title: string, short: string, goal: number, monthly: number, what: string, source: string): Stage => {
+    const cond = moneyCond('Net birikim (yatırımlar − borçlar)', net, goal, saving, `${big(goal - net)} kaldı`, true, plan.realReturnPct)
     return {
       id,
       title,
       short,
-      criterion: `Birikimin yıllık %${p.withdrawalRatePct.toLocaleString('tr-TR')}'ü, ${what} (aylık ${tl(monthly)}) karşılıyor: ${big(goal)}`,
+      criterion: `Birikimden yıllık ${swrText} çekim, ${what} (aylık ${tl(monthly)}) karşılıyor: ${big(goal)}`,
       source,
       status: `${big(net)} / ${big(goal)}`,
       next: net >= goal ? 'Bu seviyeye ulaştınız' : `${big(goal - net)} kaldı`,
       progress: cond.progress,
       done: cond.done,
-      goal: `${big(goal)} birikim: yıllık %${p.withdrawalRatePct.toLocaleString('tr-TR')}'ü ${what} (aylık ${tl(monthly)}) karşılar`,
+      goal: `${big(goal)} birikim: yıllık ${swrText} çekim ${what} (aylık ${tl(monthly)}) karşılar`,
       conditions: [cond],
     }
   }
-  const currentSpend = Math.max(essentialNow, f.averageExpenseKurus ?? essentialNow)
-  const security = capStage('security', 'Finansal güvence', 'Güvence', essentialNow, 'zorunlu giderleri', 'Tony Robbins\'in "finansal güvence" seviyesi: birikimin getirisi kira, fatura, gıda gibi temel giderleri karşılar.')
-  const independence = capStage('independence', 'Finansal bağımsızlık', 'Bağımsızlık', currentSpend, 'bugünkü yaşam giderini', '%4 kuralı (Bengen 1994, Trinity çalışması 1998): yıllık giderin yaklaşık 25 katı birikim, çalışmadan bugünkü yaşamı sürdürür.')
-  const freedom = capStage('freedom', 'Finansal özgürlük', 'Özgürlük', targetNow, 'hedeflediğiniz yaşam giderini', 'Aynı kural, hayal ettiğiniz yaşam tarzı için: çalışmak bir zorunluluk değil, tercih olur.')
+  const tm = plan.targetMonthlyKurus
+  const security = capStage('security', 'Finansal güvence · Lean FI', 'Güvence', plan.leanKurus, Math.round(tm * LEAN_FACTOR), `hedef yaşamın %${LEAN_FACTOR * 100}'ini, yani sade bir yaşamı`, 'Lean FI: hedef harcamanın %70\'i (topluluk kavramı). Çekim oranı emeklilik süresine göre (Bengen 1994; Pfau 2010).')
+  const independence = capStage('independence', 'Finansal bağımsızlık · FI', 'Bağımsızlık', plan.fiKurus, tm, 'hedeflediğiniz yaşam giderini', 'Hedef sermaye = (hedef yıllık gider − garantili gelir) ÷ çekim oranı (Bengen 1994; Cooley, Hubbard ve Walz 1998; Pfau 2010).')
+  const freedom = capStage('freedom', 'Finansal özgürlük · Fat FI', 'Özgürlük', plan.fatKurus, Math.round(tm * FAT_FACTOR), `hedef yaşamın %${FAT_FACTOR * 100}'ini, yani rahat bir yaşamı`, 'Fat FI: hedef harcamanın %150\'si; beklenmedik giderlere ve daha rahat bir yaşama pay bırakır.')
 
   const stages = [balance, starter, debt, emergency, savingStage, security, independence, freedom]
   for (const s of stages) {
@@ -514,7 +608,7 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
       done: p.pension ? p.pension === 'sgk-bes' : null,
     },
   ]
-  const goal = capitalFor(targetNow, p)
+  const goal = plan.fiKurus
   const route = {
     optimistic: monthsToTarget(net, saving, goal, SCENARIOS.optimistic.realReturnPct),
     mid: monthsToTarget(net, saving, goal, SCENARIOS.mid.realReturnPct),
@@ -527,17 +621,18 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
     current: stages.find((s) => !s.done) ?? null,
     level: Math.floor(position),
     indicators: {
-      securityMonths: essentialNow > 0 ? f.liquidKurus / essentialNow : null,
+      securityMonths: essential > 0 ? f.liquidKurus / essential : null,
       goalKurus: goal,
       progressKurus: net,
       goalRatio: clamp01(net / Math.max(1, goal)),
       monthlySavingKurus: saving,
       route,
-      securityCapitalKurus: capitalFor(essentialNow, p),
-      independenceCapitalKurus: capitalFor(currentSpend, p),
+      securityCapitalKurus: plan.leanKurus,
+      independenceCapitalKurus: plan.fiKurus,
       emergencyMonths: emMonths,
-      indexFactor: k,
+      indexFactor: indexFactor(p, rates),
     },
+    plan,
   }
 }
 
@@ -641,4 +736,367 @@ export function monthsToTarget(startKurus: number, monthlySavingKurus: number, t
 /** Yıl sonu değerleri (0. yıl = bugün). Gelir kaybı ilk aylarda varsayılır. */
 export function projectScenario(input: ScenarioInput, realAnnualPct: number): ScenarioPoint[] {
   return simulatePlan(input, realAnnualPct, Infinity).points
+}
+
+// ---------- Özgürlük Rotası v2: hedef motoru ----------
+
+export interface RiskAssessment {
+  /** Testteki sorulardan (yoksa eski risk tutumundan); test yanıtlanmadıysa null. */
+  tolerance: RiskLevel | null
+  /** Verilerden: yatırım süresi, gelir düzeni, acil fon, borç/gelir. */
+  capacity: RiskLevel
+  capacityFactors: { horizon: number; stability: number; emergency: number; debt: number }
+  /** Nihai profil: toleransla kapasitenin düşük olanı. */
+  final: RiskLevel
+  profile: RiskProfile
+}
+
+export interface DebtEnd {
+  id: string
+  name: string
+  /** Kapanma ayı (1 = bu ay); kapanmıyorsa null. */
+  month: number | null
+  /** Kapanınca serbest kalan aylık taksit. */
+  freedKurus: number
+}
+
+export interface RecurringEnd {
+  name: string
+  month: number
+  freedKurus: number
+}
+
+export interface BandPoint {
+  age: number
+  p10: number
+  p50: number
+  p90: number
+}
+
+export interface FutureTarget {
+  years: number
+  inflationPct: number
+  tlNominalKurus: number
+  /** Güncel kurla; kur bilinmiyorsa null. */
+  usd: number | null
+  goldGr: number | null
+}
+
+export interface FreedomPlan {
+  age: number
+  targetAge: number
+  lifeAge: number
+  yearsToTarget: number
+  retirementYears: number
+  withdrawal: { recommendedPct: number; usedPct: number; custom: boolean }
+  risk: RiskAssessment
+  /** Bugünkü aylık tüketim (düzenli ödemeler dahil, taksit ve borç ödemeleri hariç). */
+  spendKurus: number
+  /** Zorunlu aylık gider (acil fon için). */
+  essentialKurus: number
+  /** Hedef yaşamın aylık gideri (yıllık büyük harcama dahil). */
+  targetMonthlyKurus: number
+  /** Emeklilikte garantili/pasif aylık gelir. */
+  guaranteedMonthlyKurus: number
+  annualNeedKurus: number
+  fiKurus: number
+  leanKurus: number
+  fatKurus: number
+  /** Net birikim (varlıklar − borçlar − kalan taksitler). */
+  netKurus: number
+  /** Borç ve birikime ayrılabilen aylık tutar (gelir − tüketim − taksitler). */
+  availableKurus: number
+  /** Bugünkü aylık birikim: net varlığa eklenen (borç anaparası dahil, faiz hariç). */
+  monthlySavingKurus: number
+  savingRate: number
+  /** Hedef yaşta hedefe ulaşmak için gereken aylık birikim ve bugünküyle farkı. */
+  requiredMonthlyKurus: number
+  gapKurus: number
+  /** Bugünkü hızla (borç ve taksit bitişleri dahil) hedefe ulaşma ayı; 100 yılda ulaşılmıyorsa null. */
+  reachMonths: number | null
+  reachAge: number | null
+  coastKurus: number
+  coastPassed: boolean
+  /** Monte Carlo başarı oranı (0..1): varsayıma dayalı benzetim. */
+  successRate: number
+  bands: BandPoint[]
+  debtEnds: DebtEnd[]
+  /** Bütün borçların kapandığı ay; borç yoksa 0, kapanmıyorsa null. */
+  debtFreeMonth: number | null
+  recurringEnds: RecurringEnd[]
+  levers: {
+    /** Tek başına yeterli ek aylık birikim. */
+    extraMonthlyKurus: number
+    /** Bugünkü birikimle hedefe yetişilen en erken hedef yaş; yoksa null. */
+    targetAge: number | null
+    /** Bugünkü birikimle hedef yaşta karşılanabilen harcama düzeyi (bugünkü harcamanın %'si). */
+    spendPct: number
+  }
+  future: FutureTarget
+  /** Başlangıç noktası (bugünkü harcamanın %'si) ve kullanılan harcama tabanı. */
+  spendPct: number
+  /** Gerçek reel getiri (beklenen senaryo, %). */
+  realReturnPct: number
+}
+
+/** Tohumlu rastgele sayı (mulberry32): aynı tohum, aynı senaryolar. */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** Standart normal (Box–Muller). */
+function normal(rand: () => number): number {
+  const u = Math.max(rand(), 1e-12)
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand())
+}
+
+/** Testteki risk toleransı soruları (Grable ve Lytton 1999 ölçeğinden uyarlandı; birebir kopya değildir). */
+export const RISK_QUESTIONS: Array<{ q: string; options: string[] }> = [
+  { q: 'Birikiminiz bir yılda %25 değer kaybetse ne yaparsınız?', options: ['Hepsini satarım', 'Bir kısmını satarım', 'Dokunmam, beklerim', 'Fırsat bilip eklerim'] },
+  { q: 'Arkadaşlarınız sizi riske karşı nasıl tanımlar?', options: ['Riskten kaçınan', 'Temkinli', 'Hesaplı risk alan', 'Risk sever'] },
+  { q: 'Yatırım deneyiminiz nedir?', options: ['Hiç yok', 'Mevduat, altın, döviz', 'Fon ya da hisse, az deneyim', 'Birkaç yıldır düzenli yatırımcıyım'] },
+  { q: '"Risk" kelimesi size önce ne düşündürür?', options: ['Kayıp', 'Belirsizlik', 'Fırsat', 'Heyecan'] },
+  { q: 'Hangi seçeneği tercih edersiniz?', options: ['Kesin 10.000 ₺', '%50 ihtimalle 25.000 ₺, yoksa 0', '%25 ihtimalle 60.000 ₺, yoksa 0', '%5 ihtimalle 300.000 ₺, yoksa 0'] },
+  { q: 'Beklenmedik bir kazancı nasıl değerlendirirsiniz?', options: ['Mevduatta tutarım', 'Çoğunu güvenli araçlarda tutarım', 'Yarısını dalgalı araçlara ayırırım', 'Çoğunu yüksek getiri beklediğim araçlara ayırırım'] },
+]
+
+/** Tolerans: 6 soru (6–24 puan) → 0..3. Eski profillerde risk tutumundan. */
+export function riskToleranceOf(p: Pick<JourneyProfile, 'riskAnswers' | 'risk'>): RiskLevel | null {
+  const a = p.riskAnswers
+  if (a && a.length) {
+    const score = a.reduce((s, x) => s + Math.min(4, Math.max(1, x)), 0)
+    const ratio = (score - a.length) / (3 * a.length)
+    return ratio < 0.3 ? 0 : ratio < 0.55 ? 1 : ratio < 0.8 ? 2 : 3
+  }
+  if (p.risk) return p.risk === 'cautious' ? 0 : p.risk === 'balanced' ? 1 : 2
+  return null
+}
+
+/** Kapasite: yatırım süresi, gelir düzeni, acil fon (ay) ve borç/gelir oranından. */
+export function riskCapacity(o: { yearsToTarget: number; stability: IncomeStability; emergencyMonths: number | null; dti: number | null }) {
+  const horizon = o.yearsToTarget < 5 ? 0 : o.yearsToTarget < 10 ? 1 : o.yearsToTarget < 20 ? 2 : 3
+  const stability = o.stability === 'irregular' ? 0 : o.stability === 'variable' ? 1.5 : 3
+  const m = o.emergencyMonths ?? 0
+  const emergency = m < 1 ? 0 : m < 3 ? 1 : m < 6 ? 2 : 3
+  const d = o.dti ?? 0
+  const debt = d > DTI_LIMIT ? 0 : d > 0.2 ? 1 : d > 0.1 ? 2 : 3
+  const level = Math.floor((horizon + stability + emergency + debt) / 4) as RiskLevel
+  return { level, factors: { horizon, stability, emergency, debt } }
+}
+
+export interface FreedomOptions {
+  strategy?: DebtStrategy
+  rates?: BaseRates
+  /** Monte Carlo senaryo sayısı (test ve ekran için ayarlanabilir). */
+  runs?: number
+  /** Kaldıraç denemesi: bugünkü birikime eklenen aylık tutar. */
+  extraMonthlyKurus?: number
+}
+
+const pctile = (sorted: Float64Array, q: number) => sorted[Math.floor(q * (sorted.length - 1))]
+
+/**
+ * Hedef motoru. Hedef sermaye = (hedef yıllık gider − garantili/pasif gelir) ÷ süreye göre çekim oranı.
+ * Birikim takvimi: bugünkü birikim + kapanan borçların taksitleri + biten taksit ve düzenli ödemeler.
+ * Tutarlar bugünün parasıyladır (reel).
+ */
+export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: FreedomOptions = {}): FreedomPlan {
+  const rates = opts.rates ?? {}
+  const k = indexFactor(p, rates)
+  const age = p.age ?? 35
+  const targetAge = Math.max(age, p.targetAge ?? (p.age ? p.age + p.horizonYears : Math.max(age + p.horizonYears, DEFAULT_TARGET_AGE)))
+  const lifeAge = Math.max(targetAge + 1, p.lifeAge ?? DEFAULT_LIFE_AGE)
+  const yearsToTarget = targetAge - age
+  const retirementYears = lifeAge - targetAge
+  const recommended = recommendedWithdrawalPct(retirementYears)
+  const custom = p.withdrawalCustom ?? p.withdrawalRatePct !== 4
+  const swrPct = custom ? p.withdrawalRatePct : recommended
+  const swr = Math.max(0.5, swrPct) / 100
+
+  const debts = (f.debtList ?? []).filter((d) => d.balanceKurus > 0)
+  const recurring = f.recurringList ?? []
+  const mins = debts.reduce((s, d) => s + Math.min(d.balanceKurus, d.minPaymentKurus), 0)
+  const recurringBills = recurring.filter((r) => !r.installment).reduce((s, r) => s + r.monthlyKurus, 0)
+  const installments = recurring.filter((r) => r.installment).reduce((s, r) => s + r.monthlyKurus, 0)
+  const income = p.monthlyIncomeKurus + (p.passiveIncomeKurus ?? 0)
+
+  // Bugünkü harcama: testte doğrulanan 6 grup (plan birimiyle güncel TL) + canlı düzenli ödemeler
+  const groups = p.spending ? (Object.fromEntries(SPEND_GROUPS.map((g) => [g, Math.round((p.spending![g] ?? 0) * k)])) as SpendBreakdown) : null
+  const spend = groups ? sumSpend(groups) + recurringBills : (f.averageExpenseKurus ?? Math.round(p.essentialMonthlyKurus * k))
+  const essential = groups ? ESSENTIAL_GROUPS.reduce((s, g) => s + groups[g], 0) + recurringBills + installments + mins : Math.round(p.essentialMonthlyKurus * k)
+  const available = groups ? income - spend - installments : income - spend
+  const interestNow = debts.reduce((s, d) => s + Math.round((d.balanceKurus * d.monthlyRatePct) / 100), 0)
+  // Net varlığa eklenen: borç ve taksit anaparası birikim sayılır, faiz sayılmaz
+  const saving = available + installments - interestNow + (opts.extraMonthlyKurus ?? 0)
+
+  // Hedef yaşam: bugünkü sürekli harcamanın yüzdesi (ev sahibi olunacaksa konut hariç) + yıllık büyük harcama
+  const pct = p.targetSpendPct ?? 100
+  const housing = groups ? groups.housing + recurring.filter((r) => r.housing && !r.installment).reduce((s, r) => s + r.monthlyKurus, 0) : 0
+  const lifeBase = groups ? Math.max(0, sumSpend(groups) + recurring.filter((r) => !r.installment && r.remainingMonths === null).reduce((s, r) => s + r.monthlyKurus, 0) - (p.ownHomePlan ? housing : 0)) : Math.round(p.targetMonthlyExpenseKurus * k)
+  const big = Math.round(((p.annualBigSpendKurus ?? 0) * k) / 12)
+  const targetMonthly = groups ? Math.round((lifeBase * pct) / 100) + big : lifeBase + big
+  const guaranteed = (p.pensionIncomeKurus ?? 0) + (p.passiveIncomeKurus ?? 0) + (p.partTimeIncomeKurus ?? 0)
+  const capital = (monthly: number, rate = swr) => Math.round((Math.max(0, monthly - guaranteed) * 12) / rate)
+  const fi = capital(targetMonthly)
+  const lean = capital(Math.round(targetMonthly * LEAN_FACTOR))
+  const fat = capital(Math.round(targetMonthly * FAT_FACTOR))
+
+  // Risk: tolerans ve kapasitenin düşük olanı
+  const tolerance = riskToleranceOf(p)
+  const cap = riskCapacity({ yearsToTarget, stability: p.incomeStability, emergencyMonths: essential > 0 ? f.liquidKurus / essential : null, dti: income > 0 ? mins / income : null })
+  const final = Math.min(tolerance ?? 1, cap.level) as RiskLevel
+  const profile = RISK_PROFILES[final]
+  const R = profile.realReturnPct / 100
+  const rm = monthlyRate(profile.realReturnPct)
+
+  // Borç takvimi: faizli borç varsa bütün aylık pay borçlara (seçilen sırayla), yoksa yalnızca taksitler
+  const interestBearing = debts.some((d) => !d.fixed && d.monthlyRatePct > 0)
+  const payoff = debts.length ? simulateDebts(debts, interestBearing ? Math.max(mins, available) : mins, opts.strategy ?? 'avalanche') : null
+  const debtEnds: DebtEnd[] = debts.map((d) => ({ id: d.id, name: d.name, month: payoff?.debts.find((x) => x.id === d.id)?.paidOffMonth ?? null, freedKurus: Math.min(d.balanceKurus, d.minPaymentKurus) }))
+  const debtFreeMonth = !debts.length ? 0 : (payoff?.months ?? null)
+  const recurringEnds: RecurringEnd[] = recurring.filter((r) => r.remainingMonths !== null).map((r) => ({ name: r.name, month: r.remainingMonths!, freedKurus: r.monthlyKurus }))
+  const instRemaining0 = recurring.filter((r) => r.installment && r.remainingMonths !== null).reduce((s, r) => s + r.monthlyKurus * r.remainingMonths!, 0)
+  const net0 = f.assetsKurus - debts.reduce((s, d) => s + d.balanceKurus, 0) - instRemaining0
+  // Eski verilerde borç listesi yoksa kayıtlı net borç kullanılır
+  const netKurus = f.debtList ? net0 : f.assetsKurus - f.debtsKurus
+
+  const finiteBills = recurring.filter((r) => !r.installment && r.remainingMonths !== null)
+  /**
+   * m. ayda net varlığa eklenen (getiri hariç). Borç ödemesinin anaparası ve taksitler net varlığı
+   * azaltmaz (borç da azalır); faiz azaltır. Borç kapanınca taksiti birikime, biten düzenli ödeme de
+   * birikime gider: nakit akışında bu, aynı toplamın borç yerine varlığa yazılmasıdır.
+   */
+  const flow = (m: number) => {
+    const interest = payoff ? (payoff.interest[m - 1] ?? 0) : 0
+    const freedBills = finiteBills.filter((r) => r.remainingMonths! < m).reduce((s, r) => s + r.monthlyKurus, 0)
+    return available + installments - interest + freedBills + (opts.extraMonthlyKurus ?? 0)
+  }
+  /** Getiri yalnızca artıdaki birikime işler. */
+  const step = (v: number, m: number, extra = 0, r = rm) => v * (1 + (v > 0 ? r : 0)) + flow(m) + extra
+
+  const n = yearsToTarget * 12
+  const fvAt = (months: number, extra = 0) => {
+    let v = netKurus
+    for (let m = 1; m <= months; m++) v = step(v, m, extra)
+    return v
+  }
+  let reach: number | null = netKurus >= fi ? 0 : null
+  if (reach === null) {
+    let v = netKurus
+    for (let m = 1; m <= 1200; m++) {
+      v = step(v, m)
+      if (v >= fi) {
+        reach = m
+        break
+      }
+    }
+  }
+  const fvN = fvAt(n)
+  const annuity = rm > 0 ? (Math.pow(1 + rm, n) - 1) / rm : n
+  const extra = n > 0 ? Math.max(0, Math.ceil((fi - fvN) / annuity)) : Math.max(0, fi - netKurus)
+  const required = Math.max(0, saving) + extra
+
+  // Kaldıraç: bugünkü birikimle yetişilen en erken hedef yaş (çekim oranı süreyle değişir)
+  let leverAge: number | null = null
+  {
+    let v = netKurus
+    for (let a = age; a < lifeAge; a++) {
+      if (a > age) for (let m = (a - age - 1) * 12 + 1; m <= (a - age) * 12; m++) v = step(v, m)
+      const rate = custom ? swr : recommendedWithdrawalPct(lifeAge - a) / 100
+      if (v >= capital(targetMonthly, rate)) {
+        leverAge = a
+        break
+      }
+    }
+  }
+  const base = groups ? lifeBase : Math.round(p.targetMonthlyExpenseKurus * k)
+  const affordable = Math.max(0, fvN) * swr / 12 + guaranteed - big
+  const leverPct = base > 0 ? Math.max(0, Math.floor((affordable / base) * 100)) : 0
+
+  // Monte Carlo: yıllık adım, birikim ve çekim dönemi birlikte
+  const runs = opts.runs ?? MC_RUNS
+  const rand = seededRandom(MC_SEED)
+  const years = lifeAge - age
+  const yearFlow = Array.from({ length: years + 1 }, (_, y) => {
+    let s = 0
+    for (let m = (y - 1) * 12 + 1; m <= y * 12; m++) s += flow(m)
+    return s
+  })
+  const need = Math.max(0, targetMonthly - guaranteed) * 12
+  const paths = Array.from({ length: years + 1 }, () => new Float64Array(runs))
+  let ok = 0
+  for (let i = 0; i < runs; i++) {
+    let w = netKurus
+    let alive = true
+    paths[0][i] = w
+    for (let y = 1; y <= years; y++) {
+      const ret = R + (profile.volatilityPct / 100) * normal(rand)
+      const a = age + y
+      if (a <= targetAge) w = w * (1 + (w > 0 ? ret : 0)) + yearFlow[y]
+      else {
+        w = w * (1 + (w > 0 ? ret : 0)) - need
+        if (w < 0) alive = false
+      }
+      paths[y][i] = w
+    }
+    if (alive) ok++
+  }
+  const bands: BandPoint[] = runs === 0 ? [] : paths.map((col, y) => {
+    const s = Float64Array.from(col).sort()
+    return { age: age + y, p10: Math.round(pctile(s, 0.1)), p50: Math.round(pctile(s, 0.5)), p90: Math.round(pctile(s, 0.9)) }
+  })
+
+  const inflation = p.inflationPct ?? DEFAULT_INFLATION_PCT
+  const usd = rates.USD ?? (p.base === 'USD' ? p.baseRateTl : null) ?? null
+  const gold = rates.XAU ?? (p.base === 'XAU' ? p.baseRateTl : null) ?? null
+
+  return {
+    age,
+    targetAge,
+    lifeAge,
+    yearsToTarget,
+    retirementYears,
+    withdrawal: { recommendedPct: recommended, usedPct: swrPct, custom },
+    risk: { tolerance, capacity: cap.level, capacityFactors: cap.factors, final, profile },
+    spendKurus: spend,
+    essentialKurus: essential,
+    targetMonthlyKurus: targetMonthly,
+    guaranteedMonthlyKurus: guaranteed,
+    annualNeedKurus: need,
+    fiKurus: fi,
+    leanKurus: lean,
+    fatKurus: fat,
+    netKurus,
+    availableKurus: available,
+    monthlySavingKurus: saving,
+    savingRate: income > 0 ? saving / income : 0,
+    requiredMonthlyKurus: required,
+    gapKurus: extra,
+    reachMonths: reach,
+    reachAge: reach === null ? null : age + reach / 12,
+    coastKurus: Math.round(fi / Math.pow(1 + R, yearsToTarget)),
+    coastPassed: netKurus >= fi / Math.pow(1 + R, yearsToTarget),
+    successRate: runs > 0 ? ok / runs : 0,
+    bands,
+    debtEnds,
+    debtFreeMonth,
+    recurringEnds,
+    levers: { extraMonthlyKurus: extra, targetAge: leverAge, spendPct: Math.min(999, leverPct) },
+    future: {
+      years: yearsToTarget,
+      inflationPct: inflation,
+      tlNominalKurus: Math.round(fi * Math.pow(1 + inflation / 100, yearsToTarget)),
+      usd: usd ? Math.round(fi / 100 / usd) : null,
+      goldGr: gold ? Math.round((fi / 100 / gold) * 10) / 10 : null,
+    },
+    spendPct: pct,
+    realReturnPct: profile.realReturnPct,
+  }
 }

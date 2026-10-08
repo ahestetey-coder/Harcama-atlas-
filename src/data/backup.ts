@@ -193,6 +193,17 @@ const settingsSchema = z.object({
       base: z.enum(['TRY', 'USD', 'XAU']).optional(),
       baseRateTl: z.number().positive().optional(),
       tests: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(60).optional(),
+      targetAge: z.number().int().min(15).max(100).optional(),
+      lifeAge: z.number().int().min(50).max(110).optional(),
+      spending: z.object({ housing: kurus, food: kurus, transport: kurus, bills: kurus, fun: kurus, other: kurus }).optional(),
+      targetSpendPct: z.number().min(50).max(160).optional(),
+      ownHomePlan: z.boolean().optional(),
+      annualBigSpendKurus: kurus.optional(),
+      riskAnswers: z.array(z.number().int().min(1).max(4)).max(10).optional(),
+      pensionIncomeKurus: kurus.optional(),
+      partTimeIncomeKurus: kurus.optional(),
+      withdrawalCustom: z.boolean().optional(),
+      inflationPct: z.number().min(0).max(200).optional(),
     })
     .optional(),
   coach: z

@@ -58,17 +58,17 @@ export async function filterCategory(page: Page, label: string | null) {
   await expect(dlg).toBeHidden()
 }
 
-/** Finansal özgürlük testini (5 adım) verilen tutarlarla tamamlar; diğer yanıtlar varsayılandır. */
-export async function takeFreedomTest(page: Page, o: { income: string; essential: string; target: string; age?: string }) {
+/** Finansal özgürlük testini (8 adım) tamamlar: zorunlu gider kira/konut grubuna yazılır; diğer yanıtlar varsayılandır. */
+export async function takeFreedomTest(page: Page, o: { income: string; essential: string; age?: string; targetAge?: string }) {
   const t = page.getByRole('region', { name: 'Finansal özgürlük testi' })
+  const next = () => t.getByRole('button', { name: 'İleri' }).click()
   await t.getByLabel('Yaşınız').fill(o.age ?? '32')
-  await t.getByRole('button', { name: 'İleri' }).click()
+  if (o.targetAge) await t.getByLabel('Hangi yaşta çalışmayı bırakmak istersiniz?').fill(o.targetAge)
+  await next()
   await t.getByLabel(/Aylık net gelir/).fill(o.income)
-  await t.getByRole('button', { name: 'İleri' }).click()
-  await t.getByLabel(/Zorunlu aylık giderler/).fill(o.essential)
-  await t.getByLabel(/Hedefteki aylık yaşam gideri/).fill(o.target)
-  await t.getByRole('button', { name: 'İleri' }).click()
-  await t.getByRole('button', { name: 'İleri' }).click()
+  await next()
+  await t.getByLabel(/Kira \/ konut/).fill(o.essential)
+  for (let i = 0; i < 5; i++) await next()
   await t.getByRole('button', { name: /Testi tamamla/ }).click()
   await expect(t).toBeHidden()
 }

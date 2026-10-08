@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { averageMonthlyExpense, buildJourney, durationLabel, emergencyMonthsFor, formatInBase, indexFactor, monthsToTarget, projectScenario, rebase, simulatePlan, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
+import { recommendedWithdrawalPct, RISK_PROFILES } from './assumptions'
+import { averageMonthlyExpense, buildFreedomPlan, buildJourney, riskToleranceOf, durationLabel, emergencyMonthsFor, formatInBase, indexFactor, monthsToTarget, projectScenario, rebase, simulatePlan, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
 import { normalizeText } from './normalize'
 import type { Transaction } from './types'
 
@@ -48,8 +49,9 @@ describe('finansal özgürlük yolculuğu', () => {
     expect(by.emergency.progress).toBeCloseTo(2 / 3)
     // birikim oranı 15.000 / 60.000 = %25 ≥ %20
     expect(by.saving.done).toBe(true)
-    // güvence sermayesi: 30.000 × 12 / %4 = 9.000.000
-    expect(j.indicators.securityCapitalKurus).toBe(900000000)
+    // güvence (Lean FI): hedefin %70'i (28.000) × 12 / %3,25 (yaş yok → 35, hedef 55, 90 yaşa 35 yıl)
+    expect(j.plan.withdrawal).toEqual({ recommendedPct: 3.25, usedPct: 3.25, custom: false })
+    expect(j.indicators.securityCapitalKurus).toBe(Math.round((2800000 * 12) / 0.0325))
     expect(j.indicators.securityMonths).toBe(2)
     expect(j.indicators.progressKurus).toBe(18000000)
     expect(j.indicators.monthlySavingKurus).toBe(1500000)
@@ -75,7 +77,7 @@ describe('finansal özgürlük yolculuğu', () => {
     expect(indexFactor(p, { USD: 50 })).toBeCloseTo(1.25)
     expect(indexFactor(p, {})).toBe(1)
     const j = buildJourney(p, facts(), { USD: 50 })
-    expect(j.indicators.securityCapitalKurus).toBe(Math.round((3000000 * 1.25 * 12) / 0.04))
+    expect(j.indicators.securityCapitalKurus).toBe(Math.round((3500000 * 12) / 0.0325))
     const g = rebase(p, 'XAU', { USD: 50, XAU: 5000 })!
     expect(g.base).toBe('XAU')
     expect(g.baseRateTl).toBe(5000)
@@ -109,9 +111,10 @@ describe('finansal özgürlük yolculuğu', () => {
     const c = em.conditions[0]
     expect(c.left).toBe(c.target - c.now)
     expect(c.etaMonths).toBe(c.left > 0 ? Math.ceil(c.left / saving) : undefined)
-    const freedom = j.stages.at(-1)!
-    expect(freedom.conditions[0].target).toBe(j.indicators.goalKurus)
-    expect(freedom.etaMonths).toBe(j.indicators.route.mid)
+    const fi = j.stages.find((s) => s.id === 'independence')!
+    expect(fi.conditions[0].target).toBe(j.indicators.goalKurus)
+    expect(fi.etaMonths).toBe(monthsToTarget(j.indicators.progressKurus, saving, j.indicators.goalKurus, j.plan.realReturnPct))
+    expect(j.stages.at(-1)!.conditions[0].target).toBe(j.plan.fatKurus)
   })
   it('senaryo hesabı ve yolculuk tahmini aynı sonucu verir; süre grafik ufkundan bağımsızdır', () => {
     const input = { startKurus: 100000, monthlySavingKurus: 10000, years: 1, inflationPct: 0, extraSavingKurus: 0, incomeLossMonths: 0, incomeLossMonthlySpendKurus: 0, bigExpenseKurus: 0, bigExpenseYear: 1 }
@@ -153,5 +156,132 @@ describe('senaryolar', () => {
     const p = projectScenario({ ...base, incomeLossMonths: 3, incomeLossMonthlySpendKurus: 20000, bigExpenseKurus: 50000, bigExpenseYear: 1 }, 0)
     // 100.000 − 50.000 − 3×20.000 + 9×10.000
     expect(p[1].realKurus).toBe(80000)
+  })
+})
+
+describe('Özgürlük Rotası v2: hedef motoru', () => {
+  const v2 = (o: Partial<JourneyProfile> = {}) =>
+    profile({
+      age: 30,
+      targetAge: 50,
+      lifeAge: 90,
+      monthlyIncomeKurus: 10000000,
+      spending: { housing: 2000000, food: 1500000, transport: 500000, bills: 500000, fun: 500000, other: 0 },
+      targetSpendPct: 100,
+      riskAnswers: [3, 3, 3, 3, 3, 3],
+      ...o,
+    })
+  const f2 = (o: Partial<JourneyFacts> = {}) => facts({ assetsKurus: 0, debtsKurus: 0, liquidKurus: 0, debtList: [], recurringList: [], ...o })
+
+  it('çekim oranı tablosu: süre uzadıkça oran düşer; kullanıcı değiştirebilir', () => {
+    expect([10, 30, 31, 44, 45, 60].map(recommendedWithdrawalPct)).toEqual([3.5, 3.5, 3.25, 3.25, 3, 3])
+    const p = buildFreedomPlan(v2(), f2(), { runs: 0 })
+    // 50 → 90: 40 yıllık çekim
+    expect(p.withdrawal).toEqual({ recommendedPct: 3.25, usedPct: 3.25, custom: false })
+    // hedef: (50.000 aylık − 0) × 12 / %3,25
+    expect(p.fiKurus).toBe(Math.round((5000000 * 12) / 0.0325))
+    expect(p.leanKurus).toBe(Math.round((3500000 * 12) / 0.0325))
+    const c = buildFreedomPlan(v2({ withdrawalCustom: true, withdrawalRatePct: 4 }), f2(), { runs: 0 })
+    expect(c.withdrawal.usedPct).toBe(4)
+    expect(c.fiKurus).toBe(Math.round((5000000 * 12) / 0.04))
+  })
+
+  it('hedef yaşam: yüzde, ev sahibi olma planı, büyük harcama ve garantili gelir', () => {
+    const p = buildFreedomPlan(v2({ targetSpendPct: 80, ownHomePlan: true, annualBigSpendKurus: 1200000, pensionIncomeKurus: 1000000 }), f2(), { runs: 0 })
+    // (50.000 − 20.000 kira) × %80 + 12.000/12
+    expect(p.targetMonthlyKurus).toBe(2400000 + 100000)
+    expect(p.annualNeedKurus).toBe((2500000 - 1000000) * 12)
+  })
+
+  it('gereken aylık birikim formülü: eklenen fark hedef yaşta hedefe ulaştırır', () => {
+    const p = buildFreedomPlan(v2(), f2(), { runs: 0 })
+    expect(p.monthlySavingKurus).toBe(5000000)
+    const n = p.yearsToTarget * 12
+    const rm = Math.pow(1 + p.realReturnPct / 100, 1 / 12) - 1
+    const fv = (5000000 * (Math.pow(1 + rm, n) - 1)) / rm
+    expect(p.gapKurus).toBe(Math.max(0, Math.ceil((p.fiKurus - fv) / ((Math.pow(1 + rm, n) - 1) / rm))))
+    expect(p.requiredMonthlyKurus).toBe(p.monthlySavingKurus + p.gapKurus)
+    const more = buildFreedomPlan(v2(), f2(), { runs: 0, extraMonthlyKurus: p.gapKurus })
+    expect(more.reachMonths!).toBeLessThanOrEqual(n)
+    expect(p.levers.extraMonthlyKurus).toBe(p.gapKurus)
+    // Kaldıraç: bu birikimle yetişilen hedef yaşta hedefe ulaşılır
+    expect(p.levers.targetAge!).toBeGreaterThan(p.targetAge)
+  })
+
+  it('borç bitişi birikimi artırır: faiz biter, taksit sıradakine sonra birikime gider', () => {
+    const debt = { id: 'k', name: 'Kredi kartı', balanceKurus: 6000000, monthlyRatePct: 4, minPaymentKurus: 500000 }
+    const withDebt = buildFreedomPlan(v2(), f2({ debtList: [debt] }), { runs: 0 })
+    const noInterest = buildFreedomPlan(v2(), f2({ debtList: [{ ...debt, monthlyRatePct: 0 }] }), { runs: 0 })
+    const end = withDebt.debtEnds[0]
+    // Bütün aylık pay (50.000) faizli borca gider: iki ayda kapanır, sonra birikime eklenir
+    expect(end.month).toBe(2)
+    expect(withDebt.debtFreeMonth).toBe(2)
+    expect(end.freedKurus).toBe(500000)
+    expect(withDebt.monthlySavingKurus).toBe(5000000 - 240000)
+    expect(withDebt.netKurus).toBe(-6000000)
+    expect(withDebt.reachMonths!).toBeGreaterThanOrEqual(noInterest.reachMonths!)
+    // Biten taksit ve düzenli ödemeler takvimde görünür
+    const r = buildFreedomPlan(v2(), f2({ recurringList: [{ name: 'Telefon taksiti', monthlyKurus: 300000, installment: true, remainingMonths: 6 }, { name: 'Spor salonu', monthlyKurus: 100000, installment: false, remainingMonths: 3 }] }), { runs: 0 })
+    expect(r.recurringEnds).toEqual([
+      { name: 'Telefon taksiti', month: 6, freedKurus: 300000 },
+      { name: 'Spor salonu', month: 3, freedKurus: 100000 },
+    ])
+    const r2 = buildFreedomPlan(v2(), f2({ recurringList: [{ name: 'Spor salonu', monthlyKurus: 100000, installment: false, remainingMonths: null }] }), { runs: 0 })
+    expect(r.reachMonths!).toBeLessThanOrEqual(r2.reachMonths!)
+  })
+
+  it('Coast FI eşiği bileşik getiriyle bulunur', () => {
+    const p = buildFreedomPlan(v2(), f2({ assetsKurus: 500000000 }), { runs: 0 })
+    expect(p.coastKurus).toBe(Math.round(p.fiKurus / Math.pow(1 + p.realReturnPct / 100, 20)))
+    expect(p.coastPassed).toBe(500000000 >= p.fiKurus / Math.pow(1 + p.realReturnPct / 100, 20))
+  })
+
+  it('risk: nihai profil tolerans ile kapasitenin düşük olanı', () => {
+    expect(riskToleranceOf({ riskAnswers: [4, 4, 4, 4, 4, 4] })).toBe(3)
+    expect(riskToleranceOf({ riskAnswers: [1, 1, 1, 1, 1, 1] })).toBe(0)
+    expect(riskToleranceOf({ risk: 'bold' })).toBe(2)
+    // Acil fon yok, 20 yıl, düzenli gelir, borç yok: (3 + 3 + 0 + 3) / 4 → 2
+    const p = buildFreedomPlan(v2({ riskAnswers: [4, 4, 4, 4, 4, 4] }), f2(), { runs: 0 })
+    expect(p.risk.tolerance).toBe(3)
+    expect(p.risk.capacity).toBe(2)
+    expect(p.risk.final).toBe(2)
+    expect(p.realReturnPct).toBe(RISK_PROFILES[2].realReturnPct)
+  })
+
+  it('Monte Carlo tohumlu ve tekrarlanabilir; bantlar sıralı', () => {
+    const a = buildFreedomPlan(v2(), f2({ assetsKurus: 100000000 }), { runs: 300 })
+    const b = buildFreedomPlan(v2(), f2({ assetsKurus: 100000000 }), { runs: 300 })
+    expect(a.successRate).toBe(b.successRate)
+    expect(a.bands).toEqual(b.bands)
+    expect(a.bands).toHaveLength(61)
+    expect(a.bands[0]).toMatchObject({ age: 30, p10: 100000000, p50: 100000000 })
+    for (const x of a.bands) expect(x.p10 <= x.p50 && x.p50 <= x.p90).toBe(true)
+    expect(a.successRate).toBeGreaterThanOrEqual(0)
+    expect(a.successRate).toBeLessThanOrEqual(1)
+    // Birikim yoksa ve gider gelire eşitse para yetmez
+    const none = buildFreedomPlan(v2({ monthlyIncomeKurus: 5000000 }), f2(), { runs: 200 })
+    expect(none.successRate).toBe(0)
+  })
+
+  it('gelecekteki hedef: TL nominal enflasyonla, USD ve altın güncel kurla', () => {
+    const p = buildFreedomPlan(v2({ inflationPct: 20 }), f2(), { runs: 0, rates: { USD: 40, XAU: 4000 } })
+    expect(p.future.tlNominalKurus).toBe(Math.round(p.fiKurus * Math.pow(1.2, 20)))
+    expect(p.future.usd).toBe(Math.round(p.fiKurus / 100 / 40))
+    expect(p.future.goldGr).toBe(Math.round((p.fiKurus / 100 / 4000) * 10) / 10)
+  })
+
+  it('eski profiller bozulmaz: hedef yaş ve süre yaştan ve hedef süresinden türetilir', () => {
+    const old = profile({ age: 40, horizonYears: 15 })
+    const p = buildFreedomPlan(old, facts(), { runs: 0 })
+    expect(p.targetAge).toBe(55)
+    expect(p.lifeAge).toBe(90)
+    expect(p.yearsToTarget).toBe(15)
+    // Harcama grubu yoksa eski hedef gider kullanılır; eski %4 önerilen orana döner
+    expect(p.targetMonthlyKurus).toBe(4000000)
+    expect(p.withdrawal.custom).toBe(false)
+    expect(p.monthlySavingKurus).toBe(1500000)
+    expect(p.netKurus).toBe(18000000)
+    expect(buildFreedomPlan(profile({ withdrawalRatePct: 3 }), facts(), { runs: 0 }).withdrawal).toMatchObject({ custom: true, usedPct: 3 })
+    expect(buildJourney(old, facts()).plan.fiKurus).toBe(p.fiKurus)
   })
 })

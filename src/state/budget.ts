@@ -6,9 +6,10 @@ import { goalProgress } from '../domain/goals'
 import { addMonthsClamped, fixedPayments, futureLoad, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
 import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, INSTALLMENT_DEBT, portfolio } from '../domain/assets'
 import { estimatedMinPayment } from '../domain/coach'
-import { averageMonthlyExpense, SAVING_RATE_TARGET, type JourneyFacts } from '../domain/journey'
+import { averageMonthlyExpense, SAVING_RATE_TARGET, SPEND_GROUPS, spendGroupOf, type JourneyFacts, type RecurringLoad, type SpendBreakdown } from '../domain/journey'
+import type { CoachDebt } from '../domain/coach'
 import { usePersonalCycle } from './cycle'
-import { useAssets, useGoals, useRecurring, useSettings } from './data'
+import { useAssets, useCategories, useGoals, useRecurring, useSettings } from './data'
 import { useAllRecurring, usePersonalTransactions } from './personal'
 import { usePlan } from './plan'
 
@@ -155,6 +156,7 @@ export function useJourneyFacts(): JourneyFacts | null {
   const startDay = usePersonalCycle()
   const recurring = useRecurring()
   const assets = useAssets()
+  const categories = useCategories()
   const installmentDebt = useInstallmentDebt()
   return useMemo(() => {
     if (!personal || !recurring || !assets) return null
@@ -184,7 +186,39 @@ export function useJourneyFacts(): JourneyFacts | null {
       if (LIQUID.has(a.kind)) liquid += holdingSummary(a, today).valueKurus
       for (const t of a.trades) if (t.date > since && t.date <= today) recent += (t.side === 'buy' ? 1 : -1) * t.quantity * t.unitPriceKurus
     }
+    // Özgürlük Rotası v2: canlı borç listesi, düzenli ödemeler/taksitler (bitiş ayıyla) ve 6 gruba göre harcama
+    const catName = new Map((categories ?? []).map((c) => [c.id, c.name]))
+    const debtList: CoachDebt[] = []
+    for (const a of assets) {
+      if (a.archived || a.kind !== 'debt') continue
+      const bal = holdingSummary(a, today).valueKurus
+      if (bal <= 0) continue
+      const rate = a.debtTerms?.monthlyRatePct ?? 0
+      const plan = a.debtPlan?.mode === 'monthly'
+      const min = plan ? a.debtPlan!.installmentKurus : a.debtTerms?.minPaymentKurus
+      debtList.push({ id: a.id, name: a.name, balanceKurus: bal, monthlyRatePct: rate, minPaymentKurus: min || estimatedMinPayment(bal, rate), estimatedMin: !min, fixed: plan && rate === 0 })
+    }
+    const recurringList: RecurringLoad[] = []
+    for (const r of recurring) {
+      if (!r.active) continue
+      const left = progressOf(r, today).remaining
+      if (left === 0) continue
+      const monthly = r.cadence === 'monthly' ? r.amountKurus : r.cadence === 'weekly' ? Math.round((r.amountKurus * 52) / 12) : Math.round(r.amountKurus / 12)
+      const months = left === null ? null : r.cadence === 'monthly' ? left : r.cadence === 'weekly' ? Math.ceil((left * 12) / 52) : left * 12
+      recurringList.push({ name: r.name, monthlyKurus: monthly, installment: r.kind === 'installment', remainingMonths: months, housing: spendGroupOf(r.categoryId, catName.get(r.categoryId ?? '') ?? '') === 'housing' })
+    }
+    for (const pl of installmentPlans(personal.counted, manualKeys)) if (pl.remaining > 0) recurringList.push({ name: pl.name, monthlyKurus: pl.monthlyKurus, installment: true, remainingMonths: pl.remaining })
+    const fixedKeys = new Set(recurring.filter((r) => r.active && r.matchKey).map((r) => r.matchKey!))
+    const avgs = flexibleCategoryAverages(personal.counted, startDay, today, fixedKeys)
+    let spendingByGroup: SpendBreakdown | null = null
+    if (avgs.length) {
+      spendingByGroup = Object.fromEntries(SPEND_GROUPS.map((g) => [g, 0])) as SpendBreakdown
+      for (const c of avgs) spendingByGroup[spendGroupOf(c.categoryId, catName.get(c.categoryId) ?? '')] += c.averageKurus
+    }
     return {
+      debtList,
+      recurringList,
+      spendingByGroup,
       averageExpenseKurus: avg?.averageKurus ?? null,
       expenseMonths: avg?.months ?? 0,
       recurringMonthlyKurus: recurringMonthly,
@@ -198,5 +232,5 @@ export function useJourneyFacts(): JourneyFacts | null {
       recentMonthlyContributionKurus: Math.round(recent / 3),
       hasAssets: assets.some((a) => a.kind !== 'debt' && !a.archived),
     }
-  }, [personal, recurring, assets, installmentDebt, startDay])
+  }, [personal, recurring, assets, categories, installmentDebt, startDay])
 }

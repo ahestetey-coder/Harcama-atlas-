@@ -319,18 +319,45 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await page.goto('./#/yolculuk')
   const t = page.getByRole('region', { name: 'Finansal özgürlük testi' })
   await t.getByRole('button', { name: 'İleri' }).click()
-  await expect(t.getByRole('alert')).toContainText('Yaşınızı 15 ile 100 arasında girin.')
+  await expect(t.getByRole('alert')).toContainText('Yaşınızı 15 ile 99 arasında girin.')
   await t.getByLabel('Yaşınız').fill('32')
+  // Hedef yaş yaştan küçük olamaz
+  await t.getByLabel('Hangi yaşta çalışmayı bırakmak istersiniz?').fill('30')
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await expect(t.getByRole('alert')).toContainText('Hedef yaş, yaşınızdan büyük')
+  await t.getByLabel('Hangi yaşta çalışmayı bırakmak istersiniz?').fill('55')
   await t.getByRole('button', { name: 'İleri' }).click()
   await expect(t).toContainText('Eksik')
   await t.getByRole('button', { name: 'Geri' }).click()
   await expect(t.getByLabel('Yaşınız')).toHaveValue('32')
-  await takeFreedomTest(page, { income: '50.000', essential: '20.000', target: '25.000' })
+  // Canlı özet test sırasında güncellenir; risk ve çekim oranı önerisi gösterilir
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await t.getByLabel(/Aylık net gelir/).fill('50.000')
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await t.getByLabel(/Kira \/ konut/).fill('20.000')
+  await expect(t.getByRole('group', { name: 'Canlı özet' })).toContainText('%60')
+  for (let i = 0; i < 3; i++) await t.getByRole('button', { name: 'İleri' }).click()
+  await expect(t.getByRole('group', { name: 'Risk profiliniz' })).toContainText('Profiliniz:')
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await t.getByRole('button', { name: 'İleri' }).click()
+  await expect(t).toContainText('Önerilen: %3,25 (35 yıllık çekim süresine göre')
+  await t.getByRole('button', { name: /Testi tamamla/ }).click()
+  await expect(t).toBeHidden()
 
-  // 40.000 / 20.000 = 2 ay; hedef 25.000 × 12 / %4 = 7.500.000
-  await expect(page.getByRole('region', { name: 'Finansal güvence' })).toContainText('2 ay')
-  await expect(page.getByRole('region', { name: 'Hedef ilerlemesi' })).toContainText('7.500.000,00 ₺')
-  await expect(page.getByRole('region', { name: 'Tahmini rota' })).toContainText('Ayda 30.000,00 ₺ birikimle')
+  // Hedef: 20.000 × 12 / %3,25 (55 → 90 yaş, 35 yıl)
+  const goal = page.getByRole('region', { name: 'Özgürlük hedefi' })
+  await expect(goal).toContainText('7.384.615,38 ₺')
+  await expect(goal.getByRole('list', { name: 'Seviyeler' })).toContainText('Lean FI')
+  await expect(goal.getByRole('region', { name: 'Gereken aylık birikim' })).toContainText('Şu an 30.000,00 ₺')
+  await expect(goal.getByRole('region', { name: 'Başarı olasılığı' })).toContainText('Varsayıma dayalı benzetimdir')
+  await expect(goal.getByRole('region', { name: 'Borçsuz olma tarihi' })).toContainText('Borç yok')
+  await expect(goal.getByRole('region', { name: 'Coast FI eşiği' })).toBeVisible()
+  await expect(goal.getByRole('img', { name: /Yaşa göre net birikim projeksiyonu/ })).toBeVisible()
+  await expect(goal.getByRole('region', { name: 'Gelecekteki hedef' })).toContainText('TL (nominal)')
+  await expect(goal.getByRole('list', { name: 'Tek başına yeterli değerler' })).toContainText('hedefin önündesiniz')
+  // Kaldıraç: ek birikim sonucu değiştirir ama kaydedilmez
+  await goal.getByLabel('Hedef yaş').fill('60')
+  await expect(goal.getByRole('list', { name: 'Tek başına yeterli değerler' })).toContainText('Bu ayarlarla')
   // Denge ve başlangıç fonu tamam, borç yok: sıradaki acil durum fonu
   await expect(page.getByRole('region', { name: 'Rota', exact: true })).toContainText('Seviye 3/8')
   await expect(page.getByRole('region', { name: 'Rota', exact: true })).toContainText('sıradaki aşama Acil durum fonu')
@@ -349,9 +376,7 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   // Diğer aşamalar dokununca açılır
   await expect(stage('Finansal güvence').getByRole('list')).toHaveCount(0)
   await stage('Finansal güvence').getByRole('button').click()
-  await expect(stage('Finansal güvence').getByRole('list', { name: 'Finansal güvence koşulları' })).toContainText('Net birikim')
-  const midReach = (await page.getByRole('region', { name: 'Tahmini rota' }).textContent())?.match(/Orta varsayım: (\S+ \d{4})/)?.[1]
-  expect(midReach).toBeTruthy()
+  await expect(stage('Finansal güvence').getByRole('list', { name: 'Finansal güvence · Lean FI koşulları' })).toContainText('Net birikim')
   await expect(page.getByText(/Kilometre taşı:/)).toBeVisible()
 
   // Sekmeler: yatırımlar, borçlar, bu ay ve bütün ölçütler
@@ -365,7 +390,7 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await tabs.getByRole('tab', { name: 'Kriterler' }).click()
   const criteria = page.getByRole('list', { name: 'Ölçütler' })
   await expect(criteria.getByRole('listitem')).toHaveCount(10)
-  await expect(criteria).toContainText('%4 kuralı')
+  await expect(criteria).toContainText('Bengen 1994')
   await expect(criteria).toContainText('50/30/20')
   await expect(page.getByRole('region', { name: 'Test yanıtlarınız' })).toContainText('Bu ay 1 test hakkınız kaldı')
 
@@ -376,7 +401,7 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   // Test yeniden yapılır: yanıtlar dolu gelir; ay içindeki ikinci testten sonra hak kalmaz
   await page.getByRole('button', { name: 'Testi yeniden yap' }).click()
   await expect(page.getByRole('region', { name: 'Finansal özgürlük testi' })).toContainText('Bu ay 1 test hakkınız var')
-  await takeFreedomTest(page, { income: '50.000', essential: '20.000', target: '25.000' })
+  await takeFreedomTest(page, { income: '50.000', essential: '20.000' })
   await page.getByRole('tablist', { name: 'Yolculuk bölümleri' }).getByRole('tab', { name: 'Kriterler' }).click()
   await expect(page.getByRole('button', { name: 'Testi yeniden yap' })).toBeDisabled()
 
@@ -386,9 +411,7 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await expect(table).toContainText('40.000,00 ₺')
   await expect(page.getByRole('list', { name: 'Hedefe ulaşma' })).toContainText('Temkinli')
   // Senaryolar yolculukla aynı hedef ve tahmini kullanır
-  await expect(page.getByRole('region', { name: 'Başlangıç noktası' })).toContainText('7.500.000,00 ₺')
-  await expect(page.getByRole('region', { name: 'Başlangıç noktası' })).toContainText(midReach!)
-  await expect(page.getByRole('list', { name: 'Hedefe ulaşma' }).getByRole('listitem').filter({ hasText: 'Orta' })).toContainText(midReach!)
+  await expect(page.getByRole('region', { name: 'Başlangıç noktası' })).toContainText('7.384.615,38 ₺')
   // Geçersiz tutar son geçerli değeri korur
   await page.getByLabel('Ek aylık birikim (TL)').fill('abc')
   await expect(page.getByRole('region', { name: 'Varsayımlar' }).getByRole('alert')).toContainText('Geçerli bir tutar girin')
@@ -404,8 +427,12 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await expect(table).toContainText('(nominal)')
   await expect(page.getByText('olasılık veya garanti değildir')).toBeVisible()
 
-  await page.goto('./#/ogren')
+  await page.goto('./#/ogren#varsayimlar')
   await expect(page.getByText('Likidite', { exact: true })).toBeVisible()
+  const sources = page.getByRole('region', { name: 'Varsayımlar ve kaynaklar' })
+  await expect(sources).toContainText('Pfau')
+  await expect(sources).toContainText('Grable')
+  await expect(sources).toContainText('Milevsky')
   await expect(page.getByText(/Henüz yayınlanmış rapor yok/)).toBeVisible()
 })
 
@@ -427,8 +454,8 @@ test('Plus+ koç: borç önce kapanır, yatırım tutarı ve yapılandırma hesa
   await expect(page.getByRole('list', { name: 'Kredi kartı borçları' })).toContainText('Aylık %4,25 faiz · aylık ödeme 3.000,00 ₺')
 
   await page.goto('./#/yolculuk')
-  await takeFreedomTest(page, { income: '50.000', essential: '40.000', target: '25.000' })
-  await expect(page.getByRole('region', { name: 'Finansal güvence' })).toBeVisible()
+  await takeFreedomTest(page, { income: '50.000', essential: '40.000' })
+  await expect(page.getByRole('region', { name: 'Özgürlük hedefi' })).toBeVisible()
 
   await page.goto('./#/koc')
   // Fazla 10.000; düzenli gelirde %90'ı (9.000) plana ayrılır
@@ -464,7 +491,7 @@ test('Plus+ yolculuk: testi olmayan eski profilde test çağrısı görünür ve
   await open(page, 'paketler')
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
   await page.goto('./#/yolculuk')
-  await takeFreedomTest(page, { income: '50.000', essential: '20.000', target: '25.000' })
+  await takeFreedomTest(page, { income: '50.000', essential: '20.000' })
   // Eski anketle oluşturulmuş profil: test tarihi yok
   await page.evaluate(async () => {
     for (const { name } of await indexedDB.databases()) {
