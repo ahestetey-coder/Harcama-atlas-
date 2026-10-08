@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowRight, CheckCircle2, CircleDashed, CircleX, ClipboardCheck, CreditCard, Flag, Info, RotateCcw, ShieldCheck, Sparkles, Target, TrendingUp, Wallet } from 'lucide-react'
-import { animate, AnimatePresence, motion } from 'motion/react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, CircleDashed, CircleX, ClipboardCheck, CreditCard, Flag, Info, RotateCcw, ShieldCheck, Sparkles, Target, TrendingUp, Wallet } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
@@ -8,16 +8,19 @@ import { Alert, Badge, Button, Card, Field, Input, Segmented, Select } from '../
 import { toUserMessage } from '../data/repository'
 import { holdingSummary, portfolio } from '../domain/assets'
 import { currentPeriod, periodLabel, todayIso } from '../domain/dates'
+import type { IsoDate } from '../domain/types'
 import {
   BASE_LABEL,
   buildJourney,
   DEFAULT_WITHDRAWAL_PCT,
   DTI_LIMIT,
+  durationLabel,
   formatInBase,
   HEALTH_LABEL,
   HOUSING_LABEL,
   JOURNEY_GOAL_LABEL,
   PENSION_LABEL,
+  reachDateLabel,
   rebase,
   RISK_LABEL,
   SCENARIOS,
@@ -25,6 +28,7 @@ import {
   TESTS_PER_MONTH,
   testsLeft,
   type BaseRates,
+  type Condition,
   type HealthCover,
   type Housing,
   type IncomeStability,
@@ -35,18 +39,16 @@ import {
   type Pension,
   type PlanBase,
   type RiskStance,
-  type Stage,
   type StageId,
 } from '../domain/journey'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
-import { addMonthsClamped } from '../domain/recurring'
 import { summarizeMonth } from '../domain/summary'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
 import { useInstallmentDebt, useJourneyFacts } from '../state/budget'
 import { usePersonalCycle } from '../state/cycle'
 import { useAssets, useCategories, useRepo, useSettings } from '../state/data'
-import { useLiveState } from '../state/livePrices'
+import { useBaseRates } from '../state/livePrices'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 
@@ -75,14 +77,6 @@ export default function JourneyPage() {
       </PlanGate>
     </div>
   )
-}
-
-/** Plan birimi için güncel kurlar: canlı fiyat, yoksa planın sabitlendiği kur. */
-function useBaseRates(profile: JourneyProfile | undefined): BaseRates {
-  const live = useLiveState()
-  const usd = live.usd?.valueTl ?? (profile?.base === 'USD' ? profile.baseRateTl : null)
-  const gold = live.goldGram?.valueTl ?? (profile?.base === 'XAU' ? profile.baseRateTl : null)
-  return useMemo(() => ({ USD: usd ?? null, XAU: gold ?? null }), [usd, gold])
 }
 
 function JourneyContent() {
@@ -445,8 +439,6 @@ function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts: Journ
 
 // ---------- Yolculuk paneli ----------
 
-const yearOf = (months: number | null) => (months === null ? null : Number(addMonthsClamped(todayIso(), months).slice(0, 4)))
-
 type Tab = 'route' | 'investments' | 'debts' | 'month' | 'criteria'
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'route', label: 'Rota' },
@@ -456,6 +448,27 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'criteria', label: 'Kriterler' },
 ]
 
+/** Tutar biçimleyiciler: kısa TL ve plan birimi. */
+interface Fmt {
+  tl: (k: number) => string
+  base: (k: number) => string
+  both: (k: number) => string
+  cond: (c: Condition, v: number) => string
+}
+
+function useFmt(base: PlanBase, rates: BaseRates): Fmt {
+  return useMemo(() => {
+    const tl = (k: number) => `${Math.round(k / 100).toLocaleString('tr-TR')} ₺`
+    const inBase = (k: number) => (base === 'TRY' ? tl(k) : (formatInBase(k, base, rates) ?? tl(k)))
+    return {
+      tl,
+      base: inBase,
+      both: (k) => (base === 'TRY' ? formatKurus(k) : `${inBase(k)} (${formatKurus(k)})`),
+      cond: (c, v) => (c.unit === 'pct' ? `%${Math.round(v * 100)}` : c.inBase ? inBase(v) : tl(v)),
+    }
+  }, [base, rates])
+}
+
 function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfile; facts: JourneyFacts; rates: BaseRates; onRetake: () => void }) {
   const repo = useRepo()
   const { toast } = useUi()
@@ -463,9 +476,10 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
   const [celebrate, setCelebrate] = useState<StageId[]>([])
   const [tab, setTab] = useState<Tab>('route')
   const base = profile.base ?? 'TRY'
-  const inBase = (k: number) => (base === 'TRY' ? formatKurus(k) : (formatInBase(k, base, rates) ?? formatKurus(k)))
-  const both = (k: number) => (base === 'TRY' ? formatKurus(k) : `${inBase(k)} (${formatKurus(k)})`)
-  const left = testsLeft(profile, todayIso())
+  const fmt = useFmt(base, rates)
+  const today = todayIso()
+  const left = testsLeft(profile, today)
+  const tested = !!profile.tests?.length
 
   // Yeni tamamlanan aşamalar bir kez kutlanır
   useEffect(() => {
@@ -484,65 +498,67 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
   }
 
   const ind = j.indicators
-  const goalLabel = profile.goal === 'custom' && profile.goalName ? profile.goalName : JOURNEY_GOAL_LABEL[profile.goal]
-  const years = [yearOf(ind.route.optimistic), yearOf(ind.route.mid), yearOf(ind.route.cautious)]
-  const deadline = Number(todayIso().slice(0, 4)) + profile.horizonYears
-  const level = j.level
+  const route = ind.route
+  const deadline = Number(today.slice(0, 4)) + profile.horizonYears
+  const yearOf = (m: number | null) => (m === null ? null : Number(reachDateLabel(m, today).split(' ')[1]))
+  const years = [yearOf(route.optimistic), yearOf(route.cautious)]
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="p-5" aria-label="Rota">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Flag className="size-5 text-accent" /> {goalLabel} rotası
-          </h2>
-          <Segmented label="Plan birimi" value={base} onChange={(b) => void changeBase(b)} options={(Object.keys(BASE_LABEL) as PlanBase[]).map((b) => ({ value: b, label: BASE_LABEL[b] }))} />
-        </div>
-        <p className="mt-1 text-[13px] text-muted">
-          <span className="font-semibold text-ink">
-            Seviye {level}/{j.stages.length}
-          </span>
-          {j.current ? (
-            <>
-              {' '}
-              · sıradaki aşama <span className="font-medium text-ink">{j.current.title}</span>: {j.current.next}
-            </>
-          ) : (
-            ' · bütün aşamaları tamamladınız'
-          )}
-        </p>
-        <RouteMap j={j} celebrate={celebrate} />
-      </Card>
+      {!tested && (
+        <Card className="relative overflow-hidden border-accent/50 p-5" aria-label="Test çağrısı">
+          <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-accent/10 blur-2xl" aria-hidden />
+          <div className="relative flex flex-wrap items-center gap-4">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent text-white">
+              <ClipboardCheck className="size-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display text-base font-semibold">Finansal özgürlük testini henüz yapmadınız</h2>
+              <p className="mt-0.5 text-[13px] text-muted">5 kısa adım: yaşınız, gelir düzeniniz, güvenceleriniz, risk tutumunuz ve plan biriminiz. Rotanızdaki hedefler bu yanıtlarla kişiselleşir.</p>
+            </div>
+            <Button variant="primary" icon={<ClipboardCheck className="size-4" />} onClick={onRetake}>
+              Testi başlat
+            </Button>
+          </div>
+        </Card>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="p-5" aria-label="Finansal güvence">
-          <div className="flex items-center gap-2 text-[13px] font-semibold text-muted">
+      <Hero j={j} profile={profile} fmt={fmt} base={base} left={left} tested={tested} onBase={(b) => void changeBase(b)} onRetake={onRetake} saving={ind.monthlySavingKurus} />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Card className="p-4" aria-label="Finansal güvence">
+          <div className="flex items-center gap-2 text-[12.5px] font-semibold text-muted">
             <ShieldCheck className="size-4 text-accent" /> Acil durum güvencesi
           </div>
-          <div className="num mt-2 font-display text-2xl font-semibold">{ind.securityMonths === null ? '—' : `${ind.securityMonths.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ay`}</div>
+          <div className="num mt-1.5 font-display text-2xl font-semibold">{ind.securityMonths === null ? '—' : `${ind.securityMonths.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ay`}</div>
           <p className="mt-1 text-[12.5px] text-muted">
             Hızlı kullanılabilir birikiminiz ({formatKurus(facts.liquidKurus)}) zorunlu giderlerinizi bu kadar süre karşılar. Hedef {ind.emergencyMonths} ay.
           </p>
         </Card>
-        <Card className="p-5" aria-label="Hedef ilerlemesi">
-          <div className="flex items-center gap-2 text-[13px] font-semibold text-muted">
+        <Card className="p-4" aria-label="Hedef ilerlemesi">
+          <div className="flex items-center gap-2 text-[12.5px] font-semibold text-muted">
             <Target className="size-4 text-accent" /> Özgürlük hedefi
           </div>
-          <div className="num mt-2 font-display text-2xl font-semibold">%{(ind.goalRatio * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}</div>
-          <p className="num mt-1 text-[12.5px] text-muted">
-            {inBase(ind.progressKurus)} / {inBase(ind.goalKurus)}
+          <div className="num mt-1.5 font-display text-2xl font-semibold">%{(ind.goalRatio * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}</div>
+          <Bar value={ind.goalRatio} label="Özgürlük hedefi ilerlemesi" className="mt-2" />
+          <p className="num mt-1.5 text-[12.5px] text-muted">
+            {base === 'TRY' ? `${formatKurus(ind.progressKurus)} / ${formatKurus(ind.goalKurus)}` : `${fmt.base(ind.progressKurus)} / ${fmt.base(ind.goalKurus)}`}
           </p>
-          {base !== 'TRY' && <p className="num mt-1 text-[12px] text-subtle">Bugünkü TL karşılığı {formatKurus(ind.goalKurus)}</p>}
+          {base !== 'TRY' && <p className="num mt-0.5 text-[12px] text-subtle">Bugünkü TL karşılığı {formatKurus(ind.goalKurus)}</p>}
         </Card>
-        <Card className="p-5" aria-label="Tahmini rota">
-          <div className="flex items-center gap-2 text-[13px] font-semibold text-muted">
+        <Card className="p-4" aria-label="Tahmini rota">
+          <div className="flex items-center gap-2 text-[12.5px] font-semibold text-muted">
             <TrendingUp className="size-4 text-accent" /> Tahmini varış
           </div>
-          <div className="num mt-2 font-display text-2xl font-semibold">{years[0] === null ? 'Ulaşılamıyor' : years[0] === years[2] ? years[0] : `${years[0]} – ${years[2] ?? '…'}`}</div>
+          <div className="num mt-1.5 font-display text-2xl font-semibold">{years[0] === null ? 'Ulaşılamıyor' : years[0] === years[1] ? years[0] : `${years[0]} – ${years[1] ?? '…'}`}</div>
           <p className="mt-1 text-[12.5px] text-muted">
             {ind.monthlySavingKurus > 0 ? `Ayda ${formatKurus(ind.monthlySavingKurus)} birikimle, olumlu ve temkinli varsayımlar arasında.` : 'Şu an aylık birikim yok; gelir ve gider dengesi kurulunca tarih aralığı oluşur.'}
           </p>
-          {years[1] !== null && <p className="mt-1 text-[12px] text-subtle">Orta varsayım: {years[1]} · hedef süreniz: {deadline}</p>}
+          {route.mid !== null && (
+            <p className="mt-1 text-[12px] text-subtle">
+              Orta varsayım: {reachDateLabel(route.mid, today)} ({durationLabel(route.mid)}) · hedef süreniz: {deadline}
+            </p>
+          )}
         </Card>
       </div>
 
@@ -563,21 +579,15 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
       </div>
 
       <div role="tabpanel" aria-label={TABS.find((t) => t.id === tab)!.label}>
-        {tab === 'route' && (
-          <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label="Aşamalar">
-            {j.stages.map((s, i) => (
-              <StageCard key={s.id} s={s} n={i + 1} current={j.current?.id === s.id} />
-            ))}
-          </ul>
-        )}
-        {tab === 'investments' && <InvestmentsTab facts={facts} inBase={both} />}
+        {tab === 'route' && <StageRoute j={j} fmt={fmt} celebrate={celebrate} />}
+        {tab === 'investments' && <InvestmentsTab facts={facts} inBase={fmt.both} />}
         {tab === 'debts' && <DebtsTab facts={facts} profile={profile} />}
         {tab === 'month' && <MonthTab profile={profile} />}
         {tab === 'criteria' && <CriteriaTab j={j} profile={profile} left={left} onRetake={onRetake} />}
       </div>
 
       <Alert tone="info" icon={<Info className="size-4" />}>
-        Bu rota girdiğiniz bilgilerle hesaplanan bir tahmindir: birikiminiz enflasyon kadar artar; yıllık reel getiri temkinli %{SCENARIOS.cautious.realReturnPct}, orta %{SCENARIOS.mid.realReturnPct}, olumlu %{SCENARIOS.optimistic.realReturnPct}; gereken birikim, pasif gelirle karşılanmayan yıllık giderin %{profile.withdrawalRatePct.toLocaleString('tr-TR')} çekim oranına bölünmesiyle bulunur.
+        Bu rota girdiğiniz bilgilerle hesaplanan bir tahmindir: birikiminiz enflasyon kadar artar; yıllık reel getiri temkinli %{SCENARIOS.cautious.realReturnPct}, orta %{SCENARIOS.mid.realReturnPct}, olumlu %{SCENARIOS.optimistic.realReturnPct}; gereken birikim, pasif gelirle karşılanmayan yıllık giderin %{profile.withdrawalRatePct.toLocaleString('tr-TR')} çekim oranına bölünmesiyle bulunur. Aşama süreleri, aylık birikiminizin tamamının o aşamaya ayrıldığı varsayımıyla hesaplanır.
         {base !== 'TRY' && ` Hedefler ${BASE_LABEL[base]} bazında sabittir; TL karşılıkları güncel fiyatla hesaplanır.`} Getiri veya tarih garantisi değildir ve yatırım tavsiyesi içermez. Farklı varsayımları{' '}
         <Link to="/senaryolar" className="font-medium text-accent">
           Senaryolar
@@ -585,6 +595,247 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
         sayfasında deneyebilirsiniz.
       </Alert>
     </div>
+  )
+}
+
+function Bar({ value, label, className, delay = 0 }: { value: number; label: string; className?: string; delay?: number }) {
+  const reduced = useReducedMotion()
+  const pct = Math.round(Math.max(0, Math.min(1, value)) * 100)
+  return (
+    <div className={cn('h-1.5 overflow-hidden rounded-full bg-surface-2', className)} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+      <motion.div className="h-full rounded-full bg-accent" initial={reduced ? false : { width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.9, delay, ease: 'easeOut' }} />
+    </div>
+  )
+}
+
+/** Seviye halkası: tamamlanan aşamalar + sıradakinin ilerlemesi. */
+function LevelRing({ position, total, level }: { position: number; total: number; level: number }) {
+  const reduced = useReducedMotion()
+  const r = 40
+  const frac = Math.max(0, Math.min(1, position / total))
+  return (
+    <div className="relative size-[104px] shrink-0">
+      <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden>
+        <circle cx={50} cy={50} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={9} />
+        <motion.circle cx={50} cy={50} r={r} fill="none" stroke="var(--accent)" strokeWidth={9} strokeLinecap="round" initial={reduced ? false : { pathLength: 0 }} animate={{ pathLength: frac }} transition={{ duration: 1.4, ease: 'easeInOut' }} />
+      </svg>
+      <div className="absolute inset-0 grid place-items-center text-center leading-none">
+        <div>
+          <div className="num font-display text-[26px] font-bold text-ink">
+            {level}
+            <span className="text-[15px] font-semibold text-muted">/{total}</span>
+          </div>
+          <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted">seviye</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }: { j: JourneyResult; profile: JourneyProfile; fmt: Fmt; base: PlanBase; left: number; tested: boolean; saving: number; onBase: (b: PlanBase) => void; onRetake: () => void }) {
+  const goalLabel = profile.goal === 'custom' && profile.goalName ? profile.goalName : JOURNEY_GOAL_LABEL[profile.goal]
+  const cur = j.current
+  const today = todayIso()
+  const open = cur?.conditions.filter((c) => !c.done) ?? []
+  return (
+    <Card className="relative overflow-hidden p-5" aria-label="Rota">
+      <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-accent/10 blur-3xl" aria-hidden />
+      <div className="relative flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+          <Flag className="size-5 text-accent" /> {goalLabel} rotası
+        </h2>
+        <Segmented label="Plan birimi" value={base} onChange={onBase} options={(Object.keys(BASE_LABEL) as PlanBase[]).map((b) => ({ value: b, label: BASE_LABEL[b] }))} />
+      </div>
+      <div className="relative mt-4 flex items-center gap-4">
+        <LevelRing position={j.position} total={j.stages.length} level={j.level} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] text-muted">
+            <span className="font-semibold text-ink">
+              Seviye {j.level}/{j.stages.length}
+            </span>
+            {cur ? (
+              <>
+                {' '}
+                · sıradaki aşama <span className="font-semibold text-ink">{cur.title}</span>
+              </>
+            ) : (
+              ' · bütün aşamaları tamamladınız'
+            )}
+          </p>
+          {cur ? (
+            <>
+              <p className="mt-1 font-display text-[17px] font-semibold leading-snug text-ink">
+                <span className="text-accent">Hedef:</span> {cur.goal}
+              </p>
+              <p className="mt-1 text-[13px] text-muted">
+                {open.length > 1 ? `${open.length} koşul kaldı: ` : 'Kalan: '}
+                <span className="font-medium text-ink">{open.map((c) => c.leftText).join(' · ')}</span>
+                {cur.etaMonths !== undefined && (
+                  <span className="text-muted"> · {cur.etaMonths === null ? 'bugünkü birikim hızıyla ulaşılamıyor' : `bu hızla ~${durationLabel(cur.etaMonths)} (${reachDateLabel(cur.etaMonths, today)})`}</span>
+                )}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 font-display text-[17px] font-semibold text-ink">Finansal özgürlüğe ulaştınız. Hedefinizi koruyun.</p>
+          )}
+        </div>
+      </div>
+      <div className="relative mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+        <Button size="sm" variant={tested ? 'soft' : 'primary'} icon={<ClipboardCheck className="size-4" />} onClick={onRetake} disabled={left === 0}>
+          {left === 0 ? 'Bu ayın test hakları bitti' : tested ? `Testi yenile · bu ay ${left} hak` : 'Testi yap'}
+        </Button>
+        <Link to="/senaryolar" className="inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-[13px] font-semibold text-accent hover:bg-accent-soft">
+          Senaryoları dene <ArrowRight className="size-3.5" />
+        </Link>
+        <span className="ml-auto text-[12px] text-subtle">{saving > 0 ? `Aylık birikim ${fmt.tl(saving)}` : 'Şu an aylık birikim yok'}</span>
+      </div>
+    </Card>
+  )
+}
+
+/** Dikey rota: her aşamada hedef ve kalan koşullar; çizgi tamamlanan aşamalarla dolar. */
+function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebrate: StageId[] }) {
+  const reduced = useReducedMotion()
+  const [opened, setOpened] = useState<StageId | null>(null)
+  const today = todayIso()
+  return (
+    <Card className="p-4 sm:p-5">
+      <h3 className="font-display text-base font-semibold">Rotanız</h3>
+      <p className="mt-0.5 text-[12.5px] text-muted">Aşamalar sırayla tamamlanır. Sıradaki aşamanın koşulları açık; diğerlerine dokunarak bakabilirsiniz.</p>
+      <ol className="mt-4" aria-label="Aşamalar">
+        {j.stages.map((s, i) => {
+          const isCur = j.current?.id === s.id
+          const last = i === j.stages.length - 1
+          const expanded = isCur || opened === s.id
+          // Çizgi rotadaki konuma göre dolar: bu aşamadan sonrakine doğru ilerleme
+          const fill = Math.max(0, Math.min(1, j.position - (i + 1)))
+          const openConds = s.conditions.filter((c) => !c.done).length
+          const delay = reduced ? 0 : 0.15 + i * 0.12
+          return (
+            <li key={s.id} className="relative grid grid-cols-[40px_1fr] gap-3 pb-4 last:pb-0">
+              {!last && (
+                <div className="absolute bottom-0 left-[18px] top-10 w-1 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+                  <motion.div className="w-full origin-top rounded-full bg-accent" style={{ height: '100%' }} initial={reduced ? false : { scaleY: 0 }} animate={{ scaleY: fill }} transition={{ duration: 0.6, delay: delay + 0.2, ease: 'easeOut' }} />
+                </div>
+              )}
+              <div className="relative flex justify-center">
+                {isCur && !reduced && <motion.span className="absolute top-0 size-10 rounded-full bg-accent/30" animate={{ scale: [1, 1.55], opacity: [0.7, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }} aria-hidden />}
+                {celebrate.includes(s.id) && !reduced && <Burst />}
+                <motion.span
+                  className={cn(
+                    'relative grid size-10 place-items-center rounded-full border-[3px] text-[14px] font-bold',
+                    s.done ? 'border-accent bg-accent text-white' : isCur ? 'border-accent bg-surface text-accent' : 'border-line bg-surface text-muted',
+                  )}
+                  initial={reduced ? false : { scale: 0.3, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 16, delay }}
+                  aria-hidden
+                >
+                  {s.done ? <Check className="size-5" strokeWidth={3} /> : i + 1}
+                </motion.span>
+              </div>
+              <motion.div
+                className={cn('min-w-0 rounded-2xl border p-3.5', isCur ? 'border-accent bg-accent-soft/40 shadow-card' : s.done ? 'border-line bg-surface' : 'border-line bg-surface')}
+                initial={reduced ? false : { opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.35, delay }}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-2 text-left disabled:cursor-default"
+                  onClick={() => setOpened(opened === s.id ? null : s.id)}
+                  disabled={isCur}
+                  aria-expanded={expanded}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-semibold text-ink">{s.title}</h4>
+                      {s.done ? <Badge tone="accent">Tamamlandı</Badge> : isCur ? <Badge tone="info">Sıradaki</Badge> : <Badge tone="neutral">%{Math.round(s.progress * 100)}</Badge>}
+                    </div>
+                    <p className="mt-0.5 text-[13px] text-muted">
+                      <span className="font-medium text-ink">Hedef:</span> {s.goal}
+                    </p>
+                    {!expanded && !s.done && (
+                      <p className="mt-0.5 text-[12px] text-subtle">
+                        {openConds} koşul kaldı
+                        {s.etaMonths != null ? ` · bu hızla ~${durationLabel(s.etaMonths)}` : ''}
+                      </p>
+                    )}
+                  </div>
+                  {!isCur && <ChevronDown className={cn('mt-0.5 size-4 shrink-0 text-muted transition-transform', expanded && 'rotate-180')} aria-hidden />}
+                </button>
+                <AnimatePresence initial={false}>
+                  {expanded && (
+                    <motion.div initial={reduced ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={reduced ? undefined : { height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                      <div className="mt-3 text-[12px] font-semibold uppercase tracking-wide text-muted">{s.done ? 'Koşullar' : 'Kalan koşullar'}</div>
+                      <ul className="mt-1.5 flex flex-col gap-2.5" aria-label={`${s.title} koşulları`}>
+                        {s.conditions.map((c, ci) => (
+                          <ConditionRow key={ci} c={c} fmt={fmt} today={today} />
+                        ))}
+                      </ul>
+                      {!s.done && (
+                        <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-ink">
+                          <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-accent" /> <span>
+                            <span className="font-medium">Sonraki adım:</span> {s.next}
+                          </span>
+                        </p>
+                      )}
+                      {s.missing && <p className="mt-1 text-[12px] text-warning">{s.missing}</p>}
+                      <p className="mt-2 text-[11.5px] text-subtle">{s.source}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            </li>
+          )
+        })}
+      </ol>
+    </Card>
+  )
+}
+
+function ConditionRow({ c, fmt, today }: { c: Condition; fmt: Fmt; today: IsoDate }) {
+  const target = c.dir === 'atMost' ? (c.target === 0 ? fmt.cond(c, 0) : `en çok ${fmt.cond(c, c.target)}`) : c.unit === 'pct' ? `en az ${fmt.cond(c, c.target)}` : fmt.cond(c, c.target)
+  return (
+    <li className="flex gap-2.5">
+      <span className="mt-0.5 shrink-0" aria-hidden>
+        {c.done ? <CheckCircle2 className="size-[18px] text-accent" /> : <CircleDashed className="size-[18px] text-warning" />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+          <span className="text-[13px] font-medium text-ink">{c.label}</span>
+          <span className="num text-[12.5px] text-muted">
+            <span className={cn('font-semibold', c.done ? 'text-accent' : 'text-ink')}>{fmt.cond(c, c.now)}</span> / {target}
+          </span>
+        </div>
+        <Bar value={c.progress} label={`${c.label} ilerlemesi`} className="mt-1" />
+        <p className={cn('mt-1 text-[12px]', c.done ? 'text-accent' : 'text-muted')}>
+          {c.done ? '✓ Sağlanıyor' : c.leftText}
+          {!c.done && c.etaMonths !== undefined && <span className="text-subtle"> · {c.etaMonths === null ? 'bu birikim hızıyla ulaşılamıyor' : `bu hızla ~${durationLabel(c.etaMonths)} (${reachDateLabel(c.etaMonths, today)})`}</span>}
+        </p>
+      </div>
+    </li>
+  )
+}
+
+function Burst() {
+  const colors = ['var(--asset-1)', 'var(--asset-2)', 'var(--asset-3)', 'var(--asset-4)', 'var(--asset-5)']
+  return (
+    <span className="pointer-events-none absolute left-1/2 top-5" aria-hidden>
+      {Array.from({ length: 12 }, (_, i) => {
+        const a = (i / 12) * Math.PI * 2
+        return (
+          <motion.span
+            key={i}
+            className="absolute -ml-1 -mt-1 size-2 rounded-full"
+            style={{ background: colors[i % colors.length] }}
+            initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            animate={{ opacity: 0, x: Math.cos(a) * 38, y: Math.sin(a) * 38, scale: 0.4 }}
+            transition={{ duration: 1.1, delay: 1, ease: 'easeOut' }}
+          />
+        )
+      })}
+    </span>
   )
 }
 
@@ -735,170 +986,3 @@ function CriteriaTab({ j, profile, left, onRetake }: { j: JourneyResult; profile
     </div>
   )
 }
-
-function StageCard({ s, n, current }: { s: Stage; n: number; current: boolean }) {
-  return (
-    <li className={cn('rounded-2xl border bg-surface p-4', s.done ? 'border-accent/40' : current ? 'border-accent' : 'border-line')}>
-      <div className="flex items-start gap-3">
-        <span className={cn('grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-semibold', s.done ? 'bg-accent text-white' : 'bg-surface-2 text-muted')} aria-hidden>
-          {s.done ? <CheckCircle2 className="size-4" /> : n}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-ink">{s.title}</h3>
-            {s.done ? <Badge tone="accent">Tamamlandı</Badge> : current ? <Badge tone="info">Sıradaki</Badge> : <Badge tone="neutral">%{Math.round(s.progress * 100)}</Badge>}
-          </div>
-          <p className="mt-1 text-[12.5px] text-muted">
-            <span className="font-medium text-ink">Ölçüt:</span> {s.criterion}
-          </p>
-          <p className="num text-[12.5px] text-muted">
-            <span className="font-medium text-ink">Durum:</span> {s.status}
-          </p>
-          <p className="text-[12.5px] text-muted">
-            <span className="font-medium text-ink">Sonraki adım:</span> {s.next}
-          </p>
-          {s.missing && <p className="mt-1 text-[12px] text-warning">{s.missing}</p>}
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-label={`${s.title} ilerlemesi`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(s.progress * 100)}>
-            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(s.progress * 100)}%` }} />
-          </div>
-        </div>
-      </div>
-    </li>
-  )
-}
-
-// x yönünde tekdüze: duraklar yatayda eşit aralıklı yerleşir, etiketler çakışmaz
-const PATH = 'M 30 150 C 110 150, 130 60, 210 60 S 330 160, 400 150 S 520 50, 590 60 S 700 150, 760 130 S 860 60, 900 55'
-const PATH_X0 = 30
-const PATH_X1 = 900
-
-/** Yol üzerinde x değerine denk gelen uzunluk (ikili arama). */
-function lengthAtX(p: SVGPathElement, total: number, x: number): number {
-  let lo = 0
-  let hi = total
-  for (let k = 0; k < 30; k++) {
-    const mid = (lo + hi) / 2
-    if (p.getPointAtLength(mid).x < x) lo = mid
-    else hi = mid
-  }
-  return (lo + hi) / 2
-}
-
-/** Aşama ilerlemesine (0…n) karşılık gelen yol uzunluğu: duraklar arasında doğrusal. */
-function lenAt(stopLens: number[], v: number): number {
-  const n = stopLens.length - 1
-  const c = Math.max(0, Math.min(v, n))
-  const i = Math.min(Math.floor(c), n - 1)
-  return stopLens[i] + (stopLens[i + 1] - stopLens[i]) * (c - i)
-}
-
-/** Rota haritası: işaret gerçek ilerlemeye göre yürür; tamamlanan duraklar açılır. */
-function RouteMap({ j, celebrate }: { j: JourneyResult; celebrate: StageId[] }) {
-  const reduced = useReducedMotion()
-  const pathRef = useRef<SVGPathElement>(null)
-  const [stops, setStops] = useState<{ x: number; y: number }[]>([])
-  const [len, setLen] = useState(0)
-  const [stopLens, setStopLens] = useState<number[]>([])
-  const [at, setAt] = useState(0)
-  const [marker, setMarker] = useState({ x: 30, y: 150 })
-  const n = j.stages.length
-
-  useLayoutEffect(() => {
-    const p = pathRef.current
-    if (!p || typeof p.getTotalLength !== 'function') return
-    const L = p.getTotalLength()
-    const lens = Array.from({ length: n + 1 }, (_, i) => (i === 0 ? 0 : i === n ? L : lengthAtX(p, L, PATH_X0 + ((PATH_X1 - PATH_X0) * i) / n)))
-    setLen(L)
-    setStopLens(lens)
-    setStops(lens.map((l) => p.getPointAtLength(l)))
-  }, [n])
-
-  useEffect(() => {
-    const p = pathRef.current
-    if (!len || !p || stopLens.length !== n + 1) return
-    const step = (v: number) => {
-      setAt(v)
-      const pt = p.getPointAtLength(lenAt(stopLens, v))
-      setMarker({ x: pt.x, y: pt.y })
-    }
-    if (reduced) {
-      step(j.position)
-      return
-    }
-    const c = animate(0, j.position, { duration: 1.6, ease: 'easeInOut', onUpdate: step })
-    return () => c.stop()
-  }, [j.position, len, n, reduced, stopLens])
-
-  return (
-    <div className="mt-3">
-      <svg viewBox="0 0 1000 200" className="h-auto w-full" role="img" aria-label={`Rota: ${n} aşamanın ${j.stages.filter((s) => s.done).length} tanesi tamamlandı`}>
-        <path d={PATH} fill="none" stroke="var(--border-strong)" strokeWidth={10} strokeLinecap="round" />
-        <path ref={pathRef} d={PATH} fill="none" stroke="var(--accent)" strokeWidth={10} strokeLinecap="round" strokeDasharray={`${stopLens.length ? lenAt(stopLens, at) : 0} ${len}`} />
-        {stops.slice(1).map((pt, i) => {
-          const s = j.stages[i]
-          const party = celebrate.includes(s.id)
-          return (
-            <g key={s.id}>
-              {party && !reduced && <Burst x={pt.x} y={pt.y} />}
-              <motion.circle
-                cx={pt.x}
-                cy={pt.y}
-                r={17}
-                fill={s.done ? 'var(--accent)' : 'var(--surface)'}
-                stroke={s.done ? 'var(--accent)' : 'var(--border-strong)'}
-                strokeWidth={3}
-                initial={party && !reduced ? { scale: 0.4 } : false}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 12, delay: 1.2 }}
-                style={{ transformOrigin: `${pt.x}px ${pt.y}px` }}
-              />
-              <text x={pt.x} y={pt.y + 6} textAnchor="middle" fontSize={15} fontWeight={700} fill={s.done ? '#fff' : 'var(--muted)'}>
-                {s.done ? '✓' : i + 1}
-              </text>
-            </g>
-          )
-        })}
-        <circle cx={stops[0]?.x ?? 30} cy={stops[0]?.y ?? 150} r={7} fill="var(--border-strong)" />
-        <g transform={`translate(${marker.x} ${marker.y})`}>
-          <circle r={13} fill="var(--accent-strong, #047857)" stroke="var(--surface)" strokeWidth={4} />
-          <Sparkles x={-7} y={-7} width={14} height={14} color="#fff" />
-        </g>
-      </svg>
-      <ol className="relative mt-1 h-10 text-center text-[11px] leading-tight text-muted sm:h-11 sm:text-[12.5px]" aria-hidden>
-        {j.stages.map((s, i) => (
-          <li
-            key={s.id}
-            className={cn('absolute w-[20%] -translate-x-1/2 whitespace-nowrap', i % 2 ? 'top-5 sm:top-5' : 'top-0', s.done && 'font-semibold text-ink')}
-            style={{ left: `${Math.min(94, Math.max(6, (stops[i + 1]?.x ?? PATH_X0 + ((PATH_X1 - PATH_X0) * (i + 1)) / n) / 10))}%` }}
-          >
-            {s.short}
-          </li>
-        ))}
-      </ol>
-    </div>
-  )
-}
-
-function Burst({ x, y }: { x: number; y: number }) {
-  const colors = ['var(--asset-1)', 'var(--asset-2)', 'var(--asset-3)', 'var(--asset-4)', 'var(--asset-5)']
-  return (
-    <g aria-hidden>
-      {Array.from({ length: 10 }, (_, i) => {
-        const a = (i / 10) * Math.PI * 2
-        return (
-          <motion.circle
-            key={i}
-            cx={x}
-            cy={y}
-            r={4}
-            fill={colors[i % colors.length]}
-            initial={{ opacity: 1, x: 0, y: 0 }}
-            animate={{ opacity: 0, x: Math.cos(a) * 46, y: Math.sin(a) * 46 }}
-            transition={{ duration: 1.1, delay: 1.3, ease: 'easeOut' }}
-          />
-        )
-      })}
-    </g>
-  )
-}
-

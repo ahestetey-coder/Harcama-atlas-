@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { fetchMarket, searchSymbols } from '../cloud/rates'
 import { autoPriceCode, autoQuote, confidentMatch, defaultMarket, quoteKey, quoteUpdates, rateUpdates, SYMBOL_KINDS, type Asset, type AssetQuote } from '../domain/assets'
+import type { BaseRates, JourneyProfile } from '../domain/journey'
 import { useAuth } from './auth'
 import { useAssets, useRepo } from './data'
 
@@ -155,4 +156,12 @@ export function useLivePriceSync(enabled: boolean) {
       document.removeEventListener('visibilitychange', tick)
     }
   }, [client, run])
+}
+
+/** Plan birimi için güncel kurlar: canlı fiyat, yoksa planın sabitlendiği kur. Yolculuk ve Senaryolar aynı kuru kullanır. */
+export function useBaseRates(profile: JourneyProfile | undefined): BaseRates {
+  const live = useLiveState()
+  const usd = live.usd?.valueTl ?? (profile?.base === 'USD' ? profile.baseRateTl : null)
+  const gold = live.goldGram?.valueTl ?? (profile?.base === 'XAU' ? profile.baseRateTl : null)
+  return useMemo(() => ({ USD: usd ?? null, XAU: gold ?? null }), [usd, gold])
 }

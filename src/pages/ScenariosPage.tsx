@@ -1,14 +1,17 @@
-import { Info, Mountain, SlidersHorizontal } from 'lucide-react'
-import { useState } from 'react'
+import { Info, Mountain, RotateCcw, SlidersHorizontal } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { ScenarioLines, type ScenarioRow } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { Alert, Button, Card, Field, Input, Segmented } from '../components/ui/primitives'
-import { monthlySaving, monthsToTarget, projectScenario, SCENARIOS, targetCapital, type JourneyFacts, type JourneyProfile, type ScenarioInput, type ScenarioKey } from '../domain/journey'
+import { todayIso } from '../domain/dates'
+import { buildJourney, durationLabel, formatInBase, reachDateLabel, SCENARIOS, simulatePlan, type JourneyFacts, type JourneyProfile, type ScenarioInput, type ScenarioKey, type Simulation } from '../domain/journey'
 import { formatKurus, formatKurusCompact, formatKurusPlain, parseUserAmount } from '../domain/money'
+import { cn } from '../lib/cn'
 import { useJourneyFacts } from '../state/budget'
 import { useSettings } from '../state/data'
+import { useBaseRates } from '../state/livePrices'
 
 export default function ScenariosPage() {
   return (
@@ -45,9 +48,9 @@ function ScenariosContent() {
       <Card className="p-6 text-center">
         <Mountain className="mx-auto size-8 text-accent" />
         <h2 className="mt-2 font-display text-lg font-semibold">Önce yolculuğunuzu oluşturun</h2>
-        <p className="mx-auto mt-1 max-w-md text-sm text-muted">Senaryolar, Finansal Özgürlük Yolculuğum anketindeki gelir, gider ve hedef bilgilerinizle başlar.</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted">Senaryolar, Finansal Özgürlük Yolculuğum testindeki gelir, gider ve hedef bilgilerinizle başlar.</p>
         <Link to="/yolculuk" className="mt-4 inline-block">
-          <Button variant="primary">Ankete git</Button>
+          <Button variant="primary">Teste git</Button>
         </Link>
       </Card>
     )
@@ -56,103 +59,132 @@ function ScenariosContent() {
 
 const KEYS: ScenarioKey[] = ['cautious', 'mid', 'optimistic']
 
-function num(s: string, min: number, max: number, fallback: number): number {
-  const n = Number(s.replace(',', '.'))
-  return Number.isFinite(n) && s.trim() !== '' ? Math.min(max, Math.max(min, n)) : fallback
+interface Assumptions {
+  years: number
+  extra: number
+  inflation: number
+  lossMonths: number
+  lossSpend: number
+  big: number
+  bigYear: number
+  returns: Record<ScenarioKey, number>
 }
 
-function money(s: string): number {
-  if (!s.trim()) return 0
-  const p = parseUserAmount(s)
-  return p.ok ? Math.max(0, p.kurus) : 0
-}
+const defaults = (profile: JourneyProfile, essentialNow: number): Assumptions => ({
+  years: profile.horizonYears,
+  extra: 0,
+  inflation: 30,
+  lossMonths: 0,
+  lossSpend: essentialNow,
+  big: 0,
+  bigYear: 1,
+  returns: { cautious: SCENARIOS.cautious.realReturnPct, mid: SCENARIOS.mid.realReturnPct, optimistic: SCENARIOS.optimistic.realReturnPct },
+})
 
 function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: JourneyFacts }) {
-  const baseSaving = monthlySaving(profile, facts)
-  const start = Math.max(0, facts.assetsKurus - facts.debtsKurus)
-  const goal = targetCapital(profile)
-  const [f, setF] = useState({
-    years: String(profile.horizonYears),
-    extra: '',
-    lossMonths: '0',
-    lossSpend: formatKurusPlain(profile.essentialMonthlyKurus),
-    big: '',
-    bigYear: '1',
-    inflation: '30',
-    cautious: String(SCENARIOS.cautious.realReturnPct),
-    mid: String(SCENARIOS.mid.realReturnPct),
-    optimistic: String(SCENARIOS.optimistic.realReturnPct),
-  })
-  const [view, setView] = useState<'real' | 'nominal'>('real')
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((p) => ({ ...p, [k]: e.target.value }))
+  const rates = useBaseRates(profile)
+  // Yolculukla aynı hesap: aynı hedef (plan birimi ve canlı kurla), aynı başlangıç ve aynı aylık birikim
+  const j = useMemo(() => buildJourney(profile, facts, rates), [profile, facts, rates])
+  const goal = j.indicators.goalKurus
+  const start = j.indicators.progressKurus
+  const baseSaving = j.indicators.monthlySavingKurus
+  const essentialNow = Math.round(profile.essentialMonthlyKurus * j.indicators.indexFactor)
+  const base = profile.base ?? 'TRY'
+  const inBase = (k: number) => (base === 'TRY' ? formatKurus(k) : `${formatInBase(k, base, rates) ?? ''} (${formatKurus(k)})`)
+  const today = todayIso()
 
-  const years = Math.round(num(f.years, 1, 60, profile.horizonYears))
+  const [a, setA] = useState<Assumptions>(() => defaults(profile, essentialNow))
+  const [formKey, setFormKey] = useState(0)
+  const [view, setView] = useState<'real' | 'nominal'>('real')
+  const set = <K extends keyof Assumptions>(k: K, v: Assumptions[K]) => setA((p) => ({ ...p, [k]: v }))
+  const reset = () => {
+    setA(defaults(profile, essentialNow))
+    setFormKey((n) => n + 1)
+  }
+  const changed = JSON.stringify(a) !== JSON.stringify(defaults(profile, essentialNow))
+
   const input: ScenarioInput = {
     startKurus: start,
     monthlySavingKurus: baseSaving,
-    years,
-    inflationPct: num(f.inflation, 0, 200, 0),
-    extraSavingKurus: money(f.extra),
-    incomeLossMonths: Math.round(num(f.lossMonths, 0, 120, 0)),
-    incomeLossMonthlySpendKurus: money(f.lossSpend),
-    bigExpenseKurus: money(f.big),
-    bigExpenseYear: Math.round(num(f.bigYear, 1, years, 1)),
+    years: a.years,
+    inflationPct: a.inflation,
+    extraSavingKurus: a.extra,
+    incomeLossMonths: a.lossMonths,
+    incomeLossMonthlySpendKurus: a.lossSpend,
+    bigExpenseKurus: a.big,
+    bigExpenseYear: Math.min(a.bigYear, a.years),
   }
-  const returns = { cautious: num(f.cautious, -10, 15, 0), mid: num(f.mid, -10, 15, 2), optimistic: num(f.optimistic, -10, 15, 4) }
-  const series = Object.fromEntries(KEYS.map((k) => [k, projectScenario(input, returns[k])])) as Record<ScenarioKey, ReturnType<typeof projectScenario>>
+  const sims = Object.fromEntries(KEYS.map((k) => [k, simulatePlan(input, a.returns[k], goal)])) as Record<ScenarioKey, Simulation>
   const inf = 1 + input.inflationPct / 100
-  const rows: ScenarioRow[] = series.mid.map((p, i) => {
-    const pick = (k: ScenarioKey) => (view === 'real' ? series[k][i].realKurus : series[k][i].nominalKurus)
+  const rows: ScenarioRow[] = sims.mid.points.map((p, i) => {
+    const pick = (k: ScenarioKey) => (view === 'real' ? sims[k].points[i].realKurus : sims[k].points[i].nominalKurus)
     return { year: p.year, cautious: pick('cautious'), mid: pick('mid'), optimistic: pick('optimistic'), target: view === 'real' ? goal : Math.round(goal * Math.pow(inf, p.year)) }
   })
-  const reachYear = (k: ScenarioKey) => {
-    const hit = series[k].find((p) => p.year > 0 && p.realKurus >= goal)
-    return start >= goal ? 0 : (hit?.year ?? null)
-  }
-  const baseline = monthsToTarget(start, baseSaving, goal, returns.mid)
-  const tableYears = rows.filter((r) => r.year === 0 || r.year === years || r.year % (years <= 10 ? 2 : 5) === 0)
+  // Yolculuk sayfasındaki "Tahmini varış" ile aynı: hiçbir değişiklik olmadan, orta varsayım
+  const journeyMid = j.indicators.route.mid
+  const midNow = sims.mid.reachMonths
+  const diff = journeyMid !== null && midNow !== null ? midNow - journeyMid : null
+  const tableYears = rows.filter((r) => r.year === 0 || r.year === a.years || r.year % (a.years <= 10 ? 2 : 5) === 0)
+  const reachText = (m: number | null) => (m === null ? '100 yıl içinde ulaşılmıyor' : m === 0 ? 'Hedef şimdiden karşılanıyor' : `${reachDateLabel(m, today)} · ${durationLabel(m)}`)
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="p-5" aria-label="Varsayımlar">
-        <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <SlidersHorizontal className="size-5 text-accent" /> Varsayımlar
-        </h2>
-        <p className="mt-1 text-[13px] text-muted">
-          Başlangıç: net varlık {formatKurus(start)}, aylık birikim {formatKurus(baseSaving)}, hedef {formatKurus(goal)} (yolculuk bilgilerinizden). Tutarları bugünün parasıyla yazın.
-        </p>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Süre (yıl)" htmlFor="s-years">
-            <Input id="s-years" inputMode="numeric" value={f.years} onChange={set('years')} />
-          </Field>
-          <Field label="Ek aylık birikim (TL)" htmlFor="s-extra">
-            <Input id="s-extra" inputMode="decimal" value={f.extra} onChange={set('extra')} placeholder="0,00" />
-          </Field>
-          <Field label="Yıllık enflasyon varsayımı (%)" htmlFor="s-inflation" hint="Yalnızca nominal gösterimi etkiler.">
-            <Input id="s-inflation" inputMode="decimal" value={f.inflation} onChange={set('inflation')} />
-          </Field>
-          <Field label="Gelir kaybı (ay)" htmlFor="s-loss" hint="Bu süre birikim yapılamaz, giderler birikimden karşılanır.">
-            <Input id="s-loss" inputMode="numeric" value={f.lossMonths} onChange={set('lossMonths')} />
-          </Field>
-          <Field label="Gelir kaybında aylık gider (TL)" htmlFor="s-loss-spend">
-            <Input id="s-loss-spend" inputMode="decimal" value={f.lossSpend} onChange={set('lossSpend')} />
-          </Field>
-          <div className="grid grid-cols-[1fr_6rem] gap-2">
-            <Field label="Büyük harcama (TL)" htmlFor="s-big">
-              <Input id="s-big" inputMode="decimal" value={f.big} onChange={set('big')} placeholder="0,00" />
-            </Field>
-            <Field label="Kaçıncı yıl" htmlFor="s-big-year">
-              <Input id="s-big-year" inputMode="numeric" value={f.bigYear} onChange={set('bigYear')} />
-            </Field>
+      <Card className="p-5" aria-label="Başlangıç noktası">
+        <h2 className="font-display text-base font-semibold">Başlangıç noktanız</h2>
+        <p className="mt-0.5 text-[12.5px] text-muted">Finansal Özgürlük Yolculuğum ile aynı bilgiler ve aynı hesap; yolculukta bir şey değişince burası da değişir.</p>
+        <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <dt className="text-[12.5px] text-muted">Net birikim</dt>
+            <dd className="num font-display text-lg font-semibold">{formatKurus(start)}</dd>
           </div>
+          <div>
+            <dt className="text-[12.5px] text-muted">Aylık birikim</dt>
+            <dd className="num font-display text-lg font-semibold">{formatKurus(baseSaving)}</dd>
+          </div>
+          <div>
+            <dt className="text-[12.5px] text-muted">Özgürlük hedefi</dt>
+            <dd className="num font-display text-lg font-semibold">{inBase(goal)}</dd>
+          </div>
+        </dl>
+        <p className="mt-2 text-[12.5px] text-muted">
+          Yolculuktaki tahmin (orta varsayım, değişikliksiz): <span className="font-medium text-ink">{reachText(journeyMid)}</span>
+        </p>
+      </Card>
+
+      <Card className="p-5" aria-label="Varsayımlar">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+            <SlidersHorizontal className="size-5 text-accent" /> Varsayımlar
+          </h2>
+          <Button size="sm" variant="ghost" icon={<RotateCcw className="size-4" />} onClick={reset} disabled={!changed}>
+            Varsayılanlara dön
+          </Button>
         </div>
-        <fieldset className="mt-4">
-          <legend className="text-[13px] font-medium text-muted">Yıllık reel getiri varsayımı (enflasyon üstü, %)</legend>
-          <div className="mt-2 grid grid-cols-3 gap-2 sm:max-w-md">
+        <p className="mt-1 text-[13px] text-muted">Değiştirdiğiniz her şey aşağıdaki sonuçlara hemen yansır. Tutarları bugünün parasıyla yazın.</p>
+        <div key={formKey} className="mt-4 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+          <MoneyField id="s-extra" label="Ek aylık birikim (TL)" value={a.extra} onChange={(v) => set('extra', v)} hint="Her ay mevcut birikiminize eklenecek tutar." />
+          <Slider id="s-loss" label="Gelir kaybı (ay)" value={a.lossMonths} min={0} max={36} onChange={(v) => set('lossMonths', v)} display={(v) => (v === 0 ? 'Yok' : `${v} ay`)} hint="Bu süre birikim yapılamaz, giderler birikimden karşılanır." />
+          <MoneyField id="s-loss-spend" label="Gelir kaybında aylık gider (TL)" value={a.lossSpend} onChange={(v) => set('lossSpend', v)} hint="Varsayılan: zorunlu giderleriniz." />
+          <MoneyField id="s-big" label="Büyük harcama (TL)" value={a.big} onChange={(v) => set('big', v)} hint="Ev peşinatı, araba, düğün gibi tek seferlik harcama." />
+          <Slider id="s-big-year" label="Büyük harcamanın yılı" value={Math.min(a.bigYear, a.years)} min={1} max={a.years} onChange={(v) => set('bigYear', v)} display={(v) => `${v}. yıl`} disabled={a.big === 0} />
+          <Slider id="s-years" label="Grafik süresi (yıl)" value={a.years} min={1} max={60} onChange={(v) => set('years', v)} display={(v) => `${v} yıl`} hint="Hedefe ulaşma tarihi bu süreden bağımsız hesaplanır." />
+          <Slider id="s-inflation" label="Yıllık enflasyon (%)" value={a.inflation} min={0} max={100} onChange={(v) => set('inflation', v)} display={(v) => `%${v}`} hint="Yalnızca nominal gösterimi etkiler." />
+        </div>
+        <fieldset className="mt-5">
+          <legend className="text-[13px] font-medium text-muted">Yıllık reel getiri varsayımı (enflasyon üstü)</legend>
+          <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
             {KEYS.map((k) => (
-              <Field key={k} label={SCENARIOS[k].label} htmlFor={`s-r-${k}`}>
-                <Input id={`s-r-${k}`} inputMode="decimal" value={f[k]} onChange={set(k)} />
-              </Field>
+              <Slider
+                key={k}
+                id={`s-r-${k}`}
+                label={SCENARIOS[k].label}
+                value={a.returns[k]}
+                min={-5}
+                max={10}
+                step={0.5}
+                onChange={(v) => setA((p) => ({ ...p, returns: { ...p.returns, [k]: v } }))}
+                display={(v) => `%${v.toLocaleString('tr-TR')}`}
+              />
             ))}
           </div>
         </fieldset>
@@ -160,7 +192,7 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
 
       <Card className="p-5" aria-label="Senaryo grafiği">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-display text-base font-semibold">Net varlığın seyri</h2>
+          <h2 className="font-display text-base font-semibold">Net birikimin seyri</h2>
           <Segmented
             label="Gösterim"
             value={view}
@@ -175,16 +207,22 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
         <ul className="mt-3 grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-3" aria-label="Hedefe ulaşma">
           {KEYS.slice()
             .reverse()
-            .map((k) => {
-              const y = reachYear(k)
-              return (
-                <li key={k} className="rounded-xl bg-surface-2 px-3 py-2">
-                  <span className="font-medium text-ink">{SCENARIOS[k].label}:</span> <span className="text-muted">{y === null ? `${years} yılda hedefe ulaşılmıyor` : y === 0 ? 'Hedef şimdiden karşılanıyor' : `Hedefe ${y}. yılda ulaşılıyor`}</span>
-                </li>
-              )
-            })}
+            .map((k) => (
+              <li key={k} className="rounded-xl bg-surface-2 px-3 py-2">
+                <div className="font-medium text-ink">
+                  {SCENARIOS[k].label} <span className="text-[12px] font-normal text-subtle">(%{a.returns[k].toLocaleString('tr-TR')} reel)</span>
+                </div>
+                <div className="num text-muted">{reachText(sims[k].reachMonths)}</div>
+              </li>
+            ))}
         </ul>
-        {baseline !== null && <p className="mt-2 text-[12px] text-subtle">Hiçbir değişiklik olmadan orta varsayımla hedefe yaklaşık {Math.ceil(baseline / 12)} yılda ulaşılır.</p>}
+        {changed && diff !== null && (
+          <p className="mt-2 text-[12.5px] text-muted" aria-live="polite">
+            Değişikliklerinizle orta varsayımda hedef{' '}
+            <span className={cn('font-semibold', diff > 0 ? 'text-danger' : diff < 0 ? 'text-accent' : 'text-ink')}>{diff === 0 ? 'aynı tarihte' : diff > 0 ? `${durationLabel(diff)} gecikiyor` : `${durationLabel(-diff)} erken`}</span>
+            {diff === 0 ? ' kalıyor.' : '.'}
+          </p>
+        )}
       </Card>
 
       <Card className="overflow-x-auto p-5" aria-label="Senaryo tablosu">
@@ -223,6 +261,57 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
         Bu senaryolar olasılık veya garanti değildir; girdiğiniz varsayımlarla yapılan basit hesaplardır. Gerçek getiri, enflasyon ve gelir farklı olabilir. Yatırım tavsiyesi içermez; hangi ürünün alınıp satılacağını söylemez.
       </Alert>
     </div>
+  )
+}
+
+function Slider({ id, label, value, min, max, step = 1, onChange, display, hint, disabled }: { id: string; label: string; value: number; min: number; max: number; step?: number; onChange: (v: number) => void; display: (v: number) => string; hint?: string; disabled?: boolean }) {
+  return (
+    <div className={cn('flex flex-col gap-1.5', disabled && 'opacity-50')}>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={id} className="text-[13px] font-medium text-muted">
+          {label}
+        </label>
+        <span className="num text-[13.5px] font-semibold text-ink" aria-hidden>
+          {display(value)}
+        </span>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        aria-valuetext={display(value)}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-2 w-full cursor-pointer accent-[var(--accent)]"
+      />
+      {hint && <p className="text-[12px] text-subtle">{hint}</p>}
+    </div>
+  )
+}
+
+/** Tutar alanı: geçersiz yazımda son geçerli değer korunur ve uyarı gösterilir; boş = 0. */
+function MoneyField({ id, label, value, onChange, hint }: { id: string; label: string; value: number; onChange: (v: number) => void; hint?: string }) {
+  const [text, setText] = useState(() => (value ? formatKurusPlain(value) : ''))
+  const [bad, setBad] = useState(false)
+  const change = (t: string) => {
+    setText(t)
+    if (!t.trim()) {
+      setBad(false)
+      return onChange(0)
+    }
+    const p = parseUserAmount(t)
+    if (p.ok && p.kurus >= 0) {
+      setBad(false)
+      onChange(p.kurus)
+    } else setBad(true)
+  }
+  return (
+    <Field label={label} htmlFor={id} hint={hint} error={bad ? 'Geçerli bir tutar girin; son geçerli tutar kullanılıyor.' : undefined}>
+      <Input id={id} inputMode="decimal" value={text} onChange={(e) => change(e.target.value)} onBlur={() => !bad && setText(value ? formatKurusPlain(value) : '')} placeholder="0,00" aria-invalid={bad || undefined} />
+    </Field>
   )
 }
 

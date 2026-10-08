@@ -259,11 +259,24 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   // Denge ve başlangıç fonu tamam, borç yok: sıradaki acil durum fonu
   await expect(page.getByRole('region', { name: 'Rota', exact: true })).toContainText('Seviye 3/8')
   await expect(page.getByRole('region', { name: 'Rota', exact: true })).toContainText('sıradaki aşama Acil durum fonu')
+  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toContainText('Hedef: Kenarda 60.000 ₺ hızlı kullanılabilir para')
+  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toContainText('Kalan: 20.000 ₺ daha biriktirin')
+  await expect(page.getByRole('region', { name: 'Test çağrısı' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Testi yenile · bu ay 1 hak' })).toBeVisible()
   const stages = page.getByRole('list', { name: 'Aşamalar' })
-  await expect(stages.getByRole('listitem')).toHaveCount(8)
-  await expect(stages.getByRole('listitem').filter({ hasText: 'Bütçe dengesi' })).toContainText('Tamamlandı')
-  await expect(stages.getByRole('listitem').filter({ hasText: 'Acil durum fonu' })).toContainText('20.000 ₺ daha biriktirin')
-  await expect(stages.getByRole('listitem').filter({ hasText: 'Düzenli birikim' })).toContainText('Tamamlandı')
+  const stage = (name: string) => stages.locator(':scope > li').filter({ hasText: name })
+  await expect(stages.locator(':scope > li')).toHaveCount(8)
+  await expect(stage('Bütçe dengesi')).toContainText('Tamamlandı')
+  // Sıradaki aşamanın kalan koşulları açık; süre bugünkü birikim hızıyla
+  await expect(stage('Acil durum fonu').getByRole('list', { name: 'Acil durum fonu koşulları' })).toContainText('20.000 ₺ daha biriktirin')
+  await expect(stage('Acil durum fonu')).toContainText('bu hızla ~1 ay')
+  await expect(stage('Düzenli birikim')).toContainText('Tamamlandı')
+  // Diğer aşamalar dokununca açılır
+  await expect(stage('Finansal güvence').getByRole('list')).toHaveCount(0)
+  await stage('Finansal güvence').getByRole('button').click()
+  await expect(stage('Finansal güvence').getByRole('list', { name: 'Finansal güvence koşulları' })).toContainText('Net birikim')
+  const midReach = (await page.getByRole('region', { name: 'Tahmini rota' }).textContent())?.match(/Orta varsayım: (\S+ \d{4})/)?.[1]
+  expect(midReach).toBeTruthy()
   await expect(page.getByText(/Kilometre taşı:/)).toBeVisible()
 
   // Sekmeler: yatırımlar, borçlar, bu ay ve bütün ölçütler
@@ -297,6 +310,17 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   const table = page.getByRole('region', { name: 'Senaryo tablosu' })
   await expect(table).toContainText('40.000,00 ₺')
   await expect(page.getByRole('list', { name: 'Hedefe ulaşma' })).toContainText('Temkinli')
+  // Senaryolar yolculukla aynı hedef ve tahmini kullanır
+  await expect(page.getByRole('region', { name: 'Başlangıç noktası' })).toContainText('7.500.000,00 ₺')
+  await expect(page.getByRole('region', { name: 'Başlangıç noktası' })).toContainText(midReach!)
+  await expect(page.getByRole('list', { name: 'Hedefe ulaşma' }).getByRole('listitem').filter({ hasText: 'Orta' })).toContainText(midReach!)
+  // Geçersiz tutar son geçerli değeri korur
+  await page.getByLabel('Ek aylık birikim (TL)').fill('abc')
+  await expect(page.getByRole('region', { name: 'Varsayımlar' }).getByRole('alert')).toContainText('Geçerli bir tutar girin')
+  await page.getByLabel('Ek aylık birikim (TL)').fill('10.000')
+  await expect(page.getByText(/erken\./)).toBeVisible()
+  await page.getByRole('button', { name: 'Varsayılanlara dön' }).click()
+  await expect(page.getByLabel('Ek aylık birikim (TL)')).toHaveValue('')
   // Gelir kaybı ilk yılda birikimi azaltır
   const before = await table.getByRole('row').nth(2).textContent()
   await page.getByLabel('Gelir kaybı (ay)').fill('6')
@@ -359,4 +383,40 @@ test('Plus+ koç: borç önce kapanır, yatırım tutarı ve yapılandırma hesa
   await expect(page.getByRole('link', { name: 'Koç mesajları' })).toBeVisible()
   await page.goto('./#/koc')
   await expect(page.getByRole('radio', { name: 'Önce en küçük borç' })).toHaveAttribute('aria-checked', 'true')
+})
+
+test('Plus+ yolculuk: testi olmayan eski profilde test çağrısı görünür ve test açılır', async ({ page }) => {
+  await open(page, 'paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
+  await page.goto('./#/yolculuk')
+  await takeFreedomTest(page, { income: '50.000', essential: '20.000', target: '25.000' })
+  // Eski anketle oluşturulmuş profil: test tarihi yok
+  await page.evaluate(async () => {
+    for (const { name } of await indexedDB.databases()) {
+      if (!name) continue
+      const db = await new Promise<IDBDatabase>((ok, ko) => {
+        const r = indexedDB.open(name)
+        r.onsuccess = () => ok(r.result)
+        r.onerror = () => ko(r.error)
+      })
+      if (!db.objectStoreNames.contains('settings')) continue
+      await new Promise<void>((ok) => {
+        const store = db.transaction('settings', 'readwrite').objectStore('settings')
+        const g = store.get('settings')
+        g.onsuccess = () => {
+          const s = g.result
+          if (s?.journey) {
+            delete s.journey.tests
+            store.put(s).onsuccess = () => ok()
+          } else ok()
+        }
+      })
+      db.close()
+    }
+  })
+  await page.reload()
+  const cta = page.getByRole('region', { name: 'Test çağrısı' })
+  await expect(cta).toContainText('Finansal özgürlük testini henüz yapmadınız')
+  await cta.getByRole('button', { name: 'Testi başlat' }).click()
+  await expect(page.getByRole('region', { name: 'Finansal özgürlük testi' })).toBeVisible()
 })

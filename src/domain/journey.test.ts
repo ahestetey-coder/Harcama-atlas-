@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { averageMonthlyExpense, buildJourney, emergencyMonthsFor, formatInBase, indexFactor, monthsToTarget, projectScenario, rebase, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
+import { averageMonthlyExpense, buildJourney, durationLabel, emergencyMonthsFor, formatInBase, indexFactor, monthsToTarget, projectScenario, rebase, simulatePlan, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
 import { normalizeText } from './normalize'
 import type { Transaction } from './types'
 
@@ -95,6 +95,37 @@ describe('finansal özgürlük yolculuğu', () => {
     expect(j.stages[0].done).toBe(false)
     expect(j.stages[0].next).toContain('azaltmak')
     expect(j.indicators.route.cautious).toBeNull()
+  })
+  it('her aşamanın hedefi ve kalan koşulları süresiyle birlikte hesaplanır', () => {
+    const j = buildJourney(profile(), facts({ consumerDebtKurus: 600000, monthlyDebtPaymentKurus: 0 }))
+    const debt = j.stages.find((s) => s.id === 'debt')!
+    expect(debt.goal).toContain('Yüksek faizli borç kalmasın')
+    expect(debt.conditions).toHaveLength(2)
+    expect(debt.conditions[0]).toMatchObject({ done: false, left: 600000 })
+    expect(debt.conditions[1].done).toBe(true)
+    const saving = j.indicators.monthlySavingKurus
+    expect(debt.etaMonths).toBe(Math.ceil(600000 / saving))
+    const em = j.stages.find((s) => s.id === 'emergency')!
+    const c = em.conditions[0]
+    expect(c.left).toBe(c.target - c.now)
+    expect(c.etaMonths).toBe(c.left > 0 ? Math.ceil(c.left / saving) : undefined)
+    const freedom = j.stages.at(-1)!
+    expect(freedom.conditions[0].target).toBe(j.indicators.goalKurus)
+    expect(freedom.etaMonths).toBe(j.indicators.route.mid)
+  })
+  it('senaryo hesabı ve yolculuk tahmini aynı sonucu verir; süre grafik ufkundan bağımsızdır', () => {
+    const input = { startKurus: 100000, monthlySavingKurus: 10000, years: 1, inflationPct: 0, extraSavingKurus: 0, incomeLossMonths: 0, incomeLossMonthlySpendKurus: 0, bigExpenseKurus: 0, bigExpenseYear: 1 }
+    const sim = simulatePlan(input, 2, 5000000)
+    expect(sim.points).toHaveLength(2)
+    expect(sim.reachMonths).toBe(monthsToTarget(100000, 10000, 5000000, 2))
+    expect(sim.reachMonths!).toBeGreaterThan(12)
+    // Gelir kaybı hedefi geciktirir
+    expect(simulatePlan({ ...input, incomeLossMonths: 6, incomeLossMonthlySpendKurus: 20000 }, 2, 5000000).reachMonths!).toBeGreaterThan(sim.reachMonths!)
+    expect(simulatePlan({ ...input, monthlySavingKurus: 0 }, 0, 5000000).reachMonths).toBeNull()
+    expect(durationLabel(0)).toBe('Şimdi')
+    expect(durationLabel(7)).toBe('7 ay')
+    expect(durationLabel(24)).toBe('2 yıl')
+    expect(durationLabel(173)).toBe('14 yıl 5 ay')
   })
   it('hedefe kalan ayları hesaplar', () => {
     expect(monthsToTarget(0, 100, 1200, 0)).toBe(12)
