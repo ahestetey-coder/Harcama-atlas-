@@ -169,6 +169,7 @@ const settingsSchema = z.object({
       warnPct: z.number().int().min(50).max(100),
     })
     .optional(),
+  budgetMode: z.enum(['auto', 'manual']).optional(),
   journey: z
     .object({
       goal: z.enum(['independence', 'security', 'early-retire', 'custom']),

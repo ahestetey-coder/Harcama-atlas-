@@ -32,6 +32,47 @@ test('Plus bütçe: ücretsizde kilitli; önizlemede kategori limiti, uyarı ve 
   await expect(page.getByRole('link', { name: /Bütçe planı.*1 uyarı/ })).toBeVisible()
 })
 
+test('Koçun bütçesi: gelirden otomatik kurulur, pakete göre genişler, elle moda geçilebilir', async ({ page }) => {
+  await open(page, 'butce')
+  const card = page.getByRole('region', { name: 'Koçun bütçesi' })
+  await expect(card).toContainText('aylık gelirinizi bilmesi gerekiyor')
+  await card.getByRole('button', { name: 'Gelir ekle' }).click()
+  const form = page.getByRole('dialog', { name: 'Gelir ekle' })
+  await form.getByLabel('Tutar (TL)').fill('40.000')
+  await form.getByLabel('Açıklama / iş yeri').fill('Maaş')
+  await form.getByRole('button', { name: 'Kaydet', exact: true }).click()
+  await expect(form).toBeHidden()
+  // Ücretsiz: gelirin %10'u birikime, kalan toplam bütçe
+  await expect(card).toContainText('36.000,00 ₺')
+  await expect(card).toContainText('Genel birikim payı')
+  await expect(card).toContainText("Plus'ta koç birikim hedeflerini")
+  await page.goto('./#/')
+  await expect(page.getByRole('region', { name: 'Aylık bütçe' })).toContainText('Koç belirledi')
+
+  // Plus: haftalık bütçeyi de koç kurar
+  await open(page, 'paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
+  await open(page, 'butce')
+  await expect(card).toContainText(/haftada [\d.]+,00 ₺/)
+  await expect(card).toContainText("Plus+'ta koç")
+
+  // Elle moda geçince koçun değerleri başlangıç olarak kalır
+  await card.getByRole('radiogroup', { name: 'Bütçeyi kim belirlesin' }).getByRole('radio', { name: 'Elle' }).click()
+  await expect(card).toContainText('Koçun önerisi')
+  await expect(page.getByRole('progressbar', { name: 'Toplam bütçe kullanımı' })).toBeVisible()
+  await card.getByRole('button', { name: 'Koçun bütçesini kullan' }).click()
+  await expect(card).toContainText('Serbest harcama')
+
+  // Koçun bir değerini elle değiştirmek elle moda geçirir
+  await page.getByRole('button', { name: 'Düzenle' }).first().click()
+  const dlg = page.getByRole('dialog', { name: 'Toplam bütçe' })
+  await expect(dlg).toContainText('Bu değeri koç belirledi')
+  await dlg.getByLabel('Tutar (TL)').fill('30.000')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(card.getByRole('radio', { name: 'Elle' })).toBeChecked()
+  await expect(page.getByText('/ 30.000,00 ₺')).toBeVisible()
+})
+
 test('Plus düzenli ödemeler: abonelik eklenir, yaklaşan ödeme ve panel hatırlatması görünür', async ({ page }) => {
   await open(page, 'paketler')
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()

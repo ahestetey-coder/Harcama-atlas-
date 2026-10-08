@@ -18,7 +18,7 @@ import { isSpending, type Member, type SpendGroup, type Transaction } from '../d
 import { FEATURE_PLAN, type Feature } from '../domain/plans'
 import { AnimatedKurus } from '../components/ui/AnimatedMoney'
 import { cn } from '../lib/cn'
-import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useSettings, useTransactions } from '../state/data'
+import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useTransactions } from '../state/data'
 import { useCloud, useMemberFilter, useMembers } from '../state/cloud'
 import { setGroupBudget } from '../cloud/sync'
 import { cloudErrorMessage } from '../cloud/errors'
@@ -27,7 +27,7 @@ import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 import { usePlan } from '../state/plan'
 import { PlanBadge } from '../components/PlanGate'
-import { useBudgetStatus, useDuePayments } from '../state/budget'
+import { useBudgetSetup, useBudgetStatus, useDuePayments } from '../state/budget'
 import { useCoach } from '../state/coach'
 
 const MAX_SLICES = 7
@@ -51,7 +51,7 @@ export default function DashboardPage() {
     [groupFilter, allTxs, personal, person.value, person.selfId],
   )
   const categories = useCategoryMap()
-  const settings = useSettings()
+  const budgetSetup = useBudgetSetup()
   const { month, setMonth, openTransactionForm, openImport } = useUi()
   const { isDemo, setDemo } = useData()
   const navigate = useNavigate()
@@ -119,7 +119,8 @@ export default function DashboardPage() {
   const isCurrent = month === currentPeriod(startDay)
   const isFuture = month > currentPeriod(startDay)
   const label = periodLabel(month, startDay)
-  const budget = settings?.monthlyBudgetKurus ?? null
+  const budget = budgetSetup?.monthlyKurus ?? null
+  const coachBudget = budgetSetup?.mode === 'auto' && !!budgetSetup.auto
   const openCategory = (c: CategoryTotal) => {
     const cat = c.categoryId ? categories.get(c.categoryId) : undefined
     setDrawer({ title: cat?.name ?? 'Kategorisiz', categoryId: c.categoryId, filter: (t) => isSpending(t) && (t.categoryId ?? null) === c.categoryId })
@@ -302,10 +303,17 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between gap-2 text-[13px]">
                       <span className="flex items-center gap-1.5 font-semibold text-white/85">
                         <Target className="size-4" /> Aylık bütçe
+                        {coachBudget && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">Koç belirledi</span>}
                       </span>
-                      <button type="button" onClick={() => setBudgetOpen(true)} className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
-                        Düzenle
-                      </button>
+                      {coachBudget ? (
+                        <Link to="/butce" className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
+                          Ayrıntı
+                        </Link>
+                      ) : (
+                        <button type="button" onClick={() => setBudgetOpen(true)} className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
+                          Düzenle
+                        </button>
+                      )}
                     </div>
                     <BudgetBar budget={budget} net={summary.netKurus} />
                     <BudgetPlanLink />
@@ -717,7 +725,7 @@ function BudgetModal({ open, onOpenChange, current }: { open: boolean; onOpenCha
       kurus = p.kurus
     }
     try {
-      await repo.saveSettings({ monthlyBudgetKurus: kurus })
+      await repo.saveSettings({ monthlyBudgetKurus: kurus, budgetMode: 'manual' })
       toast(kurus ? 'Bütçe kaydedildi.' : 'Bütçe kaldırıldı.')
       onOpenChange(false)
     } catch (e) {

@@ -10,9 +10,10 @@ import { ConfirmDialog } from '../components/ui/Modal'
 import { Alert, Badge, Button, Card, Field, Input, Segmented, Select, Switch } from '../components/ui/primitives'
 import { APP_CONFIG } from '../config/app'
 import { toUserMessage } from '../data/repository'
-import { formatKurusPlain, parseUserAmount } from '../domain/money'
+import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { PAYMENT_LABEL, type PaymentMethod, type ThemePreference } from '../domain/types'
 import { downloadOcrAssets, ocrAssetInfo, ocrCacheStatus } from '../import/ocr'
+import { useBudgetSetup } from '../state/budget'
 import { useData, useSettings } from '../state/data'
 import { useTheme } from '../state/theme'
 import { useUi } from '../state/ui'
@@ -21,6 +22,7 @@ export default function SettingsPage() {
   const { preference, setPreference } = useTheme()
   const { repo, isDemo, setDemo } = useData()
   const settings = useSettings()
+  const budgetSetup = useBudgetSetup()
   const { toast } = useUi()
   const [budget, setBudget] = useState('')
   const [budgetErr, setBudgetErr] = useState<string>()
@@ -48,7 +50,7 @@ export default function SettingsPage() {
       k = p.kurus
     }
     setBudgetErr(undefined)
-    await repo.saveSettings({ monthlyBudgetKurus: k })
+    await repo.saveSettings({ monthlyBudgetKurus: k, budgetMode: 'manual' })
     toast(k ? 'Bütçe kaydedildi.' : 'Bütçe kaldırıldı.')
   }
 
@@ -81,9 +83,21 @@ export default function SettingsPage() {
             <Target className="size-5 text-accent" /> Bütçe ve varsayılanlar
           </h2>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Aylık bütçe (TL)" htmlFor="set-budget" optional error={budgetErr}>
-              <Input id="set-budget" className="num" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} onBlur={saveBudget} placeholder="Ör. 30.000" />
-            </Field>
+            {budgetSetup?.mode === 'auto' && budgetSetup.auto ? (
+              <div className="text-sm">
+                <div className="font-medium text-ink">Aylık bütçe</div>
+                <p className="mt-1 text-muted">
+                  Koç belirliyor: <span className="num font-semibold text-ink">{formatKurus(budgetSetup.auto.totalKurus)}</span>.{' '}
+                  <Link to="/butce" className="font-medium text-accent hover:underline">
+                    Bütçe sayfasından değiştirin
+                  </Link>
+                </p>
+              </div>
+            ) : (
+              <Field label="Aylık bütçe (TL)" htmlFor="set-budget" optional error={budgetErr}>
+                <Input id="set-budget" className="num" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} onBlur={saveBudget} placeholder="Ör. 30.000" />
+              </Field>
+            )}
             <Field label="Varsayılan ödeme aracı" htmlFor="set-pay" optional>
               <Select
                 id="set-pay"

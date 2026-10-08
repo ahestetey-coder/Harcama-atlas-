@@ -1,21 +1,23 @@
-import { AlertTriangle, CalendarRange, Pencil, Plus, Repeat, Target, Trash2, TrendingUp } from 'lucide-react'
+import { AlertTriangle, CalendarRange, Pencil, Plus, Repeat, Sparkles, Target, Trash2, TrendingUp } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { CategoryIcon, MonthSwitcher } from '../components/common'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { Modal } from '../components/ui/Modal'
-import { Button, Card, EmptyState, Field, IconButton, Input, Segmented, Select, Switch } from '../components/ui/primitives'
+import { Alert, Button, Card, EmptyState, Field, IconButton, Input, Segmented, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
+import type { BudgetMode } from '../domain/autoBudget'
 import { DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus, type LimitStatus } from '../domain/budget'
-import { formatDate, periodLabel } from '../domain/dates'
+import { currentPeriod as currentPeriodFor, formatDate, periodLabel } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { cn } from '../lib/cn'
 import { usePersonalCycle } from '../state/cycle'
 import { useCategories, useCategoryMap, useRepo, useSettings } from '../state/data'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
-import { useBudgetStatus } from '../state/budget'
+import { useBudgetSetup, useBudgetStatus } from '../state/budget'
+import { usePlan } from '../state/plan'
 
 const EMPTY_STATUS: BudgetStatus = { total: null, categories: [], week: null, forecast: null, warnings: [] }
 
@@ -25,6 +27,7 @@ export default function BudgetPage() {
   return (
     <div>
       <BudgetHeader />
+      <CoachBudgetCard />
       <PlanGate
         feature="advancedBudget"
         title="Gelişmiş bütçe"
@@ -65,15 +68,19 @@ function BudgetContent() {
   const catMap = useCategoryMap()
   const repo = useRepo()
   const { month, toast } = useUi()
+  const setup = useBudgetSetup()
   const [editing, setEditing] = useState<Editing>(null)
-  const plan: BudgetPlan = settings?.budgetPlan ?? DEFAULT_BUDGET_PLAN
-  const monthly = settings?.monthlyBudgetKurus ?? null
+  // Kayıtlı ayarlar (devir, uyarı eşiği bunlardan okunur); ekranda koçun değerleri dahil geçerli plan gösterilir
+  const stored: BudgetPlan = settings?.budgetPlan ?? DEFAULT_BUDGET_PLAN
+  const plan: BudgetPlan = setup?.plan ?? stored
+  const monthly = setup?.monthlyKurus ?? null
+  const byCoach = setup?.mode === 'auto' && !!setup.auto
 
   const s = useBudgetStatus(month) ?? EMPTY_STATUS
 
   const savePlan = async (patch: Partial<BudgetPlan>, msg?: string) => {
     try {
-      await repo.saveSettings({ budgetPlan: { ...plan, ...patch } })
+      await repo.saveSettings({ budgetPlan: { ...stored, ...patch } })
       if (msg) toast(msg)
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
@@ -116,6 +123,7 @@ function BudgetContent() {
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
             <Target className="size-4 text-accent" /> Toplam bütçe · {label}
+            {byCoach && <CoachTag />}
           </h2>
           <Button size="sm" variant="ghost" onClick={() => setEditing({ kind: 'total' })}>
             {monthly ? 'Düzenle' : 'Belirle'}
@@ -153,6 +161,7 @@ function BudgetContent() {
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
             <CalendarRange className="size-4 text-accent" /> Haftalık bütçe
+            {byCoach && plan.weeklyKurus ? <CoachTag /> : null}
           </h2>
           <Button size="sm" variant="ghost" onClick={() => setEditing({ kind: 'week' })}>
             {plan.weeklyKurus ? 'Düzenle' : 'Belirle'}
@@ -201,7 +210,9 @@ function BudgetContent() {
 
       <Card className="p-5 lg:col-span-2">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="font-display text-base font-semibold">Kategori limitleri</h2>
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+            Kategori limitleri {byCoach && s.categories.length > 0 && <CoachTag />}
+          </h2>
           <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setEditing({ kind: 'category', categoryId: null })}>
             Limit ekle
           </Button>
@@ -242,18 +253,21 @@ function BudgetContent() {
         onClose={() => setEditing(null)}
         monthly={monthly}
         plan={plan}
+        byCoach={byCoach}
         categories={activeCats}
         onSave={async (e, kurus, catId) => {
           try {
-            if (e.kind === 'total') await repo.saveSettings({ monthlyBudgetKurus: kurus })
-            else if (e.kind === 'week') await repo.saveSettings({ budgetPlan: { ...plan, weeklyKurus: kurus } })
+            // Koçun bütçesinde bir değer değiştirilirse bütçe elle moda geçer; koçun öteki değerleri başlangıç olarak kalır
+            const base = byCoach ? { budgetMode: 'manual' as const, monthlyBudgetKurus: monthly, budgetPlan: { ...stored, categoryLimits: plan.categoryLimits, weeklyKurus: plan.weeklyKurus } } : { budgetPlan: plan }
+            if (e.kind === 'total') await repo.saveSettings({ ...base, monthlyBudgetKurus: kurus })
+            else if (e.kind === 'week') await repo.saveSettings({ ...base, budgetPlan: { ...base.budgetPlan, weeklyKurus: kurus } })
             else if (catId) {
               const limits = { ...plan.categoryLimits }
               if (kurus) limits[catId] = kurus
               else delete limits[catId]
-              await repo.saveSettings({ budgetPlan: { ...plan, categoryLimits: limits } })
+              await repo.saveSettings({ ...base, budgetPlan: { ...base.budgetPlan, categoryLimits: limits } })
             }
-            toast(kurus ? 'Kaydedildi.' : 'Kaldırıldı.')
+            toast(byCoach ? 'Kaydedildi. Bütçeyi artık elle yönetiyorsunuz.' : kurus ? 'Kaydedildi.' : 'Kaldırıldı.')
             setEditing(null)
           } catch (err) {
             toast(toUserMessage(err), { kind: 'error' })
@@ -299,6 +313,7 @@ function AmountEditor({
   onClose,
   monthly,
   plan,
+  byCoach,
   categories,
   onSave,
 }: {
@@ -306,6 +321,7 @@ function AmountEditor({
   onClose: () => void
   monthly: number | null
   plan: BudgetPlan
+  byCoach: boolean
   categories: Array<{ id: string; name: string }>
   onSave: (e: NonNullable<Editing>, kurus: number | null, categoryId?: string) => Promise<void>
 }) {
@@ -347,7 +363,13 @@ function AmountEditor({
         onClose()
       }}
       title={title}
-      description={editing?.kind === 'total' ? 'Her dönem için aynı bütçe uygulanır; net gidere göre hesaplanır.' : undefined}
+      description={
+        byCoach
+          ? 'Bu değeri koç belirledi. Kaydederseniz bütçeyi elle yönetmeye geçersiniz; koçun öteki değerleri olduğu gibi kalır.'
+          : editing?.kind === 'total'
+            ? 'Her dönem için aynı bütçe uygulanır; net gidere göre hesaplanır.'
+            : undefined
+      }
       size="sm"
       footer={
         <>
@@ -412,6 +434,135 @@ function EditorFields({
       <Field label="Tutar (TL)" htmlFor="limit-amount" error={error}>
         <Input id="limit-amount" inputMode="decimal" className="num" placeholder="Örn. 5.000" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onEnter()} />
       </Field>
+    </div>
+  )
+}
+
+function CoachTag() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">
+      <Sparkles className="size-3" /> Koç
+    </span>
+  )
+}
+
+/** Bütçeyi kimin belirlediği (koç ya da kullanıcı) ve koçun hesabının dökümü; her pakette görünür. */
+function CoachBudgetCard() {
+  const setup = useBudgetSetup()
+  const settings = useSettings()
+  const repo = useRepo()
+  const { has } = usePlan()
+  const { toast, openTransactionForm } = useUi()
+  const startDay = usePersonalCycle()
+  if (!setup || !settings) return null
+  const auto = setup.auto
+  const advanced = has('advancedBudget')
+
+  const setMode = async (m: BudgetMode) => {
+    if (m === setup.mode) return
+    try {
+      if (m === 'manual' && auto)
+        await repo.saveSettings({ budgetMode: 'manual', monthlyBudgetKurus: auto.totalKurus, ...(advanced ? { budgetPlan: setup.plan } : {}) })
+      else await repo.saveSettings({ budgetMode: m })
+      toast(m === 'auto' ? 'Bütçenizi artık koç belirliyor.' : auto ? 'Bütçeyi elle yönetiyorsunuz; koçun son değerleri başlangıç olarak kaldı.' : 'Bütçeyi elle yönetiyorsunuz.')
+    } catch (e) {
+      toast(toUserMessage(e), { kind: 'error' })
+    }
+  }
+
+  return (
+    <Card className="mb-4 p-5" aria-label="Koçun bütçesi">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+          <Sparkles className="size-5 text-accent" /> Koçun bütçesi
+        </h2>
+        <Segmented<BudgetMode>
+          label="Bütçeyi kim belirlesin"
+          value={setup.mode}
+          onChange={(v) => void setMode(v)}
+          className="w-full sm:w-auto"
+          options={[
+            { value: 'auto', label: 'Koç (otomatik)' },
+            { value: 'manual', label: 'Elle' },
+          ]}
+        />
+      </div>
+
+      {!auto ? (
+        <div className="mt-3 text-sm text-muted">
+          <p>
+            Koçun bütçe kurabilmesi için aylık gelirinizi bilmesi gerekiyor. Maaş gibi gelirlerinizi kaydedin; koç son üç dönemin ortalamasını kullanır
+            {has('journey') && !settings.journey ? ' (ya da Yolculuk testindeki gelirinizi)' : ''}.
+            {setup.mode === 'auto' && ' O zamana kadar elle girdiğiniz bütçe geçerli.'}
+          </p>
+          <Button size="sm" className="mt-3" icon={<Plus className="size-4" />} onClick={() => openTransactionForm(undefined, { type: 'income' })}>
+            Gelir ekle
+          </Button>
+        </div>
+      ) : setup.mode === 'manual' ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p className="text-muted">
+            Koçun önerisi: <span className="num font-semibold text-ink">{formatKurus(auto.totalKurus)}</span> bütçe, <span className="num font-semibold text-ink">{formatKurus(auto.savingKurus)}</span> birikim.
+            {!advanced && ' Elle girdiğiniz aylık bütçeyi Özet sayfasından değiştirebilirsiniz.'}
+          </p>
+          <Button size="sm" variant="primary" onClick={() => void setMode('auto')}>
+            Koçun bütçesini kullan
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-2">
+            <span className="num font-display text-2xl font-bold text-ink">{formatKurus(auto.totalKurus)}</span>
+            <span className="text-[13px] text-muted">{periodLabel(currentPeriodFor(startDay), startDay)} için harcama bütçesi</span>
+          </div>
+          <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2">
+            <Row label={auto.incomeSource === 'records' ? 'Gelir (kaydettiğiniz gelirler)' : 'Gelir (Yolculuk testinden)'} value={formatKurus(auto.incomeKurus)} />
+            {auto.goalsKurus > 0 && <Row label="Birikim hedefleri" value={`−${formatKurus(auto.goalsKurus)}`} />}
+            {auto.extraSavingKurus > 0 && <Row label="Genel birikim payı" value={`−${formatKurus(auto.extraSavingKurus)}`} />}
+            {auto.recurringKurus > 0 && <Row label="Bütçe içinde: düzenli ödemeler" value={formatKurus(auto.recurringKurus)} />}
+            {auto.debtKurus > 0 && <Row label="Bütçe içinde: borç ve taksitler" value={formatKurus(auto.debtKurus)} />}
+            <Row label="Serbest harcama" value={auto.weeklyKurus ? `${formatKurus(auto.flexibleKurus)} · haftada ${formatKurus(auto.weeklyKurus)}` : formatKurus(auto.flexibleKurus)} strong />
+          </dl>
+          {auto.shortfallKurus > 0 ? (
+            <Alert tone="danger" className="mt-3">
+              Düzenli ödemeler ve borç taksitleri gelirinizi {formatKurus(auto.shortfallKurus)} aşıyor; bu dönem birikim ayrılamadı.
+            </Alert>
+          ) : auto.savingCutKurus > 0 ? (
+            <Alert tone="warning" className="mt-3">
+              Ödemeler yüksek olduğu için birikimden {formatKurus(auto.savingCutKurus)} kısıldı.
+            </Alert>
+          ) : null}
+          {auto.historyKurus !== null && auto.historyKurus < auto.flexibleKurus * 0.8 && (
+            <p className="mt-2 text-[12.5px] text-muted">
+              Son dönemlerde serbest harcamanız ayda ortalama {formatKurus(auto.historyKurus)} oldu; aradaki {formatKurus(auto.flexibleKurus - auto.historyKurus)} tutarı da birikime ayırabilirsiniz.
+            </p>
+          )}
+          {auto.cutPct > 0 && (
+            <p className="mt-2 text-[12.5px] text-muted">Kategori limitleri, bütçeye sığması için son dönemlerdeki ortalamanızın %{auto.cutPct} altında.</p>
+          )}
+          <p className="mt-2 text-[12px] text-subtle">
+            Koç bütçeyi gelirinize, ödemelerinize{advanced ? ' ve birikim hedeflerinize' : ''} göre her dönem yeniden hesaplar; hesap cihazınızda yapılır. Bir değeri elle değiştirirseniz bütçe elle moda geçer.
+          </p>
+          {!has('goals') ? (
+            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
+              <PlanBadge plan="plus" /> Plus'ta koç birikim hedeflerini, taksitleri ve borç ödemelerini de hesaba katar; kategori limitleri ve haftalık bütçe kurar.
+            </p>
+          ) : !has('journey') ? (
+            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
+              <PlanBadge plan="plusplus" /> Plus+'ta koç Yolculuk testindeki gelirinizi ve gelirin %20'si birikim hedefini de kullanır.
+            </p>
+          ) : null}
+        </>
+      )}
+    </Card>
+  )
+}
+
+function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-line/60 py-1">
+      <dt className="text-muted">{label}</dt>
+      <dd className={cn('num shrink-0', strong ? 'font-semibold text-ink' : 'text-ink')}>{value}</dd>
     </div>
   )
 }
