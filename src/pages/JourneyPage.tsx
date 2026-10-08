@@ -506,20 +506,14 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
   return (
     <div className="flex flex-col gap-4">
       {!tested && (
-        <Card className="relative overflow-hidden border-accent/50 p-5" aria-label="Test çağrısı">
-          <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-accent/10 blur-2xl" aria-hidden />
-          <div className="relative flex flex-wrap items-center gap-4">
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent text-white">
-              <ClipboardCheck className="size-6" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-display text-base font-semibold">Finansal özgürlük testini henüz yapmadınız</h2>
-              <p className="mt-0.5 text-[13px] text-muted">5 kısa adım: yaşınız, gelir düzeniniz, güvenceleriniz, risk tutumunuz ve plan biriminiz. Rotanızdaki hedefler bu yanıtlarla kişiselleşir.</p>
-            </div>
-            <Button variant="primary" icon={<ClipboardCheck className="size-4" />} onClick={onRetake}>
-              Testi başlat
-            </Button>
-          </div>
+        <Card className="border-accent/50 p-4" aria-label="Test çağrısı">
+          <h2 className="flex items-center gap-2 font-display text-[15px] font-semibold">
+            <ClipboardCheck className="size-5 shrink-0 text-accent" /> Finansal özgürlük testini henüz yapmadınız
+          </h2>
+          <p className="mt-1 text-[13px] text-muted">5 kısa adım; rotanızdaki hedefler bu yanıtlarla kişiselleşir.</p>
+          <Button className="mt-3 w-full sm:w-auto" variant="primary" icon={<ClipboardCheck className="size-4" />} onClick={onRetake}>
+            Testi başlat
+          </Button>
         </Card>
       )}
 

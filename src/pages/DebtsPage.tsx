@@ -1,12 +1,12 @@
-import { CalendarClock, CreditCard, Landmark, Plus } from 'lucide-react'
+import { CalendarClock, CreditCard, Landmark, Plus, Repeat } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { ConfirmDialog } from '../components/ui/Modal'
-import { Badge, Button, Card, EmptyState } from '../components/ui/primitives'
+import { Badge, Button, Card, EmptyState, Segmented } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
-import { CONSUMER_DEBT, DEBT_TYPE_LABEL, DEBT_TYPES, debtTypeOf, holdingSummary, type Asset, type DebtType } from '../domain/assets'
+import { CONSUMER_DEBT, DEBT_TYPE_LABEL, DEBT_TYPES, debtMonthlyPayment, debtTypeOf, holdingSummary, type Asset, type DebtType } from '../domain/assets'
 import { estimatedMinPayment } from '../domain/coach'
 import { currentPeriod, formatDate, MONTH_SHORT, todayIso } from '../domain/dates'
 import { DTI_LIMIT } from '../domain/journey'
@@ -19,33 +19,81 @@ import { useAssets, useRecurring, useRepo, useSettings } from '../state/data'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 import { ActionDialog, AssetEditor, HoldingRow, type Acting, type Editing } from './AssetsPage'
+import { PaymentsContent, RecurringEditor, type Draft } from './PaymentsSection'
+
+type Section = 'borclar' | 'odemeler'
 
 export default function DebtsPage() {
+  const [params, setParams] = useSearchParams()
+  const section: Section = params.get('bolum') === 'odemeler' ? 'odemeler' : 'borclar'
+  const assets = useAssets()
   const [editing, setEditing] = useState<Editing>(null)
-  useStartNew(() => setEditing({ kind: 'debt', debtType: 'card' }))
+  const [draft, setDraft] = useState<Draft | null>(null)
+  useStartNew(() => (section === 'odemeler' ? setDraft({ kind: 'subscription' }) : setEditing({ kind: 'debt', debtType: 'card' })))
+  const go = (s: Section) =>
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        if (s === 'odemeler') next.set('bolum', 'odemeler')
+        else next.delete('bolum')
+        return next
+      },
+      { replace: true },
+    )
+  const editDebt = (id: string) => {
+    const asset = assets?.find((a) => a.id === id)
+    if (asset) setEditing({ kind: 'debt', asset })
+  }
   return (
     <div>
       <PageHeader
-        title="Borçlarım"
+        title="Borçlar ve ödemeler"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Kredi kartı, krediler, kişisel borçlar ve kart taksitleri
+            <PlanBadge plan="plus" /> Borçlar, taksitler ve düzenli ödemeler tek yerde
           </span>
         }
         actions={
-          <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEditing({ kind: 'debt', debtType: 'card' })}>
-            Borç ekle
-          </Button>
+          section === 'odemeler' ? (
+            <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setDraft({ kind: 'subscription' })}>
+              Ödeme ekle
+            </Button>
+          ) : (
+            <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEditing({ kind: 'debt', debtType: 'card' })}>
+              Borç ekle
+            </Button>
+          )
         }
       />
-      <PlanGate
-        feature="assets"
-        title="Borçlarım"
-        points={['Borçlarınızı türüne göre (kart, kredi, KMH, kişisel…) kaydedin', 'Kredi kartı ekstrelerindeki taksitlerin gelecek dönemlere dağılımını görün', 'Aylık borç ödemenizi ve borç/gelir oranınızı izleyin']}
-      >
-        <DebtsContent onEdit={setEditing} />
-        <AssetEditor editing={editing} onClose={() => setEditing(null)} />
-      </PlanGate>
+      <Segmented
+        label="Bölüm"
+        className="mb-4 w-full sm:w-auto"
+        value={section}
+        onChange={go}
+        options={[
+          { value: 'borclar', label: 'Borçlarım', icon: <Landmark className="size-4" /> },
+          { value: 'odemeler', label: 'Düzenli ödemeler', icon: <Repeat className="size-4" /> },
+        ]}
+      />
+      {section === 'borclar' ? (
+        <PlanGate
+          feature="assets"
+          title="Borçlarım"
+          points={['Borçlarınızı türüne göre (kart, kredi, KMH, kişisel…) kaydedin', 'Aylık taksitli borçlar düzenli ödemelere eklenir, kalan borç kendiliğinden azalır', 'Aylık borç ödemenizi ve borç/gelir oranınızı izleyin']}
+        >
+          <DebtsContent onEdit={setEditing} />
+        </PlanGate>
+      ) : (
+        <PlanGate
+          feature="subscriptions"
+          title="Düzenli ödemeler ve taksitler"
+          points={['Abonelik, kira ve faturaları kaydedin; ödeme gününden önce hatırlatılın', 'Ekstredeki ve borçlarınızdaki taksitleri ve gelecek ayların yükünü görün', 'Ödeme günü gelen taksitler aylık özete gider olarak yansır']}
+        >
+          <PaymentsContent onEdit={setDraft} onEditDebt={editDebt} />
+        </PlanGate>
+      )}
+      <AssetEditor editing={editing} onClose={() => setEditing(null)} />
+      <RecurringEditor draft={draft} onClose={() => setDraft(null)} />
     </div>
   )
 }
@@ -79,7 +127,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   const total = open.reduce((s, r) => s + r.s.valueKurus, 0) + installmentsKurus
   const consumer = open.filter((r) => CONSUMER_DEBT.includes(r.type)).reduce((s, r) => s + r.s.valueKurus, 0)
   const monthly =
-    open.reduce((s, r) => s + Math.min(r.s.valueKurus, r.asset.debtTerms?.minPaymentKurus ?? estimatedMinPayment(r.s.valueKurus, r.asset.debtTerms?.monthlyRatePct ?? 0)), 0) + (load[0]?.totalKurus ?? 0)
+    open.reduce((s, r) => s + debtMonthlyPayment(r.asset, r.s.valueKurus, today, estimatedMinPayment), 0) + (load[0]?.totalKurus ?? 0)
   const income = settings?.journey ? settings.journey.monthlyIncomeKurus + (settings.journey.passiveIncomeKurus ?? 0) : null
   const dti = income ? monthly / income : null
   const types = DEBT_TYPES.filter((t) => rows.some((r) => r.type === t))
@@ -137,12 +185,12 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
 
       <Card className="p-5 lg:col-span-2" aria-label="Kart taksitleri">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <CalendarClock className="size-5 text-accent" /> Taksitler ve gelecek dönemler
+          <CalendarClock className="size-5 text-accent" /> Kart ve elle eklenen taksitler
         </h2>
         {installmentsKurus === 0 ? (
           <p className="mt-2 text-sm text-muted">
             Kalan taksit yok. Kredi kartı ekstresi içe aktardığınızda "3/12 taksit" gibi satırlar burada kendiliğinden görünür; elle eklemek için{' '}
-            <Link to="/odemeler" className="font-medium text-accent">
+            <Link to="/borclar?bolum=odemeler" className="font-medium text-accent">
               Düzenli ödemeler
             </Link>
             .

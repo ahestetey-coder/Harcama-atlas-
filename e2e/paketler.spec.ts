@@ -35,15 +35,17 @@ test('Plus bütçe: ücretsizde kilitli; önizlemede kategori limiti, uyarı ve 
 test('Plus düzenli ödemeler: abonelik eklenir, yaklaşan ödeme ve panel hatırlatması görünür', async ({ page }) => {
   await open(page, 'paketler')
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
+  // Eski adres, Borçlar ve ödemeler sayfasının Düzenli ödemeler bölümüne yönlenir
   await page.goto('./#/odemeler')
-  await expect(page.getByRole('heading', { name: 'Düzenli ödemeler', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Borçlar ve ödemeler', level: 1 })).toBeVisible()
+  await expect(page.getByRole('radiogroup', { name: 'Bölüm' }).getByRole('radio', { name: 'Düzenli ödemeler' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByText('Henüz düzenli ödeme yok')).toBeVisible()
 
   const tomorrow = await page.evaluate(() => {
     const d = new Date(Date.now() + 86_400_000)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
-  await page.getByRole('button', { name: 'Ekle', exact: true }).click()
+  await page.getByRole('button', { name: 'Ödeme ekle', exact: true }).click()
   const dlg = page.getByRole('dialog', { name: 'Düzenli ödeme ekle' })
   await dlg.getByLabel('Ad').fill('Dijital yayın')
   await dlg.getByLabel('Tutar (TL)').fill('229,99')
@@ -208,21 +210,53 @@ test('Plus yatırımlarım ve borçlarım: altın eklenir, fiyat güncellenir, s
   dlg = page.getByRole('dialog', { name: 'Borç ekle' })
   await expect(dlg.getByLabel('Borç türü')).toHaveValue('card')
   await expect(dlg.getByLabel('Ad', { exact: true })).toHaveValue('Kredi kartı')
-  await dlg.getByLabel('Kalan borç (TL)').fill('6.000')
+  await expect(dlg.getByRole('radio', { name: 'Tek seferde' })).toHaveAttribute('aria-checked', 'true')
+  await dlg.getByLabel('Borç tutarı (TL)').fill('6.000')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dlg).toBeHidden()
   await page.getByRole('button', { name: 'Konut kredisi' }).click()
   dlg = page.getByRole('dialog', { name: 'Borç ekle' })
   await expect(dlg.getByLabel('Borç türü')).toHaveValue('mortgage')
-  await dlg.getByLabel('Kalan borç (TL)').fill('100.000')
+  // Kredilerde varsayılan aylık taksit: taksit tutarı, kalan taksit ve sıradaki tarih
+  await expect(dlg.getByRole('radio', { name: 'Aylık taksit' })).toHaveAttribute('aria-checked', 'true')
+  const day = (k: number) =>
+    page.evaluate((k) => {
+      const d = new Date(Date.now() + k * 86_400_000)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }, k)
+  await dlg.getByLabel('Taksit tutarı (TL)').fill('10.000')
+  await dlg.getByLabel('Kalan taksit sayısı').fill('10')
+  await dlg.getByLabel('Sıradaki taksit tarihi').fill(await day(1))
+  await expect(dlg.getByLabel('Kalan borç')).toContainText('100.000,00 ₺')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  // Taksidi bugün olan taşıt kredisi: bugünkü taksit ödendi sayılır ve aylık özete planlı taksit olarak yansır
+  await page.getByRole('button', { name: 'Taşıt kredisi' }).click()
+  dlg = page.getByRole('dialog', { name: 'Borç ekle' })
+  await dlg.getByLabel('Taksit tutarı (TL)').fill('2.000')
+  await dlg.getByLabel('Kalan taksit sayısı').fill('5')
+  await dlg.getByLabel('Sıradaki taksit tarihi').fill(await day(0))
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dlg).toBeHidden()
   const debtSum = page.getByRole('region', { name: 'Borç özeti' })
-  await expect(debtSum).toContainText('106.000,00 ₺')
+  await expect(debtSum).toContainText('114.000,00 ₺')
+  await expect(page.getByRole('list', { name: 'Taşıt kredisi borçları' })).toContainText('4 taksit kaldı')
   // Yüksek faizli borç yalnızca kart
   await expect(debtSum).toContainText('6.000,00 ₺')
   await expect(page.getByRole('list', { name: 'Kredi kartı borçları' })).toContainText('Kredi kartı')
   await expect(page.getByRole('list', { name: 'Konut kredisi borçları' })).toContainText('100.000,00 ₺')
+
+  // Taksitli borçlar düzenli ödemelerde
+  await page.getByRole('radiogroup', { name: 'Bölüm' }).getByRole('radio', { name: 'Düzenli ödemeler' }).click()
+  const rec = page.getByRole('list', { name: 'Düzenli ödeme listesi' })
+  await expect(rec.getByRole('listitem').filter({ hasText: 'Konut kredisi' })).toContainText('Borç taksiti')
+  await expect(rec.getByRole('listitem').filter({ hasText: 'Konut kredisi' })).toContainText('10 taksit kaldı')
+  await expect(page.getByRole('list', { name: 'Yaklaşan ödemeler' })).toContainText('Konut kredisi')
+
+  // Bugünkü taksit işlemlerde planlı taksit gideri; kaydedilmez, değiştirilemez
+  await page.goto('./#/islemler')
+  await expect(page.getByText('Taşıt kredisi (1/5. taksit)').first()).toBeVisible()
+  await expect(page.getByText('Planlı taksit').first()).toBeVisible()
 })
 
 test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve göstergeler hesaplanır', async ({ page }) => {
@@ -344,9 +378,9 @@ test('Plus+ koç: borç önce kapanır, yatırım tutarı ve yapılandırma hesa
   await page.goto('./#/borclar')
   await page.getByRole('button', { name: 'Borç ekle', exact: true }).click()
   const dlg = page.getByRole('dialog', { name: 'Borç ekle' })
-  await dlg.getByLabel('Kalan borç (TL)').fill('30.000')
+  await dlg.getByLabel('Borç tutarı (TL)').fill('30.000')
   await dlg.getByLabel('Aylık faiz (%)').fill('4,25')
-  await dlg.getByLabel('Aylık ödeme (TL)').fill('3.000')
+  await dlg.getByLabel('Asgari ödeme (TL)').fill('3.000')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dlg).toBeHidden()
   await expect(page.getByRole('list', { name: 'Kredi kartı borçları' })).toContainText('Aylık %4,25 faiz · aylık ödeme 3.000,00 ₺')

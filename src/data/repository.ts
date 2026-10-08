@@ -2,7 +2,8 @@ import Dexie from 'dexie'
 import { APP_CONFIG } from '../config/app'
 import { merchantKey, normalizeText, cleanDescription } from '../domain/normalize'
 import { PRIORITY, validateRulePattern } from '../domain/rules'
-import { quantityAt, type Asset, type AssetKind, type AssetQuote, type AssetTrade, type AssetValuation, type DebtTerms, type DebtType } from '../domain/assets'
+import { debtPlanStatus, holdingSummary, quantityAt, type Asset, type AssetKind, type AssetQuote, type AssetTrade, type AssetValuation, type DebtPlan, type DebtTerms, type DebtType } from '../domain/assets'
+import { todayIso } from '../domain/dates'
 import type { GoalContribution, SavingsGoal } from '../domain/goals'
 import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from './backup'
@@ -564,7 +565,7 @@ export class AtlasRepository {
 
   // ---------- Varlıklarım (Plus) ----------
 
-  async saveAsset(input: { id?: string; kind: AssetKind; name: string; unit: string; note?: string; archived?: boolean; debtTerms?: DebtTerms | null; quote?: AssetQuote | null; interestRatePct?: number | null; debtType?: DebtType | null }, firstTrade?: Omit<AssetTrade, 'id' | 'side'>): Promise<Asset> {
+  async saveAsset(input: { id?: string; kind: AssetKind; name: string; unit: string; note?: string; archived?: boolean; debtTerms?: DebtTerms | null; quote?: AssetQuote | null; interestRatePct?: number | null; debtType?: DebtType | null; debtPlan?: DebtPlan | null }, firstTrade?: Omit<AssetTrade, 'id' | 'side'>): Promise<Asset> {
     const name = input.name.trim().slice(0, 60)
     if (!name) throw new UserFacingError('Bir ad girin.')
     const unit = input.unit.trim().slice(0, 16) || 'adet'
@@ -583,9 +584,18 @@ export class AtlasRepository {
       interestRatePct: (prev?.kind ?? input.kind) !== 'deposit' ? undefined : input.interestRatePct === undefined ? prev?.interestRatePct : (input.interestRatePct ?? undefined),
       trades: prev?.trades ?? (firstTrade ? [{ ...firstTrade, side: 'buy', id: newId() }] : []),
       valuations: prev?.valuations ?? [],
+      debtPlan: (prev?.kind ?? input.kind) !== 'debt' ? undefined : input.debtPlan === undefined ? prev?.debtPlan : (input.debtPlan ?? undefined),
       archived: input.archived ?? prev?.archived ?? false,
       createdAt: prev?.createdAt ?? now,
       updatedAt: now,
+    }
+    // Taksitli borç tek seferliğe dönerse bakiye, taksit planındaki kalan borçla başlar
+    const today = todayIso()
+    const was = prev ? debtPlanStatus(prev.debtPlan, today) : null
+    if (was && row.debtPlan?.mode !== 'monthly') {
+      const cur = holdingSummary({ ...row, debtPlan: undefined }, today).valueKurus
+      const diff = was.balanceKurus - cur
+      if (diff !== 0) row.trades = [...row.trades, { id: newId(), side: diff > 0 ? 'buy' : 'sell', date: today, quantity: Math.abs(diff) / 100, unitPriceKurus: 100 }]
     }
     await this.db.assets.put(row)
     return row

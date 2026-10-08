@@ -2,19 +2,19 @@ import { useMemo } from 'react'
 import { budgetStatus, DEFAULT_BUDGET_PLAN, type BudgetStatus } from '../domain/budget'
 import { todayIso } from '../domain/dates'
 import { addMonthsClamped, fixedPayments, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
-import { CONSUMER_DEBT, debtTypeOf, holdingSummary, portfolio } from '../domain/assets'
+import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, portfolio } from '../domain/assets'
 import { estimatedMinPayment } from '../domain/coach'
 import { averageMonthlyExpense, type JourneyFacts } from '../domain/journey'
 import { usePersonalCycle } from './cycle'
 import { useAssets, useRecurring, useSettings } from './data'
-import { usePersonalTransactions } from './personal'
+import { useAllRecurring, usePersonalTransactions } from './personal'
 
 /** Kişisel (Tümü) bütçe durumu; düzenli ödemeler ve taksitler ay sonu tahminine katılır. */
 export function useBudgetStatus(month: string, enabled = true): BudgetStatus | null {
   const personal = usePersonalTransactions()
   const startDay = usePersonalCycle()
   const settings = useSettings()
-  const recurring = useRecurring()
+  const recurring = useAllRecurring()
   return useMemo(() => {
     if (!enabled || !personal || !settings) return null
     const today = todayIso()
@@ -29,7 +29,7 @@ export function useBudgetStatus(month: string, enabled = true): BudgetStatus | n
 /** Hatırlatma zamanı gelmiş ödemeler (önümüzdeki iki hafta içinde). */
 export function useDuePayments(enabled = true): DuePayment[] {
   const personal = usePersonalTransactions()
-  const recurring = useRecurring()
+  const recurring = useAllRecurring()
   return useMemo(() => {
     if (!enabled || !personal || !recurring) return []
     const manual = new Set(recurring.filter((i) => i.kind === 'installment' && i.matchKey).map((i) => i.matchKey!))
@@ -81,7 +81,7 @@ export function useJourneyFacts(): JourneyFacts | null {
       const bal = holdingSummary(a, today).valueKurus
       if (bal <= 0) continue
       if (CONSUMER_DEBT.includes(debtTypeOf(a))) consumer += bal
-      payments += Math.min(bal, a.debtTerms?.minPaymentKurus ?? estimatedMinPayment(bal, a.debtTerms?.monthlyRatePct ?? 0))
+      payments += debtMonthlyPayment(a, bal, today, estimatedMinPayment)
     }
     const since = addMonthsClamped(today, -3)
     for (const a of assets) {

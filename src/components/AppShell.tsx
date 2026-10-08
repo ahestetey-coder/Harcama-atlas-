@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpen, Bot, ChartColumn, CreditCard, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Repeat, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BookOpen, Bot, ChartColumn, CreditCard, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -33,11 +33,10 @@ const ITEMS = {
   txs: { to: '/islemler', label: 'İşlemler', icon: ListOrdered, tone: 'from-sky-500 to-blue-600' },
   categories: { to: '/kategoriler', label: 'Kategoriler ve gruplar', short: 'Kategoriler', icon: Tags, tone: 'from-teal-500 to-cyan-600' },
   budget: { to: '/butce', label: 'Bütçe planı', short: 'Bütçe', icon: Target, tone: 'from-amber-500 to-orange-600' },
-  payments: { to: '/odemeler', label: 'Düzenli ödemeler', short: 'Ödemeler', icon: Repeat, tone: 'from-violet-500 to-purple-600' },
   goals: { to: '/hedefler', label: 'Birikim hedefleri', short: 'Hedefler', icon: PiggyBank, tone: 'from-pink-500 to-rose-600' },
   reports: { to: '/raporlar', label: 'Raporlar', icon: ChartColumn, tone: 'from-indigo-500 to-blue-700' },
   assets: { to: '/yatirimlar', label: 'Yatırımlarım', short: 'Yatırım', icon: Wallet, tone: 'from-emerald-600 to-green-700' },
-  debts: { to: '/borclar', label: 'Borçlarım', short: 'Borç', icon: CreditCard, tone: 'from-rose-500 to-red-600' },
+  debts: { to: '/borclar', label: 'Borçlar ve ödemeler', short: 'Borçlar', icon: CreditCard, tone: 'from-rose-500 to-red-600' },
   coach: { to: '/koc', label: 'Koçum', short: 'Koç', icon: Bot, tone: 'from-cyan-500 to-emerald-500' },
   journey: { to: '/yolculuk', label: 'Finansal yolculuğum', short: 'Yolculuğum', icon: Mountain, tone: 'from-orange-500 to-red-600' },
   scenarios: { to: '/senaryolar', label: 'Gelecek senaryoları', short: 'Senaryolar', icon: TrendingUp, tone: 'from-fuchsia-500 to-purple-600' },
@@ -53,8 +52,8 @@ const ITEMS = {
 /** Kenar menüsü ve "Menü" penceresindeki bölümler. */
 const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   { title: 'Günlük', items: [ITEMS.home, ITEMS.txs, ITEMS.categories] },
-  { title: 'Planlama', items: [ITEMS.budget, ITEMS.payments, ITEMS.goals, ITEMS.reports] },
-  { title: 'Yatırım ve gelecek', items: [ITEMS.journey, ITEMS.assets, ITEMS.debts, ITEMS.coach, ITEMS.scenarios, ITEMS.learning] },
+  { title: 'Planlama', items: [ITEMS.budget, ITEMS.debts, ITEMS.goals, ITEMS.reports] },
+  { title: 'Yatırım ve gelecek', items: [ITEMS.journey, ITEMS.assets, ITEMS.coach, ITEMS.scenarios, ITEMS.learning] },
   { title: 'Hesap ve veri', items: [ITEMS.members, ITEMS.history, ITEMS.backup, ITEMS.settings, ITEMS.plans] },
 ]
 /** Mobil alt menüdeki sekmeler ("+" düğmesinin solu ve sağı). */

@@ -53,7 +53,7 @@ export function TransactionFormHost() {
     <Modal
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
-      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'income' ? 'Gelir ekle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
+      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'planned' ? 'Planlı taksit' : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'income' ? 'Gelir ekle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
       description={formState.tx ? undefined : 'Kategorisini siz seçersiniz. Paylaşılan bir gruba eklemediğiniz sürece kayıt yalnızca bu cihazda tutulur.'}
       size="md"
       side
@@ -309,8 +309,10 @@ function SharedTxView({ tx }: { tx: Transaction }) {
     <div className="flex flex-col gap-4 pt-1">
       <p className="flex items-start gap-2 rounded-2xl border border-line bg-surface-2 p-3 text-sm text-muted">
         <Lock className="mt-0.5 size-4 shrink-0" />{' '}
-        {tx.source === 'settlement'
-          ? `Grup yöneticisi bu dönemin ${group?.name ?? 'ortak'} giderini üyelere paylaştırdı. Ödediğinizle payınız arasındaki fark “Tümü” toplamınıza ${tx.type === 'refund' ? 'alacak' : 'borç'} olarak eklendi; böylece ortak gider size payınız kadar yansır.`
+        {tx.source === 'planned'
+          ? 'Bu taksit, Borçlar ve ödemeler sayfasındaki taksit planından ödeme günü geldiği için aylık özete yansıtıldı; kaydedilmez. İlgili ekstreyi ya da ödemeyi yüklediğinizde gerçek işlem onun yerini alır, iki kez sayılmaz.'
+          : tx.source === 'settlement'
+            ? `Grup yöneticisi bu dönemin ${group?.name ?? 'ortak'} giderini üyelere paylaştırdı. Ödediğinizle payınız arasındaki fark “Tümü” toplamınıza ${tx.type === 'refund' ? 'alacak' : 'borç'} olarak eklendi; böylece ortak gider size payınız kadar yansır.`
           : SHARED_READONLY}
       </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">

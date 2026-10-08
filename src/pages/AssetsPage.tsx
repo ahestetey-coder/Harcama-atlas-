@@ -33,6 +33,10 @@ import {
   type QuoteMarket,
   type DebtTerms,
   type DebtType,
+  type DebtPayMode,
+  type DebtPlan,
+  debtPlanStatus,
+  INSTALLMENT_DEBT,
   DEBT_TYPE_LABEL,
   DEBT_TYPES,
   debtTypeOf,
@@ -453,6 +457,7 @@ export function HoldingRow({
   const balance = isBalanceKind(asset.kind)
   const debt = asset.kind === 'debt'
   const stale = needsPrice(asset, s, todayIso(), STALE_DAYS)
+  const plan = debt ? debtPlanStatus(asset.debtPlan, todayIso()) : null
   return (
     <li className="py-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -475,14 +480,25 @@ export function HoldingRow({
           </div>
           <div className="text-[12px] text-muted">
             {!balance && s.price && `${formatQuantity(s.quantity)} ${asset.unit} × ${formatUnitPrice(s.price.unitPriceKurus)} · `}
-            {debt && asset.debtTerms ? (
+            {plan ? (
+              <>
+                {plan.remaining > 0 ? `${plan.remaining} taksit kaldı · ${formatKurus(asset.debtPlan!.installmentKurus!)}/ay · sıradaki ${formatDate(plan.next!)}` : 'Bütün taksitler ödendi'}
+                {asset.debtTerms?.monthlyRatePct ? ` · aylık %${asset.debtTerms.monthlyRatePct.toLocaleString('tr-TR')} faiz` : ''}
+              </>
+            ) : debt && asset.debtPlan?.dueDate ? (
+              <>
+                Ödeme tarihi {formatDate(asset.debtPlan.dueDate)}
+                {asset.debtTerms?.monthlyRatePct ? ` · aylık %${asset.debtTerms.monthlyRatePct.toLocaleString('tr-TR')} faiz` : ''}
+                {' · '}
+              </>
+            ) : debt && asset.debtTerms ? (
               <>
                 Aylık %{asset.debtTerms.monthlyRatePct.toLocaleString('tr-TR')} faiz
                 {asset.debtTerms.minPaymentKurus ? ` · aylık ödeme ${formatKurus(asset.debtTerms.minPaymentKurus)}` : ''}
                 {' · '}
               </>
             ) : null}
-            {priceSourceLabel(asset, s.price, balance)}
+            {!plan && priceSourceLabel(asset, s.price, balance)}
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -496,16 +512,18 @@ export function HoldingRow({
         </div>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {manualPrice && (
+        {manualPrice && !plan && (
           <Button size="sm" variant="soft" icon={<RefreshCw className="size-3.5" />} onClick={() => onAct('price')} disabled={s.quantity <= 0}>
             <span className="sm:hidden">Güncelle</span>
             <span className="hidden sm:inline">{balance ? 'Bakiyeyi güncelle' : 'Fiyatı güncelle'}</span>
           </Button>
         )}
-        <Button size="sm" variant="ghost" icon={<ArrowDownUp className="size-3.5" />} onClick={() => onAct('trade')}>
-          <span className="sm:hidden">{debt ? 'Ödeme' : 'İşlem'}</span>
-          <span className="hidden sm:inline">{debt ? 'Ödeme / ek borç' : balance ? 'Para yatır / çek' : 'Alış / satış'}</span>
-        </Button>
+        {!plan && (
+          <Button size="sm" variant="ghost" icon={<ArrowDownUp className="size-3.5" />} onClick={() => onAct('trade')}>
+            <span className="sm:hidden">{debt ? 'Ödeme' : 'İşlem'}</span>
+            <span className="hidden sm:inline">{debt ? 'Ödeme / ek borç' : balance ? 'Para yatır / çek' : 'Alış / satış'}</span>
+          </Button>
+        )}
         <span className="flex-1" />
         <IconButton label={`${asset.name} geçmişi`} size="sm" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
@@ -706,7 +724,7 @@ export function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () 
 export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: () => void }) {
   const repo = useRepo()
   const { toast } = useUi()
-  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '', market: 'bist' as QuoteMarket, symbol: '', debtType: 'card' as DebtType })
+  const [f, setF] = useState({ kind: 'gold' as AssetKind, name: '', unit: 'gram', qty: '', price: '', amount: '', date: todayIso(), rate: '', minPay: '', market: 'bist' as QuoteMarket, symbol: '', debtType: 'card' as DebtType, payMode: 'once' as DebtPayMode, dueDate: '', instAmount: '', instCount: '' })
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [shown, setShown] = useState<Editing>(null)
@@ -715,6 +733,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
     if (editing) {
       const a = editing.asset
       const t = a?.debtTerms
+      const plan = a ? debtPlanStatus(a.debtPlan, todayIso()) : null
       setF({
         kind: editing.kind,
         name: a?.name ?? (editing.kind === 'debt' ? DEBT_TYPE_LABEL[editing.debtType ?? 'card'] : ''),
@@ -728,12 +747,17 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
         market: a?.quote?.market ?? defaultMarket(editing.kind),
         symbol: a?.quote?.symbol ?? '',
         debtType: a ? debtTypeOf(a) : (editing.debtType ?? 'card'),
+        payMode: a?.debtPlan?.mode ?? (editing.debtType && INSTALLMENT_DEBT.includes(editing.debtType) ? 'monthly' : 'once'),
+        dueDate: plan?.next ?? a?.debtPlan?.dueDate ?? '',
+        instAmount: a?.debtPlan?.installmentKurus ? formatKurusPlain(a.debtPlan.installmentKurus) : '',
+        instCount: plan ? String(plan.remaining) : '',
       })
       setError(undefined)
     }
   }
   const isNew = !editing?.asset
   const debt = f.kind === 'debt'
+  const monthly = debt && f.payMode === 'monthly'
   const balance = isBalanceKind(f.kind)
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }))
   const pick = (sg: SymbolSuggestion) => setF((p) => ({ ...p, symbol: sg.symbol, name: tidyName(sg.name).slice(0, 60) }))
@@ -742,11 +766,23 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
     setError(undefined)
     if (!f.name.trim()) return setError('Bir ad girin.')
     let first: { date: string; quantity: number; unitPriceKurus: number } | undefined
-    if (isNew) {
+    let debtPlan: DebtPlan | undefined
+    let instKurus: number | null = null
+    if (debt && monthly) {
+      const amt = parseUserAmount(f.instAmount)
+      if (!amt.ok || amt.kurus <= 0) return setError('Geçerli bir taksit tutarı girin.')
+      const n = Number(f.instCount)
+      if (!Number.isInteger(n) || n < 1 || n > 600) return setError('Kalan taksit sayısı 1 ile 600 arasında olmalı.')
+      if (!f.dueDate) return setError('Sıradaki taksit tarihini girin.')
+      instKurus = amt.kurus
+      debtPlan = { mode: 'monthly', dueDate: f.dueDate, installmentKurus: amt.kurus, installments: n }
+      if (isNew) first = { date: todayIso(), quantity: (amt.kurus * n) / 100, unitPriceKurus: 100 }
+    } else if (debt) debtPlan = { mode: 'once', dueDate: f.dueDate || undefined }
+    if (isNew && !(debt && monthly)) {
       if (balance) {
         const amt = parseUserAmount(f.amount)
         if (!amt.ok || amt.kurus <= 0) return setError('Geçerli bir tutar girin.')
-        first = { date: f.date, quantity: amt.kurus / 100, unitPriceKurus: 100 }
+        first = { date: debt ? todayIso() : f.date, quantity: amt.kurus / 100, unitPriceKurus: 100 }
       } else {
         const q = parseQuantity(f.qty)
         const p = parsePriceKurus(f.price)
@@ -775,16 +811,17 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
       const rate = f.rate.trim() ? Number(f.rate.trim().replace(',', '.')) : null
       if (rate !== null && (!Number.isFinite(rate) || rate < 0 || rate > 100)) return setError('Aylık faiz oranı 0 ile 100 arasında olmalı.')
       let minPay: number | null = null
-      if (f.minPay.trim()) {
+      if (!monthly && f.minPay.trim()) {
         const m = parseUserAmount(f.minPay)
         if (!m.ok || m.kurus <= 0) return setError('Aylık ödeme için geçerli bir tutar girin.')
         minPay = m.kurus
       }
+      if (instKurus) minPay = instKurus
       debtTerms = rate === null && minPay === null ? null : { monthlyRatePct: rate ?? 0, minPaymentKurus: minPay }
     }
     setBusy(true)
     try {
-      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms, quote, interestRatePct, debtType: debt ? f.debtType : undefined }, first)
+      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms, quote, interestRatePct, debtType: debt ? f.debtType : undefined, debtPlan: debt ? debtPlan : undefined }, first)
       toast(isNew ? `${f.name.trim()} eklendi.` : 'Kaydedildi.')
       onClose()
     } catch (e) {
@@ -798,6 +835,8 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
   const q = parseQuantity(f.qty)
   const pr = parsePriceKurus(f.price)
   const cost = q !== null && pr !== null && q > 0 ? Math.round(q * pr) : null
+  const ia = parseUserAmount(f.instAmount)
+  const instTotal = monthly && ia.ok && ia.kurus > 0 && Number(f.instCount) > 0 ? ia.kurus * Number(f.instCount) : null
   return (
     <Modal
       open={!!editing}
@@ -842,7 +881,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
               value={f.debtType}
               onChange={(e) => {
                 const t = e.target.value as DebtType
-                setF((p) => ({ ...p, debtType: t, name: !p.name || DEBT_TYPES.some((x) => DEBT_TYPE_LABEL[x] === p.name) ? DEBT_TYPE_LABEL[t] : p.name }))
+                setF((p) => ({ ...p, debtType: t, payMode: isNew ? (INSTALLMENT_DEBT.includes(t) ? 'monthly' : 'once') : p.payMode, name: !p.name || DEBT_TYPES.some((x) => DEBT_TYPE_LABEL[x] === p.name) ? DEBT_TYPE_LABEL[t] : p.name }))
               }}
             >
               {DEBT_TYPES.map((t) => (
@@ -935,9 +974,48 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
             <Input id="asset-unit" value={f.unit} maxLength={16} onChange={(e) => set('unit', f.kind === 'fx' ? e.target.value.toUpperCase() : e.target.value)} />
           </Field>
         )}
+        {debt && (
+          <Segmented
+            label="Ödeme şekli"
+            value={f.payMode}
+            onChange={(m) => set('payMode', m)}
+            options={[
+              { value: 'once', label: 'Tek seferde' },
+              { value: 'monthly', label: 'Aylık taksit' },
+            ]}
+          />
+        )}
+        {monthly && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Taksit tutarı (TL)" htmlFor="debt-inst">
+                <Input id="debt-inst" inputMode="decimal" value={f.instAmount} onChange={(e) => set('instAmount', e.target.value)} placeholder="0,00" />
+              </Field>
+              <Field label="Kalan taksit sayısı" htmlFor="debt-count">
+                <Input id="debt-count" inputMode="numeric" value={f.instCount} onChange={(e) => set('instCount', e.target.value.replace(/\D/g, ''))} placeholder="Örn. 12" />
+              </Field>
+            </div>
+            <Field label="Sıradaki taksit tarihi" htmlFor="debt-due">
+              <Input id="debt-due" type="date" value={f.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
+            </Field>
+            {instTotal !== null && (
+              <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2 text-[13px]" aria-label="Kalan borç">
+                <span className="text-muted">Kalan borç</span>
+                <span className="num font-semibold text-ink">{formatKurus(instTotal)}</span>
+              </div>
+            )}
+            <p className="-mt-1 text-[12px] text-subtle">Taksitler düzenli ödemelere eklenir; ödeme günü gelen taksit aylık özete gider olarak yansır ve kalan borç kendiliğinden azalır.</p>
+          </>
+        )}
+        {debt && !monthly && (
+          <Field label="Ödeme tarihi" htmlFor="debt-due" optional>
+            <Input id="debt-due" type="date" value={f.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
+          </Field>
+        )}
         {isNew &&
+          !monthly &&
           (balance ? (
-            <Field label={debt ? 'Kalan borç (TL)' : 'Tutar (TL)'} htmlFor="asset-amount">
+            <Field label={debt ? 'Borç tutarı (TL)' : 'Tutar (TL)'} htmlFor="asset-amount">
               <Input id="asset-amount" inputMode="decimal" value={f.amount} onChange={(e) => set('amount', e.target.value)} placeholder="0,00" />
             </Field>
           ) : (
@@ -961,15 +1039,17 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
           ))}
         {debt && (
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Aylık faiz (%)" htmlFor="debt-rate" hint="Örn. kartta 4,25">
-              <Input id="debt-rate" inputMode="decimal" value={f.rate} onChange={(e) => set('rate', e.target.value)} placeholder="0" />
+            <Field label="Aylık faiz (%)" htmlFor="debt-rate" optional>
+              <Input id="debt-rate" inputMode="decimal" value={f.rate} onChange={(e) => set('rate', e.target.value)} placeholder="Örn. 4,25" />
             </Field>
-            <Field label="Aylık ödeme (TL)" htmlFor="debt-min" hint="Asgari ödeme veya taksit">
-              <Input id="debt-min" inputMode="decimal" value={f.minPay} onChange={(e) => set('minPay', e.target.value)} placeholder="0,00" />
-            </Field>
+            {!monthly && (
+              <Field label="Asgari ödeme (TL)" htmlFor="debt-min" optional>
+                <Input id="debt-min" inputMode="decimal" value={f.minPay} onChange={(e) => set('minPay', e.target.value)} placeholder="0,00" />
+              </Field>
+            )}
           </div>
         )}
-        {isNew && (
+        {isNew && !debt && (
           <Field label={debt ? 'Tarih' : balance ? 'Yatırma tarihi' : 'Alış tarihi'} htmlFor="asset-first-date">
             <Input id="asset-first-date" type="date" value={f.date} max={todayIso()} onChange={(e) => set('date', e.target.value)} />
           </Field>

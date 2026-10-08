@@ -1,4 +1,5 @@
-import type { IsoDate } from './types'
+import { nthDue, progressOf } from './recurring'
+import type { IsoDate, RecurringPayment } from './types'
 
 /**
  * Plus "Varlıklarım": varlıklar ve borçlar. Döviz TCMB kurundan, sembolü girilen hisse, ETF, fon, kripto ve
@@ -111,6 +112,8 @@ export interface Asset {
   debtTerms?: DebtTerms
   /** Yalnızca borçlarda: borç türü (yoksa adından tahmin edilir). */
   debtType?: DebtType
+  /** Yalnızca borçlarda: tek seferde mi, aylık taksitle mi ödenecek. */
+  debtPlan?: DebtPlan
   archived: boolean
   createdAt: string
   updatedAt: string
@@ -131,6 +134,9 @@ export const DEBT_TYPE_LABEL: Record<DebtType, string> = {
   other: 'Diğer borç',
 }
 
+/** Genellikle aylık taksitle ödenen borç türleri (eklemede varsayılan ödeme şekli). */
+export const INSTALLMENT_DEBT: DebtType[] = ['loan', 'mortgage', 'auto']
+
 /** Yüksek faizli tüketici borcu sayılan türler (finansal özgürlük rotasında önce kapatılır). */
 export const CONSUMER_DEBT: DebtType[] = ['card', 'loan', 'overdraft', 'personal']
 
@@ -146,6 +152,65 @@ export function debtTypeOf(a: Pick<Asset, 'name' | 'debtType'>): DebtType {
   if (/vergi|sgk|bağ-?kur/.test(n)) return 'tax'
   if (/arkadaş|aile|akraba|kişisel|annem|babam|kardeş/.test(n)) return 'personal'
   return 'other'
+}
+
+export type DebtPayMode = 'once' | 'monthly'
+
+export interface DebtPlan {
+  mode: DebtPayMode
+  /** Tek seferde: ödeme tarihi (isteğe bağlı). Aylık: sıradaki (ilk) taksit tarihi. */
+  dueDate?: IsoDate
+  /** Aylık: taksit tutarı (kuruş) ve `dueDate`'ten itibaren kalan taksit sayısı. */
+  installmentKurus?: number
+  installments?: number
+}
+
+/** Aylık taksitli borcun bugünkü durumu: ödenen ve kalan taksit, sıradaki tarih. */
+export function debtPlanStatus(plan: DebtPlan | undefined, today: IsoDate): { remaining: number; balanceKurus: number; next: IsoDate | null } | null {
+  if (plan?.mode !== 'monthly' || !plan.dueDate || !plan.installmentKurus || !plan.installments) return null
+  const item = {
+    cadence: 'monthly' as const,
+    startDate: plan.dueDate,
+    occurrences: plan.installments,
+  }
+  const { remaining } = progressOf(item, today)
+  const r = remaining ?? 0
+  return {
+    remaining: r,
+    balanceKurus: r * plan.installmentKurus,
+    next: r > 0 ? nthDue(item, plan.installments - r) : null,
+  }
+}
+
+/** Borçların taksit planlarından düzenli ödeme kalemleri (kaydedilmez; listelerde ve hatırlatmalarda kullanılır). */
+export function debtRecurring(assets: Asset[]): RecurringPayment[] {
+  const out: RecurringPayment[] = []
+  for (const a of assets) {
+    const p = a.debtPlan
+    if (a.kind !== 'debt' || a.archived || p?.mode !== 'monthly' || !p.dueDate || !p.installmentKurus || !p.installments) continue
+    out.push({
+      id: `debt:${a.id}`,
+      name: a.name,
+      kind: 'installment',
+      amountKurus: p.installmentKurus,
+      categoryId: null,
+      cadence: 'monthly',
+      startDate: p.dueDate,
+      occurrences: p.installments,
+      reminderDays: 3,
+      active: true,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+    })
+  }
+  return out
+}
+
+/** Borcun aylık ödemesi: taksitli borçta taksit, değilse girilen asgari ödeme ya da verilen tahmin. */
+export function debtMonthlyPayment(a: Pick<Asset, 'debtPlan' | 'debtTerms'>, balanceKurus: number, today: IsoDate, estimate: (bal: number, ratePct: number) => number): number {
+  const st = debtPlanStatus(a.debtPlan, today)
+  if (st) return st.remaining > 0 ? a.debtPlan!.installmentKurus! : 0
+  return Math.min(balanceKurus, a.debtTerms?.minPaymentKurus ?? estimate(balanceKurus, a.debtTerms?.monthlyRatePct ?? 0))
 }
 
 export interface DebtTerms {
@@ -190,6 +255,12 @@ const DAY_MS = 86400000
 
 /** Ortalama maliyet yöntemiyle özet. */
 export function holdingSummary(asset: Asset, today: IsoDate): HoldingSummary {
+  // Aylık taksitli borç: kalan borç, kalan taksitlerden hesaplanır
+  const plan = asset.kind === 'debt' ? debtPlanStatus(asset.debtPlan, today) : null
+  if (plan) {
+    const v = plan.balanceKurus
+    return { quantity: v / 100, costKurus: v, valueKurus: v, unrealizedKurus: 0, realizedKurus: 0, contributedKurus: v, price: { unitPriceKurus: 100, date: today, source: 'manual' } }
+  }
   let qty = 0
   let cost = 0
   let realized = 0

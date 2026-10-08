@@ -27,7 +27,6 @@ const loaders = {
   research: () => import('./pages/ResearchAdminPage'),
   budget: () => import('./pages/BudgetPage'),
   plans: () => import('./pages/PlansPage'),
-  payments: () => import('./pages/PaymentsPage'),
   goals: () => import('./pages/GoalsPage'),
   reports: () => import('./pages/ReportsPage'),
   assets: () => import('./pages/AssetsPage'),
@@ -49,7 +48,6 @@ const AdminPage = lazy(loaders.admin)
 const ResearchAdminPage = lazy(loaders.research)
 const BudgetPage = lazy(loaders.budget)
 const PlansPage = lazy(loaders.plans)
-const PaymentsPage = lazy(loaders.payments)
 const GoalsPage = lazy(loaders.goals)
 const ReportsPage = lazy(loaders.reports)
 const AssetsPage = lazy(loaders.assets)
@@ -106,6 +104,14 @@ function NotFound() {
 }
 
 /** Eski "Varlıklarım" bağlantıları Yatırımlarım'a gider. */
+/** Düzenli ödemeler artık Borçlarım sayfasının bir bölümü. */
+function OldPaymentsRoute() {
+  const { search } = useLocation()
+  const p = new URLSearchParams(search)
+  p.set('bolum', 'odemeler')
+  return <Navigate to={`/borclar?${p.toString()}`} replace />
+}
+
 function OldAssetsRoute() {
   const { search } = useLocation()
   return <Navigate to={`/yatirimlar${search}`} replace />
@@ -128,7 +134,7 @@ const router = createHashRouter([
       { path: '/yonetim/arastirma', element: <ResearchAdminPage /> },
       { path: '/butce', element: <BudgetPage /> },
       { path: '/paketler', element: <PlansPage /> },
-      { path: '/odemeler', element: <PaymentsPage /> },
+      { path: '/odemeler', element: <OldPaymentsRoute /> },
       { path: '/hedefler', element: <GoalsPage /> },
       { path: '/raporlar', element: <ReportsPage /> },
       { path: '/yatirimlar', element: <AssetsPage /> },

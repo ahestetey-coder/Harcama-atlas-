@@ -15,7 +15,8 @@ export function isSpending(t: { type: TxType }): boolean {
 }
 export type PaymentMethod = 'cash' | 'debit' | 'credit'
 /** settlement: ortak grup paylaşımında size düşen pay; kaydedilmez, "Tümü" görünümünde hesaplanır. */
-export type TxSource = 'manual' | 'pdf' | 'csv' | 'xlsx' | 'image' | 'demo' | 'shared' | 'settlement'
+/** planned: borç ve taksit planlarından ekrana yansıtılan, kaydedilmeyen taksit gideri. */
+export type TxSource = 'manual' | 'pdf' | 'csv' | 'xlsx' | 'image' | 'demo' | 'shared' | 'settlement' | 'planned'
 export type CategorySource = 'manual' | 'rule' | 'file' | 'confirmed-other'
 
 export interface Installment {
@@ -281,9 +282,10 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   demo: 'Demo',
   shared: 'Üyeden',
   settlement: 'Paylaşım',
+  planned: 'Planlı taksit',
 }
 
 /** Bu cihazda değiştirilemeyen işlem: üyenin harcaması veya paylaşımdaki payınız. */
 export function isReadOnlyTx(t: Pick<Transaction, 'source'>): boolean {
-  return t.source === 'shared' || t.source === 'settlement'
+  return t.source === 'shared' || t.source === 'settlement' || t.source === 'planned'
 }

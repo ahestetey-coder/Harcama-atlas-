@@ -491,7 +491,7 @@ function Shortcuts({ className }: { className?: string }) {
   const due = useDuePayments(has('subscriptions')).length
   const items: Array<{ to: string; label: string; icon: ReactNode; tone: string; feature: Feature; badge?: string }> = [
     { to: '/butce', label: 'Bütçe', icon: <Target />, tone: 'from-amber-500 to-orange-600', feature: 'advancedBudget', badge: warnings ? `${warnings} uyarı` : undefined },
-    { to: '/odemeler', label: 'Ödemeler', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', feature: 'subscriptions', badge: due ? `${due} yaklaşan` : undefined },
+    { to: '/borclar?bolum=odemeler', label: 'Ödemeler', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', feature: 'subscriptions', badge: due ? `${due} yaklaşan` : undefined },
     { to: '/hedefler', label: 'Hedefler', icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', feature: 'goals' },
     { to: '/yatirimlar', label: 'Yatırımlar', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', feature: 'assets' },
     { to: '/raporlar', label: 'Raporlar', icon: <ChartColumn />, tone: 'from-indigo-500 to-blue-700', feature: 'reports' },
@@ -581,7 +581,7 @@ function DueBanner() {
   const due = useDuePayments(has('subscriptions'))
   if (!due.length) return null
   return (
-    <Link to="/odemeler" className="mb-4 block rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-[13px] text-ink hover:brightness-105" aria-label="Yaklaşan ödemeler">
+    <Link to="/borclar?bolum=odemeler" className="mb-4 block rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-[13px] text-ink hover:brightness-105" aria-label="Yaklaşan ödemeler">
       {due.slice(0, 3).map((d) => (
         <div key={`${d.id}:${d.date}`} className="flex items-center gap-2 py-0.5">
           <CalendarClock className="size-4 shrink-0 text-warning" />

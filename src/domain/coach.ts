@@ -298,7 +298,7 @@ export function coachMessages(i: MessageInput): CoachMessage[] {
     })
   }
   for (const d of i.due.slice(0, 2)) {
-    out.push({ id: `due-${d.id}-${d.date}`, tone: 'info', title: `${d.name} ödemesi yaklaşıyor`, body: `${tl(d.amountKurus)}, son gün ${d.date.split('-').reverse().join('.')}.`, link: { to: '/odemeler', label: 'Ödemeler' } })
+    out.push({ id: `due-${d.id}-${d.date}`, tone: 'info', title: `${d.name} ödemesi yaklaşıyor`, body: `${tl(d.amountKurus)}, son gün ${d.date.split('-').reverse().join('.')}.`, link: { to: '/borclar?bolum=odemeler', label: 'Ödemeler' } })
   }
   if (i.route?.current)
     out.push({

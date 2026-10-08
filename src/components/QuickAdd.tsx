@@ -69,7 +69,7 @@ export function QuickAddSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     },
   ]
   const plan: Action[] = [
-    { key: 'recurring', label: 'Düzenli ödeme', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', run: go('/odemeler?yeni=1'), feature: 'subscriptions' },
+    { key: 'recurring', label: 'Düzenli ödeme', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', run: go('/borclar?bolum=odemeler&yeni=1'), feature: 'subscriptions' },
     { key: 'goal', label: 'Birikim hedefi', icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', run: go('/hedefler?yeni=1'), feature: 'goals' },
     { key: 'asset', label: 'Yatırım', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', run: go('/yatirimlar?yeni=1'), feature: 'assets' },
     { key: 'debt', label: 'Borç', icon: <CreditCard />, tone: 'from-rose-500 to-red-600', run: go('/borclar?yeni=1'), feature: 'assets' },

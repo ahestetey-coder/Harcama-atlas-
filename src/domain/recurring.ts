@@ -72,9 +72,11 @@ export function installmentPlans(txs: Transaction[], skipKeys: Set<string> = new
   const latest = new Map<string, Transaction>()
   for (const t of txs) {
     if (t.type !== 'expense' || !t.installment || t.installment.total < 2) continue
-    const mk = merchantKey(t.description) || t.normalizedDescription
+    // Planlı ekstre taksiti kendi planının anahtarını taşır; böylece plan zamanla ilerler
+    const planned = t.source === 'planned' && t.id.startsWith('plan:st:') ? t.id.slice(8, t.id.lastIndexOf(':')) : null
+    const mk = planned ? planned.split('|')[0] : merchantKey(t.description) || t.normalizedDescription
     if (skipKeys.has(mk)) continue
-    const key = `${mk}|${t.installment.total}|${t.amountKurus}`
+    const key = planned ?? `${mk}|${t.installment.total}|${t.amountKurus}`
     const prev = latest.get(key)
     if (!prev || t.installment.current > prev.installment!.current || (t.installment.current === prev.installment!.current && t.date > prev.date)) latest.set(key, t)
   }
@@ -156,8 +158,14 @@ export function futureLoad(items: RecurringPayment[], plans: InstallmentPlan[], 
     const month = `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, '0')}`
     const { start, end } = periodRange(month, startDay)
     let rec = 0
-    for (const it of items) if (it.active) rec += occurrencesBetween(it, start, end).length * it.amountKurus
     let inst = 0
+    // Elle eklenen taksitler ve taksitli borçlar taksit olarak sayılır
+    for (const it of items) {
+      if (!it.active) continue
+      const k = occurrencesBetween(it, start, end).length * it.amountKurus
+      if (it.kind === 'installment') inst += k
+      else rec += k
+    }
     for (const p of plans) inst += p.nextDates.filter((d) => d >= start && d <= end).length * p.monthlyKurus
     rows.push({ month, recurringKurus: rec, installmentKurus: inst, totalKurus: rec + inst })
   }
@@ -233,4 +241,74 @@ export function detectRecurring(txs: Transaction[], knownKeys: Set<string>, dism
     out.push({ key, name: cleanDescription(last.description), amountKurus: last.amountKurus, categoryId: last.categoryId, startDate: next, months: perMonth.size })
   }
   return out.sort((a, b) => b.amountKurus - a.amountKurus)
+}
+
+const PLAN_MATCH = /taks[iİı]t|kredi|borç|borc/iu
+
+/**
+ * Ödeme günü gelmiş (bugün dahil) ama henüz gerçek bir işlemle görülmemiş taksitleri, aylık özete
+ * yansıtılmak üzere "planlı taksit" gideri olarak üretir. Bunlar kaydedilmez:
+ * - Ekstre taksitleri: son görülen taksitten sonraki taksitler. Sonraki ekstre yüklenince en son taksit
+ *   ilerler ve aynı taksit bir daha üretilmez (çakışmaz).
+ * - Elle eklenen taksitler ve taksitli borçlar: kaydedildikleri günden sonraki ödemeler. Aynı tutarda,
+ *   ±10 gün içinde ve aynı iş yerinden ya da taksit/kredi açıklamalı gerçek bir gider varsa üretilmez.
+ * `real` yalnızca kayıtlı işlemleri içermelidir.
+ */
+export function plannedInstallments(real: Transaction[], items: RecurringPayment[], today: IsoDate): Transaction[] {
+  const out: Transaction[] = []
+  const at = `${today}T00:00:00.000Z`
+  const base = (id: string, date: IsoDate, amountKurus: number, description: string, categoryId: string | null): Transaction => ({
+    id,
+    date,
+    amountKurus,
+    type: 'expense',
+    description,
+    normalizedDescription: description.toLocaleLowerCase('tr'),
+    categoryId,
+    groupId: null,
+    source: 'planned',
+    createdAt: at,
+    updatedAt: at,
+  })
+  const manual = items.filter((i) => i.kind === 'installment' && i.active)
+  const manualKeys = new Set(manual.filter((i) => i.matchKey).map((i) => i.matchKey!))
+  for (const p of installmentPlans(real, manualKeys))
+    p.nextDates.forEach((d, i) => {
+      if (d > today) return
+      const t = base(`plan:st:${p.key}:${p.current + i + 1}`, d, p.monthlyKurus, p.name, p.categoryId)
+      t.installment = { current: p.current + i + 1, total: p.total }
+      t.paymentMethod = 'credit'
+      out.push(t)
+    })
+  const used = new Set<string>()
+  const expenses = real.filter((t) => t.type === 'expense')
+  for (const it of manual) {
+    const from = it.createdAt.slice(0, 10) > it.startDate ? it.createdAt.slice(0, 10) : it.startDate
+    if (from > today) continue
+    const total = it.occurrences ?? null
+    const all = occurrencesBetween(it, it.startDate, today)
+    all.forEach((d, i) => {
+      if (d < from) return
+      if (it.recordedThrough && d <= it.recordedThrough) return
+      const tol = Math.max(100, Math.round(it.amountKurus * 0.01))
+      const hit = expenses.find(
+        (t) =>
+          !used.has(t.id) &&
+          Math.abs(t.amountKurus - it.amountKurus) <= tol &&
+          Math.abs(dayDiff(t.date, d)) <= 10 &&
+          ((it.matchKey && merchantKey(t.description) === it.matchKey) || !!t.installment || PLAN_MATCH.test(t.description)),
+      )
+      if (hit) {
+        used.add(hit.id)
+        return
+      }
+      const n = i + 1
+      out.push(base(`plan:rec:${it.id}:${d}`, d, it.amountKurus, total ? `${it.name} (${n}/${total}. taksit)` : `${it.name} (taksit)`, it.categoryId))
+    })
+  }
+  return out
+}
+
+function dayDiff(a: IsoDate, b: IsoDate): number {
+  return Math.round((Date.parse(a) - Date.parse(b)) / 86400000)
 }

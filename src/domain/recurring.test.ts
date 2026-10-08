@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { budgetStatus, DEFAULT_BUDGET_PLAN } from './budget'
 import { normalizeText } from './normalize'
-import { addMonthsClamped, detectRecurring, groupDueToRecord, installmentName, fixedPayments, futureLoad, installmentPlans, occurrencesBetween, progressOf, upcomingPayments } from './recurring'
+import { addMonthsClamped, detectRecurring, groupDueToRecord, installmentName, fixedPayments, futureLoad, installmentPlans, occurrencesBetween, progressOf, plannedInstallments, upcomingPayments } from './recurring'
 import type { RecurringPayment, Transaction } from './types'
 
 let seq = 0
@@ -115,5 +115,44 @@ describe('grubun düzenli giderleri', () => {
     ])
     expect(groupDueToRecord([{ ...rent, recordedThrough: '2026-09-05' }], '2026-10-06').map((x) => x.date)).toEqual(['2026-10-05'])
     expect(groupDueToRecord([{ ...rent, recordedThrough: '2026-10-05' }], '2026-10-06')).toEqual([])
+  })
+})
+
+describe('planlı taksitler', () => {
+  it('ekstre taksitleri ödeme günü gelince yansır; sonraki ekstre yüklenince çakışmaz', () => {
+    const real = [
+      tx('2026-08-05', 500, 'TEKNOSA (3/6 TAKSİT)', {
+        installment: { current: 3, total: 6 },
+      }),
+    ]
+    const p = plannedInstallments(real, [], '2026-10-08')
+    expect(p.map((t) => [t.date, t.installment?.current, t.source])).toEqual([
+      ['2026-09-05', 4, 'planned'],
+      ['2026-10-05', 5, 'planned'],
+    ])
+    // Planlı satırlarla birlikte plan ilerler: kalan 1 taksit
+    expect(installmentPlans([...real, ...p])[0].remaining).toBe(1)
+    // Eylül ekstresi (4/6) yüklendi: 4. taksit artık gerçek, yalnızca 5. planlı
+    const next = [
+      ...real,
+      tx('2026-09-04', 500, 'TEKNOSA (4/6 TAKSİT)', {
+        installment: { current: 4, total: 6 },
+      }),
+    ]
+    expect(plannedInstallments(next, [], '2026-10-08').map((t) => t.installment?.current)).toEqual([5])
+  })
+  it('elle eklenen taksit ve borç taksiti kayıt gününden sonra yansır; aynı tutarlı gerçek ödeme varsa üretilmez', () => {
+    const it1 = item({
+      id: 'k',
+      kind: 'installment',
+      name: 'Kredi',
+      amountKurus: 300000,
+      startDate: '2026-08-10',
+      occurrences: 12,
+      createdAt: '2026-08-20T00:00:00Z',
+    })
+    expect(plannedInstallments([], [it1], '2026-10-08').map((t) => t.date)).toEqual(['2026-09-10'])
+    expect(plannedInstallments([tx('2026-09-11', 3000, 'KREDI TAKSIT ODEMESI')], [it1], '2026-10-08')).toEqual([])
+    expect(plannedInstallments([], [it1], '2026-10-10').map((t) => t.description)).toEqual(['Kredi (2/12. taksit)', 'Kredi (3/12. taksit)'])
   })
 })

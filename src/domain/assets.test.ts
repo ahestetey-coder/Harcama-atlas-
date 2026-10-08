@@ -162,3 +162,46 @@ describe('kendiliğinden güncelleme', () => {
     expect(needsPrice(o, holdingSummary(o, '2026-10-07'), '2026-10-07')).toBe(false)
   })
 })
+
+describe('taksitli borç', () => {
+  it('kalan borç ve sıradaki taksit tarihten hesaplanır; düzenli ödeme kalemi üretir', async () => {
+    const { debtPlanStatus, debtRecurring, holdingSummary } = await import('./assets')
+    const plan = {
+      mode: 'monthly' as const,
+      dueDate: '2026-10-15',
+      installmentKurus: 100000,
+      installments: 10,
+    }
+    expect(debtPlanStatus(plan, '2026-10-08')).toEqual({
+      remaining: 10,
+      balanceKurus: 1000000,
+      next: '2026-10-15',
+    })
+    expect(debtPlanStatus(plan, '2026-11-20')).toEqual({
+      remaining: 8,
+      balanceKurus: 800000,
+      next: '2026-12-15',
+    })
+    expect(debtPlanStatus({ mode: 'once', dueDate: '2026-11-01' }, '2026-10-08')).toBeNull()
+    const a = {
+      id: 'd',
+      kind: 'debt' as const,
+      name: 'Taşıt kredisi',
+      unit: 'TL',
+      trades: [],
+      valuations: [],
+      archived: false,
+      createdAt: '2026-10-08T00:00:00Z',
+      updatedAt: '',
+      debtPlan: plan,
+    }
+    expect(holdingSummary(a, '2026-11-20').valueKurus).toBe(800000)
+    expect(debtRecurring([a])[0]).toMatchObject({
+      id: 'debt:d',
+      kind: 'installment',
+      amountKurus: 100000,
+      occurrences: 10,
+      startDate: '2026-10-15',
+    })
+  })
+})

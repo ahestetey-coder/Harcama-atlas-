@@ -1,9 +1,7 @@
-import { BellRing, CalendarClock, CreditCard, Lightbulb, Pencil, Plus, Repeat, Trash2, X } from 'lucide-react'
+import { BellRing, CalendarClock, CreditCard, Landmark, Lightbulb, Pencil, Plus, Repeat, Trash2, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
-import { PageHeader } from '../components/AppShell'
 import { CategoryIcon, GroupBadge } from '../components/common'
-import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
 import { Badge, Button, Card, EmptyState, Field, IconButton, Input, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
@@ -14,53 +12,19 @@ import { CADENCE_LABEL, RECURRING_KIND_LABEL, type RecurringCadence, type Recurr
 import { cn } from '../lib/cn'
 import { usePersonalCycle } from '../state/cycle'
 import { useCategories, useCategoryMap, useGroupMap, useGroups, useRecurring, useRepo } from '../state/data'
-import { usePersonalTransactions } from '../state/personal'
+import { useAllRecurring, usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
-import { useStartNew } from '../lib/useStartNew'
 
 /** Gelecek yük grafiği renkleri (açık ve koyu yüzeyde doğrulandı). */
 const COLOR_RECURRING = '#059669'
 const COLOR_INSTALLMENT = '#6366f1'
 
-type Draft = Partial<RecurringPayment> & { kind: RecurringKind }
+export type Draft = Partial<RecurringPayment> & { kind: RecurringKind }
 
-export default function PaymentsPage() {
-  const [editing, setEditing] = useState<Draft | null>(null)
-  useStartNew(() => setEditing({ kind: 'subscription' }))
-  return (
-    <div>
-      <PageHeader
-        title="Düzenli ödemeler"
-        subtitle={
-          <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Abonelikler, faturalar ve taksitler
-          </span>
-        }
-        actions={
-          <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEditing({ kind: 'subscription' })}>
-            Ekle
-          </Button>
-        }
-      />
-      <PlanGate
-        feature="subscriptions"
-        title="Düzenli ödemeler ve taksitler"
-        points={[
-          'Abonelik, kira ve faturaları kaydedin; ödeme gününden önce hatırlatılın',
-          'Ekstredeki taksitlerden kalan taksitleri ve gelecek ayların yükünü görün',
-          'Her ay tekrarlanan harcamalar sizin onayınızla düzenli ödeme olarak eklenir',
-          'Kalan düzenli ödemeler ay sonu tahminine katılır',
-        ]}
-      >
-        <PaymentsContent onEdit={setEditing} />
-        <RecurringEditor draft={editing} onClose={() => setEditing(null)} />
-      </PlanGate>
-    </div>
-  )
-}
-
-function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
+/** Düzenli ödemeler: abonelikler, faturalar, elle eklenen taksitler, taksitli borçlar ve ekstre taksitleri. */
+export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => void; onEditDebt: (assetId: string) => void }) {
   const items = useRecurring()
+  const all = useAllRecurring()
   const personal = usePersonalTransactions()
   const catMap = useCategoryMap()
   const startDay = usePersonalCycle()
@@ -75,14 +39,15 @@ function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
   const txs = useMemo(() => personal?.counted ?? [], [personal])
   const manualKeys = useMemo(() => new Set((items ?? []).filter((i) => i.kind === 'installment' && i.matchKey).map((i) => i.matchKey!)), [items])
   const plans = useMemo(() => installmentPlans(txs, manualKeys), [txs, manualKeys])
-  const upcoming = useMemo(() => upcomingPayments(items ?? [], plans, today, 30), [items, plans, today])
-  const load = useMemo(() => futureLoad(items ?? [], plans, currentPeriod(startDay), 6, startDay), [items, plans, startDay])
+  const upcoming = useMemo(() => upcomingPayments(all ?? [], plans, today, 30), [all, plans, today])
+  const load = useMemo(() => futureLoad(all ?? [], plans, currentPeriod(startDay), 6, startDay), [all, plans, startDay])
   const suggestions = useMemo(
     () => (items && dismissed ? detectRecurring(txs, new Set(items.map((i) => i.matchKey ?? '')), new Set(dismissed), today) : []),
     [txs, items, dismissed, today],
   )
 
-  if (!items || !personal) return null
+  if (!items || !personal || !all) return null
+  const debtItems = all.filter((i) => i.id.startsWith('debt:') && (progressOf(i, today).remaining ?? 0) > 0)
 
   const accept = async (s: RecurringSuggestion) => {
     try {
@@ -102,7 +67,7 @@ function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
     }
   }
 
-  const monthlyTotal = items.filter((i) => i.active).reduce((s, i) => s + (i.cadence === 'monthly' ? i.amountKurus : i.cadence === 'weekly' ? Math.round((i.amountKurus * 52) / 12) : Math.round(i.amountKurus / 12)), 0)
+  const monthlyTotal = [...items, ...debtItems].filter((i) => i.active).reduce((s, i) => s + (i.cadence === 'monthly' ? i.amountKurus : i.cadence === 'weekly' ? Math.round((i.amountKurus * 52) / 12) : Math.round(i.amountKurus / 12)), 0)
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -208,7 +173,7 @@ function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
           </h2>
           {monthlyTotal > 0 && <span className="num text-[12.5px] text-muted">aylık ≈ {formatKurus(monthlyTotal)}</span>}
         </div>
-        {items.length === 0 ? (
+        {items.length === 0 && debtItems.length === 0 ? (
           <EmptyState
             icon={<Repeat className="size-6" />}
             title="Henüz düzenli ödeme yok"
@@ -222,7 +187,31 @@ function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
             Kira, fatura, abonelik veya elle takip etmek istediğiniz bir taksit ekleyin.
           </EmptyState>
         ) : (
-          <ul className="mt-2 divide-y divide-line">
+          <ul className="mt-2 divide-y divide-line" aria-label="Düzenli ödeme listesi">
+            {debtItems.map((it) => {
+              const prog = progressOf(it, today)
+              const next = upcomingPayments([it], [], today, 400)[0]
+              return (
+                <li key={it.id} className="flex items-center gap-3 py-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-danger-soft text-danger" aria-hidden>
+                    <Landmark className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium text-ink">{it.name}</span>
+                      <Badge tone="danger">Borç taksiti</Badge>
+                    </div>
+                    <div className="text-[12px] text-muted">
+                      Aylık · {next ? `sıradaki ${formatDate(next.date)}` : 'bitti'} · {prog.remaining} taksit kaldı
+                    </div>
+                  </div>
+                  <span className="num shrink-0 font-semibold">{formatKurus(it.amountKurus)}</span>
+                  <IconButton label={`${it.name} düzenle`} size="sm" onClick={() => onEditDebt(it.id.slice(5))}>
+                    <Pencil className="size-4" />
+                  </IconButton>
+                </li>
+              )
+            })}
             {items
               .slice()
               .sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name, 'tr'))
@@ -260,13 +249,13 @@ function PaymentsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
       <Card className="p-5 lg:col-span-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <CreditCard className="size-5 text-accent" /> Taksitler
+            <CreditCard className="size-5 text-accent" /> Ekstredeki taksitler
           </h2>
           <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => onEdit({ kind: 'installment', cadence: 'monthly', occurrences: 6 })}>
             Taksit ekle
           </Button>
         </div>
-        <p className="mt-1 text-[12.5px] text-subtle">Ekstrelerinizdeki “3/12 taksit” bilgilerinden otomatik bulunur. Ekstrede görünmeyenleri elle ekleyebilirsiniz.</p>
+        <p className="mt-1 text-[12.5px] text-subtle">Kredi kartı ekstrelerindeki “3/12 taksit” satırlarından bulunur. Bu ayki taksit ekstrede zaten giderdir; sonraki taksitler borç sayılır ve ödeme günü gelince aylık özete planlı taksit olarak yansır. Sonraki ekstre yüklenince aynı taksit iki kez sayılmaz.</p>
         {plans.length === 0 ? (
           <p className="mt-3 text-sm text-muted">İçe aktarılan ekstrelerde devam eden taksit bulunamadı.</p>
         ) : (
@@ -368,7 +357,7 @@ function LoadBars({ rows }: { rows: ReturnType<typeof futureLoad> }) {
   )
 }
 
-function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClose: () => void }) {
+export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClose: () => void }) {
   const repo = useRepo()
   const categories = useCategories()
   const groups = useGroups()
