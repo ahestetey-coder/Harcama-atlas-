@@ -37,7 +37,6 @@ export default function MembersPage() {
         <ConfigCard />
       ) : (
         <div className="flex flex-col gap-4">
-          <PrivacyNote />
           <ProfileCard />
           {cloud.status === 'loading' ? null : cloud.status === 'signed-out' ? <AuthCard /> : <SessionCard />}
           {cloud.status !== 'signed-out' && cloud.status !== 'loading' && <GroupsCard />}
@@ -45,14 +44,6 @@ export default function MembersPage() {
         </div>
       )}
     </div>
-  )
-}
-
-function PrivacyNote() {
-  return (
-    <Alert tone="info" icon={<Cloud />} title="Buluta ne gider?">
-      Yalnızca paylaşıma açtığınız gruptaki kendi harcamalarınız (tarih, tutar, açıklama, kategori adı, not) gider. Diğer gruplardaki ve grupsuz kayıtlarınız, yüklediğiniz dosyalar ve ekstre içerikleri bu cihazdan çıkmaz.
-    </Alert>
   )
 }
 
@@ -195,12 +186,14 @@ function SessionCard() {
       <div className="min-w-0 flex-1 text-sm">
         <div className="truncate font-medium text-ink">{cloud.email}</div>
         <div className="text-[12.5px] text-muted" aria-live="polite">
-          {cloud.status === 'syncing' ? 'Eşitleniyor…' : cloud.lastError ? <span className="text-danger">{cloud.lastError}</span> : last ? `Son eşitleme ${last}` : 'Henüz eşitlenmedi'}
+          {cloud.status === 'syncing' ? 'Eşitleniyor…' : cloud.lastError ? <span className="text-danger">{cloud.lastError}</span> : last ? `Otomatik eşitleniyor · son ${last}` : 'Otomatik eşitleniyor'}
         </div>
       </div>
-      <Button size="sm" icon={<RefreshCw className="size-4" />} onClick={() => void cloud.sync()} loading={cloud.status === 'syncing'}>
-        Şimdi eşitle
-      </Button>
+      {cloud.lastError && cloud.status !== 'syncing' && (
+        <Button size="sm" icon={<RefreshCw className="size-4" />} onClick={() => void cloud.sync()}>
+          Tekrar dene
+        </Button>
+      )}
       <Button size="sm" variant="ghost" icon={<LogOut className="size-4" />} onClick={() => void cloud.signOut()}>
         Çıkış
       </Button>
@@ -264,7 +257,7 @@ function GroupsCard() {
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
           <Users className="size-5 text-accent" /> Gruplar ve üyeler
         </h2>
-        <p className="mt-1 text-[13px] text-muted">Paylaşılan gruptaki harcamaları bütün üyeler görür; herkes yalnızca kendi harcamasını ekler, düzenler ve siler.</p>
+        <p className="mt-1 text-[13px] text-muted">Paylaşılan gruptaki harcamaları bütün üyeler görür; herkes yalnızca kendi harcamasını ekler, düzenler ve siler. Diğer kayıtlarınız ve yüklediğiniz dosyalar bu cihazda kalır.</p>
       </div>
       <ul>
         {visible.map((g) => {
