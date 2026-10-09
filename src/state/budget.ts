@@ -93,7 +93,8 @@ export function useBudgetSetup(): BudgetSetup | undefined {
   const { has } = usePlan()
   return useMemo(() => {
     if (!settings || auto === undefined) return undefined
-    const mode = budgetModeOf(settings)
+    // Koçun otomatik bütçesi Plus ve Plus+'ta; Ücretsiz pakette bütçe her zaman elle belirlenir
+    const mode = has('advancedBudget') ? budgetModeOf(settings) : 'manual'
     const plan = settings.budgetPlan ?? DEFAULT_BUDGET_PLAN
     if (mode === 'manual' || !auto) return { mode, auto, monthlyKurus: settings.monthlyBudgetKurus, plan }
     return {

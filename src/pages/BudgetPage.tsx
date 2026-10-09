@@ -1,6 +1,7 @@
 import { AlertTriangle, CalendarRange, Pencil, Plus, Repeat, Sparkles, Target, Trash2, TrendingUp } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CategoryIcon, MonthSwitcher } from '../components/common'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
@@ -446,7 +447,7 @@ function CoachTag() {
   )
 }
 
-/** Bütçeyi kimin belirlediği (koç ya da kullanıcı) ve koçun hesabının dökümü; her pakette görünür. */
+/** Bütçeyi kimin belirlediği (koç ya da kullanıcı) ve koçun hesabının dökümü; her pakette görünür. Koç modu Plus ve Plus+'ta. */
 function CoachBudgetCard() {
   const setup = useBudgetSetup()
   const settings = useSettings()
@@ -471,42 +472,54 @@ function CoachBudgetCard() {
   }
 
   return (
-    <Card className="mb-4 p-5" aria-label="Koçun bütçesi">
+    <Card className="mb-4 p-5" aria-label="Bütçe belirleme">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <Sparkles className="size-5 text-accent" /> Koçun bütçesi
+          <Sparkles className="size-5 text-accent" /> Aylık bütçe
         </h2>
-        <Segmented<BudgetMode>
-          label="Bütçeyi kim belirlesin"
-          value={setup.mode}
-          onChange={(v) => void setMode(v)}
-          className="w-full sm:w-auto"
-          options={[
-            { value: 'auto', label: 'Koç (otomatik)' },
-            { value: 'manual', label: 'Elle' },
-          ]}
-        />
+        {advanced && (
+          <Segmented<BudgetMode>
+            label="Bütçeyi kim belirlesin"
+            value={setup.mode}
+            onChange={(v) => void setMode(v)}
+            className="w-full sm:w-auto"
+            options={[
+              { value: 'auto', label: 'Koç (otomatik)' },
+              { value: 'manual', label: 'Elle' },
+            ]}
+          />
+        )}
       </div>
 
-      {!auto ? (
+      {setup.mode === 'manual' ? (
+        <>
+          <ManualBudgetForm key={settings.monthlyBudgetKurus ?? 'yok'} current={settings.monthlyBudgetKurus} />
+          {!advanced ? (
+            <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted">
+              <PlanBadge plan="plus" /> Koç (otomatik) bütçe Plus ve Plus+'ta: gelirinize, düzenli ödemelerinize ve birikim hedeflerinize göre bütçeyi her dönem kendisi kurar.{' '}
+              <Link to="/paketler" className="font-medium text-accent hover:underline">
+                Paketleri gör
+              </Link>
+            </p>
+          ) : auto ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
+              <p className="text-muted">
+                Koçun önerisi: <span className="num font-semibold text-ink">{formatKurus(auto.totalKurus)}</span> bütçe, <span className="num font-semibold text-ink">{formatKurus(auto.savingKurus)}</span> birikim.
+              </p>
+              <Button size="sm" onClick={() => void setMode('auto')}>
+                Koçun bütçesini kullan
+              </Button>
+            </div>
+          ) : null}
+        </>
+      ) : !auto ? (
         <div className="mt-3 text-sm text-muted">
           <p>
-            Koçun bütçe kurabilmesi için aylık gelirinizi bilmesi gerekiyor. Maaş gibi gelirlerinizi kaydedin; koç son üç dönemin ortalamasını kullanır
-            {has('journey') && !settings.journey ? ' (ya da Yolculuk testindeki gelirinizi)' : ''}.
-            {setup.mode === 'auto' && ' O zamana kadar elle girdiğiniz bütçe geçerli.'}
+            Koçun bütçe kurabilmesi için aylık gelirinizi bilmesi gerekiyor. Maaş gibi gelirlerinizi kaydedin (düzenli gelir olarak da ekleyebilirsiniz); koç son üç dönemin ortalamasını kullanır
+            {has('journey') && !settings.journey ? ' (ya da Yolculuk testindeki gelirinizi)' : ''}. O zamana kadar elle girdiğiniz bütçe geçerli.
           </p>
           <Button size="sm" className="mt-3" icon={<Plus className="size-4" />} onClick={() => openTransactionForm(undefined, { type: 'income' })}>
             Gelir ekle
-          </Button>
-        </div>
-      ) : setup.mode === 'manual' ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
-          <p className="text-muted">
-            Koçun önerisi: <span className="num font-semibold text-ink">{formatKurus(auto.totalKurus)}</span> bütçe, <span className="num font-semibold text-ink">{formatKurus(auto.savingKurus)}</span> birikim.
-            {!advanced && ' Elle girdiğiniz aylık bütçeyi Özet sayfasından değiştirebilirsiniz.'}
-          </p>
-          <Button size="sm" variant="primary" onClick={() => void setMode('auto')}>
-            Koçun bütçesini kullan
           </Button>
         </div>
       ) : (
@@ -541,20 +554,53 @@ function CoachBudgetCard() {
             <p className="mt-2 text-[12.5px] text-muted">Kategori limitleri, bütçeye sığması için son dönemlerdeki ortalamanızın %{auto.cutPct} altında.</p>
           )}
           <p className="mt-2 text-[12px] text-subtle">
-            Koç bütçeyi gelirinize, ödemelerinize{advanced ? ' ve birikim hedeflerinize' : ''} göre her dönem yeniden hesaplar; hesap cihazınızda yapılır. Bir değeri elle değiştirirseniz bütçe elle moda geçer.
+            Koç bütçeyi gelirinize, ödemelerinize ve birikim hedeflerinize göre her dönem yeniden hesaplar; hesap cihazınızda yapılır. Bir değeri elle değiştirirseniz bütçe elle moda geçer.
           </p>
-          {!has('goals') ? (
-            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
-              <PlanBadge plan="plus" /> Plus'ta koç birikim hedeflerini, taksitleri ve borç ödemelerini de hesaba katar; kategori limitleri ve haftalık bütçe kurar.
-            </p>
-          ) : !has('journey') ? (
+          {!has('journey') && (
             <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
               <PlanBadge plan="plusplus" /> Plus+'ta koç Yolculuk testindeki gelirinizi ve gelirin %20'si birikim hedefini de kullanır.
             </p>
-          ) : null}
+          )}
         </>
       )}
     </Card>
+  )
+}
+
+/** Elle modda aylık toplam bütçe: doğrudan kartın içinde yazılır. */
+function ManualBudgetForm({ current }: { current: number | null }) {
+  const repo = useRepo()
+  const { toast } = useUi()
+  const [value, setValue] = useState(current ? formatKurusPlain(current) : '')
+  const [error, setError] = useState<string>()
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    const v = value.trim()
+    if (!v) {
+      if (!current) return setError('Bir tutar girin, örn. 30.000')
+      await repo.saveSettings({ monthlyBudgetKurus: null })
+      setError(undefined)
+      return toast('Aylık bütçe kaldırıldı.')
+    }
+    const p = parseUserAmount(v)
+    if (!p.ok || p.kurus <= 0) return setError('Geçerli bir tutar girin, örn. 30.000')
+    setError(undefined)
+    try {
+      await repo.saveSettings({ monthlyBudgetKurus: p.kurus })
+      toast('Aylık bütçe kaydedildi.')
+    } catch (err) {
+      toast(toUserMessage(err), { kind: 'error' })
+    }
+  }
+  return (
+    <form onSubmit={save} noValidate className="mt-3 flex items-end gap-2">
+      <Field label="Dönemlik harcama bütçesi (TL)" htmlFor="manual-budget" error={error} className="min-w-0 flex-1">
+        <Input id="manual-budget" inputMode="decimal" className="num" placeholder="Örn. 30.000" value={value} onChange={(e) => setValue(e.target.value)} aria-invalid={!!error} />
+      </Field>
+      <Button type="submit" variant="primary" className={error ? 'mb-6' : undefined}>
+        Kaydet
+      </Button>
+    </form>
   )
 }
 

@@ -45,7 +45,7 @@ const PLANS: Array<{ plan: Plan; tagline: string; items: Item[] }> = [
     plan: 'plus',
     tagline: 'Bütçeni planla, varlıklarını tek yerde gör',
     items: [
-      { text: 'Kategori limitleri, haftalık bütçe, devir, uyarılar ve ay sonu tahmini', feature: 'advancedBudget' },
+      { text: 'Koçun otomatik bütçesi, kategori limitleri, haftalık bütçe, devir, uyarılar ve ay sonu tahmini', feature: 'advancedBudget' },
       { text: 'Taksitler ve gelecek aylardaki ödeme yükü', feature: 'installments' },
       { text: 'Abonelikler, düzenli ödemeler ve hatırlatmalar', feature: 'subscriptions' },
       { text: 'Birikim hedefleri ve ayrılması gereken aylık tutar', feature: 'goals' },

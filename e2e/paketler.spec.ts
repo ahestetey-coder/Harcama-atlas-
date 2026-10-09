@@ -32,9 +32,23 @@ test('Plus bütçe: ücretsizde kilitli; önizlemede kategori limiti, uyarı ve 
   await expect(page.getByRole('link', { name: /Bütçe planı.*1 uyarı/ })).toBeVisible()
 })
 
-test('Koçun bütçesi: gelirden otomatik kurulur, pakete göre genişler, elle moda geçilebilir', async ({ page }) => {
+test('Bütçe belirleme: Ücretsizde yalnızca elle girilir; Plus\'ta koç gelirden otomatik kurar, elle moda geçilebilir', async ({ page }) => {
   await open(page, 'butce')
-  const card = page.getByRole('region', { name: 'Koçun bütçesi' })
+  const card = page.getByRole('region', { name: 'Bütçe belirleme' })
+  // Ücretsiz: koç modu yok, tutar doğrudan kartta yazılır
+  await expect(card.getByRole('radiogroup', { name: 'Bütçeyi kim belirlesin' })).toHaveCount(0)
+  await expect(card).toContainText("Koç (otomatik) bütçe Plus ve Plus+'ta")
+  await card.getByLabel('Dönemlik harcama bütçesi (TL)').fill('25.000')
+  await card.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(page.getByText('Aylık bütçe kaydedildi.')).toBeVisible()
+
+  // Plus: koç modu açılır; gelir yoksa önce gelir istenir
+  await open(page, 'paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
+  await open(page, 'butce')
+  await expect(card.getByRole('radio', { name: 'Elle' })).toBeChecked()
+  await expect(card.getByLabel('Dönemlik harcama bütçesi (TL)')).toHaveValue('25.000,00')
+  await card.getByRole('radio', { name: 'Koç (otomatik)' }).click()
   await expect(card).toContainText('aylık gelirinizi bilmesi gerekiyor')
   await card.getByRole('button', { name: 'Gelir ekle' }).click()
   const form = page.getByRole('dialog', { name: 'Gelir ekle' })
@@ -42,19 +56,12 @@ test('Koçun bütçesi: gelirden otomatik kurulur, pakete göre genişler, elle 
   await form.getByLabel('Açıklama / iş yeri').fill('Maaş')
   await form.getByRole('button', { name: 'Kaydet', exact: true }).click()
   await expect(form).toBeHidden()
-  // Ücretsiz: gelirin %10'u birikime, kalan toplam bütçe
-  await expect(card).toContainText('36.000,00 ₺')
-  await expect(card).toContainText('Genel birikim payı')
-  await expect(card).toContainText("Plus'ta koç birikim hedeflerini")
-  await page.goto('./#/')
-  await expect(page.getByRole('region', { name: 'Aylık bütçe' })).toContainText('Koç belirledi')
-
-  // Plus: haftalık bütçeyi de koç kurar
-  await open(page, 'paketler')
-  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
-  await open(page, 'butce')
+  await expect(card).toContainText('Serbest harcama')
   await expect(card).toContainText(/haftada [\d.]+,00 ₺/)
   await expect(card).toContainText("Plus+'ta koç")
+  await page.goto('./#/')
+  await expect(page.getByRole('region', { name: 'Aylık bütçe' })).toContainText('Koç belirledi')
+  await open(page, 'butce')
 
   // Elle moda geçince koçun değerleri başlangıç olarak kalır
   await card.getByRole('radiogroup', { name: 'Bütçeyi kim belirlesin' }).getByRole('radio', { name: 'Elle' }).click()
@@ -70,6 +77,7 @@ test('Koçun bütçesi: gelirden otomatik kurulur, pakete göre genişler, elle 
   await dlg.getByLabel('Tutar (TL)').fill('30.000')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(card.getByRole('radio', { name: 'Elle' })).toBeChecked()
+  await expect(card.getByLabel('Dönemlik harcama bütçesi (TL)')).toHaveValue('30.000,00')
   await expect(page.getByText('/ 30.000,00 ₺')).toBeVisible()
 })
 
