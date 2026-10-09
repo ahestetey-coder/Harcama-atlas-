@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { budgetStatus, DEFAULT_BUDGET_PLAN } from './budget'
 import { normalizeText } from './normalize'
-import { addMonthsClamped, detectRecurring, groupDueToRecord, installmentName, fixedPayments, futureLoad, installmentPlans, occurrencesBetween, progressOf, plannedInstallments, upcomingPayments } from './recurring'
-import type { RecurringPayment, Transaction } from './types'
+import { addMonthsClamped, detectRecurring, groupDueToRecord, installmentName, fixedPayments, futureLoad, installmentPlans, occurrencesBetween, progressOf, plannedIncomes, plannedInstallments, upcomingPayments } from './recurring'
+import type { RecurringIncome, RecurringPayment, Transaction } from './types'
 
 let seq = 0
 const tx = (date: string, lira: number, desc: string, extra: Partial<Transaction> = {}): Transaction => ({
@@ -154,5 +154,41 @@ describe('planlı taksitler', () => {
     expect(plannedInstallments([], [it1], '2026-10-08').map((t) => t.date)).toEqual(['2026-09-10'])
     expect(plannedInstallments([tx('2026-09-11', 3000, 'KREDI TAKSIT ODEMESI')], [it1], '2026-10-08')).toEqual([])
     expect(plannedInstallments([], [it1], '2026-10-10').map((t) => t.description)).toEqual(['Kredi (2/12. taksit)', 'Kredi (3/12. taksit)'])
+  })
+})
+
+describe('düzenli gelirler', () => {
+  const salary = (o: Partial<RecurringIncome> = {}): RecurringIncome => ({
+    id: 'g1',
+    name: 'Maaş',
+    kind: 'salary',
+    amountKurus: 4500000,
+    cadence: 'monthly',
+    startDate: '2026-08-15',
+    active: true,
+    createdAt: '2026-08-15T09:00:00.000Z',
+    updatedAt: '',
+    ...o,
+  })
+
+  it('günü gelen ve elle girilmemiş aylar planlı gelir olur', () => {
+    const real = [tx('2026-08-15', 45000, 'Maaş', { type: 'income', categoryId: null })]
+    const out = plannedIncomes(real, [salary()], '2026-10-20')
+    expect(out.map((t) => t.date)).toEqual(['2026-09-15', '2026-10-15'])
+    expect(out.every((t) => t.type === 'income' && t.source === 'planned' && t.amountKurus === 4500000)).toBe(true)
+  })
+
+  it('yakın tarihte benzer tutarda gerçek gelir varsa o ay iki kez sayılmaz', () => {
+    const real = [tx('2026-08-15', 45000, 'Maaş', { type: 'income' }), tx('2026-09-12', 46200, 'ACME AŞ ödeme', { type: 'income' })]
+    expect(plannedIncomes(real, [salary()], '2026-09-30')).toEqual([])
+    // Tutar çok farklıysa (ör. ikramiye) eşleşmez
+    const bonus = [tx('2026-08-15', 45000, 'Maaş', { type: 'income' }), tx('2026-09-14', 90000, 'İkramiye', { type: 'income' })]
+    expect(plannedIncomes(bonus, [salary()], '2026-09-30').map((t) => t.date)).toEqual(['2026-09-15'])
+  })
+
+  it('eklendiği günden öncesi geriye dönük üretilmez; pasif ve henüz günü gelmemiş olanlar atlanır', () => {
+    expect(plannedIncomes([], [salary({ startDate: '2026-01-15', createdAt: '2026-09-01T00:00:00.000Z' })], '2026-10-20').map((t) => t.date)).toEqual(['2026-09-15', '2026-10-15'])
+    expect(plannedIncomes([], [salary({ active: false })], '2026-10-20')).toEqual([])
+    expect(plannedIncomes([], [salary({ startDate: '2026-11-01', createdAt: '2026-10-01T00:00:00.000Z' })], '2026-10-20')).toEqual([])
   })
 })

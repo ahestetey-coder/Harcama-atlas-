@@ -170,6 +170,22 @@ const settingsSchema = z.object({
     })
     .optional(),
   budgetMode: z.enum(['auto', 'manual']).optional(),
+  recurringIncomes: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string().max(80),
+        kind: z.enum(['salary', 'rent', 'other']),
+        amountKurus: kurus,
+        cadence: z.enum(['weekly', 'monthly', 'yearly']),
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        active: z.boolean(),
+        createdAt: z.string(),
+        updatedAt: z.string(),
+      }),
+    )
+    .max(50)
+    .optional(),
   journey: z
     .object({
       goal: z.enum(['independence', 'security', 'early-retire', 'custom']),

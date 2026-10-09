@@ -1,6 +1,7 @@
 import { CloudOff, Download, FlaskConical, Monitor, Moon, Repeat, RotateCcw, ScanText, Sun, Target } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AccountCard } from '../components/AccountCard'
+import { RecurringIncomeCard } from '../components/RecurringIncomeCard'
 import { Link } from 'react-router-dom'
 import { PLAN_LABEL } from '../domain/plans'
 import { usePlan } from '../state/plan'
@@ -117,6 +118,8 @@ export default function SettingsPage() {
             </Field>
           </div>
         </Card>
+
+        <RecurringIncomeCard />
 
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">

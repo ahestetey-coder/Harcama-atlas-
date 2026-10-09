@@ -49,7 +49,7 @@ function TxMeta({ t, group, member, uncounted }: { t: Transaction; group?: Spend
           {(t.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {t.foreign.currency}
         </Badge>
       )}
-      {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge tone={t.source === 'settlement' ? 'accent' : undefined}>{SOURCE_LABEL[t.source]}</Badge>}
+      {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge tone={t.source === 'settlement' ? 'accent' : undefined}>{t.source === 'planned' && t.type === 'income' ? 'Düzenli gelir' : SOURCE_LABEL[t.source]}</Badge>}
     </>
   )
 }

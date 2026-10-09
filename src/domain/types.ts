@@ -186,7 +186,31 @@ export interface Settings {
   journey?: JourneyProfile
   /** Plus+ koç tercihleri. */
   coach?: CoachSettings
+  /** Maaş, kira geliri gibi düzenli gelirler; günü gelince özete planlı gelir olarak yansır. */
+  recurringIncomes?: RecurringIncome[]
   updatedAt: string
+}
+
+export type IncomeKind = 'salary' | 'rent' | 'other'
+
+/** Düzenli gelir. Yalnızca bu cihazda tutulur; gerçek gelir kaydı girilirse o ayın planlı geliri düşer. */
+export interface RecurringIncome {
+  id: string
+  name: string
+  kind: IncomeKind
+  amountKurus: number
+  cadence: RecurringCadence
+  /** İlk gelir günü; sonrakiler sıklığa göre hesaplanır. */
+  startDate: IsoDate
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export const INCOME_KIND_LABEL: Record<IncomeKind, string> = {
+  salary: 'Maaş',
+  rent: 'Kira geliri',
+  other: 'Ek gelir',
 }
 
 export interface CoachSettings {

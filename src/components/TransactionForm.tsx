@@ -28,6 +28,8 @@ interface FormState {
   accountAlias: string
   learn: boolean
   learnPattern: string
+  /** Yeni gelirde: her ay tekrarlanan düzenli gelir olarak da kaydet. */
+  repeat: boolean
 }
 
 function initialState(tx?: Transaction, type?: Transaction['type']): FormState {
@@ -43,6 +45,7 @@ function initialState(tx?: Transaction, type?: Transaction['type']): FormState {
     accountAlias: tx?.accountAlias ?? '',
     learn: false,
     learnPattern: tx ? merchantKey(tx.description) : '',
+    repeat: false,
   }
 }
 
@@ -53,7 +56,7 @@ export function TransactionFormHost() {
     <Modal
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
-      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'planned' ? 'Planlı taksit' : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'income' ? 'Gelir ekle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
+      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'planned' ? (formState.tx.type === 'income' ? 'Düzenli gelir' : 'Planlı taksit') : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'income' ? 'Gelir ekle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
       description={formState.tx ? undefined : 'Kategorisini siz seçersiniz. Paylaşılan bir gruba eklemediğiniz sürece kayıt yalnızca bu cihazda tutulur.'}
       size="md"
       side
@@ -144,10 +147,15 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         toast('İşlem güncellendi.')
       } else {
         const saved = await repo.addTransaction(input, learn)
+        if (s.type === 'income' && s.repeat) {
+          const name = s.description.trim()
+          const kind = /kira/iu.test(name) ? 'rent' : /maaş|maas|ücret|ucret|bordro/iu.test(name) ? 'salary' : 'other'
+          await repo.saveRecurringIncome({ name, kind, amountKurus: amt.kurus, cadence: 'monthly', startDate: s.date, active: true })
+        }
         setHighlightId(saved.id)
         const savedPeriod = periodOf(saved.date, startDay)
         const other = savedPeriod !== month
-        toast(other ? `Kaydedildi. İşlem ${periodLabel(savedPeriod, startDay)} döneminde.` : s.type === 'income' ? 'Gelir kaydedildi.' : 'Gider kaydedildi.', {
+        toast(other ? `Kaydedildi. İşlem ${periodLabel(savedPeriod, startDay)} döneminde.` : s.type === 'income' ? (s.repeat ? 'Gelir kaydedildi; her ay kendiliğinden eklenecek.' : 'Gelir kaydedildi.') : 'Gider kaydedildi.', {
           action: other ? { label: 'O aya git', onClick: () => setMonth(savedPeriod) } : undefined,
         })
       }
@@ -235,6 +243,15 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         )}
       </Field>
 
+      {!tx && s.type === 'income' && (
+        <Checkbox
+          label="Her ay tekrarlansın (düzenli gelir)"
+          description="Maaş, kira geliri gibi. Her ay aynı gün özetinize kendiliğinden eklenir; o ay geliri elle girerseniz iki kez sayılmaz. Ayarlar > Düzenli gelirler'den değiştirebilirsiniz."
+          checked={s.repeat}
+          onChange={(v) => set('repeat', v)}
+        />
+      )}
+
       {activeGroups.length > 0 && s.type !== 'income' && (
         <Field label="Harcama grubu" optional hint="Kategoriden ayrı bir gruplama; panelde bu gruba göre filtreleyebilirsiniz.">
           <GroupPicker groups={activeGroups} value={s.groupId} onChange={(v) => set('groupId', v)} />
@@ -309,7 +326,9 @@ function SharedTxView({ tx }: { tx: Transaction }) {
     <div className="flex flex-col gap-4 pt-1">
       <p className="flex items-start gap-2 rounded-2xl border border-line bg-surface-2 p-3 text-sm text-muted">
         <Lock className="mt-0.5 size-4 shrink-0" />{' '}
-        {tx.source === 'planned'
+        {tx.source === 'planned' && tx.type === 'income'
+          ? 'Bu gelir, düzenli gelirinizin günü geldiği için özete kendiliğinden eklendi; ayrıca kaydedilmez. O ay geliri elle girerseniz bunun yerini alır, iki kez sayılmaz. Tutarı veya günü Ayarlar > Düzenli gelirler bölümünden değiştirebilirsiniz.'
+          : tx.source === 'planned'
           ? 'Bu taksit, Borçlar ve ödemeler sayfasındaki taksit planından ödeme günü geldiği için aylık özete yansıtıldı; kaydedilmez. İlgili ekstreyi ya da ödemeyi yüklediğinizde gerçek işlem onun yerini alır, iki kez sayılmaz.'
           : tx.source === 'settlement'
             ? `Grup yöneticisi bu dönemin ${group?.name ?? 'ortak'} giderini üyelere paylaştırdı. Ödediğinizle payınız arasındaki fark “Tümü” toplamınıza ${tx.type === 'refund' ? 'alacak' : 'borç'} olarak eklendi; böylece ortak gider size payınız kadar yansır.`

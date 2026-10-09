@@ -1,6 +1,6 @@
 import { addDays, daysInMonth, monthOf, periodOf, periodRange, toIsoDate } from './dates'
 import { cleanDescription, merchantKey } from './normalize'
-import type { IsoDate, MonthKey, RecurringPayment, Transaction } from './types'
+import type { IsoDate, MonthKey, RecurringIncome, RecurringPayment, Transaction } from './types'
 
 /** Tarihe k ay ekler; gün, `day` (yoksa tarihin günü) ile ayın son gününden küçük olanıdır. */
 export function addMonthsClamped(date: IsoDate, k: number, day?: number): IsoDate {
@@ -305,6 +305,48 @@ export function plannedInstallments(real: Transaction[], items: RecurringPayment
       const n = i + 1
       out.push(base(`plan:rec:${it.id}:${d}`, d, it.amountKurus, total ? `${it.name} (${n}/${total}. taksit)` : `${it.name} (taksit)`, it.categoryId))
     })
+  }
+  return out
+}
+
+/**
+ * Düzenli gelirlerden günü gelmiş (bugün dahil) gelirleri "planlı gelir" olarak üretir; kaydedilmez.
+ * Gelir, eklendiği günden sonraki tarihler için üretilir. ±10 gün içinde tutarı en çok %15 farklı gerçek
+ * bir gelir kaydı varsa o tarih atlanır; böylece maaşı elle girseniz de iki kez sayılmaz.
+ * `real` yalnızca kayıtlı işlemleri içermelidir.
+ */
+export function plannedIncomes(real: Transaction[], incomes: RecurringIncome[], today: IsoDate): Transaction[] {
+  const out: Transaction[] = []
+  const used = new Set<string>()
+  const received = real.filter((t) => t.type === 'income' && t.source !== 'planned').sort((a, b) => a.date.localeCompare(b.date))
+  for (const it of incomes) {
+    if (!it.active) continue
+    const created = it.createdAt.slice(0, 10)
+    const from = created > it.startDate ? created : it.startDate
+    if (from > today) continue
+    for (const d of occurrencesBetween(it, it.startDate, today)) {
+      if (d < from) continue
+      const tol = Math.max(100, Math.round(it.amountKurus * 0.15))
+      const hit = received.find((t) => !used.has(t.id) && Math.abs(t.amountKurus - it.amountKurus) <= tol && Math.abs(dayDiff(t.date, d)) <= 10)
+      if (hit) {
+        used.add(hit.id)
+        continue
+      }
+      const at = `${d}T00:00:00.000Z`
+      out.push({
+        id: `plan:inc:${it.id}:${d}`,
+        date: d,
+        amountKurus: it.amountKurus,
+        type: 'income',
+        description: it.name,
+        normalizedDescription: it.name.toLocaleLowerCase('tr'),
+        categoryId: null,
+        groupId: null,
+        source: 'planned',
+        createdAt: at,
+        updatedAt: at,
+      })
+    }
   }
   return out
 }

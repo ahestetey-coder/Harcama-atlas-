@@ -5,7 +5,7 @@ import { PRIORITY, validateRulePattern } from '../domain/rules'
 import { debtPlanStatus, holdingSummary, quantityAt, type Asset, type AssetKind, type AssetQuote, type AssetTrade, type AssetValuation, type DebtPlan, type DebtTerms, type DebtType } from '../domain/assets'
 import { todayIso } from '../domain/dates'
 import type { GoalContribution, SavingsGoal } from '../domain/goals'
-import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
+import type { Category, ImportRecord, Member, RecurringIncome, RecurringPayment, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from './backup'
 import { CURRENT_SCHEMA_VERSION, type AtlasDb } from './db'
 import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, buildSelfMember, OTHER_CATEGORY_ID } from './seed'
@@ -465,6 +465,26 @@ export class AtlasRepository {
   async saveSettings(patch: Partial<Omit<Settings, 'id'>>): Promise<void> {
     const cur = await this.getSettings()
     await this.db.settings.put({ ...cur, ...patch, id: 'settings', updatedAt: nowIso() })
+  }
+
+  // ---------- Düzenli gelirler ----------
+
+  async saveRecurringIncome(input: Omit<RecurringIncome, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<RecurringIncome> {
+    const name = cleanDescription(input.name).slice(0, 80)
+    if (!name) throw new UserFacingError('Bir ad girin.')
+    if (!Number.isInteger(input.amountKurus) || input.amountKurus <= 0) throw new UserFacingError('Geçerli bir tutar girin.')
+    const cur = await this.getSettings()
+    const list = cur.recurringIncomes ?? []
+    const prev = input.id ? list.find((i) => i.id === input.id) : undefined
+    const now = nowIso()
+    const item: RecurringIncome = { ...input, name, id: prev?.id ?? newId(), createdAt: prev?.createdAt ?? now, updatedAt: now }
+    await this.saveSettings({ recurringIncomes: prev ? list.map((i) => (i.id === prev.id ? item : i)) : [...list, item] })
+    return item
+  }
+
+  async deleteRecurringIncome(id: string): Promise<void> {
+    const cur = await this.getSettings()
+    await this.saveSettings({ recurringIncomes: (cur.recurringIncomes ?? []).filter((i) => i.id !== id) })
   }
 
   // ---------- Düzenli ödemeler (Plus) ----------
