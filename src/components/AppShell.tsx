@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { BookOpen, Bot, ChartColumn, CreditCard, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
-import { useId, useState, type ReactNode } from 'react'
+import { useId, useLayoutEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
 import { cn } from '../lib/cn'
@@ -88,6 +88,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isDemo, setDemo, dbError } = useData()
   const { openTransactionForm, importOpen, formState } = useUi()
   const location = useLocation()
+  // Sayfa değişince her zaman en üstten başla (önceki sayfanın kaydırma yeri taşınmaz).
+  // Layout effect, sayfanın kendi kaydırmasından (ör. #duzenli-gelirler) önce çalışır.
+  useLayoutEffect(() => {
+    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [location.pathname])
   const [moreOpen, setMoreOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   useFollowCurrentPeriod()
@@ -363,12 +369,12 @@ function MobileTab({ item }: { item: NavItem }) {
   )
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ title, subtitle, actions, hideTitle }: { title: string; subtitle?: ReactNode; actions?: ReactNode; hideTitle?: boolean }) {
   return (
-    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between lg:mb-7">
+    <div className={cn('flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between', hideTitle ? 'mb-3' : 'mb-5 lg:mb-7')}>
       <div className="min-w-0">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-ink lg:text-[30px]">{title}</h1>
-        {subtitle && <p className="mt-1 text-[13.5px] leading-snug text-muted sm:text-sm">{subtitle}</p>}
+        <h1 className={hideTitle ? 'sr-only' : 'text-[26px] font-bold leading-tight tracking-tight text-ink lg:text-[30px]'}>{title}</h1>
+        {subtitle && <p className={hideTitle ? 'text-[15px] font-medium leading-snug text-muted' : 'mt-1 text-[13.5px] leading-snug text-muted sm:text-sm'}>{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2 max-sm:w-full">{actions}</div>}
     </div>

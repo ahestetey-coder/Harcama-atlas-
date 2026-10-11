@@ -530,3 +530,27 @@ test('Plus+ yolculuk: testi olmayan eski profilde test çağrısı görünür ve
   await cta.getByRole('button', { name: 'Testi başlat' }).click()
   await expect(page.getByRole('region', { name: 'Finansal özgürlük testi' })).toBeVisible()
 })
+
+test('Özet: bütçe aşımı uyarısı tarihin altında kırmızı, dönem seçimi ondan sonra gelir', async ({ page }) => {
+  await open(page, 'paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
+  await page.goto('./#/yolculuk')
+  await takeFreedomTest(page, { income: '50.000', essential: '20.000' })
+  await open(page, 'butce')
+  const card = page.getByRole('region', { name: 'Bütçe belirleme' })
+  await card.getByRole('radio', { name: 'Elle' }).click()
+  await card.getByLabel('Dönemlik harcama bütçesi (TL)').fill('100')
+  await card.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(page.getByText('Aylık bütçe kaydedildi.')).toBeVisible()
+  await open(page, 'islemler')
+  await addExpense(page, { amount: '450', description: 'Migros', category: 'Market' })
+  await open(page, '')
+  const warn = page.getByRole('link', { name: 'Koç mesajları' })
+  await expect(warn).toContainText('Aylık bütçe aşıldı')
+  await expect(warn).toHaveClass(/bg-danger-soft/)
+  // Sıra: uyarı → dönem seçimi → net gider
+  const y = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!.y
+  const month = page.getByRole('button', { name: 'Önceki ay' })
+  expect(await y(warn)).toBeLessThan(await y(month))
+  expect(await y(month)).toBeLessThan(await y(page.locator('#net-title')))
+})

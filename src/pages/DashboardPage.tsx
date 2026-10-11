@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, Bot, CalendarClock, ChartColumn, ChevronDown, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Repeat, Scale, Target, Wallet } from 'lucide-react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Bot, CalendarClock, ChartColumn, ChevronDown, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Repeat, Scale, Target, Wallet } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -132,24 +132,9 @@ export default function DashboardPage() {
   const hello = greeting()
   const remaining = summary.incomeKurus - summary.netKurus
 
-  return (
-    <div>
-      <PageHeader
-        title="Özet"
-        subtitle={isCurrent ? `${hello} · ${formatDate(today, 'weekday')}` : isFuture ? 'Gelecek bir ay seçili' : `${label} özeti`}
-        actions={<MonthSwitcher month={month} onChange={setMonth} className="max-sm:flex-1" />}
-      />
-
-      <FilterStrip
-        groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)}
-        group={groupFilter}
-        onGroup={setGroupFilter}
-        persons={person.options}
-        person={person.value}
-        onPerson={person.set}
-        className="mb-4"
-      />
-
+  // Ortak grup paylaşımı: net gider kartının hemen altında
+  const shared = (
+    <div className="flex flex-col gap-2 empty:hidden lg:col-span-12">
       {!groupFilter && (
         <SharedPeriodNotes
           groups={groups ?? []}
@@ -164,7 +149,7 @@ export default function DashboardPage() {
       )}
 
       {canSplit && sharedGroup && (
-        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-accent/25 bg-accent-soft px-4 py-3">
+        <div className="flex items-center gap-3 rounded-2xl border border-accent/25 bg-accent-soft px-4 py-3">
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface text-accent shadow-card">
             <Scale className="size-[18px]" />
           </span>
@@ -189,11 +174,35 @@ export default function DashboardPage() {
           </Button>
         </div>
       )}
+    </div>
+  )
 
-      <DueBanner />
+  return (
+    <div>
+      <PageHeader
+        title="Özet"
+        hideTitle
+        subtitle={isCurrent ? `${hello} · ${formatDate(today, 'weekday')}` : isFuture ? 'Gelecek bir ay seçili' : `${label} özeti`}
+      />
+
       {hasFeature('aiCoach') && <CoachBanner />}
+      <DueBanner />
+
+      <MonthSwitcher month={month} onChange={setMonth} className="mb-3 w-full" />
+
+      <FilterStrip
+        groups={(groups ?? []).filter((g) => !g.archived || g.id === groupFilter)}
+        group={groupFilter}
+        onGroup={setGroupFilter}
+        persons={person.options}
+        person={person.value}
+        onPerson={person.set}
+        className="mb-4"
+      />
+
       {!hasData ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+          {shared}
           <Card className="lg:col-span-7">
             <EmptyState
               icon={<Wallet className="size-6" />}
@@ -247,7 +256,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 12, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-            className="hero-gradient shine relative overflow-hidden rounded-[1.75rem] p-5 text-white shadow-float sm:p-6 lg:col-span-7"
+            className="hero-gradient shine relative overflow-hidden rounded-[1.75rem] p-5 text-white shadow-float sm:p-6 lg:order-first lg:col-span-7"
             aria-labelledby="net-title"
           >
             <span className="aurora -right-10 -top-12 size-52 bg-emerald-400/40" aria-hidden />
@@ -330,7 +339,8 @@ export default function DashboardPage() {
             </div>
           </motion.section>
 
-          <Shortcuts className="lg:col-span-5" />
+          {shared}
+          <Shortcuts className="lg:order-first lg:col-span-5" />
 
           {/* Kategori dağılımı */}
           <Card className="p-5 lg:col-span-7">
@@ -554,18 +564,27 @@ function CoachBanner() {
   const unread = coach?.messages.filter((m) => !m.read) ?? []
   if (!unread.length) return null
   const first = unread[0]
+  // Bütçe aşımı gibi uyarılar kırmızı tonda öne çıkar
+  const warn = first.tone === 'warn'
   return (
     <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
-      <Link to="/koc" aria-label="Koç mesajları" className="mb-4 flex items-center gap-3 overflow-hidden rounded-2xl bg-slate-950 px-4 py-3 text-[13px] text-white shadow-card hover:brightness-110">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500">
-          <Bot className="size-5" />
+      <Link
+        to="/koc"
+        aria-label="Koç mesajları"
+        className={cn(
+          'mb-3 flex items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-[13px] shadow-card hover:brightness-105',
+          warn ? 'border border-danger/35 bg-danger-soft text-ink' : 'bg-slate-950 text-white hover:brightness-110',
+        )}
+      >
+        <span className={cn('grid size-9 shrink-0 place-items-center rounded-full text-white', warn ? 'bg-danger' : 'bg-gradient-to-br from-emerald-400 to-cyan-500')}>
+          {warn ? <AlertTriangle className="size-5" /> : <Bot className="size-5" />}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">{first.title}</span>
-          <span className="block truncate text-slate-300">{first.body}</span>
+          <span className={cn('block truncate font-semibold', warn && 'text-danger')}>{first.title}</span>
+          <span className={cn('block truncate', warn ? 'text-muted' : 'text-slate-300')}>{first.body}</span>
         </span>
-        {unread.length > 1 && <span className="shrink-0 rounded-full bg-white/15 px-2 py-0.5 text-[12px]">+{unread.length - 1}</span>}
-        <ChevronRight className="size-4 shrink-0 text-slate-400" />
+        {unread.length > 1 && <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[12px]', warn ? 'bg-danger/15 text-danger' : 'bg-white/15')}>+{unread.length - 1}</span>}
+        <ChevronRight className={cn('size-4 shrink-0', warn ? 'text-danger' : 'text-slate-400')} />
       </Link>
     </motion.div>
   )
@@ -577,7 +596,7 @@ function DueBanner() {
   const due = useDuePayments(has('subscriptions'))
   if (!due.length) return null
   return (
-    <Link to="/borclar?bolum=odemeler" className="mb-4 block rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-[13px] text-ink hover:brightness-105" aria-label="Yaklaşan ödemeler">
+    <Link to="/borclar?bolum=odemeler" className="mb-3 block rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-[13px] text-ink hover:brightness-105" aria-label="Yaklaşan ödemeler">
       {due.slice(0, 3).map((d) => (
         <div key={`${d.id}:${d.date}`} className="flex items-center gap-2 py-0.5">
           <CalendarClock className="size-4 shrink-0 text-warning" />
@@ -947,7 +966,7 @@ function SharedPeriodNotes({
     })
   if (!rows.length) return null
   return (
-    <section aria-label="Ortak grupların dönemi" className="mb-4 flex flex-col gap-2">
+    <section aria-label="Ortak grupların dönemi" className="flex flex-col gap-2">
       {rows.map(({ g, key, range, settlement, owner, share }) => (
         <button
           key={g.id}

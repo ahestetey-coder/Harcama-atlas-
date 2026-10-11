@@ -114,3 +114,12 @@ test('CSV dışa aktarma formül enjeksiyonuna karşı korunur', async ({ page }
   const text = fs.readFileSync((await download.path())!, 'utf8')
   expect(text).toContain("'=1+2 Deneme")
 })
+
+test('sayfa geçişinde yeni sayfa en üstten açılır', async ({ page }) => {
+  await open(page, 'ayarlar')
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100)
+  await page.getByRole('navigation', { name: 'Ana menü' }).getByRole('link', { name: 'İşlemler' }).click()
+  await expect(page.getByRole('heading', { name: 'İşlemler', level: 1 })).toBeVisible()
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+})
