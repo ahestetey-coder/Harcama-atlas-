@@ -132,6 +132,18 @@ export default function DashboardPage() {
   const hello = greeting()
   const remaining = summary.incomeKurus - summary.netKurus
 
+  // Net gider kartının ayrıntısı: kartı sade tutmak için "Gruplara göre" kartının altında
+  const details = (
+    <div className="num space-y-1 text-[12.5px] leading-snug text-muted">
+      {comparison.kind !== 'none' && <p>{comparison.label}</p>}
+      <p>
+        Gider {formatKurus(summary.expenseKurus)}
+        {summary.refundKurus > 0 && ` · iade −${formatKurus(summary.refundKurus)}`} · {summary.count} işlem
+        {summary.transferCount > 0 && ` · ${summary.transferCount} kart ödemesi dahil değil`}
+      </p>
+    </div>
+  )
+
   // Ortak grup paylaşımı: net gider kartının hemen altında
   const shared = (
     <div className="flex flex-col gap-2 empty:hidden lg:col-span-12">
@@ -277,11 +289,6 @@ export default function DashboardPage() {
               </div>
               <AnimatedKurus value={summary.netKurus} className="mt-2 block font-display text-[42px] font-bold leading-none tracking-tight sm:text-[50px]" />
               <ComparisonChip comparison={comparison} />
-              <p className="num mt-3 text-[12.5px] text-white/60">
-                Gider {formatKurus(summary.expenseKurus)}
-                {summary.refundKurus > 0 && ` · iade −${formatKurus(summary.refundKurus)}`} · {summary.count} işlem
-                {summary.transferCount > 0 && ` · ${summary.transferCount} kart ödemesi dahil değil`}
-              </p>
               {summary.incomeKurus > 0 && (
                 <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4">
                   <HeroStat label="Gelir" value={formatKurus(summary.incomeKurus)} />
@@ -394,7 +401,15 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <GroupTable rows={groupRows} selected={groupFilter} onSelect={(id) => setGroupFilter(groupFilter === id ? '' : id)} />
+              <div className="mt-4 border-t border-line pt-3" aria-label="Net gider ayrıntısı">
+                {details}
+              </div>
             </Card>
+          )}
+          {groupRows.length <= 1 && (
+            <div className="px-1 lg:col-span-7" aria-label="Net gider ayrıntısı">
+              {details}
+            </div>
           )}
 
           {/* Kişilere göre: paylaşılan gruplarda kim ne harcadı */}
@@ -549,9 +564,6 @@ function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareW
           {up ? '+' : flat ? '' : '−'}
           {formatKurus(Math.abs(comparison.diffKurus))}
         </span>
-      </span>
-      <span className="text-white/65">
-        {comparison.label}
       </span>
     </div>
   )
