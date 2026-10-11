@@ -79,7 +79,6 @@ export function Logo({ className }: { className?: string }) {
       </svg>
       <div className="min-w-0 leading-tight">
         <div className="truncate font-display text-[16px] font-bold tracking-tight text-ink">{APP_CONFIG.name}</div>
-        <div className="truncate text-[11.5px] text-subtle">Kişisel gider takibi</div>
       </div>
     </div>
   )
@@ -157,7 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-1.5 font-semibold text-warning">
                 <FlaskConical className="size-4" /> Demo modu açık
               </div>
-              <p className="mt-1 text-muted">Örnek verileri görüyorsunuz. Gerçek kayıtlarınız ayrı saklanır.</p>
+              <p className="mt-1 text-muted">Gerçek kayıtlarınız ayrı saklanır.</p>
               <button type="button" className="mt-2 font-semibold text-accent hover:underline" onClick={() => setDemo(false)}>
                 Demo modunu kapat
               </button>
@@ -332,7 +331,7 @@ function AccountBox({ className }: { className?: string }) {
         <LogOut className="size-4" /> Çıkış
       </button>
       <Modal open={confirm} onOpenChange={setConfirm} title="Çıkış yapılsın mı?" size="sm">
-        <p className="text-sm text-muted">Kayıtlarınız bu cihazda kalır; aynı hesapla tekrar girdiğinizde kaldığınız yerden devam edersiniz.</p>
+        <p className="text-sm text-muted">Kayıtlarınız bu cihazda kalır.</p>
         <div className="mt-5 flex justify-end gap-2 pb-1">
           <Button onClick={() => setConfirm(false)}>Vazgeç</Button>
           <Button variant="primary" icon={<LogOut className="size-4" />} onClick={() => void auth.signOut()}>

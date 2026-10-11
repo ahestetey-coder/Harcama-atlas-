@@ -4,7 +4,7 @@ import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, WealthLine } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
-import { Alert, Badge, Button, Card, EmptyState, Field, IconButton, Input, Segmented, Select } from '../components/ui/primitives'
+import { Alert, Badge, Button, Card, EmptyState, Field, IconButton, Input, More, Segmented, Select } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import {
   ASSET_KIND_LABEL,
@@ -107,7 +107,7 @@ const TILE_ORDER: Exclude<AssetKind, 'debt'>[] = ['gold', 'fx', 'deposit', 'fund
 
 /** Fiyatı kendiliğinden güncellenen türler için kısa not. */
 const AUTO_NOTE: Partial<Record<AssetKind, string>> = {
-  gold: 'Gram, çeyrek, yarım, tam ve ayar altının fiyatı ons ve kurdan kendiliğinden güncellenir.',
+  gold: 'Altın fiyatı kendiliğinden güncellenir.',
   fx: 'Kur her gün TCMB’den kendiliğinden güncellenir.',
   fund: 'Fon fiyatı TEFAS’tan kendiliğinden güncellenir.',
   stock: 'Fiyat Borsa İstanbul’dan kendiliğinden güncellenir.',
@@ -145,7 +145,7 @@ export default function AssetsPage() {
         title="Yatırımlarım"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Aylık gelir ve giderden bağımsız yatırım paneli
+            <PlanBadge plan="plus" /> Birikimleriniz tek yerde
           </span>
         }
         actions={
@@ -158,10 +158,10 @@ export default function AssetsPage() {
         feature="assets"
         title="Yatırımlarım"
         points={[
-          'Altın, döviz, fon, hisse, kripto, emtia ve mevduatlarınızı miktar, alış tarihi ve maliyetiyle kaydedin',
+          'Altın, döviz, fon, hisse, kripto ve mevduatlarınızı kaydedin',
           'Toplam değeri ve dağılımı görün',
           'Yatırdığınız parayı ve yatırım kazancını ayrı ayrı izleyin',
-          'Döviz, hisse, ETF, fon, kripto ve gram altın güncel fiyatla otomatik güncellenir; kâr/zarar anında görünür',
+          'Fiyatlar otomatik güncellenir; kâr/zarar anında görünür',
           'Toplam varlığınızı TL ya da USD olarak görün',
         ]}
       >
@@ -205,7 +205,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
     return (
       <Card className="p-5">
         <EmptyState icon={<Wallet className="size-6" />} title="Henüz yatırım eklenmedi" className="py-6">
-          Altın, döviz, fon, hisse, kripto, emtia veya mevduatınızı ekleyin. Güncel fiyatlar kendiliğinden gelir; bilgiler yalnızca bu cihazda kalır. Borçlarınızı Borçlarım sayfasında izlersiniz.
+          Bir tür seçin; güncel fiyat kendiliğinden gelir.
         </EmptyState>
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           {ASSET_KINDS.filter((k) => k !== 'other').map((k) => (
@@ -250,7 +250,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
         </div>
         {inUsd && usd && (
           <p className="mt-3 text-[12px] text-subtle">
-            Tutarlar TCMB kuruyla ({usd.valueTl.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} ₺ · {formatDate(usd.date)}) dolara çevrildi. Kazanç TL bazında hesaplanıp bugünkü kurla gösterilir.
+            TCMB kuruyla ({usd.valueTl.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} ₺ · {formatDate(usd.date)}) dolara çevrildi.
           </p>
         )}
         {staleList.length > 0 && (
@@ -262,12 +262,12 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
                 {x.asset.name} ({formatDate(x.date)})
               </span>
             ))}
-            . Toplam değer bu eski fiyatlarla hesaplanıyor.{' '}
+.{' '}
             {!signedIn
-              ? 'Giriş yaptığınızda bu fiyatlar kendiliğinden güncellenir.'
+              ? 'Giriş yapınca kendiliğinden güncellenir.'
               : staleList.some((x) => needsManual(x.asset, live))
-                ? 'Otomatik fiyatı bulunamayanlar için satırdaki "Güncelle" ile bugünkü fiyatı girin ya da düzenleyip sembol ekleyin.'
-                : 'Fiyatlar kendiliğinden güncelleniyor.'}
+                ? 'Satırdaki "Güncelle" ile bugünkü fiyatı girin.'
+                : 'Fiyatlar güncelleniyor.'}
           </Alert>
         )}
         <LivePrices live={live} assets={assets} signedIn={signedIn} />
@@ -306,10 +306,10 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
       <Card className="p-5">
         <h2 className="font-display text-base font-semibold">Zaman içinde değer</h2>
         {history.length < 2 ? (
-          <p className="mt-2 text-sm text-muted">Grafik, en az iki farklı günde işlem veya fiyat girildiğinde oluşur. Yalnızca girdiğiniz tarihler gösterilir; aradaki günler için değer üretilmez.</p>
+          <p className="mt-2 text-sm text-muted">İki farklı günde kayıt girince grafik oluşur.</p>
         ) : (
           <>
-            <p className="mt-0.5 text-[12.5px] text-muted">Yalnızca işlem veya fiyat girdiğiniz günler. Borçlar dahil değil.</p>
+            <p className="mt-0.5 text-[12.5px] text-muted">Borçlar dahil değil.</p>
             <WealthLine points={history} />
           </>
         )}
@@ -335,9 +335,12 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
         )}
       </Card>
 
-      <p className="text-[12.5px] text-subtle lg:col-span-2">
-        Fiyatlar uygulama açılınca ve açık kaldıkça 15 dakikada bir kendiliğinden güncellenir. Döviz TCMB gösterge kurundan; Borsa İstanbul, yabancı hisse ve ETF'ler, altın (ons fiyatı × kur) ve emtialar Yahoo Finance'ten; kripto Binance'ten (USDT paritesi × kur); fonlar TEFAS'tan alınır. Fiyatlar gecikmeli olabilir. Fiyat isteği yalnızca sembolleri içerir; miktar ve maliyetleriniz gönderilmez. Bu sayfa yatırım tavsiyesi vermez. Bilgiler yalnızca bu cihazda tutulur. Borçlar bu sayfada değil, Borçlarım'da izlenir.
-      </p>
+      <div className="text-[12.5px] text-subtle lg:col-span-2">
+        <p>Fiyatlar gecikmeli olabilir. Yatırım tavsiyesi değildir.</p>
+        <More label="Fiyatlar nereden gelir?">
+          Fiyatlar uygulama açıkken 15 dakikada bir güncellenir. Döviz TCMB'den; Borsa İstanbul, yabancı hisse, ETF, altın ve emtia Yahoo Finance'ten; kripto Binance'ten; fonlar TEFAS'tan alınır. İstekte yalnızca semboller gider; miktar ve maliyetleriniz gönderilmez. Bilgiler bu cihazda tutulur.
+        </More>
+      </div>
 
       <ActionDialog acting={acting} onClose={() => setActing(null)} />
       <ConfirmDialog
@@ -392,7 +395,7 @@ function LivePrices({ live, assets, signedIn }: { live: LiveState; assets: Asset
         ) : live.busy ? (
           'Güncel fiyatlar alınıyor…'
         ) : autoCount === 0 ? (
-          'Döviz, altın, emtia, hisse, ETF, fon ve kriptonun fiyatı kendiliğinden güncellenir. Hisse ve fonda adını yazmanız yeterli; sembol otomatik eşlenir.'
+          'Fiyatlar kendiliğinden güncellenir.'
         ) : (
           <>
             <span className="font-medium text-ink">Fiyatlar otomatik güncelleniyor</span>
@@ -695,7 +698,7 @@ export function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () 
             label={balance ? (debt ? 'Güncel borç (TL)' : 'Güncel bakiye (TL)') : `Güncel birim fiyat (TL / ${asset?.unit})`}
             htmlFor="asset-price"
             error={error}
-            hint={balance ? undefined : 'Kendi kaynağınızdan (banka, kuyumcu, aracı kurum) bakıp girin.'}
+            hint={balance ? undefined : 'Banka, kuyumcu veya aracı kurumdan bakın.'}
           >
             <Input id="asset-price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" autoFocus />
           </Field>
@@ -912,7 +915,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
           </div>
         )}
         {f.kind === 'commodity' && (
-          <Field label="Emtia" htmlFor="asset-commodity" hint="Güncel fiyat dünya vadeli fiyatından (USD × TCMB kuru) hesaplanır">
+          <Field label="Emtia" htmlFor="asset-commodity" hint="Fiyat kendiliğinden gelir.">
             <Select
               id="asset-commodity"
               value={f.symbol}
@@ -931,7 +934,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
             </Select>
           </Field>
         )}
-        <Field label="Ad" htmlFor="asset-name" hint={SYMBOL_KINDS.includes(f.kind) ? 'Yazdıkça öneriler çıkar; seçince sembol de dolar' : undefined}>
+        <Field label="Ad" htmlFor="asset-name" hint={SYMBOL_KINDS.includes(f.kind) ? 'Yazdıkça öneriler çıkar.' : undefined}>
           {SYMBOL_KINDS.includes(f.kind) ? (
             <SuggestInput id="asset-name" value={f.name} maxLength={60} market={f.market} minChars={2} placeholder={NAME_PLACEHOLDER[f.kind]} onChange={(v) => set('name', v)} onPick={pick} />
           ) : (
@@ -943,7 +946,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
             <Field label="Kaynak" htmlFor="asset-market">
               <Input id="asset-market" value={SOURCE_TEXT[f.kind] ?? ''} readOnly disabled />
             </Field>
-            <Field label={f.kind === 'fund' ? 'Fon kodu' : 'Sembol'} htmlFor="asset-symbol" hint="Güncel fiyat için; boş bırakırsanız fiyatı siz girersiniz">
+            <Field label={f.kind === 'fund' ? 'Fon kodu' : 'Sembol'} htmlFor="asset-symbol" hint="Boşsa fiyatı siz girersiniz.">
               <SuggestInput
                 id="asset-symbol"
                 value={f.symbol}
@@ -970,7 +973,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
           />
         )}
         {(f.kind === 'other' || f.kind === 'fx' || (f.kind === 'commodity' && !f.symbol)) && (
-          <Field label={f.kind === 'fx' ? 'Döviz kodu' : 'Birim'} htmlFor="asset-unit" hint={f.kind === 'fx' ? 'USD, EUR, GBP gibi; kur kendiliğinden gelir' : 'Fiyatı hangi birim için gireceğiniz (gram, adet, pay…)'}>
+          <Field label={f.kind === 'fx' ? 'Döviz kodu' : 'Birim'} htmlFor="asset-unit" hint={f.kind === 'fx' ? 'Örn. USD, EUR' : 'Gram, adet, pay…'}>
             <Input id="asset-unit" value={f.unit} maxLength={16} onChange={(e) => set('unit', f.kind === 'fx' ? e.target.value.toUpperCase() : e.target.value)} />
           </Field>
         )}
@@ -1004,7 +1007,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
                 <span className="num font-semibold text-ink">{formatKurus(instTotal)}</span>
               </div>
             )}
-            <p className="-mt-1 text-[12px] text-subtle">Taksitler düzenli ödemelere eklenir; ödeme günü gelen taksit aylık özete gider olarak yansır ve kalan borç kendiliğinden azalır.</p>
+            <p className="-mt-1 text-[12px] text-subtle">Taksitler düzenli ödemelere eklenir.</p>
           </>
         )}
         {debt && !monthly && (
@@ -1028,7 +1031,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
                   <Input id="asset-first-price" inputMode="decimal" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="0,00" />
                 </Field>
               </div>
-              {(f.kind === 'crypto' || f.kind === 'foreign') && <p className="-mt-1 text-[12px] text-subtle">Dövizle aldıysanız alış günündeki kurla TL karşılığını girin.</p>}
+              {(f.kind === 'crypto' || f.kind === 'foreign') && <p className="-mt-1 text-[12px] text-subtle">Alış günündeki kurla TL karşılığını girin.</p>}
               {cost !== null && (
                 <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2 text-[13px]" aria-label="Toplam maliyet">
                   <span className="text-muted">Toplam maliyet</span>

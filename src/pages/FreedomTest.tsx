@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, ClipboardCheck } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Slider } from '../components/Slider'
-import { Badge, Button, Card, Field, Input, Segmented, Select, Switch } from '../components/ui/primitives'
+import { Badge, Button, Card, Field, Input, More, Segmented, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import { DEFAULT_INFLATION_PCT, DEFAULT_LIFE_AGE, DEFAULT_TARGET_AGE, RISK_PROFILES } from '../domain/assumptions'
 import { STRATEGY_LABEL, type CoachDebt, type DebtStrategy } from '../domain/coach'
@@ -264,7 +264,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
   if (initial && left === 0)
     return (
       <Card className="p-5">
-        <p className="text-[13.5px] text-muted">Bu ayki {TESTS_PER_MONTH} test hakkınızı kullandınız. Gelecek ay yeniden yapabilirsiniz. Borç, düzenli ödeme ya da varlık değiştiğinde rotanız zaten kendiliğinden güncellenir.</p>
+        <p className="text-[13.5px] text-muted">Bu ayki {TESTS_PER_MONTH} test hakkınızı kullandınız. Rotanız yine kendiliğinden güncellenir.</p>
         {onCancel && (
           <Button className="mt-3" variant="ghost" onClick={onCancel}>
             Rotama dön
@@ -282,9 +282,12 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
         <ClipboardCheck className="size-5 text-accent" /> Finansal özgürlük testi
       </h2>
       <p className="mt-1 text-[13.5px] text-muted">
-        Uygulamadaki bilgiler getirildi; doğrulayın veya düzeltin. Tutarları bugünün parasıyla yazın. Borç, düzenli ödeme ya da varlık değiştiğinde rotanız testi yeniden yapmadan güncellenir.
-        {initial ? ` Bu ay ${left} test hakkınız var.` : ` Testi ayda ${TESTS_PER_MONTH} kez yenileyebilirsiniz.`}
+        Bilgileri kontrol edin; tutarlar bugünün parasıyla.
+        {initial && ` Bu ay ${left} test hakkınız var.`}
       </p>
+      <More>
+        Bilgiler uygulamadaki kayıtlarınızdan getirildi. Borç, düzenli ödeme ya da varlık değişince rotanız testsiz güncellenir. Testi ayda {TESTS_PER_MONTH} kez yenileyebilirsiniz.
+      </More>
 
       <div className="sticky top-0 z-10 mt-4 grid grid-cols-3 gap-2 rounded-xl border border-line bg-surface p-3" aria-label="Canlı özet" role="group">
         <div className="min-w-0">
@@ -330,13 +333,13 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
               <Field label="Yaşınız" htmlFor="t-age">
                 <Input id="t-age" inputMode="numeric" value={f.age} onChange={(e) => set('age', e.target.value.replace(/\D/g, ''))} placeholder="Örn. 32" />
               </Field>
-              <Field label="Hangi yaşta çalışmayı bırakmak istersiniz?" htmlFor="t-target-age" hint="Hedef yaş. Hedef süresi buradan çıkar.">
+              <Field label="Hangi yaşta çalışmayı bırakmak istersiniz?" htmlFor="t-target-age">
                 <Input id="t-target-age" inputMode="numeric" value={f.targetAge} onChange={(e) => set('targetAge', e.target.value.replace(/\D/g, ''))} />
               </Field>
-              <Field label="Paranın yetmesi gereken yaş" htmlFor="t-life-age" hint="Uzun planlamak daha güvenli; varsayılan 90.">
+              <Field label="Paranın yetmesi gereken yaş" htmlFor="t-life-age" hint="Varsayılan 90.">
                 <Input id="t-life-age" inputMode="numeric" value={f.lifeAge} onChange={(e) => set('lifeAge', e.target.value.replace(/\D/g, ''))} />
               </Field>
-              <Field label="Bakmakla yükümlü olduğunuz kişi sayısı" htmlFor="t-dependents" hint="Çocuk, eş, ebeveyn… Yoksa 0.">
+              <Field label="Bakmakla yükümlü olduğunuz kişi sayısı" htmlFor="t-dependents" hint="Yoksa 0.">
                 <Input id="t-dependents" inputMode="numeric" value={f.dependents} onChange={(e) => set('dependents', e.target.value.replace(/\D/g, ''))} />
               </Field>
               <Field label="Konut durumunuz" htmlFor="t-housing">
@@ -352,7 +355,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
           )}
           {step === 1 && (
             <>
-              <Field label={<span className="inline-flex items-center gap-2">Aylık net gelir (TL) {tag(!!initial)}</span>} htmlFor="t-income" hint="Maaş ve düzenli iş geliri.">
+              <Field label={<span className="inline-flex items-center gap-2">Aylık net gelir (TL) {tag(!!initial)}</span>} htmlFor="t-income">
                 <Input id="t-income" inputMode="decimal" value={f.income} onChange={(e) => set('income', e.target.value)} placeholder="0,00" />
               </Field>
               <Field label="Gelir düzeni" htmlFor="t-stability">
@@ -369,8 +372,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
           {step === 2 && (
             <>
               <p className="text-[13px] text-muted md:col-span-2">
-                {fromData ? 'Son 3 dönemin işlemlerinden dolduruldu (düzenli ödemeler ve taksitler hariç). ' : 'Son dönemlerde kategorili harcama kaydı yok; tahmini girin. '}
-                Kategorilere bölmek, toplamı tahmin etmekten daha doğru sonuç verir.
+                {fromData ? 'Son 3 dönemin ortalamasıyla dolduruldu.' : 'Harcama kaydı yok; tahmini girin.'}
               </p>
               {SPEND_GROUPS.map((g) => (
                 <Field key={g} label={<span className="inline-flex items-center gap-2">{SPEND_GROUP_LABEL[g]} (TL)</span>} htmlFor={`t-spend-${g}`}>
@@ -394,7 +396,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
                 ) : (
                   <p className="mt-1 text-[12.5px] text-subtle">Düzenli ödeme kaydı yok.</p>
                 )}
-                <p className="mt-1 text-[12px] text-subtle">Bunlar zorunlu gidere kendiliğinden eklenir. Biten taksitler o aydan sonra birikime sayılır.</p>
+                <p className="mt-1 text-[12px] text-subtle">Zorunlu gidere eklenir.</p>
               </div>
               <div className="flex items-baseline justify-between border-t border-dashed border-line pt-3 text-sm font-semibold md:col-span-2">
                 <span>Toplam aylık harcama</span>
@@ -405,7 +407,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
           {step === 3 && (
             <>
               {debts.length === 0 ? (
-                <p className="text-[13px] text-muted md:col-span-2">Borçlar ve ödemeler sayfasında kayıtlı borç yok. Borç eklerseniz rota kendiliğinden güncellenir.</p>
+                <p className="text-[13px] text-muted md:col-span-2">Kayıtlı borç yok.</p>
               ) : (
                 <ul className="flex flex-col gap-3 md:col-span-2" aria-label="Borçlarınız">
                   {debts.map((d) => {
@@ -425,12 +427,12 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
                         {(missingRate || missingPay) && (
                           <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                             {missingRate && (
-                              <Field label={`${d.name} aylık faiz (%)`} htmlFor={`t-rate-${d.id}`} hint="Bilinmiyor; girerseniz kayda yazılır.">
+                              <Field label={`${d.name} aylık faiz (%)`} htmlFor={`t-rate-${d.id}`} hint="Girerseniz kayda yazılır.">
                                 <Input id={`t-rate-${d.id}`} inputMode="decimal" value={e.rate} onChange={(ev) => setD('rate', ev.target.value)} placeholder="Örn. 4,25" />
                               </Field>
                             )}
                             {missingPay && (
-                              <Field label={`${d.name} aylık ödeme (TL)`} htmlFor={`t-pay-${d.id}`} hint="Şu an tahmini asgari kullanılıyor.">
+                              <Field label={`${d.name} aylık ödeme (TL)`} htmlFor={`t-pay-${d.id}`} hint="Şimdilik tahmin kullanılıyor.">
                                 <Input id={`t-pay-${d.id}`} inputMode="decimal" value={e.pay} onChange={(ev) => setD('pay', ev.target.value)} placeholder="0,00" />
                               </Field>
                             )}
@@ -450,17 +452,17 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
                   className="mt-1.5 w-full sm:w-auto"
                   options={(Object.keys(STRATEGY_LABEL) as DebtStrategy[]).map((k) => ({ value: k, label: STRATEGY_LABEL[k] }))}
                 />
-                <p className="mt-1.5 text-[12px] text-subtle">
-                  Önce en yüksek faiz, toplam faizi en aza indirir. Önce en küçük borç, küçük zaferlerle motivasyonu artırabilir (Gal ve McShane 2012). Bir borç kapanınca taksiti sıradakine, borçlar bitince birikime gider.
-                  {preview.debtFreeMonth !== null && preview.debtFreeMonth > 0 && ` Bu sırayla bütün borçlar ${preview.debtFreeMonth} ayda kapanır.`}
-                </p>
+                {preview.debtFreeMonth !== null && preview.debtFreeMonth > 0 && <p className="mt-1.5 text-[12px] text-subtle">Bu sırayla bütün borçlar {preview.debtFreeMonth} ayda kapanır.</p>}
+                <More>
+                  Önce en yüksek faiz, toplam faizi en aza indirir. Önce en küçük borç, küçük zaferlerle motivasyon verir (Gal ve McShane 2012). Kapanan borcun taksiti sıradakine, borçlar bitince birikime gider.
+                </More>
               </div>
             </>
           )}
           {step === 4 && (
             <>
               <div className="md:col-span-2">
-                <Slider id="t-pct" label="Bugünkü harcamanızın yüzde kaçıyla yaşamak istersiniz?" value={f.pct} min={50} max={160} step={5} onChange={(v) => set('pct', v)} display={(v) => `%${v}`} hint="%70 sade bir yaşam, %100 bugünkü düzen, %150 daha rahat bir yaşam demek." />
+                <Slider id="t-pct" label="Bugünkü harcamanızın yüzde kaçıyla yaşamak istersiniz?" value={f.pct} min={50} max={160} step={5} onChange={(v) => set('pct', v)} display={(v) => `%${v}`} hint="%100 bugünkü düzeniniz demek." />
               </div>
               <div className="flex items-start justify-between gap-3 md:col-span-2">
                 <div>
@@ -524,19 +526,19 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
                 <div className="mt-1">
                   Profiliniz: <strong>{preview.risk.profile.label}</strong> (%{Math.round(preview.risk.profile.equity * 100)} hisse / %{100 - Math.round(preview.risk.profile.equity * 100)} tahvil-mevduat) · beklenen reel getiri %{preview.risk.profile.realReturnPct.toLocaleString('tr-TR')}
                 </div>
-                <p className="mt-1 text-[12px] text-muted">Nihai profil, toleransla kapasitenin düşük olanıdır. Kapasite yatırım süresi, gelir düzeni, acil fon ve borç yükünden hesaplanır. Yalnızca varsayımı belirler; ürün önerilmez.</p>
+                <More>Profil, tolerans ve kapasiteden düşük olanıdır. Kapasite süre, gelir düzeni, acil fon ve borç yükünden hesaplanır. Yalnızca varsayımı belirler; ürün önerilmez.</More>
               </div>
             </>
           )}
           {step === 6 && (
             <>
-              <Field label="Beklenen SGK/BES aylığı (TL)" htmlFor="t-pension" optional hint="Bugünün parasıyla. Emin değilseniz 0 bırakın.">
+              <Field label="Beklenen SGK/BES aylığı (TL)" htmlFor="t-pension" optional hint="Emin değilseniz 0 bırakın.">
                 <Input id="t-pension" inputMode="decimal" value={f.pension} onChange={(e) => set('pension', e.target.value)} placeholder="0,00" />
               </Field>
-              <Field label="Kira ve pasif gelir (TL/ay)" htmlFor="t-passive" optional hint="Kira, temettü, faiz gibi çalışmadan gelen gelir.">
+              <Field label="Kira ve pasif gelir (TL/ay)" htmlFor="t-passive" optional>
                 <Input id="t-passive" inputMode="decimal" value={f.passive} onChange={(e) => set('passive', e.target.value)} placeholder="0,00" />
               </Field>
-              <Field label="Yarı zamanlı / serbest iş geliri (TL/ay)" htmlFor="t-parttime" optional hint="Hedef yaştan sonra beklenen.">
+              <Field label="Yarı zamanlı / serbest iş geliri (TL/ay)" htmlFor="t-parttime" optional hint="Hedef yaştan sonra.">
                 <Input id="t-parttime" inputMode="decimal" value={f.partTime} onChange={(e) => set('partTime', e.target.value)} placeholder="0,00" />
               </Field>
               <Field label="Sağlık güvenceniz" htmlFor="t-health">
@@ -561,7 +563,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
           )}
           {step === 7 && (
             <>
-              <Field label="Plan birimi" htmlFor="t-base" hint="USD ya da gram altın seçerseniz hedefleriniz o birimde sabitlenir; TL karşılığı kurla birlikte değişir.">
+              <Field label="Plan birimi" htmlFor="t-base" hint="Hedefler bu birimde sabitlenir.">
                 <Select id="t-base" value={f.base} onChange={(e) => set('base', e.target.value as PlanBase)}>
                   {(Object.keys(BASE_LABEL) as PlanBase[]).map((k) => (
                     <option key={k} value={k}>
@@ -570,7 +572,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
                   ))}
                 </Select>
               </Field>
-              <Field label="TL enflasyon varsayımı (%/yıl)" htmlFor="t-inflation" hint="Yalnızca gelecekteki TL tutarını göstermek için.">
+              <Field label="TL enflasyon varsayımı (%/yıl)" htmlFor="t-inflation">
                 <Input id="t-inflation" inputMode="decimal" value={f.inflation} onChange={(e) => set('inflation', e.target.value)} />
               </Field>
               <div className="flex items-start justify-between gap-3 md:col-span-2">

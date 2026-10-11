@@ -2,7 +2,7 @@ import { Archive, ArchiveRestore, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORY_COLORS, CycleSelect } from '../components/common'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
-import { Button, Card, EmptyState, Field, IconButton, Input } from '../components/ui/primitives'
+import { Button, Card, EmptyState, Field, IconButton, Input, More } from '../components/ui/primitives'
 import { setGroupCycle } from '../cloud/sync'
 import { toUserMessage } from '../data/repository'
 import type { SpendGroup } from '../domain/types'
@@ -72,10 +72,12 @@ export function GroupsTab() {
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <p className="min-w-0 flex-1 text-[13px] text-muted">
-          Gruplar kategoriden ayrıdır: bir market alışverişi hem “Market” kategorisinde hem “Ortak” grubunda olabilir. Panelde ve işlemler listesinde gruba göre filtreleyebilirsiniz.
-          <span className="num"> Grupsuz işlem: {ungrouped}.</span>
-        </p>
+        <div className="min-w-0 flex-1 text-[13px] text-muted">
+          <p>
+            Gruplar kategoriden ayrıdır.<span className="num"> Grupsuz işlem: {ungrouped}.</span>
+          </p>
+          <More>Bir market alışverişi hem “Market” kategorisinde hem “Ortak” grubunda olabilir. Panelde ve işlemlerde gruba göre filtreleyebilirsiniz.</More>
+        </div>
         <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEdit('new')}>
           Grup ekle
         </Button>
@@ -83,7 +85,7 @@ export function GroupsTab() {
       {active.length === 0 ? (
         <Card>
           <EmptyState icon={<Plus className="size-6" />} title="Henüz grup yok">
-            “Bireysel”, “Ortak” veya “İş” gibi gruplar ekleyerek harcamalarınızı kategoriden bağımsız ayırabilirsiniz.
+            Harcamalarınızı “Ortak” veya “İş” gibi ayırın.
           </EmptyState>
         </Card>
       ) : (
@@ -186,7 +188,7 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
           void save()
         }}
       >
-        <Field label="Ad" htmlFor="group-name" error={error} hint="Ör. Bireysel, Ortak, İş, Ev, Tatil">
+        <Field label="Ad" htmlFor="group-name" error={error} hint="Ör. Ortak, İş, Tatil">
           <Input id="group-name" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} autoFocus />
         </Field>
         <fieldset>
@@ -210,10 +212,10 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
           htmlFor="group-cycle"
           hint={
             !canSetCycle
-              ? `Bu paylaşılan grubun döngüsünü yalnızca grup yöneticisi${ownerName ? ` (${ownerName})` : ''} değiştirebilir.`
+              ? `Yalnızca grup yöneticisi${ownerName ? ` (${ownerName})` : ''} değiştirebilir.`
               : group?.cloudId
-                ? 'Gruptaki bütün üyelerin panelinde bu döngü kullanılır.'
-                : 'Panelde bu grup seçiliyken aylar bu güne göre hesaplanır.'
+                ? 'Bütün üyeler için geçerlidir.'
+                : 'Bu grubun ayı bu gün başlar.'
           }
         >
           <CycleSelect id="group-cycle" value={cycle} onChange={setCycle} inheritLabel="Kişisel ayarı kullan" disabled={!canSetCycle} />

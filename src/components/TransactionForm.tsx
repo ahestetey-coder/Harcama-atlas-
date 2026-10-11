@@ -57,7 +57,6 @@ export function TransactionFormHost() {
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
       title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'planned' ? (formState.tx.type === 'income' ? 'Düzenli gelir' : 'Planlı taksit') : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'income' ? 'Gelir ekle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
-      description={formState.tx ? undefined : 'Kategorisini siz seçersiniz. Paylaşılan bir gruba eklemediğiniz sürece kayıt yalnızca bu cihazda tutulur.'}
       size="md"
       side
     >
@@ -176,9 +175,9 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         options={(['expense', 'income', 'refund', 'transfer'] as TxType[]).map((t) => ({ value: t, label: t === 'transfer' ? 'Transfer' : TX_TYPE_LABEL[t] }))}
         className="w-full [&>button]:px-2 [&>button]:text-[12.5px] sm:[&>button]:text-[13px]"
       />
-      {s.type === 'transfer' && <p className="-mt-2 text-[12.5px] text-subtle">Kart borcu ödemeleri ve hesaplar arası transferler gider toplamına dahil edilmez.</p>}
-      {s.type === 'income' && <p className="-mt-2 text-[12.5px] text-subtle">Maaş, kira geliri gibi girişler. Gelir harcama toplamlarına girmez; özet sayfasında bu ay ne kadar kaldığını gösterir. Yalnızca bu cihazda tutulur, grup üyeleriyle paylaşılmaz.</p>}
-      {s.type === 'refund' && <p className="-mt-2 text-[12.5px] text-subtle">İade tutarını pozitif girin; kayıt tarihinin ayındaki net giderden bir kez düşülür.</p>}
+      {s.type === 'transfer' && <p className="-mt-2 text-[12.5px] text-subtle">Gider toplamına dahil edilmez.</p>}
+      {s.type === 'income' && <p className="-mt-2 text-[12.5px] text-subtle">Gider toplamına girmez, grupla paylaşılmaz.</p>}
+      {s.type === 'refund' && <p className="-mt-2 text-[12.5px] text-subtle">Tutarı pozitif girin.</p>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Tutar (TL)" htmlFor="tx-amount" error={errors.amount}>
@@ -238,7 +237,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
             onClick={() => set('categoryId', suggestion.id)}
             className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 py-1 text-[12.5px] font-medium text-accent-strong transition-colors hover:brightness-105 dark:text-accent"
           >
-            <Lightbulb className="size-3.5" /> Kural önerisi: {suggestion.name} — seçmek için dokunun
+            <Lightbulb className="size-3.5" /> Kural önerisi: {suggestion.name}
           </button>
         )}
       </Field>
@@ -246,14 +245,14 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
       {!tx && s.type === 'income' && (
         <Checkbox
           label="Her ay tekrarlansın (düzenli gelir)"
-          description="Maaş, kira geliri gibi. Her ay aynı gün özetinize kendiliğinden eklenir; o ay geliri elle girerseniz iki kez sayılmaz. Ayarlar > Düzenli gelirler'den değiştirebilirsiniz."
+          description="Her ay aynı gün kendiliğinden eklenir."
           checked={s.repeat}
           onChange={(v) => set('repeat', v)}
         />
       )}
 
       {activeGroups.length > 0 && s.type !== 'income' && (
-        <Field label="Harcama grubu" optional hint="Kategoriden ayrı bir gruplama; panelde bu gruba göre filtreleyebilirsiniz.">
+        <Field label="Harcama grubu" optional>
           <GroupPicker groups={activeGroups} value={s.groupId} onChange={(v) => set('groupId', v)} />
           {activeGroups.find((g) => g.id === s.groupId)?.cloudId && (
             <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-medium text-accent">
@@ -267,14 +266,14 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         <div className="rounded-2xl border border-line bg-surface-2 p-3">
           <Checkbox
             label="Bu iş yeri için sonraki işlemlerde de kullan"
-            description="İçe aktarılan işlemlerde bu kategori önerilir. Mevcut kayıtlar değişmez."
+            description="Mevcut kayıtlar değişmez."
             checked={s.learn}
             onChange={(v) => set('learn', v)}
           />
           {s.learn && (
             <div className="mt-2 pl-7">
               <Input aria-label="Eşleşecek iş yeri ifadesi" value={s.learnPattern} onChange={(e) => set('learnPattern', e.target.value)} className="h-10 sm:h-9 sm:text-sm" />
-              <p className="mt-1 text-[12px] text-subtle">Açıklamada bu kelimeler tam olarak geçtiğinde eşleşir.</p>
+              <p className="mt-1 text-[12px] text-subtle">Açıklamada aynen geçmeli.</p>
             </div>
           )}
         </div>
@@ -327,11 +326,11 @@ function SharedTxView({ tx }: { tx: Transaction }) {
       <p className="flex items-start gap-2 rounded-2xl border border-line bg-surface-2 p-3 text-sm text-muted">
         <Lock className="mt-0.5 size-4 shrink-0" />{' '}
         {tx.source === 'planned' && tx.type === 'income'
-          ? 'Bu gelir, düzenli gelirinizin günü geldiği için özete kendiliğinden eklendi; ayrıca kaydedilmez. O ay geliri elle girerseniz bunun yerini alır, iki kez sayılmaz. Tutarı veya günü Ayarlar > Düzenli gelirler bölümünden değiştirebilirsiniz.'
+          ? 'Düzenli gelirinizden kendiliğinden eklendi. Elle girerseniz iki kez sayılmaz.'
           : tx.source === 'planned'
-          ? 'Bu taksit, Borçlar ve ödemeler sayfasındaki taksit planından ödeme günü geldiği için aylık özete yansıtıldı; kaydedilmez. İlgili ekstreyi ya da ödemeyi yüklediğinizde gerçek işlem onun yerini alır, iki kez sayılmaz.'
+          ? 'Taksit planından kendiliğinden yansıtıldı. Gerçek işlem yüklenince onun yerini alır.'
           : tx.source === 'settlement'
-            ? `Grup yöneticisi bu dönemin ${group?.name ?? 'ortak'} giderini üyelere paylaştırdı. Ödediğinizle payınız arasındaki fark “Tümü” toplamınıza ${tx.type === 'refund' ? 'alacak' : 'borç'} olarak eklendi; böylece ortak gider size payınız kadar yansır.`
+            ? `${group?.name ?? 'Ortak'} gideri paylaştırıldı. Payınızla aradaki fark toplamınıza ${tx.type === 'refund' ? 'alacak' : 'borç'} olarak eklendi.`
           : SHARED_READONLY}
       </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">

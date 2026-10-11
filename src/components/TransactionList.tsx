@@ -219,7 +219,7 @@ export function TransactionList({ transactions, categories, selectable, selected
       </ul>
       {transactions.length > limit && (
         <p className="px-4 py-3 text-center text-[13px] text-subtle">
-          İlk {limit} işlem gösteriliyor ({transactions.length} işlem). Filtreleri daraltın.
+          İlk {limit} işlem gösteriliyor. Filtreleri daraltın.
         </p>
       )}
     </div>

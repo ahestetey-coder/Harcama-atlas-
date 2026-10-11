@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../../components/AppShell'
-import { Alert, Button, Card, Field, Input, Select } from '../../components/ui/primitives'
+import { Alert, Button, Card, Field, Input, More, Select } from '../../components/ui/primitives'
 import { IMPORT_LIMITS } from '../../config/app'
 import { toUserMessage } from '../../data/repository'
 import { formatDate, periodLabel, periodOf } from '../../domain/dates'
@@ -104,7 +104,7 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
 
   return (
     <div>
-      {!embedded && <PageHeader title="İçe aktar" subtitle="Dosya seç → Oku → İncele/düzelt → Onayla. Onaylamadan hiçbir satır toplamlara eklenmez." />}
+      {!embedded && <PageHeader title="İçe aktar" subtitle="Dosya seçin, inceleyin, onaylayın." />}
       <ol className="mb-5 flex items-center gap-1.5 overflow-x-auto pb-1 text-[12.5px] sm:gap-3" aria-label="Adımlar">
         {STEPS.map((s, i) => (
           <li key={s} className="flex shrink-0 items-center gap-1.5 sm:gap-3" aria-current={i === stepIndex ? 'step' : undefined}>
@@ -131,9 +131,9 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
             <div>
               <h2 className="font-display text-lg font-semibold">Bu dosya daha önce içe aktarılmış</h2>
               <p className="mt-1 text-sm text-muted">
-                “{stage.existing.fileName}” {formatDate(stage.existing.importedAt.slice(0, 10), 'long')} tarihinde aktarıldı ({stage.existing.transactionCount} işlem). Aynı içerik (dosya özeti eşleşti).
+                “{stage.existing.fileName}” {formatDate(stage.existing.importedAt.slice(0, 10), 'long')} tarihinde aktarıldı ({stage.existing.transactionCount} işlem). Aynı içerik.
               </p>
-              <p className="mt-2 text-sm text-muted">Devam ederseniz satırlar mevcut kayıtlarla karşılaştırılır ve tekrar şüphesi olarak gösterilir; hiçbiri otomatik silinmez.</p>
+              <p className="mt-2 text-sm text-muted">Devam ederseniz tekrarlar size gösterilir.</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Button variant="primary" onClick={() => flow.start(info)}>
                   Yine de devam et
@@ -166,7 +166,7 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
             )}
           </div>
           {stage.progress !== null && <p className="num mt-2 text-[12.5px] text-subtle">%{Math.round(stage.progress * 100)}</p>}
-          <p className="mt-4 text-[12.5px] text-subtle">Dosya bu cihazda işleniyor; hiçbir yere gönderilmiyor.</p>
+          <p className="mt-4 text-[12.5px] text-subtle">Dosya yalnızca bu cihazda işleniyor.</p>
           {stage.cancellable && (
             <Button variant="ghost" className="mt-4" icon={<X className="size-4" />} onClick={flow.cancelReading}>
               İptal et
@@ -245,7 +245,7 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
                 ))}
               </div>
             )}
-            <p className="mt-3 text-[12.5px] text-subtle">Yüklenen dosya saklanmadı; yalnızca onayladığınız işlemler kaydedildi.</p>
+            <p className="mt-3 text-[12.5px] text-subtle">Dosyanın kendisi saklanmadı.</p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               <Button variant="primary" onClick={() => navigate('/')}>
                 {stage.months[0] ? `Panele git (${periodLabel(stage.months[0].month, cycle)})` : 'Panele git'}
@@ -345,7 +345,7 @@ function SelectStep({
         <Card className="p-5">
           <h2 className="text-sm font-semibold">Aktarılan işlemlere eklenecek bilgi</h2>
           <div className="mt-3 flex flex-col gap-3">
-            <Field label="Kart/hesap takma adı" htmlFor="imp-alias" optional hint="Tekrar kontrolünde farklı kartları ayırmaya yarar. Kart numarası girmeyin.">
+            <Field label="Kart/hesap takma adı" htmlFor="imp-alias" optional hint="Kart numarası girmeyin.">
               <Input id="imp-alias" value={alias} maxLength={40} onChange={(e) => setAlias(e.target.value.replace(/\d{12,}/g, ''))} placeholder="Ör. Maaş kartı" />
             </Field>
             <Field label="Ödeme aracı" htmlFor="imp-pay" optional>
@@ -364,13 +364,15 @@ function SelectStep({
           <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
             <ShieldCheck className="size-4 text-accent" /> Sınırlar ve gizlilik
           </h2>
-          <ul className="space-y-1.5">
-            <li>PDF: en çok {IMPORT_LIMITS.maxPdfBytes / 1048576} MB, {IMPORT_LIMITS.maxPdfPages} sayfa; taranmış sayfalarda OCR en çok {IMPORT_LIMITS.maxOcrPdfPages} sayfa.</li>
-            <li>CSV / Excel: en çok {IMPORT_LIMITS.maxSheetBytes / 1048576} MB, {IMPORT_LIMITS.maxRows.toLocaleString('tr-TR')} satır.</li>
-            <li>Görsel: en çok {IMPORT_LIMITS.maxImageBytes / 1048576} MB.</li>
-            <li>Dosyalar bu cihazda okunur, sunucuya gönderilmez ve kalıcı saklanmaz.</li>
-            <li>Bankaya özgü ayrıştırıcı yoktur; genel okuyucu kullanılır. Her satırı incelemeniz gerekir.</li>
-          </ul>
+          <p>Dosyalar yalnızca bu cihazda okunur, saklanmaz.</p>
+          <More label="Sınırlar">
+            <ul className="space-y-1">
+              <li>PDF: en çok {IMPORT_LIMITS.maxPdfBytes / 1048576} MB, {IMPORT_LIMITS.maxPdfPages} sayfa (OCR en çok {IMPORT_LIMITS.maxOcrPdfPages} sayfa).</li>
+              <li>CSV / Excel: en çok {IMPORT_LIMITS.maxSheetBytes / 1048576} MB, {IMPORT_LIMITS.maxRows.toLocaleString('tr-TR')} satır.</li>
+              <li>Görsel: en çok {IMPORT_LIMITS.maxImageBytes / 1048576} MB.</li>
+              <li>Genel okuyucu kullanılır; her satırı inceleyin.</li>
+            </ul>
+          </More>
           <a href="./ornek-dosyalar/" className="mt-3 inline-block font-medium text-accent hover:underline" target="_blank" rel="noopener">
             Sentetik örnek dosyalar
           </a>
@@ -399,7 +401,7 @@ function PasswordStep({ incorrect, fileName, onSubmit, onCancel }: { incorrect: 
           if (pw) onSubmit(pw)
         }}
       >
-        <Field label="Parola" htmlFor="pdf-pw" error={incorrect ? 'Parola hatalı, tekrar deneyin.' : undefined} hint="Parola yalnızca bu okuma için kullanılır, saklanmaz.">
+        <Field label="Parola" htmlFor="pdf-pw" error={incorrect ? 'Parola hatalı, tekrar deneyin.' : undefined} hint="Parola saklanmaz.">
           <Input id="pdf-pw" type="password" autoComplete="off" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} aria-invalid={incorrect} />
         </Field>
         <div className="mt-5 flex justify-end gap-2">

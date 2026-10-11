@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Slider } from '../components/Slider'
-import { Card } from '../components/ui/primitives'
+import { Card, More } from '../components/ui/primitives'
 import { FAT_FACTOR, LEAN_FACTOR, MC_RUNS } from '../domain/assumptions'
 import { MONTH_NAMES } from '../domain/dates'
 import { buildFreedomPlan, formatInBase, reachDateLabel, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type PlanBase } from '../domain/journey'
@@ -57,10 +57,11 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
       <Card className="p-5">
         <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">Finansal özgürlük hedefiniz</div>
         <div className="num mt-1 font-display text-[34px] font-bold leading-none text-ink">{inBase(v.fiKurus)}</div>
-        <p className="mt-1.5 text-[13px] text-muted">
+        <p className="mt-1.5 text-[13px] text-muted">Bugünün parasıyla.</p>
+        <More>
           Yıllık {formatKurus(v.annualNeedKurus)} çekim ÷ %{v.withdrawal.usedPct.toLocaleString('tr-TR')} çekim oranı ({v.retirementYears} yıllık çekim süresi
-          {v.withdrawal.custom ? `; önerilen %${v.withdrawal.recommendedPct.toLocaleString('tr-TR')}` : ', süreye göre önerilen'}). Bugünün parasıyla.
-        </p>
+          {v.withdrawal.custom ? `; önerilen %${v.withdrawal.recommendedPct.toLocaleString('tr-TR')}` : ', süreye göre önerilen'}).
+        </More>
         <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3" role="group" aria-label="Canlı özet">
           <Mini label="Hedef birikim" value={shortTl(v.fiKurus) + ' ₺'} />
           <Mini label="Bugünkü hızla" value={v.reachAge === null ? 'Ulaşılamıyor' : `${Math.ceil(v.reachAge)} yaşında`} tone={late ? 'warn' : 'good'} />
@@ -85,14 +86,14 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi icon={<PiggyBank className="size-4" />} label="Gereken aylık birikim" tone={v.gapKurus > 0 ? 'warn' : 'good'} value={`${formatKurus(v.requiredMonthlyKurus)}/ay`}>
-          {v.targetAge} yaşında hedefe ulaşmak için ({v.risk.profile.label} senaryosu, reel %{v.realReturnPct.toLocaleString('tr-TR')}). Şu an {formatKurus(v.monthlySavingKurus)};{' '}
-          {v.gapKurus > 0 ? `fark ${formatKurus(v.gapKurus)}.` : 'yeterli.'} Borç ve taksit bitişleri hesaba katıldı.
+          Şu an {formatKurus(v.monthlySavingKurus)};{' '}
+          {v.gapKurus > 0 ? `fark ${formatKurus(v.gapKurus)}.` : 'yeterli.'}
         </Kpi>
         <Kpi icon={<Hourglass className="size-4" />} label="Coast FI eşiği" tone={v.coastPassed ? 'good' : undefined} value={inBase(v.coastKurus)}>
-          {v.coastPassed ? 'Geçtiniz: hiç eklemeseniz de beklenen getiriyle hedef yaşta yetiyor.' : `Net birikiminiz ${inBase(v.netKurus)}.`} Bileşik getiri hesabıdır.
+          {v.coastPassed ? 'Geçtiniz; eklemeseniz de yetiyor.' : `Net birikiminiz ${inBase(v.netKurus)}.`}
         </Kpi>
         <Kpi icon={<Gauge className="size-4" />} label="Başarı olasılığı" tone={v.successRate >= 0.8 ? 'good' : v.successRate < 0.6 ? 'warn' : undefined} value={`%${Math.round(v.successRate * 100)}`}>
-          {MC_RUNS.toLocaleString('tr-TR')} piyasa senaryosunda paranın {v.lifeAge} yaşına kadar yetme oranı. Varsayıma dayalı benzetimdir, gerçek olasılık değildir.
+          Varsayıma dayalı benzetimdir, garanti değildir.
         </Kpi>
         <Kpi icon={<CalendarCheck className="size-4" />} label="Borçsuz olma tarihi" value={debtDate}>
           {nextEnds.length
@@ -107,13 +108,13 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
 
       <Card className="p-4 sm:p-5">
         <h3 className="font-display text-base font-semibold">Birikim projeksiyonu</h3>
-        <p className="mt-0.5 text-[12.5px] text-muted">Bugünün parasıyla net birikim; varsayıma dayalı benzetim.</p>
+        <p className="mt-0.5 text-[12.5px] text-muted">Bugünün parasıyla, tahmini.</p>
         <Projection plan={v} />
       </Card>
 
       <Card className="p-4 sm:p-5" aria-label="Kaldıraçlar">
         <h3 className="font-display text-base font-semibold">Kaldıraçlarla oynayın</h3>
-        <p className="mt-0.5 text-[12.5px] text-muted">Değişiklikler kaydedilmez; yalnızca sonucu nasıl etkilediğini gösterir.</p>
+        <p className="mt-0.5 text-[12.5px] text-muted">Değişiklikler kaydedilmez.</p>
         <div className="mt-3 flex flex-col gap-4">
           <Slider id="l-extra" label="Aylık ek birikim" value={extra / 100} min={0} max={Math.max(50000, Math.ceil(plan.levers.extraMonthlyKurus / 100 / 5000) * 5000 + 10000)} step={500} onChange={(x) => setExtra(x * 100)} display={(x) => `+${formatKurus(x * 100)}`} />
           <Slider id="l-age" label="Hedef yaş" value={tAge} min={plan.age + 1} max={Math.max(plan.age + 2, plan.lifeAge - 1)} onChange={setTAge} display={(x) => `${x} yaş`} />
@@ -148,22 +149,22 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
           <Target className="size-4 text-accent" /> Hedef tarihte ({ageDate(v.targetAge)}) hedefiniz
         </h3>
         <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Future label="TL (nominal)" value={formatKurus(v.future.tlNominalKurus)} note={`Bugünkü ${formatKurus(v.fiKurus)}, yıllık %${v.future.inflationPct.toLocaleString('tr-TR')} enflasyon varsayımıyla ${v.future.years} yıl büyütüldü.`} />
+          <Future label="TL (nominal)" value={formatKurus(v.future.tlNominalKurus)} note={`Yıllık %${v.future.inflationPct.toLocaleString('tr-TR')} enflasyonla.`} />
           <Future
             label="USD"
             value={v.future.usd === null ? '—' : `${v.future.usd.toLocaleString('tr-TR')} $`}
-            note={base === 'USD' ? 'Plan birimi USD: hedef bu tutarda sabit.' : 'Güncel kurla; doların TL karşısında reel değerini koruduğu varsayımıyla.'}
+            note={base === 'USD' ? 'Plan birimi USD: hedef bu tutarda sabit.' : 'Güncel kurla.'}
           />
           <Future
             label="Gram altın"
             value={v.future.goldGr === null ? '—' : `${v.future.goldGr.toLocaleString('tr-TR')} gr`}
-            note={base === 'XAU' ? 'Plan birimi altın: hedef bu miktarda sabit.' : 'Güncel gram fiyatıyla; altının reel değerini koruduğu varsayımıyla.'}
+            note={base === 'XAU' ? 'Plan birimi altın: hedef bu miktarda sabit.' : 'Güncel gram fiyatıyla.'}
           />
         </dl>
       </Card>
 
       <p className="text-[12.5px] text-muted">
-        Bu ekran eğitim ve benzetim amaçlıdır; kişiye özel yatırım tavsiyesi değildir. Tutarlar bugünün parasıyladır{base === 'TRY' ? ' (TÜİK TÜFE ile enflasyondan arındırılmış TL varsayımı)' : ''}.{' '}
+        Yatırım tavsiyesi değildir.{' '}
         <Link to="/ogren#varsayimlar" className="inline-flex items-center gap-1 font-medium text-accent">
           <BookOpen className="size-3.5" /> Varsayımlar ve kaynaklar
         </Link>

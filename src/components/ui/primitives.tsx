@@ -1,6 +1,6 @@
-import { Loader2 } from 'lucide-react'
+import { Info, Loader2 } from 'lucide-react'
 import { motion } from 'motion/react'
-import { forwardRef, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { forwardRef, useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'soft'
@@ -275,4 +275,32 @@ export function Alert({ tone = 'info', title, children, icon, className, action 
 
 export function Skeleton({ className }: { className?: string }) {
   return <div className={cn('skeleton', className)} aria-hidden />
+}
+
+/**
+ * Uzun açıklamaları gizler: yerinde tek satırlık "Nasıl çalışır?" bağlantısı görünür,
+ * dokununca metin altında açılır. Sayfaları yazı kalabalığından kurtarmak için kullanılır.
+ */
+export function More({ label = 'Nasıl çalışır?', children, className }: { label?: string; children: ReactNode; className?: string }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  return (
+    <div className={cn('mt-1', className)}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-md text-[12.5px] font-medium text-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+      >
+        <Info className="size-3.5" aria-hidden />
+        {open ? 'Gizle' : label}
+      </button>
+      {open && (
+        <div id={id} className="mt-1.5 text-[13px] leading-relaxed text-muted">
+          {children}
+        </div>
+      )}
+    </div>
+  )
 }

@@ -2,7 +2,7 @@ import { Cloud, UserPlus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
-import { Alert, Button, Card, Field, Input } from '../components/ui/primitives'
+import { Alert, Button, Card, Field, Input, More } from '../components/ui/primitives'
 import { parseInvite } from '../cloud/config'
 import { cloudErrorMessage } from '../cloud/errors'
 import { joinWithInvite } from '../cloud/sync'
@@ -24,7 +24,7 @@ export default function JoinPage() {
       <div>
         <PageHeader title="Gruba katıl" />
         <Alert tone="danger" title="Davet bağlantısı okunamadı">
-          Bağlantı eksik kopyalanmış olabilir. Davet edenden yeni bir bağlantı isteyin.
+          Davet edenden yeni bir bağlantı isteyin.
         </Alert>
       </div>
     )
@@ -46,11 +46,12 @@ export default function JoinPage() {
               <Cloud className="size-5 text-accent" /> Paylaşım sunucusu
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Bu grup <span className="font-medium text-ink">{host}</span> adresindeki Supabase projesinde tutuluyor. Yalnızca bu gruba eklediğiniz harcamalar oraya gönderilir; diğer kayıtlarınız cihazınızda kalır.
+              Bu grup <span className="font-medium text-ink">{host}</span> sunucusunda tutuluyor.
             </p>
+            <More label="Neler gönderilir?">Yalnızca bu gruba eklediğiniz harcamalar oraya gönderilir; diğer kayıtlarınız cihazınızda kalır.</More>
             {cloud.config && (
               <p className="mt-2 text-sm text-warning">
-                Şu an başka bir sunucuya ({hostOf(cloud.config.url)}) bağlısınız. Devam ederseniz o bağlantı kapanır.
+                Şu an {hostOf(cloud.config.url)} sunucusuna bağlısınız; devam ederseniz o bağlantı kapanır.
               </p>
             )}
             <Button className="mt-4" variant="primary" onClick={() => void cloud.saveConfig({ url: invite.url, anonKey: invite.key })}>
@@ -58,7 +59,7 @@ export default function JoinPage() {
             </Button>
           </Card>
         ) : cloud.status === 'loading' ? null : cloud.status === 'signed-out' ? (
-          <AuthCard intro="Gruba katılmak için bir hesapla giriş yapın ya da yeni hesap oluşturun. Parolanız bu uygulamada saklanmaz." />
+          <AuthCard intro="Katılmak için giriş yapın ya da hesap oluşturun." />
         ) : (
           <JoinForm code={invite.code} groupName={invite.group} />
         )}
@@ -102,7 +103,7 @@ function JoinForm({ code, groupName }: { code: string; groupName: string }) {
   return (
     <Card className="p-5">
       <p className="text-sm text-muted">
-        {cloud.email} olarak giriş yaptınız. Katıldıktan sonra “{groupName}” grubuna eklediğiniz harcamalar diğer üyelerle paylaşılır, onların harcamaları da panelinizde görünür.
+        {cloud.email} olarak giriş yaptınız. “{groupName}” grubuna eklediğiniz harcamaları üyeler görür.
       </p>
       <form onSubmit={join} className="mt-4 flex flex-wrap items-end gap-3">
         <Field label="Adınız (üyeler sizi bu adla görür)" htmlFor="join-name" className="min-w-[220px] flex-1">

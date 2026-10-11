@@ -6,7 +6,7 @@ import { PageHeader } from '../components/AppShell'
 import { ReportMeta, TypeBadge } from '../components/Report'
 import { DebtPayoffChart } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
-import { Alert, Badge, Button, Card, Field, Input, Segmented, Select, Switch } from '../components/ui/primitives'
+import { Alert, Badge, Button, Card, Field, Input, More, Segmented, Select, Switch } from '../components/ui/primitives'
 import { answer, QUESTIONS, restructure, STRATEGY_LABEL, type CoachMessage, type CoachPhase, type CoachPlan, type DebtStrategy, type QuestionId } from '../domain/coach'
 import { todayIso } from '../domain/dates'
 import { formatKurus } from '../domain/money'
@@ -29,7 +29,7 @@ export default function CoachPage() {
         title="Koçum"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plusplus" /> Borçtan yatırıma kişisel planınız
+            <PlanBadge plan="plusplus" /> Kişisel planınız
           </span>
         }
       />
@@ -73,9 +73,7 @@ function CoachContent() {
         </div>
         <div className="flex flex-col gap-4 lg:col-span-2">{state.plan && <DebtPanel state={state} plan={state.plan} onChange={save} />}</div>
       </div>
-      <p className="text-[12.5px] text-subtle">
-        Koç hesaplarını cihazınızda, girdiğiniz bilgilerle yapar. Yatırım tavsiyesi vermez, belirli bir ürün önermez; tahminler garanti değildir. Yapılandırma için gerçek faiz ve vadeyi bankanızdan öğrenin.
-      </p>
+      <p className="text-[12.5px] text-subtle">Koç yatırım tavsiyesi vermez; tahminler garanti değildir.</p>
     </div>
   )
 }
@@ -170,9 +168,9 @@ function Hero({ state }: { state: CoachState }) {
     : p.surplusKurus <= 0
       ? 'Önce gelir ve gider dengesini kuralım; sonra her şey daha kolay.'
       : phase?.id === 'debt'
-        ? 'İlk hedefimiz borçları en az faizle kapatmak. Sonra para sizin için çalışmaya başlayacak.'
+        ? 'İlk hedefimiz borçları en az faizle kapatmak.'
         : phase?.id === 'emergency'
-          ? 'Borcunuz yok. Önce güvence birikimini tamamlayıp ardından yatırıma geçiyoruz.'
+          ? 'Borcunuz yok. Önce güvence birikimi, sonra yatırım.'
           : 'Borcunuz yok ve güvenceniz hazır. Her ay düzenli yatırım zamanı.'
   return (
     <section aria-label="Koç özeti" className="relative overflow-hidden rounded-3xl bg-slate-950 p-5 text-white shadow-float sm:p-7">
@@ -247,7 +245,7 @@ function Timeline({ plan }: { plan: CoachPlan }) {
   if (plan.surplusKurus <= 0 && plan.debts.length === 0) {
     return (
       <Alert tone="warning" icon={<AlertTriangle className="size-4" />} title="Önce bütçe dengesi">
-        Ortalama gideriniz gelirinizin üstünde olduğu için plana ayrılacak tutar yok. Bütçe planından giderleri sınırlayabilir veya yolculuk bilgilerinizi güncelleyebilirsiniz.
+        Gideriniz gelirinizi aşıyor; plana ayrılacak tutar yok.
       </Alert>
     )
   }
@@ -467,7 +465,7 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
           <Input aria-label="Koça yazın" disabled={!aiReady} value={draft} maxLength={1000} onChange={(e) => setDraft(e.target.value)} placeholder={aiHint} className="flex-1" />
           <Button type="submit" variant="primary" disabled={!aiReady || !draft.trim() || typing} icon={<Send className="size-4" />} aria-label="Gönder" />
         </form>
-        {remaining != null && <p className="mt-1.5 text-[12px] text-subtle">Bugün {remaining} soru hakkınız kaldı · yalnızca yanıtlanan sorular sayılır, Türkiye saatiyle gece yarısı yenilenir.</p>}
+        {remaining != null && <p className="mt-1.5 text-[12px] text-subtle">Bugün {remaining} soru hakkınız kaldı.</p>}
       </div>
     </Card>
   )
@@ -611,7 +609,7 @@ function DebtPanel({ state, plan, onChange }: { state: CoachState; plan: CoachPl
           onChange={(v) => onChange({ strategy: v })}
           options={(Object.keys(STRATEGY_LABEL) as DebtStrategy[]).map((k) => ({ value: k, label: STRATEGY_LABEL[k] }))}
         />
-        <LabeledSwitch label="Borç ödemelerim aylık giderlerime dahil" hint="Kredi taksitlerini gider olarak kaydediyorsanız açın." checked={state.settings.debtsInExpenses} onChange={(v) => onChange({ debtsInExpenses: v })} />
+        <LabeledSwitch label="Borç ödemelerim aylık giderlerime dahil" hint="Taksitleri gider olarak giriyorsanız açın." checked={state.settings.debtsInExpenses} onChange={(v) => onChange({ debtsInExpenses: v })} />
       </div>
       {plan.shortfallKurus > 0 && (
         <Alert tone="danger" className="mt-3" icon={<AlertTriangle className="size-4" />}>
@@ -700,7 +698,7 @@ function Restructure({ state, plan }: { state: CoachState; plan: CoachPlan }) {
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="flex flex-col gap-3 px-4 pb-4">
-              <p className="text-[12.5px] text-muted">Seçtiğiniz borçlar tek bir krediyle kapatılırsa ne olur? Bankanızın teklif ettiği faizi ve vadeyi girin; bu bir hesaplamadır, teklif değildir.</p>
+              <p className="text-[12.5px] text-muted">Bankanın teklif ettiği faiz ve vadeyi girin.</p>
               <fieldset className="flex flex-wrap gap-1.5">
                 <legend className="sr-only">Yapılandırılacak borçlar</legend>
                 {candidates.map((d) => {
@@ -731,7 +729,7 @@ function Restructure({ state, plan }: { state: CoachState; plan: CoachPlan }) {
                     <CountUp kurus={Math.abs(res.savedKurus)} className={cn('font-semibold', res.savedKurus > 0 ? 'text-accent-strong dark:text-accent' : 'text-danger')} />
                   </div>
                   <p className="col-span-2 text-subtle">
-                    Şu anki planla toplam faiz {formatKurus(res.oldInterestKurus)}, yapılandırmayla {formatKurus(res.newInterestKurus)}. Masraf ve vergiler dahil değildir.
+                    Toplam faiz {formatKurus(res.oldInterestKurus)} yerine {formatKurus(res.newInterestKurus)}. Masraf ve vergiler hariç.
                   </p>
                 </div>
               )}
@@ -754,15 +752,15 @@ function AiCard({ consent, onChange }: { consent: boolean; onChange: (v: boolean
         <Sparkles className="size-5 text-violet-500" /> Yapay zekâ sohbeti
         <Badge tone={consent ? 'accent' : 'neutral'}>{consent ? 'Açık' : 'Kapalı'}</Badge>
       </h2>
-      <p className="relative mt-1 text-[13px] text-muted">İzin verirseniz koç, serbest sorularınızı yapay zekâ (OpenAI) ile yanıtlar. Hesapları yine uygulama yapar; yapay zekâ yalnızca açıklar ve ürün önermez.</p>
-      <div className="relative mt-3 rounded-xl bg-surface-2 p-3 text-[12.5px]">
+      <p className="relative mt-1 text-[13px] text-muted">İzin verirseniz serbest soruları OpenAI ile yanıtlarız.</p>
+      <More label="Neler gönderilir?" className="relative">
         <div className="font-medium text-ink">Gönderilecek özet bilgiler</div>
-        <p className="text-muted">Yalnızca aşağıdaki "Koçun hafızası" kartında açık bıraktığınız toplamlar (gelir, gider, borç bakiyeleri adları olmadan, birikim, bütçe durumu) ve hafıza notlarınız.</p>
+        <p>Yalnızca "Koçun hafızası" kartında açık bıraktığınız toplamlar ve notlarınız. Borç adları gönderilmez.</p>
         <div className="mt-1.5 flex items-center gap-1 font-medium text-ink">
           <Lock className="size-3.5" /> Hiç gönderilmeyenler
         </div>
-        <p className="text-muted">Ekstre ve belgeler, tek tek işlemler ve açıklamaları, iş yeri adları, kart numarası, hesap bilgileri. Sohbet ve hafıza sunucuda saklanmaz, herkese giden ortak raporlara hiç karışmaz; "Sohbeti sil" ile ekrandan da silinir.</p>
-      </div>
+        <p>Ekstreler, tek tek işlemler, iş yeri adları, kart ve hesap bilgileri. Sohbet sunucuda saklanmaz. Hesapları uygulama yapar; yapay zekâ ürün önermez.</p>
+      </More>
       <div className="relative mt-3">
         <LabeledSwitch
           label="Özet bilgilerimin yapay zekâ sohbeti için kullanılmasına izin veriyorum"
@@ -809,9 +807,10 @@ function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Part
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
         <Brain className="size-5 text-accent" /> Koçun hafızası
       </h2>
-      <p className="mt-1 text-[13px] text-muted">
-        Koç sizi bu bilgilerle tanır. Hafıza yalnızca bu cihazda durur; ortak ekonomi raporlarına ve başka kullanıcılara hiç karışmaz. Soru sorduğunuzda yalnızca açık olanlar gönderilir. İstediğinizi kapatabilir, düzeltebilir veya silebilirsiniz.
-      </p>
+      <p className="mt-1 text-[13px] text-muted">Koç sizi bu bilgilerle tanır.</p>
+      <More label="Gizlilik">
+        Hafıza yalnızca bu cihazda durur, ortak raporlara karışmaz. Soru sorduğunuzda yalnızca açık olanlar gönderilir. İstediğinizi kapatıp silebilirsiniz.
+      </More>
 
       <div className="mt-3 rounded-xl border border-line">
         <div className="border-b border-line px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-subtle">Uygulamadan alınan bilgiler</div>
@@ -845,7 +844,7 @@ function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Part
           )}
         </div>
         {memory.length === 0 ? (
-          <p className="px-3 py-3 text-[12.5px] text-subtle">Henüz not yok. Hedeflerinizi ve tercihlerinizi ekleyebilirsiniz; uzun sohbetlerin özeti de buraya yazılır.</p>
+          <p className="px-3 py-3 text-[12.5px] text-subtle">Henüz not yok.</p>
         ) : (
           <ul aria-label="Hafıza notları">
             {memory.map((m) => (

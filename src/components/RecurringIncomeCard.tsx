@@ -6,7 +6,7 @@ import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { CADENCE_LABEL, INCOME_KIND_LABEL, type IncomeKind, type RecurringCadence, type RecurringIncome } from '../domain/types'
 import { useRepo, useSettings } from '../state/data'
 import { useUi } from '../state/ui'
-import { Button, Card, Field, IconButton, Input, Select } from './ui/primitives'
+import { Button, Card, Field, IconButton, Input, More, Select } from './ui/primitives'
 
 interface Draft {
   id?: string
@@ -66,7 +66,8 @@ export function RecurringIncomeCard() {
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
         <Wallet className="size-5 text-accent" /> Düzenli gelirler
       </h2>
-      <p className="mt-1 text-sm text-muted">Maaş, kira geliri gibi. Günü gelince özetinize kendiliğinden eklenir; o ay geliri elle girerseniz iki kez sayılmaz. Yalnızca bu cihazda tutulur.</p>
+      <p className="mt-1 text-sm text-muted">Maaş gibi gelirler, günü gelince eklenir.</p>
+      <More>O ay geliri elle girerseniz iki kez sayılmaz. Yalnızca bu cihazda tutulur.</More>
 
       {items.length > 0 && (
         <ul className="mt-3 divide-y divide-line" aria-label="Düzenli gelir listesi">

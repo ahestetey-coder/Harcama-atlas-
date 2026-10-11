@@ -235,7 +235,7 @@ export default function DashboardPage() {
                 </>
               }
             >
-              Gider ekleyin veya kart ekstrenizi (PDF, CSV, Excel, ekran görüntüsü) içe aktarın. Özetler yalnızca onayladığınız kayıtlardan hesaplanır.
+              Gider ekleyin veya ekstrenizi içe aktarın.
             </EmptyState>
           </Card>
           <Shortcuts className="lg:col-span-5" />
@@ -295,7 +295,7 @@ export default function DashboardPage() {
                     {budgetGroup.budgetKurus ? (
                       <BudgetBar budget={budgetGroup.budgetKurus} net={groupNet} />
                     ) : (
-                      <p className="mt-1 text-[12.5px] text-white/60">{canEditGroupBudget ? 'Grubun aylık bütçesini belirleyin; kalan tutar burada görünür.' : 'Grup bütçesini grup yöneticisi belirler.'}</p>
+                      <p className="mt-1 text-[12.5px] text-white/60">{canEditGroupBudget ? 'Grubun aylık bütçesini belirleyin.' : 'Grup bütçesini grup yöneticisi belirler.'}</p>
                     )}
                   </section>
                 ) : budget ? (
@@ -334,10 +334,7 @@ export default function DashboardPage() {
 
           {/* Kategori dağılımı */}
           <Card className="p-5 lg:col-span-7">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-base font-semibold">Kategoriler</h2>
-              <span className="text-[12px] text-subtle">Dokunarak işlemleri görün</span>
-            </div>
+            <h2 className="mb-4 font-display text-base font-semibold">Kategoriler</h2>
             {summary.expenseKurus > 0 ? (
               <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-[200px_1fr]">
                 <CategoryDonut
@@ -409,7 +406,6 @@ export default function DashboardPage() {
                 rows={personRows}
                 selected={person.value}
                 actionLabel="Yalnızca bu kişiyi göster"
-                footer="Net = gider − iade. Bir kişiye dokunursanız bütün sayfa o kişinin harcamalarına göre süzülür."
                 onSelect={(id) => person.set(person.value === id ? '' : id)}
               />
             </Card>
@@ -427,7 +423,6 @@ export default function DashboardPage() {
             <AnimatePresence initial={false}>
               {dailyOpen && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-                  <p className="mb-3 mt-1 text-[12px] text-subtle">Çubuğa dokunarak o günün işlemlerini açın.</p>
                   <DailyBars
                     data={daily}
                     onSelect={(day) =>
@@ -491,19 +486,14 @@ function greeting(): string {
   return h < 6 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar'
 }
 
-/** Ana özelliklere kısayollar: bütçe, ödemeler, hedefler, varlıklar, raporlar, koç. */
+/** Alt çubukta olmayan özelliklere kısayollar: ödemeler, hedefler, raporlar. */
 function Shortcuts({ className }: { className?: string }) {
   const { has } = usePlan()
-  const { month } = useUi()
-  const warnings = useBudgetStatus(month, has('advancedBudget'))?.warnings.length ?? 0
   const due = useDuePayments(has('subscriptions')).length
   const items: Array<{ to: string; label: string; icon: ReactNode; tone: string; feature: Feature; badge?: string }> = [
-    { to: '/butce', label: 'Bütçe', icon: <Target />, tone: 'from-amber-500 to-orange-600', feature: 'advancedBudget', badge: warnings ? `${warnings} uyarı` : undefined },
     { to: '/borclar?bolum=odemeler', label: 'Ödemeler', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', feature: 'subscriptions', badge: due ? `${due} yaklaşan` : undefined },
     { to: '/hedefler', label: 'Hedefler', icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', feature: 'goals' },
-    { to: '/yatirimlar', label: 'Yatırımlar', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', feature: 'assets' },
     { to: '/raporlar', label: 'Raporlar', icon: <ChartColumn />, tone: 'from-indigo-500 to-blue-700', feature: 'reports' },
-    { to: '/koc', label: 'Koçum', icon: <Bot />, tone: 'from-cyan-500 to-emerald-500', feature: 'aiCoach' },
   ]
   return (
     <Card className={cn('flex flex-col p-5', className)} aria-label="Kısayollar">
@@ -535,8 +525,7 @@ function Shortcuts({ className }: { className?: string }) {
 }
 
 function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareWithPrevious> }) {
-  if (comparison.kind === 'none')
-    return <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[12.5px] text-white/75">Önceki ayla karşılaştırma yok: {comparison.reason.toLocaleLowerCase('tr')}</p>
+  if (comparison.kind === 'none') return null
   const up = comparison.diffKurus > 0
   const flat = comparison.diffKurus === 0
   const Icon = flat ? Minus : up ? ArrowUpRight : ArrowDownRight
@@ -553,7 +542,6 @@ function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareW
       </span>
       <span className="text-white/65">
         {comparison.label}
-        {comparison.percent === null && ' (önceki net gider sıfır veya eksi; yüzde hesaplanmadı)'}
       </span>
     </div>
   )
@@ -643,7 +631,7 @@ function BudgetBar({ budget, net }: { budget: number; net: number }) {
           transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
         />
       </div>
-      <p className="mt-1.5 text-[12px] text-white/55">Net gidere göre %{Math.max(0, Math.round(ratio * 100))} kullanıldı.</p>
+      <p className="mt-1.5 text-[12px] text-white/55">%{Math.max(0, Math.round(ratio * 100))} kullanıldı</p>
     </div>
   )
 }
@@ -741,7 +729,7 @@ function BudgetModal({ open, onOpenChange, current }: { open: boolean; onOpenCha
         onOpenChange(o)
       }}
       title="Aylık bütçe"
-      description="Her ay için aynı bütçe uygulanır; net gidere göre hesaplanır."
+      description="Her ay aynı tutar uygulanır."
       size="sm"
       footer={
         <>
@@ -798,7 +786,7 @@ function GroupBudgetModal({ open, onOpenChange, group }: { open: boolean; onOpen
         onOpenChange(o)
       }}
       title={`${group.name} bütçesi`}
-      description={group.cloudId ? 'Grubun bütün üyelerinin giderine göre hesaplanır; üyeler de görür.' : 'Bu grubun aylık net giderine göre hesaplanır.'}
+      description={group.cloudId ? 'Bütün üyeler görür.' : undefined}
       size="sm"
       footer={
         <>
@@ -886,13 +874,11 @@ function GroupTable({
   selected,
   onSelect,
   actionLabel = 'Paneli bu gruba göre filtrele',
-  footer = 'Net = gider − iade. Bir gruba dokunursanız bütün panel o gruba göre gösterilir.',
 }: {
   rows: GroupRow[]
   selected: string
   onSelect: (id: string) => void
   actionLabel?: string
-  footer?: string
 }) {
   const total = rows.reduce((s, r) => s + r.expenseKurus - r.refundKurus, 0)
   return (
@@ -922,7 +908,6 @@ function GroupTable({
           </li>
         )
       })}
-      <li className="px-2 pt-1 text-[12px] text-subtle">{footer}</li>
     </ul>
   )
 }
@@ -983,7 +968,7 @@ function SharedPeriodNotes({
             </span>
             <span className="num block text-[12.5px] leading-snug text-muted">
               {range && `${owner || settlement ? '' : 'Yöneticinin dönemi: '}${settlementRangeText(range)} · `}
-              {settlement ? `payınız ${formatKurus(share)}` : 'üyelerin giderleri listede görünür, toplamınıza girmez'}
+              {settlement ? `payınız ${formatKurus(share)}` : 'toplamınıza girmez'}
             </span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-subtle" aria-hidden />

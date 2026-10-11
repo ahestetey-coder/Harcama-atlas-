@@ -1,11 +1,11 @@
 import { Slider } from '../components/Slider'
-import { Info, Mountain, RotateCcw, SlidersHorizontal } from 'lucide-react'
+import { Mountain, RotateCcw, SlidersHorizontal } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { ScenarioLines, type ScenarioRow } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
-import { Alert, Button, Card, Field, Input, Segmented } from '../components/ui/primitives'
+import { Button, Card, Field, Input, More, Segmented } from '../components/ui/primitives'
 import { todayIso } from '../domain/dates'
 import { buildJourney, durationLabel, formatInBase, reachDateLabel, SCENARIOS, simulatePlan, type JourneyFacts, type JourneyProfile, type ScenarioInput, type ScenarioKey, type Simulation } from '../domain/journey'
 import { formatKurus, formatKurusCompact, formatKurusPlain, parseUserAmount } from '../domain/money'
@@ -21,7 +21,7 @@ export default function ScenariosPage() {
         title="Gelecek senaryoları"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plusplus" /> Varsayımları değiştirin, rotanızın nasıl etkilendiğini görün
+            <PlanBadge plan="plusplus" /> Ya şöyle olursa?
           </span>
         }
       />
@@ -29,7 +29,7 @@ export default function ScenariosPage() {
         feature="scenarios"
         title="Gelecek senaryoları"
         points={[
-          'Daha fazla birikim, gelir kaybı, büyük bir harcama, enflasyon ve getiri varsayımlarını deneyin',
+          'Birikim, gelir kaybı ve büyük harcama varsayımlarını deneyin',
           'Sonuçları bugünün satın alma gücüyle görün',
           'Temkinli, orta ve olumlu varsayımları yan yana karşılaştırın',
         ]}
@@ -49,7 +49,7 @@ function ScenariosContent() {
       <Card className="p-6 text-center">
         <Mountain className="mx-auto size-8 text-accent" />
         <h2 className="mt-2 font-display text-lg font-semibold">Önce yolculuğunuzu oluşturun</h2>
-        <p className="mx-auto mt-1 max-w-md text-sm text-muted">Senaryolar, Finansal Özgürlük Yolculuğum testindeki gelir, gider ve hedef bilgilerinizle başlar.</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted">Senaryolar yolculuk testi bilgilerinizle başlar.</p>
         <Link to="/yolculuk" className="mt-4 inline-block">
           <Button variant="primary">Teste git</Button>
         </Link>
@@ -132,7 +132,6 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
     <div className="flex flex-col gap-4">
       <Card className="p-5" aria-label="Başlangıç noktası">
         <h2 className="font-display text-base font-semibold">Başlangıç noktanız</h2>
-        <p className="mt-0.5 text-[12.5px] text-muted">Finansal Özgürlük Yolculuğum ile aynı bilgiler ve aynı hesap; yolculukta bir şey değişince burası da değişir.</p>
         <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <dt className="text-[12.5px] text-muted">Net birikim</dt>
@@ -148,7 +147,7 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
           </div>
         </dl>
         <p className="mt-2 text-[12.5px] text-muted">
-          Yolculuktaki tahmin (orta varsayım, değişikliksiz): <span className="font-medium text-ink">{reachText(journeyMid)}</span>
+          Yolculuktaki tahmin: <span className="font-medium text-ink">{reachText(journeyMid)}</span>
         </p>
       </Card>
 
@@ -161,14 +160,14 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
             Varsayılanlara dön
           </Button>
         </div>
-        <p className="mt-1 text-[13px] text-muted">Değiştirdiğiniz her şey aşağıdaki sonuçlara hemen yansır. Tutarları bugünün parasıyla yazın.</p>
+        <p className="mt-1 text-[13px] text-muted">Tutarları bugünün parasıyla yazın.</p>
         <div key={formKey} className="mt-4 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-          <MoneyField id="s-extra" label="Ek aylık birikim (TL)" value={a.extra} onChange={(v) => set('extra', v)} hint="Her ay mevcut birikiminize eklenecek tutar." />
-          <Slider id="s-loss" label="Gelir kaybı (ay)" value={a.lossMonths} min={0} max={36} onChange={(v) => set('lossMonths', v)} display={(v) => (v === 0 ? 'Yok' : `${v} ay`)} hint="Bu süre birikim yapılamaz, giderler birikimden karşılanır." />
+          <MoneyField id="s-extra" label="Ek aylık birikim (TL)" value={a.extra} onChange={(v) => set('extra', v)} />
+          <Slider id="s-loss" label="Gelir kaybı (ay)" value={a.lossMonths} min={0} max={36} onChange={(v) => set('lossMonths', v)} display={(v) => (v === 0 ? 'Yok' : `${v} ay`)} hint="Giderler birikimden karşılanır." />
           <MoneyField id="s-loss-spend" label="Gelir kaybında aylık gider (TL)" value={a.lossSpend} onChange={(v) => set('lossSpend', v)} hint="Varsayılan: zorunlu giderleriniz." />
-          <MoneyField id="s-big" label="Büyük harcama (TL)" value={a.big} onChange={(v) => set('big', v)} hint="Ev peşinatı, araba, düğün gibi tek seferlik harcama." />
+          <MoneyField id="s-big" label="Büyük harcama (TL)" value={a.big} onChange={(v) => set('big', v)} hint="Tek seferlik harcama." />
           <Slider id="s-big-year" label="Büyük harcamanın yılı" value={Math.min(a.bigYear, a.years)} min={1} max={a.years} onChange={(v) => set('bigYear', v)} display={(v) => `${v}. yıl`} disabled={a.big === 0} />
-          <Slider id="s-years" label="Grafik süresi (yıl)" value={a.years} min={1} max={60} onChange={(v) => set('years', v)} display={(v) => `${v} yıl`} hint="Hedefe ulaşma tarihi bu süreden bağımsız hesaplanır." />
+          <Slider id="s-years" label="Grafik süresi (yıl)" value={a.years} min={1} max={60} onChange={(v) => set('years', v)} display={(v) => `${v} yıl`} />
           <Slider id="s-inflation" label="Yıllık enflasyon (%)" value={a.inflation} min={0} max={100} onChange={(v) => set('inflation', v)} display={(v) => `%${v}`} hint="Yalnızca nominal gösterimi etkiler." />
         </div>
         <fieldset className="mt-5">
@@ -258,9 +257,10 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
         </table>
       </Card>
 
-      <Alert tone="info" icon={<Info className="size-4" />}>
-        Bu senaryolar olasılık veya garanti değildir; girdiğiniz varsayımlarla yapılan basit hesaplardır. Gerçek getiri, enflasyon ve gelir farklı olabilir. Yatırım tavsiyesi içermez; hangi ürünün alınıp satılacağını söylemez.
-      </Alert>
+      <div className="text-[12.5px] text-subtle">
+        <p>Senaryolar olasılık veya garanti değildir. Yatırım tavsiyesi değildir.</p>
+        <More>Girdiğiniz varsayımlarla yapılan basit hesaplardır. Gerçek getiri, enflasyon ve gelir farklı olabilir. Hangi ürünün alınıp satılacağını söylemez.</More>
+      </div>
     </div>
   )
 }

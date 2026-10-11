@@ -206,13 +206,13 @@ export function ReviewStep({
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Alert tone={review.parserVerified ? 'info' : 'warning'} icon={<Info />} title={review.parserLabel}>
           {review.parserVerified
-            ? 'Satırlar seçtiğiniz sütun eşleştirmesine göre oluşturuldu.'
-            : 'Bu okuyucu belirli bir bankanın gerçek ekstresiyle doğrulanmadı. Her satırı kaynak metinle karşılaştırarak onaylayın.'}
-          {review.periodText && <span className="mt-1 block">Ekstre bilgisi: {review.periodText}. Rapor, işlem tarihlerine göre aylara dağılır.</span>}
+            ? 'Satırlar sütun eşleştirmenize göre oluşturuldu.'
+            : 'Bu okuyucu gerçek banka ekstresiyle doğrulanmadı; her satırı kontrol edin.'}
+          {review.periodText && <span className="mt-1 block">Ekstre bilgisi: {review.periodText}.</span>}
         </Alert>
         {review.usedOcr && (
           <Alert tone="info" icon={<Info />} title="OCR okuma kalitesi">
-            Ortalama kelime güveni: %{review.ocrConfidence ?? '—'} (Tesseract’ın kendi ölçüsü). Bu, satırların doğru ayrıştırıldığı anlamına gelmez; ayrıştırma sonucu yukarıdaki sayılardır.
+            Ortalama kelime güveni: %{review.ocrConfidence ?? '—'}.
           </Alert>
         )}
         {review.totals.map((t, i) => {
@@ -220,7 +220,7 @@ export function ReviewStep({
           return (
             <Alert key={i} tone={diff === 0 ? 'accent' : 'warning'} icon={diff === 0 ? <CircleCheck /> : <AlertTriangle />} title="Kaynak toplamıyla kontrol">
               Belgedeki “{t.label || 'işlem toplamı'}”: {formatKurus(t.amountKurus)}. Kaydedilecek gider − iade: {formatKurus(extractedNet)}.{' '}
-              {diff === 0 ? 'Tutarlar eşleşiyor.' : `Fark ${formatKurus(Math.abs(diff))}: sorunlu, hariç veya taksit/döviz satırlarını kontrol edin. Dönem borcu işlem toplamı değildir.`}
+              {diff === 0 ? 'Tutarlar eşleşiyor.' : `Fark ${formatKurus(Math.abs(diff))}: sorunlu, hariç veya taksit/döviz satırlarına bakın.`}
             </Alert>
           )
         })}
@@ -250,7 +250,7 @@ export function ReviewStep({
         <div className="flex min-w-0 flex-col gap-2.5">
           {shown.length === 0 ? (
             <Card className="p-8 text-center text-sm text-muted">
-              {rows.length === 0 ? 'Dosyadan işlem çıkarılamadı. Kaynak metne bakıp satırları elle ekleyebilirsiniz.' : 'Bu sekmede satır yok.'}
+              {rows.length === 0 ? 'Dosyadan işlem çıkarılamadı. Satırları elle ekleyebilirsiniz.' : 'Bu sekmede satır yok.'}
             </Card>
           ) : (
             <AnimatePresence initial={false}>
@@ -333,7 +333,7 @@ export function ReviewStep({
             Kaydedilmeyecek: {counts.problem} sorunlu, {counts.duplicate} kararsız tekrar şüphesi, {counts.excluded} hariç satır.
           </p>
         )}
-        <p className="mt-3">Kayıt tek adımda yapılır; aktarım geçmişinden tümüyle geri alınabilir.</p>
+        <p className="mt-3">Aktarım geçmişinden geri alınabilir.</p>
       </ConfirmDialog>
 
       <Modal open={sourceOpen} onOpenChange={setSourceOpen} title="Kaynak metin" side size="lg">
@@ -544,7 +544,7 @@ const RowCard = memo(function RowCard({
           {r.excludedReason && !r.include && <li className="text-muted">Hariç: {r.excludedReason}</li>}
           {r.foreign && (
             <li className="num text-muted">
-              Döviz: {(r.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {r.foreign.currency} — döviz tutarları TL ile toplanmaz; yalnızca TL karşılığı kaydedilir.
+              Döviz: {(r.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {r.foreign.currency}. Yalnızca TL karşılığı kaydedilir.
             </li>
           )}
           {r.ruleConflict ? <li className="text-warning">{r.ruleConflict}</li> : r.ruleNote && r.categorySource === 'rule' && <li className="text-subtle">{r.ruleNote}</li>}
@@ -661,7 +661,7 @@ function SourcePanel({ review, focus, onCreate, embedded }: { review: ReviewData
               </div>
             ))
           ) : (
-            <p className="p-3 font-sans text-sm text-muted">Tutar içerip işlem olarak tanınmayan satır yok.</p>
+            <p className="p-3 font-sans text-sm text-muted">Tanınmayan satır yok.</p>
           ))}
         {view === 'ignored' &&
           review.ignored.map((i) => (

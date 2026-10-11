@@ -3,7 +3,7 @@ import { Cloud, CloudOff, Copy, Crown, KeyRound, Link2, LogOut, RefreshCw, Share
 import { useEffect, useState, type FormEvent } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
-import { Alert, Badge, Button, Card, Field, Input } from '../components/ui/primitives'
+import { Alert, Badge, Button, Card, Field, Input, More } from '../components/ui/primitives'
 import { buildInviteLink, envCloudConfig, validateCloudConfig } from '../cloud/config'
 import { cloudErrorMessage } from '../cloud/errors'
 import { leaveGroup, shareGroup } from '../cloud/sync'
@@ -25,10 +25,7 @@ export default function MembersPage() {
   const { isDemo } = useData()
   return (
     <div>
-      <PageHeader
-        title="Üyeler ve paylaşım"
-        subtitle="Bir grubu (ör. Ortak) paylaşıma açın, üyeleri davet edin; herkes kendi harcamasını ekler, grup toplamını birlikte görürsünüz."
-      />
+      <PageHeader title="Üyeler ve paylaşım" subtitle="Grupları üyelerle paylaşın" />
       {isDemo ? (
         <Alert tone="warning" title="Demo modunda paylaşım kapalı">
           Paylaşım gerçek verilerinizle çalışır. Demo modunu kapatıp tekrar deneyin.
@@ -64,13 +61,14 @@ export function ConfigCard() {
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
         <CloudOff className="size-5 text-muted" /> Bulut bağlantısı kurulmamış
       </h2>
-      <p className="mt-2 text-sm text-muted">
-        Üyelerle paylaşım için ücretsiz bir Supabase projesi gerekir. Kurulum bir kez yapılır; adımlar{' '}
+      <p className="mt-2 text-sm text-muted">Paylaşım için ücretsiz bir Supabase projesi gerekir.</p>
+      <More>
+        Kurulum bir kez yapılır; adımlar{' '}
         <a href={SETUP_GUIDE_URL} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
           kurulum rehberinde
         </a>
-        . Size bir davet bağlantısı geldiyse bu adımı atlayıp bağlantıyı açmanız yeterli.
-      </p>
+        . Davet bağlantısı geldiyse yalnızca onu açmanız yeterli.
+      </More>
       <form onSubmit={save} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Proje adresi (Project URL)" htmlFor="cloud-url">
           <Input id="cloud-url" placeholder="https://abcd.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} autoComplete="off" />
@@ -85,7 +83,7 @@ export function ConfigCard() {
           </Button>
         </div>
       </form>
-      <p className="mt-3 text-[12.5px] text-subtle">Gizli “service_role” anahtarını asla girmeyin; yalnızca “anon public” anahtarı gerekir.</p>
+      <p className="mt-3 text-[12.5px] text-subtle">Gizli “service_role” anahtarını asla girmeyin.</p>
     </Card>
   )
 }
@@ -154,12 +152,12 @@ export function AuthCard({ intro }: { intro?: string }) {
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
         <KeyRound className="size-5 text-accent" /> {mode === 'in' ? 'Giriş yapın' : 'Hesap oluşturun'}
       </h2>
-      <p className="mt-1 text-sm text-muted">{intro ?? 'Paylaşım için bir hesap gerekir. Parolanız bu uygulamada saklanmaz; oturum anahtarı yalnızca bu tarayıcıda tutulur.'}</p>
+      <p className="mt-1 text-sm text-muted">{intro ?? 'Paylaşım için bir hesap gerekir.'}</p>
       <form onSubmit={submit} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="E-posta" htmlFor="auth-email">
           <Input id="auth-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
-        <Field label="Parola" htmlFor="auth-password" hint={mode === 'up' ? 'En az 6 karakter. Banka parolanızı kullanmayın.' : undefined}>
+        <Field label="Parola" htmlFor="auth-password" hint={mode === 'up' ? 'En az 6 karakter, banka parolası olmasın.' : undefined}>
           <Input id="auth-password" type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
         </Field>
         {error && <p className="text-[13px] font-medium text-danger sm:col-span-2" role="alert">{error}</p>}
@@ -257,7 +255,8 @@ function GroupsCard() {
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
           <Users className="size-5 text-accent" /> Gruplar ve üyeler
         </h2>
-        <p className="mt-1 text-[13px] text-muted">Paylaşılan gruptaki harcamaları bütün üyeler görür; herkes yalnızca kendi harcamasını ekler, düzenler ve siler. Diğer kayıtlarınız ve yüklediğiniz dosyalar bu cihazda kalır.</p>
+        <p className="mt-1 text-[13px] text-muted">Paylaşılan gruptaki harcamaları bütün üyeler görür.</p>
+        <More>Herkes yalnızca kendi harcamasını ekler, düzenler ve siler. Diğer kayıtlarınız ve dosyalarınız bu cihazda kalır.</More>
       </div>
       <ul>
         {visible.map((g) => {
@@ -314,7 +313,7 @@ function GroupsCard() {
         open={!!invite}
         onOpenChange={(o) => !o && setInvite(null)}
         title={`“${invite?.group.name}” için davet bağlantısı`}
-        description="Bağlantıyı davet etmek istediğiniz kişiye gönderin. 7 gün geçerlidir; bağlantıyı alan herkes gruba katılabilir."
+        description="7 gün geçerlidir; bağlantıyı alan herkes katılabilir."
         footer={
           <>
             {typeof navigator.share === 'function' && (
@@ -338,7 +337,7 @@ function GroupsCard() {
         }
       >
         <textarea readOnly value={invite?.link ?? ''} aria-label="Davet bağlantısı" className="h-28 w-full resize-none rounded-xl border border-line bg-surface-2 p-3 font-mono text-base text-ink sm:text-[12px]" onFocus={(e) => e.currentTarget.select()} />
-        <p className="mt-2 text-[12.5px] text-subtle">Bağlantıda harcama bilgisi yoktur; yalnızca bulut adresi, grup adı ve tek kullanımlık olmayan bir davet kodu vardır.</p>
+        <p className="mt-2 text-[12.5px] text-subtle">Bağlantıda harcama bilgisi yoktur.</p>
       </Modal>
 
       <ConfirmDialog

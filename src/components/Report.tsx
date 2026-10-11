@@ -34,7 +34,7 @@ export function ReportMeta({ r }: { r: Report }) {
       <span>
         · Kapsam: {fmtDate(r.window_start)} – {fmtDate(r.window_end)}
       </span>
-      {stale && <Badge tone="warning">Bu rapor {Math.floor(ageDays)} gün önce yayınlandı; daha yenisi yok</Badge>}
+      {stale && <Badge tone="warning">{Math.floor(ageDays)} gün önce yayınlandı</Badge>}
     </div>
   )
 }

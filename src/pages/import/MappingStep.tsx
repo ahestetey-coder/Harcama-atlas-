@@ -70,7 +70,7 @@ export function MappingStep({
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
       <Card className="p-5">
         <h2 className="font-display text-base font-semibold">Sütunları eşleştirin</h2>
-        <p className="mt-1 text-[13px] text-muted">Tahminlerimizi kontrol edin. Formül veya makro çalıştırılmaz; yalnızca hücre değerleri okunur.</p>
+        <p className="mt-1 text-[13px] text-muted">Tahminlerimizi kontrol edin.</p>
         <div className="mt-4 flex flex-col gap-3.5">
           {fileKind === 'xlsx' && tables.length > 1 && (
             <Field label="Excel sayfası" htmlFor="map-sheet">
@@ -91,7 +91,7 @@ export function MappingStep({
               </Select>
             </Field>
           )}
-          <Field label="Başlık satırı" htmlFor="map-header" hint="Sütun adlarının bulunduğu satır; altındaki satırlar işlem olarak okunur.">
+          <Field label="Başlık satırı" htmlFor="map-header" hint="Sütun adlarının olduğu satır.">
             <Select id="map-header" value={m.headerRow} onChange={(e) => set('headerRow', Number(e.target.value))}>
               {table.rows.slice(0, 30).map((r, i) => (
                 <option key={i} value={i}>
@@ -124,7 +124,7 @@ export function MappingStep({
               {colSelect('credit', 'Alacak (gelen)')}
             </div>
           )}
-          <Field label="Dosya türü" htmlFor="map-kind" hint="Hesaba gelen para (maaş vb.) gider takibinde iade sayılmaz; varsayılan olarak hariç tutulur.">
+          <Field label="Dosya türü" htmlFor="map-kind" hint="Hesaba gelen para hariç tutulur.">
             <Select id="map-kind" value={m.statementKind} onChange={(e) => set('statementKind', e.target.value as ColumnMapping['statementKind'])}>
               <option value="card">Kredi kartı ekstresi</option>
               <option value="account">Banka hesap hareketleri</option>
@@ -155,7 +155,7 @@ export function MappingStep({
             {n}
           </Alert>
         ))}
-        {m.numberFormat === 'auto' && <Alert tone="warning">Sayı biçimi dosyadan anlaşılamadı. “1.234” gibi belirsiz tutarlar incelemede size sorulacak.</Alert>}
+        {m.numberFormat === 'auto' && <Alert tone="warning">Sayı biçimi anlaşılamadı. Belirsiz tutarlar incelemede sorulacak.</Alert>}
         <Card className="min-w-0 overflow-hidden">
           <div className="border-b border-line px-4 py-3 text-sm font-semibold">Önizleme (ilk satırlar)</div>
           <div className="scrollbar-thin overflow-x-auto">

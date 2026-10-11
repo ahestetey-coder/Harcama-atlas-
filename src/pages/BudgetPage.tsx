@@ -6,7 +6,7 @@ import { PageHeader } from '../components/AppShell'
 import { CategoryIcon, MonthSwitcher } from '../components/common'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { Modal } from '../components/ui/Modal'
-import { Alert, Button, Card, EmptyState, Field, IconButton, Input, Segmented, Select, Switch } from '../components/ui/primitives'
+import { Alert, Button, Card, EmptyState, Field, IconButton, Input, More, Segmented, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import type { BudgetMode } from '../domain/autoBudget'
 import { DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus, type LimitStatus } from '../domain/budget'
@@ -53,7 +53,7 @@ function BudgetHeader() {
       title="Bütçe planı"
       subtitle={
         <span className="inline-flex items-center gap-2">
-          <PlanBadge plan="plus" /> Kişisel harcamalarınıza göre (Tümü)
+          <PlanBadge plan="plus" /> Kişisel harcamalar
         </span>
       }
       actions={<MonthSwitcher month={month} onChange={setMonth} />}
@@ -148,13 +148,15 @@ function BudgetContent() {
               )}
             </div>
             <p className="mt-2 text-[12.5px] text-subtle">
-              Dönemin {s.forecast.totalDays} gününün {s.forecast.elapsedDays}. günündesiniz; şimdiye kadar {formatKurus(s.forecast.spentKurus)} harcadınız. Tahmin bugüne kadarki günlük
-              ortalamanıza dayanır, kesin değildir.
-              {s.forecast.remainingFixedKurus > 0 && ` Dönem sonuna kadar kalan ${formatKurus(s.forecast.remainingFixedKurus)} düzenli ödeme ve taksit tahmine eklendi.`}
+              Dönemin {s.forecast.totalDays} gününün {s.forecast.elapsedDays}. günündesiniz.
             </p>
+            <More>
+              Şimdiye kadar {formatKurus(s.forecast.spentKurus)} harcadınız. Tahmin günlük ortalamanıza dayanır, kesin değildir.
+              {s.forecast.remainingFixedKurus > 0 && ` Kalan ${formatKurus(s.forecast.remainingFixedKurus)} düzenli ödeme ve taksit de eklendi.`}
+            </More>
           </>
         ) : (
-          <p className="mt-2 text-sm text-muted">Tahmin yalnızca içinde bulunulan dönem için gösterilir.</p>
+          <p className="mt-2 text-sm text-muted">Tahmin yalnızca bu dönem için gösterilir.</p>
         )}
       </Card>
 
@@ -169,7 +171,7 @@ function BudgetContent() {
           </Button>
         </div>
         {!plan.weeklyKurus ? (
-          <p className="mt-2 text-sm text-muted">Pazartesi–Pazar haftası için bir harcama sınırı belirleyin.</p>
+          <p className="mt-2 text-sm text-muted">Haftalık harcama sınırı belirleyin.</p>
         ) : s.week ? (
           <>
             <p className="mt-1 text-[12.5px] text-subtle">
@@ -178,7 +180,7 @@ function BudgetContent() {
             <LimitBar status={s.week} label="Haftalık bütçe kullanımı" />
           </>
         ) : (
-          <p className="mt-2 text-sm text-muted">Haftalık bütçe {formatKurus(plan.weeklyKurus)}. İçinde bulunulan dönemi seçince bu haftanın durumu görünür.</p>
+          <p className="mt-2 text-sm text-muted">Haftalık bütçe {formatKurus(plan.weeklyKurus)}.</p>
         )}
       </Card>
 
@@ -189,7 +191,7 @@ function BudgetContent() {
         <div className="mt-3 flex items-start justify-between gap-4">
           <div>
             <div className="text-sm font-medium text-ink">Kullanılmayan bütçeyi devret</div>
-            <p className="text-[12.5px] text-muted">Önceki dönemde harcanmayan tutar bu döneme eklenir (yalnızca bir dönem; birikmez).</p>
+            <p className="text-[12.5px] text-muted">Artan tutar sonraki döneme eklenir.</p>
           </div>
           <Switch label="Kullanılmayan bütçeyi devret" checked={plan.carryover} onChange={(v) => void savePlan({ carryover: v }, v ? 'Devir açıldı.' : 'Devir kapatıldı.')} />
         </div>
@@ -220,7 +222,7 @@ function BudgetContent() {
         </div>
         {s.categories.length === 0 ? (
           <EmptyState icon={<Target className="size-6" />} title="Henüz kategori limiti yok" className="py-6">
-            Market, restoran gibi kategoriler için dönemlik üst sınır belirleyin; yaklaşınca uyarılırsınız.
+            Market gibi kategorilere üst sınır koyun.
           </EmptyState>
         ) : (
           <ul className="divide-y divide-line">
@@ -366,9 +368,9 @@ function AmountEditor({
       title={title}
       description={
         byCoach
-          ? 'Bu değeri koç belirledi. Kaydederseniz bütçeyi elle yönetmeye geçersiniz; koçun öteki değerleri olduğu gibi kalır.'
+          ? 'Kaydederseniz bütçe elle moda geçer.'
           : editing?.kind === 'total'
-            ? 'Her dönem için aynı bütçe uygulanır; net gidere göre hesaplanır.'
+            ? 'Her dönem aynı bütçe uygulanır.'
             : undefined
       }
       size="sm"
@@ -496,7 +498,7 @@ function CoachBudgetCard() {
           <ManualBudgetForm key={settings.monthlyBudgetKurus ?? 'yok'} current={settings.monthlyBudgetKurus} />
           {!advanced ? (
             <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted">
-              <PlanBadge plan="plus" /> Koç (otomatik) bütçe Plus ve Plus+'ta: gelirinize, düzenli ödemelerinize ve birikim hedeflerinize göre bütçeyi her dönem kendisi kurar.{' '}
+              <PlanBadge plan="plus" /> Koç (otomatik) bütçe Plus ve Plus+'ta.{' '}
               <Link to="/paketler" className="font-medium text-accent hover:underline">
                 Paketleri gör
               </Link>
@@ -514,13 +516,14 @@ function CoachBudgetCard() {
         </>
       ) : !auto ? (
         <div className="mt-3 text-sm text-muted">
-          <p>
-            Koçun bütçe kurabilmesi için aylık gelirinizi bilmesi gerekiyor. Maaş gibi gelirlerinizi kaydedin (düzenli gelir olarak da ekleyebilirsiniz); koç son üç dönemin ortalamasını kullanır
-            {has('journey') && !settings.journey ? ' (ya da Yolculuk testindeki gelirinizi)' : ''}. O zamana kadar elle girdiğiniz bütçe geçerli.
-          </p>
+          <p>Koçun bütçe kurması için gelirinizi ekleyin.</p>
           <Button size="sm" className="mt-3" icon={<Plus className="size-4" />} onClick={() => openTransactionForm(undefined, { type: 'income' })}>
             Gelir ekle
           </Button>
+          <More>
+            Koç son üç dönemdeki gelirlerinizin ortalamasını kullanır
+            {has('journey') && !settings.journey ? ' (ya da Yolculuk testindeki gelirinizi)' : ''}. O zamana kadar elle girdiğiniz bütçe geçerli.
+          </More>
         </div>
       ) : (
         <>
@@ -547,18 +550,19 @@ function CoachBudgetCard() {
           ) : null}
           {auto.historyKurus !== null && auto.historyKurus < auto.flexibleKurus * 0.8 && (
             <p className="mt-2 text-[12.5px] text-muted">
-              Son dönemlerde serbest harcamanız ayda ortalama {formatKurus(auto.historyKurus)} oldu; aradaki {formatKurus(auto.flexibleKurus - auto.historyKurus)} tutarı da birikime ayırabilirsiniz.
+              {formatKurus(auto.flexibleKurus - auto.historyKurus)} daha birikime ayırabilirsiniz.
             </p>
           )}
           {auto.cutPct > 0 && (
-            <p className="mt-2 text-[12.5px] text-muted">Kategori limitleri, bütçeye sığması için son dönemlerdeki ortalamanızın %{auto.cutPct} altında.</p>
+            <p className="mt-2 text-[12.5px] text-muted">Kategori limitleri ortalamanızın %{auto.cutPct} altında.</p>
           )}
-          <p className="mt-2 text-[12px] text-subtle">
+          <More>
             Koç bütçeyi gelirinize, ödemelerinize ve birikim hedeflerinize göre her dönem yeniden hesaplar; hesap cihazınızda yapılır. Bir değeri elle değiştirirseniz bütçe elle moda geçer.
-          </p>
+            {auto.historyKurus !== null && auto.historyKurus < auto.flexibleKurus * 0.8 && ` Son dönemlerde serbest harcamanız ayda ortalama ${formatKurus(auto.historyKurus)} oldu.`}
+          </More>
           {!has('journey') && (
             <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
-              <PlanBadge plan="plusplus" /> Plus+'ta koç Yolculuk testindeki gelirinizi ve gelirin %20'si birikim hedefini de kullanır.
+              <PlanBadge plan="plusplus" /> Plus+'ta koç Yolculuk testini de kullanır.
             </p>
           )}
         </>

@@ -14,7 +14,7 @@ import { useRepo } from '../state/data'
 import { useUi } from '../state/ui'
 import { PlanBadge } from './PlanGate'
 import { Modal } from './ui/Modal'
-import { Button, Input, Segmented } from './ui/primitives'
+import { Button, Input, More, Segmented } from './ui/primitives'
 import { usePlan } from '../state/plan'
 import { Link } from 'react-router-dom'
 
@@ -179,9 +179,14 @@ export function SplitDialog({
           )}
         </section>
 
-        <p className="text-[12.5px] leading-relaxed text-subtle">
-          {useStored ? 'Paylar grup yöneticisinin paylaştırmasına göredir.' : effectiveRule.method === 'equal' && !effectiveRule.participants ? `Gider, gruptaki ${result.people.length} kişiye eşit bölündü.` : `Gider ${SPLIT_METHOD_LABEL[effectiveRule.method].toLocaleLowerCase('tr')} yöntemiyle, seçili kişiler arasında bölündü.`} Kart ödemeleri sayılmaz, iadeler ödeyenin harcamasından düşer. Paylaştırma kayıtları silmez veya değiştirmez; herkesin “Tümü” görünümüne ödediğiyle payı arasındaki fark alacak veya borç olarak eklenir.
-        </p>
+        <div>
+          <p className="text-[12.5px] leading-relaxed text-subtle">
+            {useStored ? 'Paylar grup yöneticisinin paylaştırmasına göredir.' : effectiveRule.method === 'equal' && !effectiveRule.participants ? `Gider, gruptaki ${result.people.length} kişiye eşit bölündü.` : `Gider ${SPLIT_METHOD_LABEL[effectiveRule.method].toLocaleLowerCase('tr')} yöntemiyle, seçili kişiler arasında bölündü.`}
+          </p>
+          <More>
+            Kart ödemeleri sayılmaz, iadeler ödeyenin harcamasından düşer. Paylaştırma kayıtları silmez; herkesin “Tümü” görünümüne ödediğiyle payı arasındaki fark alacak veya borç olarak eklenir.
+          </More>
+        </div>
       </div>
     </Modal>
   )
@@ -236,8 +241,8 @@ function SettleStatus({ group, period, result, selfId, owner }: { group: SpendGr
         <p className="font-semibold text-ink">Bu dönem henüz paylaştırılmadı</p>
         <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
           {isOwner
-            ? 'Paylaştırdığınızda payından fazla ödeyenin “Tümü” görünümüne alacak, az ödeyenin borç satırı eklenir; ortak gider herkese payı kadar yansır. İstediğiniz zaman geri alabilirsiniz.'
-            : 'Paylaşımı grup yöneticisi yapar. Paylaştırılana kadar “Tümü” toplamınıza yalnızca kendi eklediğiniz giderler girer.'}
+            ? 'Gider herkese payı kadar yansır; geri alabilirsiniz.'
+            : 'Paylaşımı grup yöneticisi yapar.'}
         </p>
         {isOwner && (
           <Button variant="primary" size="sm" className="mt-3" icon={<Scale className="size-4" />} loading={busy} disabled={result.totalKurus <= 0 || !!result.error} onClick={() => void settle()}>
@@ -265,7 +270,7 @@ function SettleStatus({ group, period, result, selfId, owner }: { group: SpendGr
       )}
       {sameRange && !matches && (
         <p className="mt-1.5 text-[13px] leading-relaxed text-ink">
-          Paylaştırıldıktan sonra grubun giderleri değişti. {isOwner ? 'Paylaşımı güncelleyerek yeni tutarları yansıtabilirsiniz.' : 'Yönetici paylaşımı güncelleyene kadar kayıtlı paylar geçerlidir.'}
+          Paylaştırıldıktan sonra grubun giderleri değişti.{isOwner ? '' : ' Güncellenene kadar kayıtlı paylar geçerli.'}
         </p>
       )}
       {isOwner && (
@@ -298,7 +303,7 @@ function SettleStatus({ group, period, result, selfId, owner }: { group: SpendGr
 function AdvancedTeaser() {
   return (
     <p className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface-2 px-3.5 py-2.5 text-[13px] text-muted">
-      <PlanBadge plan="plus" /> Yüzde, ağırlık veya tutarla bölmek, yalnızca seçili üyeleri katmak ve ödemeleri işaretlemek Plus pakette.
+      <PlanBadge plan="plus" /> Yüzde, ağırlık veya tutarla bölme Plus pakette.
       <Link to="/paketler" className="font-medium text-accent">
         Paketleri incele
       </Link>
@@ -378,7 +383,7 @@ function RuleEditor({ rule, onChange, people, total }: { rule: SplitRule; onChan
           </li>
         ))}
       </ul>
-      {rule.method === 'amounts' && <p className="mt-2 text-[12px] text-subtle">Tutar yazılmayan katılımcılar kalanı ({formatKurus(total)} toplamdan) eşit böler.</p>}
+      {rule.method === 'amounts' && <p className="mt-2 text-[12px] text-subtle">Boş bırakılanlar, {formatKurus(total)} toplamdan kalanı eşit böler.</p>}
     </section>
   )
 }

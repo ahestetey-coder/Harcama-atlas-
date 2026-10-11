@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CATEGORY_COLORS, CATEGORY_ICONS, CategoryIcon } from '../components/common'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
-import { Alert, Badge, Button, Card, EmptyState, Field, IconButton, Input, Segmented, Select, Switch } from '../components/ui/primitives'
+import { Alert, Badge, Button, Card, EmptyState, Field, IconButton, Input, More, Segmented, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import { normalizeText } from '../domain/normalize'
 import { evaluateRules, findRuleConflicts, PRIORITY, validateRulePattern } from '../domain/rules'
@@ -21,7 +21,7 @@ export default function CategoriesPage() {
   const setTab = (t: 'categories' | 'groups' | 'rules') => setParams(t === 'categories' ? {} : { bolum: t }, { replace: true })
   return (
     <div>
-      <PageHeader title="Kategoriler ve gruplar" subtitle="Kurallar yalnızca içe aktarmada öneri üretir; sizin seçtiğiniz kategoriyi asla ezmez." />
+      <PageHeader title="Kategoriler ve gruplar" />
       <Segmented
         label="Bölüm"
         value={tab}
@@ -149,7 +149,7 @@ function CategoriesTab() {
         {needsTarget ? (
           <>
             <p>
-              Bu kategoride <strong className="text-ink">{delUsage.tx} işlem</strong> ve <strong className="text-ink">{delUsage.rules} kural</strong> var. Kayıtlar sahipsiz kalmasın diye taşınacakları kategoriyi seçin. Silmek yerine arşivlemeyi de düşünebilirsiniz.
+              Bu kategoride <strong className="text-ink">{delUsage.tx} işlem</strong> ve <strong className="text-ink">{delUsage.rules} kural</strong> var. Taşınacakları kategoriyi seçin ya da arşivleyin.
             </p>
             <Field label="Taşınacak kategori" htmlFor="del-target" className="mt-3">
               <Select id="del-target" value={target} onChange={(e) => setTarget(e.target.value)}>
@@ -308,7 +308,7 @@ function RulesTab() {
                 </li>
               ))}
             </ul>
-            <p className="mt-1">Çakışmada öncelik değeri büyük olan, eşitse daha uzun (özgül) ifade, o da eşitse eski kural kazanır.</p>
+            <p className="mt-1">Önceliği büyük olan, eşitse daha uzun ifade kazanır.</p>
           </Alert>
         )}
         <Card className="overflow-hidden">
@@ -366,7 +366,11 @@ function RulesTab() {
       <div>
         <Card className="sticky top-4 p-5">
           <h2 className="font-display text-base font-semibold">Kural deneme</h2>
-          <p className="mt-1 text-[13px] text-muted">Bir açıklama yazın; hangi kuralların eşleştiğini ve hangisinin kazandığını görün.</p>
+          <p className="mt-1 text-[13px] text-muted">Bir açıklama yazın, eşleşen kuralları görün.</p>
+          <More>
+            Kurallar yalnızca içe aktarmada öneri üretir; sizin seçtiğiniz kategoriyi ezmez. Büyük/küçük harf, Türkçe karakter ve boşluk farkı önemsenmez. Eşleşme
+            yoksa işlem “Kategori seçilmeli” olarak gelir.
+          </More>
           <Input className="mt-3" placeholder="Ör. MİGROS KANGURU KADIKÖY" value={test} onChange={(e) => setTest(e.target.value)} aria-label="Denenecek açıklama" />
           {evaluation && (
             <div className="mt-3 text-[13px]">
@@ -385,9 +389,9 @@ function RulesTab() {
                   ))}
                 </ol>
               ) : (
-                <p className="mt-2 rounded-xl bg-warning-soft px-3 py-2 text-warning">Eşleşen kural yok: içe aktarmada “Kategori seçilmeli” olarak gösterilir.</p>
+                <p className="mt-2 rounded-xl bg-warning-soft px-3 py-2 text-warning">Eşleşen kural yok.</p>
               )}
-              {evaluation.conflict && <p className="mt-2 text-warning">Farklı kategorilere giden kurallar eşleşti; ilk sıradaki uygulanır.</p>}
+              {evaluation.conflict && <p className="mt-2 text-warning">Farklı kategoriler eşleşti; ilk sıradaki uygulanır.</p>}
             </div>
           )}
         </Card>
@@ -434,7 +438,6 @@ function RuleEditor({ value, onClose, categories }: { value: Rule | 'new' | null
       open={!!value}
       onOpenChange={(o) => !o && onClose()}
       title={rule ? 'Kuralı düzenle' : 'Yeni kural'}
-      description="Açıklamalar Türkçe harf, büyük/küçük harf ve boşluk açısından normalize edilerek karşılaştırılır."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -450,7 +453,7 @@ function RuleEditor({ value, onClose, categories }: { value: Rule | 'new' | null
         <Field label="Eşleşecek ifade" htmlFor="rule-pattern" error={patternError ?? undefined} hint={pattern ? `Normalize: ${normalizeText(pattern)}` : 'Ör. PETROL OFİSİ'}>
           <Input id="rule-pattern" value={pattern} maxLength={80} onChange={(e) => setPattern(e.target.value)} autoFocus />
         </Field>
-        <Field label="Eşleşme türü" htmlFor="rule-mode" hint="Kısa ifadeler için “Tam kelime” kullanın; “BİM” böylece “BİMEKS” ile eşleşmez.">
+        <Field label="Eşleşme türü" htmlFor="rule-mode" hint="Kısa ifadelerde “Tam kelime” seçin.">
           <Select id="rule-mode" value={mode} onChange={(e) => setMode(e.target.value as RuleMatchMode)}>
             <option value="word">Tam kelime/ifade (önerilen)</option>
             <option value="prefix">Kelime başı (en az 4 harf)</option>

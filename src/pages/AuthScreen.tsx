@@ -80,7 +80,7 @@ function HeroPanel() {
           <span className="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">tek bakışta.</span>
         </motion.h2>
         <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.5, ease: EASE }} className="mt-3 max-w-sm text-[15px] leading-relaxed text-white/70">
-          Ekstrenizi yükleyin, giderleriniz kategorilere ayrılsın; ortak harcamaları ailenizle birlikte takip edin.
+          Ekstrenizi yükleyin, giderleriniz kendiliğinden ayrılsın.
         </motion.p>
       </div>
 
@@ -212,7 +212,7 @@ function AuthFrame({ children }: { children: ReactNode }) {
           >
             <ShieldCheck className="mt-px size-3.5 shrink-0" />
             <span>
-              Harcamalarınız bu cihazda saklanır. Yalnızca paylaşıma açtığınız gruptaki harcamalar üyelerinizle paylaşılır.{' '}
+              Harcamalarınız bu cihazda saklanır.{' '}
               <a href={APP_CONFIG.privacyUrl} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
                 Gizlilik politikası
               </a>
@@ -324,7 +324,7 @@ export function AuthScreen() {
               <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" /> Girişe dön
             </button>
             <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Şifrenizi mi unuttunuz?</h1>
-            <p className="mt-1.5 text-sm text-muted">E-posta adresinizi yazın, yeni şifre belirlemeniz için bir bağlantı gönderelim.</p>
+            <p className="mt-1.5 text-sm text-muted">Size bir yenileme bağlantısı gönderelim.</p>
             <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
               <Field label="E-posta" htmlFor={`${uid}-email`}>
                 <Input id={`${uid}-email`} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -340,7 +340,7 @@ export function AuthScreen() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={mode} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
                 <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{signup ? 'Hesap oluşturun' : 'Tekrar hoş geldiniz'}</h1>
-                <p className="mt-1.5 text-sm text-muted">{signup ? 'Birkaç saniyede kayıt olun, harcamalarınızı takip etmeye başlayın.' : 'Devam etmek için hesabınıza giriş yapın.'}</p>
+                <p className="mt-1.5 text-sm text-muted">{signup ? 'Birkaç saniyede kayıt olun.' : 'Hesabınıza giriş yapın.'}</p>
               </motion.div>
             </AnimatePresence>
 
@@ -382,7 +382,7 @@ export function AuthScreen() {
                     transition={{ duration: 0.22, ease: EASE }}
                     className="-m-1 overflow-hidden p-1"
                   >
-                    <Field label="Adınız" htmlFor={`${uid}-name`} hint="Grup üyeleriniz sizi bu adla görür.">
+                    <Field label="Adınız" htmlFor={`${uid}-name`} hint="Grup üyeleri bu adı görür.">
                       <Input id={`${uid}-name`} autoComplete="given-name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required />
                     </Field>
                   </motion.div>
@@ -391,7 +391,7 @@ export function AuthScreen() {
               <Field label="E-posta" htmlFor={`${uid}-email`}>
                 <Input id={`${uid}-email`} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </Field>
-              <Field label="Şifre" htmlFor={`${uid}-password`} hint={signup ? 'En az 6 karakter. Banka şifrenizi kullanmayın.' : undefined}>
+              <Field label="Şifre" htmlFor={`${uid}-password`} hint={signup ? 'En az 6 karakter, banka şifresi olmasın.' : undefined}>
                 <PasswordInput id={`${uid}-password`} value={password} onChange={setPassword} autoComplete={signup ? 'new-password' : 'current-password'} />
               </Field>
               {!signup && (
@@ -437,7 +437,7 @@ export function NewPasswordScreen() {
   return (
     <AuthFrame>
       <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Yeni şifre belirleyin</h1>
-      <p className="mt-1.5 text-sm text-muted">{auth.user?.email} hesabı için yeni bir şifre yazın.</p>
+      <p className="mt-1.5 text-sm text-muted">{auth.user?.email} için yeni şifre yazın.</p>
       <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
         <Field label="Yeni şifre" htmlFor="new-password" hint="En az 6 karakter.">
           <PasswordInput id="new-password" value={password} onChange={setPassword} autoComplete="new-password" />

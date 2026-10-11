@@ -49,7 +49,7 @@ test('Bütçe belirleme: Ücretsizde yalnızca elle girilir; Plus\'ta koç gelir
   await expect(card.getByRole('radio', { name: 'Elle' })).toBeChecked()
   await expect(card.getByLabel('Dönemlik harcama bütçesi (TL)')).toHaveValue('25.000,00')
   await card.getByRole('radio', { name: 'Koç (otomatik)' }).click()
-  await expect(card).toContainText('aylık gelirinizi bilmesi gerekiyor')
+  await expect(card).toContainText('gelirinizi ekleyin')
   await card.getByRole('button', { name: 'Gelir ekle' }).click()
   const form = page.getByRole('dialog', { name: 'Gelir ekle' })
   await form.getByLabel('Tutar (TL)').fill('40.000')
@@ -73,7 +73,7 @@ test('Bütçe belirleme: Ücretsizde yalnızca elle girilir; Plus\'ta koç gelir
   // Koçun bir değerini elle değiştirmek elle moda geçirir
   await page.getByRole('button', { name: 'Düzenle' }).first().click()
   const dlg = page.getByRole('dialog', { name: 'Toplam bütçe' })
-  await expect(dlg).toContainText('Bu değeri koç belirledi')
+  await expect(dlg).toContainText('elle moda geçer')
   await dlg.getByLabel('Tutar (TL)').fill('30.000')
   await dlg.getByRole('button', { name: 'Kaydet' }).click()
   await expect(card.getByRole('radio', { name: 'Elle' })).toBeChecked()
@@ -161,7 +161,7 @@ test('Plus birikim hedefi ve raporlar: hedef eklenir, para eklenip çekilir; rap
   await expect(page.getByRole('region', { name: 'Dönem özeti' })).toContainText('450,00 ₺')
   await expect(page.getByRole('table', { name: 'Kategori karşılaştırması' })).toContainText('Market')
   await expect(page.getByRole('list', { name: 'İş yerleri' })).toContainText('Kırtasiye')
-  await expect(page.getByText('Karşılaştırma için önceki dönemlerden kayıt gerekiyor.', { exact: false })).toBeVisible()
+  await expect(page.getByText('Karşılaştırma için geçmiş dönem kaydı gerekiyor.', { exact: false })).toBeVisible()
 })
 
 test('Plus yatırımlarım ve borçlarım: altın eklenir, fiyat güncellenir, satılır; borç ayrı sayfada türüne göre izlenir', async ({ page }) => {

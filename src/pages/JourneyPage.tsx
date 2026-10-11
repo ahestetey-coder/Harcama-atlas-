@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
-import { Alert, Badge, Button, Card, Segmented } from '../components/ui/primitives'
+import { Alert, Badge, Button, Card, More, Segmented } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import { holdingSummary, portfolio } from '../domain/assets'
 import { currentPeriod, periodLabel, todayIso } from '../domain/dates'
@@ -50,7 +50,7 @@ export default function JourneyPage() {
         title="Finansal Özgürlük Yolculuğum"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plusplus" /> Yatırımlarınız, borçlarınız ve bu ayki bütçenizle kişisel rota
+            <PlanBadge plan="plusplus" /> Kişisel rotanız
           </span>
         }
       />
@@ -58,8 +58,8 @@ export default function JourneyPage() {
         feature="journey"
         title="Finansal Özgürlük Yolculuğum"
         points={[
-          'Finansal özgürlük testiyle hedefinizi, güvencelerinizi ve risk tutumunuzu belirleyin; ayda iki kez yenileyebilirsiniz',
-          'Uzman ölçütlerine dayanan 8 seviyeli rota: denge, başlangıç fonu, borçsuzluk, acil fon, düzenli birikim, güvence, bağımsızlık, özgürlük',
+          'Finansal özgürlük testiyle kişisel hedefiniz',
+          'Uzman ölçütlerine dayanan 8 seviyeli rota',
           'Planınızı TL, USD ya da gram altın bazında izleyin',
           'Yatırımlarım, Borçlarım ve bu ayın gelir-giderini tek yerden görün',
         ]}
@@ -151,7 +151,7 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
           <h2 className="flex items-center gap-2 font-display text-[15px] font-semibold">
             <ClipboardCheck className="size-5 shrink-0 text-accent" /> Finansal özgürlük testini henüz yapmadınız
           </h2>
-          <p className="mt-1 text-[13px] text-muted">5 kısa adım; rotanızdaki hedefler bu yanıtlarla kişiselleşir.</p>
+          <p className="mt-1 text-[13px] text-muted">5 kısa adımda rotanızı kişiselleştirin.</p>
           <Button className="mt-3 w-full sm:w-auto" variant="primary" icon={<ClipboardCheck className="size-4" />} onClick={onRetake}>
             Testi başlat
           </Button>
@@ -162,7 +162,7 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
 
       {(!profile.targetAge || !profile.spending) && tested && (
         <Alert tone="info" icon={<Info className="size-4" />}>
-          Rotanız yeni hesaba geçti. Hedef yaşınızı, harcama gruplarınızı ve risk sorularını eklemek için testi yenileyin; o zamana kadar eski yanıtlarınız kullanılır.
+          Yeni sorular eklendi; testi yenileyebilirsiniz.
         </Alert>
       )}
 
@@ -192,18 +192,20 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
         {tab === 'criteria' && <CriteriaTab j={j} profile={profile} left={left} onRetake={onRetake} />}
       </div>
 
-      <Alert tone="info" icon={<Info className="size-4" />}>
-        Bu rota uygulamadaki verileriniz, test yanıtlarınız ve kaynaklı varsayımlarla hesaplanan bir benzetimdir: tutarlar bugünün parasıyladır; beklenen yıllık reel getiri {j.plan.risk.profile.label} profiline göre %{j.plan.realReturnPct.toLocaleString('tr-TR')}; gereken birikim, garantili gelirle karşılanmayan yıllık giderin %{j.plan.withdrawal.usedPct.toLocaleString('tr-TR')} çekim oranına bölünmesiyle bulunur. Borç, düzenli ödeme ya da varlık değiştiğinde rota kendiliğinden yeniden hesaplanır. Aşama süreleri, aylık birikiminizin tamamının o aşamaya ayrıldığı varsayımıyla hesaplanır.
-        {base !== 'TRY' && ` Hedefler ${BASE_LABEL[base]} bazında sabittir; TL karşılıkları güncel fiyatla hesaplanır.`} Getiri veya tarih garantisi değildir; eğitim amaçlıdır ve kişiye özel yatırım tavsiyesi içermez.{' '}
-        <Link to="/ogren#varsayimlar" className="font-medium text-accent">
-          Varsayımlar ve kaynaklar
-        </Link>
-        . Farklı varsayımları{' '}
-        <Link to="/senaryolar" className="font-medium text-accent">
-          Senaryolar
-        </Link>{' '}
-        sayfasında deneyebilirsiniz.
-      </Alert>
+      <div className="text-[12.5px] text-subtle">
+        <p>Tahmindir, garanti değildir. Yatırım tavsiyesi değildir.</p>
+        <More>
+          Tutarlar bugünün parasıyladır. Beklenen yıllık reel getiri {j.plan.risk.profile.label} profiline göre %{j.plan.realReturnPct.toLocaleString('tr-TR')}. Gereken birikim, garantili gelirle karşılanmayan yıllık giderin %{j.plan.withdrawal.usedPct.toLocaleString('tr-TR')} çekim oranına bölünmesiyle bulunur. Aşama süreleri, aylık birikimin tamamının o aşamaya ayrıldığı varsayımıyla hesaplanır.
+          {base !== 'TRY' && ` Hedefler ${BASE_LABEL[base]} bazında sabittir.`}{' '}
+          <Link to="/ogren#varsayimlar" className="font-medium text-accent">
+            Varsayımlar ve kaynaklar
+          </Link>
+          {' · '}
+          <Link to="/senaryolar" className="font-medium text-accent">
+            Senaryolar
+          </Link>
+        </More>
+      </div>
     </div>
   )
 }
@@ -311,7 +313,6 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
   return (
     <Card className="p-4 sm:p-5">
       <h3 className="font-display text-base font-semibold">Rotanız</h3>
-      <p className="mt-0.5 text-[12.5px] text-muted">Aşamalar sırayla tamamlanır. Sıradaki aşamanın koşulları açık; diğerlerine dokunarak bakabilirsiniz.</p>
       <ol className="mt-4" aria-label="Aşamalar">
         {j.stages.map((s, i) => {
           const isCur = j.current?.id === s.id
@@ -483,7 +484,7 @@ function InvestmentsTab({ facts, inBase }: { facts: JourneyFacts; inBase: (k: nu
   return (
     <TabCard icon={<Wallet className="size-5 text-accent" />} title="Yatırımlarım" to="/yatirimlar" linkLabel="Tümünü aç">
       {count === 0 ? (
-        <p className="text-sm text-muted">Henüz yatırım eklenmedi. Birikiminizi Yatırımlarım'a eklediğinizde rota kendiliğinden ilerler.</p>
+        <p className="text-sm text-muted">Henüz yatırım eklenmedi.</p>
       ) : (
         <>
           <Stat label="Toplam yatırım" value={inBase(p.assetsKurus)} sub={`${count} kalem`} />
@@ -553,7 +554,6 @@ function CriteriaTab({ j, profile, left, onRetake }: { j: JourneyResult; profile
     <div className="flex flex-col gap-4">
       <Card className="p-5">
         <h3 className="font-display text-base font-semibold">Finansal özgürlük ölçütleri</h3>
-        <p className="mt-0.5 text-[12.5px] text-muted">Rotadaki her aşama ve ek güvence ölçütleri, dayandıkları yaklaşımla birlikte.</p>
         <ul className="mt-3 divide-y divide-line" aria-label="Ölçütler">
           {[...j.stages.map((s) => ({ key: s.id, title: s.title, criterion: s.criterion, source: s.source, status: s.status, done: s.done as boolean | null })), ...j.checks.map((c) => ({ key: c.id, ...c }))].map((c) => (
             <li key={c.key} className="flex gap-3 py-3">
@@ -582,7 +582,7 @@ function CriteriaTab({ j, profile, left, onRetake }: { j: JourneyResult; profile
         </div>
         <p className="mt-0.5 text-[12.5px] text-muted">
           {lastTest ? `Son test ${lastTest.split('-').reverse().join('.')}. ` : ''}
-          {left > 0 ? `Bu ay ${left} test hakkınız kaldı.` : 'Bu ayki test haklarınız bitti; gelecek ay yenileyebilirsiniz.'}
+          {left > 0 ? `Bu ay ${left} test hakkınız kaldı.` : 'Bu ayın test hakları bitti.'}
         </p>
         <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2">
           {answers.map(([k, v]) => (

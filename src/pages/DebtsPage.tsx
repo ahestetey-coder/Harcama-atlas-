@@ -50,7 +50,7 @@ export default function DebtsPage() {
         title="Borçlar ve ödemeler"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Borçlar, taksitler ve düzenli ödemeler tek yerde
+            <PlanBadge plan="plus" />
           </span>
         }
         actions={
@@ -137,7 +137,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
     return (
       <Card className="p-5">
         <EmptyState icon={<Landmark className="size-6" />} title="Kayıtlı borç yok" className="py-6">
-          Borcunuz varsa türünü seçerek ekleyin. Kredi kartı ekstresi içe aktardığınızda taksitli alışverişler burada kendiliğinden listelenir.
+          Borcunuzu türünü seçerek ekleyin.
         </EmptyState>
         <AddChips onEdit={onEdit} />
       </Card>
@@ -189,7 +189,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
         </h2>
         {installmentsKurus === 0 ? (
           <p className="mt-2 text-sm text-muted">
-            Kalan taksit yok. Kredi kartı ekstresi içe aktardığınızda "3/12 taksit" gibi satırlar burada kendiliğinden görünür; elle eklemek için{' '}
+            Kalan taksit yok. Elle eklemek için{' '}
             <Link to="/borclar?bolum=odemeler" className="font-medium text-accent">
               Düzenli ödemeler
             </Link>
@@ -197,7 +197,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
           </p>
         ) : (
           <>
-            <p className="mt-0.5 text-[12.5px] text-muted">Toplam kalan {formatKurus(installmentsKurus)}. Ekstreden bulunan taksitler son görülen taksitten birer ay sonrasına yerleştirilir.</p>
+            <p className="mt-0.5 text-[12.5px] text-muted">Toplam kalan {formatKurus(installmentsKurus)}.</p>
             <ul className="mt-3 grid grid-cols-6 items-end gap-1.5 sm:grid-cols-12" aria-label="Dönemlere göre taksit yükü">
               {load.map((l) => {
                 const [, m] = l.month.split('-').map(Number)

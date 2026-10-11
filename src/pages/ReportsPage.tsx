@@ -3,7 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { CategoryIcon, MonthSwitcher } from '../components/common'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
-import { Card, Segmented } from '../components/ui/primitives'
+import { Card, More, Segmented } from '../components/ui/primitives'
 import { currentPeriod, MONTH_SHORT, periodLabel } from '../domain/dates'
 import { formatKurus, formatKurusCompact } from '../domain/money'
 import { periodReport, type Insight, type PeriodReport } from '../domain/reports'
@@ -24,7 +24,7 @@ export default function ReportsPage() {
         title="Raporlar"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Kişisel harcamalarınıza göre (Tümü)
+            <PlanBadge plan="plus" /> Kişisel harcamalar
           </span>
         }
         actions={<MonthSwitcher month={month} onChange={setMonth} />}
@@ -67,7 +67,7 @@ function ReportsContent() {
           icon={diffPrev > 0 ? <ArrowUpRight className="size-4 text-danger" /> : diffPrev < 0 ? <ArrowDownRight className="size-4 text-accent" /> : null}
         />
         {report.historyMonths > 0 && <Stat label={`Son ${report.historyMonths} dönem ortalaması`} value={formatKurus(report.averageKurus)} />}
-        {ongoing && <p className="w-full text-[12px] text-subtle">Dönem sürüyor; karşılaştırmalar dönem sonuna kadar değişir.</p>}
+        {ongoing && <p className="w-full text-[12px] text-subtle">Dönem sürüyor; rakamlar değişebilir.</p>}
       </Card>
 
       <Insights items={report.insights} history={report.historyMonths} />
@@ -103,9 +103,9 @@ function Insights({ items, history }: { items: Insight[]; history: number }) {
         <Lightbulb className="size-5 text-warning" /> Bu dönem dikkat çekenler
       </h2>
       {history === 0 ? (
-        <p className="mt-2 text-sm text-muted">Karşılaştırma için önceki dönemlerden kayıt gerekiyor. Geçmiş ekstrelerinizi içe aktarırsanız uyarılar burada görünür.</p>
+        <p className="mt-2 text-sm text-muted">Karşılaştırma için geçmiş dönem kaydı gerekiyor.</p>
       ) : items.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">Harcamalarınız önceki dönemlerle uyumlu; olağandışı bir artış yok.</p>
+        <p className="mt-2 text-sm text-muted">Olağandışı bir artış yok.</p>
       ) : (
         <ul className="mt-3 space-y-2.5">
           {items.map((i, n) => (
@@ -116,7 +116,7 @@ function Insights({ items, history }: { items: Insight[]; history: number }) {
           ))}
         </ul>
       )}
-      <p className="mt-3 text-[12px] text-subtle">Uyarılar cihazınızda, son 3 dönemin ortalamasıyla karşılaştırılarak hazırlanır; hiçbir veri dışarı gönderilmez.</p>
+      <More className="mt-3">Uyarılar cihazınızda, son 3 dönemin ortalamasıyla karşılaştırılarak hazırlanır; hiçbir veri dışarı gönderilmez.</More>
     </Card>
   )
 }

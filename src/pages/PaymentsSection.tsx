@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { CategoryIcon, GroupBadge } from '../components/common'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
-import { Badge, Button, Card, EmptyState, Field, IconButton, Input, Select, Switch } from '../components/ui/primitives'
+import { Badge, Button, Card, EmptyState, Field, IconButton, Input, More, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import { addDays, currentPeriod, formatDate, MONTH_SHORT, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
@@ -76,7 +76,7 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
             <BellRing className="size-5 text-warning" /> Ödeme günü gelen grup giderleri
           </h2>
-          <p className="mt-1 text-[13px] text-muted">Eklediğinizde grubun gideri olur; paylaşılan grupta üyeler de görür.</p>
+          <p className="mt-1 text-[13px] text-muted">Ekleyince grubun gideri olur.</p>
           <ul className="mt-3 divide-y divide-line">
             {toRecord.map(({ item, date }) => (
               <li key={`${item.id}:${date}`} className="flex flex-wrap items-center gap-3 py-2.5">
@@ -103,7 +103,7 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
             <Lightbulb className="size-5 text-warning" /> Her ay tekrarlanan harcamalar
           </h2>
-          <p className="mt-1 text-[13px] text-muted">Bunları düzenli ödeme olarak eklerseniz ödeme gününden önce hatırlatılır ve ay sonu tahminine katılır.</p>
+          <p className="mt-1 text-[13px] text-muted">Ekleyin, ödeme gününden önce hatırlatalım.</p>
           <ul className="mt-3 divide-y divide-line">
             {suggestions.slice(0, 6).map((s) => (
               <li key={s.key} className="flex flex-wrap items-center gap-3 py-2.5">
@@ -184,7 +184,7 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
               </Button>
             }
           >
-            Kira, fatura, abonelik veya elle takip etmek istediğiniz bir taksit ekleyin.
+            Kira, fatura veya abonelik ekleyin.
           </EmptyState>
         ) : (
           <ul className="mt-2 divide-y divide-line" aria-label="Düzenli ödeme listesi">
@@ -255,9 +255,12 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
             Taksit ekle
           </Button>
         </div>
-        <p className="mt-1 text-[12.5px] text-subtle">Kredi kartı ekstrelerindeki “3/12 taksit” satırlarından bulunur. Bu ayki taksit ekstrede zaten giderdir; sonraki taksitler borç sayılır ve ödeme günü gelince aylık özete planlı taksit olarak yansır. Sonraki ekstre yüklenince aynı taksit iki kez sayılmaz.</p>
+        <p className="mt-1 text-[12.5px] text-subtle">Ekstrelerinizden otomatik bulunur.</p>
+        <More>
+          Ekstredeki “3/12 taksit” gibi satırlardan bulunur. Bu ayki taksit zaten giderdir; sonrakiler ödeme günü gelince aylık özete yansır. Aynı taksit iki kez sayılmaz.
+        </More>
         {plans.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">İçe aktarılan ekstrelerde devam eden taksit bulunamadı.</p>
+          <p className="mt-3 text-sm text-muted">Devam eden taksit yok.</p>
         ) : (
           <ul className="mt-2 divide-y divide-line" aria-label="Devam eden taksitler">
             {plans.map((p) => (
@@ -492,7 +495,7 @@ export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClo
             </Select>
           </Field>
         </div>
-        <Field label="Grup" htmlFor="rec-group" hint={f.groupId ? 'Ödeme günü gelince tek dokunuşla bu grubun gideri olarak eklenir.' : 'Bir gruba bağlarsanız ödeme günü gelince grubun gideri olarak ekleyebilirsiniz.'}>
+        <Field label="Grup" htmlFor="rec-group" hint={f.groupId ? 'Ödeme günü grubun gideri olur.' : undefined}>
           <Select id="rec-group" value={f.groupId} onChange={(e) => set('groupId', e.target.value)}>
             <option value="">Grup yok (yalnızca hatırlatma)</option>
             {(groups ?? [])

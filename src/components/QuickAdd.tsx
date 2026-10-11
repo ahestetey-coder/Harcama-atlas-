@@ -89,7 +89,7 @@ export function QuickAddSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       <input ref={camera} type="file" accept="image/jpeg,image/png" capture="environment" className="sr-only" tabIndex={-1} aria-label="Fotoğraf çekin" onChange={onFile} />
       <div className="flex flex-col gap-5 pb-1">
         <Section title="Kayıt" actions={record} offset={0} />
-        <Section title="Belgeden ekle" actions={files} offset={4} note="Belgeler cihazınızda okunur; hiçbir sunucuya gönderilmez." />
+        <Section title="Belgeden ekle" actions={files} offset={4} note="Belgeler yalnızca cihazınızda okunur." />
         <Section title="Planla" actions={plan} offset={8} />
         <Section title="Diğer" actions={more} offset={12} />
       </div>

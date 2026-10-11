@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { PlanBadge } from '../components/PlanGate'
-import { Alert, Card, Segmented } from '../components/ui/primitives'
+import { Alert, Card, More, Segmented } from '../components/ui/primitives'
 import { PLAN_LABEL, type Feature, type Plan } from '../domain/plans'
 import { cn } from '../lib/cn'
 import { usePlan } from '../state/plan'
@@ -71,16 +71,15 @@ export default function PlansPage() {
   const { plan, purchased, preview, canPreview, setPreview } = usePlan()
   return (
     <div>
-      <PageHeader title="Paketler" subtitle="Bugünkü bütün özellikler ücretsiz kalır. Plus ve Plus+ yeni özellikler ekler." />
+      <PageHeader title="Paketler" subtitle="Temel özellikler hep ücretsiz" />
 
       {canPreview && (
         <Card className="mb-5 p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
             <FlaskConical className="size-5 text-accent" /> Önizleme
           </h2>
-          <p className="mt-1 text-sm text-muted">
-            Ödeme altyapısı hazır olana kadar paketleri buradan deneyebilirsiniz. Bu seçenek yalnızca yönetici hesabında, demo modunda ve yerel kullanımda görünür.
-          </p>
+          <p className="mt-1 text-sm text-muted">Paketleri ödeme olmadan deneyin.</p>
+          <More label="Kimler görür?">Yalnızca yönetici hesabında, demo modunda ve yerel kullanımda görünür.</More>
           <Segmented<Plan>
             label="Önizleme paketi"
             value={preview ?? 'free'}
@@ -152,8 +151,7 @@ export default function PlansPage() {
         })}
       </div>
       <Alert tone="info" className="mt-5" title="Ödeme nasıl olacak?">
-        Plus ve Plus+ aboneliği, uygulama App Store ve Google Play’de yayımlandığında mağazanın kendi ödeme sistemiyle alınacak. Kart bilgileriniz Harcama Atlası’na hiç
-        gelmez.
+        App Store ve Google Play üzerinden alınacak. Kart bilgileriniz bize gelmez.
       </Alert>
     </div>
   )

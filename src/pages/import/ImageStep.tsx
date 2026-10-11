@@ -94,7 +94,7 @@ export function ImageStep({ bitmap, onRun, onCancel }: { bitmap: ImageBitmap; on
       <Card className="flex flex-col gap-4 p-5">
         <div>
           <h2 className="font-display text-base font-semibold">Görseli hazırlayın</h2>
-          <p className="mt-1 text-[13px] text-muted">OCR bu cihazda çalışır; görsel hiçbir sunucuya gönderilmez.</p>
+          <p className="mt-1 text-[13px] text-muted">Görsel yalnızca bu cihazda okunur.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button icon={<RotateCw className="size-4" />} onClick={() => setAdj((a) => ({ ...a, rotation: (a.rotation + 90) % 360 }))}>
@@ -115,11 +115,11 @@ export function ImageStep({ bitmap, onRun, onCancel }: { bitmap: ImageBitmap; on
               <Sparkles className="size-4 text-accent" /> Görüntüyü iyileştir
             </span>
           }
-          description="Gri tonlama, kontrast ve küçük görsellerde büyütme. Koyu temalı ekran görüntüleri tersine çevrilir."
+          description="Kontrastı artırır, koyu temayı çevirir."
           checked={adj.enhance}
           onChange={(v) => setAdj((a) => ({ ...a, enhance: v }))}
         />
-        <Alert tone="info">OCR kalitesi ile satırların doğru ayrıştırılması ayrı şeylerdir. Okunamayan tarih veya tutar uydurulmaz; incelemede size sorulur.</Alert>
+        <Alert tone="info">Okunamayan tarih veya tutar incelemede sorulur.</Alert>
         <div className="mt-auto flex flex-col gap-2">
           <Button variant="primary" size="lg" icon={<ScanText className="size-5" />} onClick={() => onRun(adj)} disabled={cropMode}>
             Metni oku

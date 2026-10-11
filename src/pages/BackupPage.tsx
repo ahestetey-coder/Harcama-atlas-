@@ -2,7 +2,7 @@ import { Download, FileJson, HardDrive, ShieldAlert, Trash2, TriangleAlert, Uplo
 import { useEffect, useRef, useState } from 'react'
 import { PageHeader } from '../components/AppShell'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
-import { Alert, Button, Card, Field, Input, Segmented } from '../components/ui/primitives'
+import { Alert, Button, Card, Field, Input, More, Segmented } from '../components/ui/primitives'
 import { backupFileName, parseBackup, type Backup } from '../data/backup'
 import { toUserMessage, type RestoreMode } from '../data/repository'
 import { downloadBlob } from '../lib/download'
@@ -94,11 +94,14 @@ export default function BackupPage() {
 
   return (
     <div>
-      <PageHeader title="Yedekleme ve veri" subtitle={isDemo ? 'Demo modundasınız: bu sayfadaki işlemler yalnızca demo verisini etkiler.' : 'Kayıtlarınız yalnızca bu tarayıcıda. Düzenli yedek almanızı öneririz.'} />
+      <PageHeader title="Yedekleme ve veri" subtitle={isDemo ? 'Yalnızca demo verisi etkilenir' : 'Düzenli yedek almayı unutmayın'} />
 
       <Alert tone="warning" icon={<ShieldAlert />} title="Tarayıcı verilerini silmek kayıtlarınızı da siler" className="mb-4">
-        Veriler bu tarayıcının depolama alanında (IndexedDB) tutulur; bir sunucuda kopyası yoktur. Tarayıcı geçmişini/site verilerini temizlemek, gizli pencere kullanmak, tarayıcıyı kaldırmak veya cihazın depolama alanını boşaltması kayıtların
-        kalıcı olarak kaybolmasına yol açabilir. Önemli verileriniz için düzenli olarak JSON yedeği indirin ve güvenli bir yerde saklayın.
+        Sunucuda kopyası yoktur; düzenli JSON yedeği indirin.
+        <More label="Neden?">
+          Veriler bu tarayıcıda (IndexedDB) tutulur. Site verilerini temizlemek, gizli pencere, tarayıcıyı kaldırmak veya cihazın yer açması kayıtları kalıcı olarak
+          silebilir.
+        </More>
       </Alert>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -106,7 +109,7 @@ export default function BackupPage() {
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
             <Download className="size-5 text-accent" /> Yedek al
           </h2>
-          <p className="mt-1 text-sm text-muted">İşlemler, kategoriler, kurallar, aktarım geçmişi ve ayarları içeren tam JSON yedeği.</p>
+          <p className="mt-1 text-sm text-muted">Tüm kayıtlarınız tek bir JSON dosyasında.</p>
           {counts && (
             <dl className="num mt-4 grid grid-cols-4 gap-2 rounded-2xl bg-surface-2 p-3 text-center">
               {(
@@ -133,7 +136,7 @@ export default function BackupPage() {
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
             <Upload className="size-5 text-accent" /> Yedekten geri yükle
           </h2>
-          <p className="mt-1 text-sm text-muted">Dosya önce doğrulanır; etkisi gösterilmeden hiçbir veri değişmez.</p>
+          <p className="mt-1 text-sm text-muted">Onaylamadan hiçbir veri değişmez.</p>
           <input ref={fileRef} type="file" accept="application/json,.json" className="sr-only" id="restore-file" onChange={(e) => onFile(e.target.files?.[0])} />
           <Button className="mt-4" icon={<Upload className="size-4" />} onClick={() => fileRef.current?.click()}>
             Yedek dosyası seç
@@ -159,7 +162,7 @@ export default function BackupPage() {
             Kullanılan: {mb(storage?.usage)} / tarayıcının ayırdığı: {mb(storage?.quota)}
           </p>
           <p className="mt-1 text-sm text-muted">
-            Kalıcı depolama: {storage?.persisted ? 'verildi (tarayıcı alan açmak için kendiliğinden silmez)' : 'verilmedi (alan azalınca tarayıcı silebilir)'}
+            Kalıcı depolama: {storage?.persisted ? 'verildi' : 'verilmedi (tarayıcı silebilir)'}
           </p>
           {!storage?.persisted && 'storage' in navigator && (
             <Button
@@ -180,7 +183,7 @@ export default function BackupPage() {
           <h2 className="flex items-center gap-2 font-display text-base font-semibold text-danger">
             <Trash2 className="size-5" /> {isDemo ? 'Demo verilerini sil' : 'Bütün verileri sil'}
           </h2>
-          <p className="mt-1 text-sm text-muted">İşlemler, özel kategoriler, kurallar, aktarım geçmişi ve ayarlar silinir. Bu işlem geri alınamaz; önce yedek almanız önerilir.</p>
+          <p className="mt-1 text-sm text-muted">Geri alınamaz; önce yedek alın.</p>
           <Button variant="danger" className="mt-4" icon={<Trash2 className="size-4" />} onClick={() => setWipeOpen(true)}>
             Verileri sil…
           </Button>
@@ -244,10 +247,10 @@ export default function BackupPage() {
               className="w-full"
             />
             {mode === 'merge' ? (
-              <Alert tone="info">Yedekteki kayıtlardan yalnızca burada olmayanlar eklenir. Aynı kimlikli mevcut kayıtlar korunur, üzerine yazılmaz.</Alert>
+              <Alert tone="info">Yalnızca burada olmayan kayıtlar eklenir, mevcutlar korunur.</Alert>
             ) : (
               <Alert tone="danger" icon={<TriangleAlert />} title={`Mevcut ${counts.transactions} işlem silinecek`}>
-                Bütün mevcut veriler silinip yerine yedek yüklenecek. Emin değilseniz önce mevcut verilerin yedeğini alın.
+                Bütün mevcut veriler silinip yerine yedek yüklenecek.
                 <button type="button" onClick={exportBackup} className="mt-1 block font-semibold text-accent hover:underline">
                   Önce mevcut verilerin yedeğini indir
                 </button>

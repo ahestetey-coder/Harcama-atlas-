@@ -290,7 +290,6 @@ export default function TransactionsPage() {
     <div>
       <PageHeader
         title="İşlemler"
-        subtitle="Bütün kayıtlarınız. Bir satıra dokunarak düzenleyin."
         actions={
           <>
             {period === 'month' && <MonthSwitcher month={month} onChange={setMonth} className="max-sm:flex-1" />}
@@ -406,11 +405,11 @@ export default function TransactionsPage() {
               </>
             }
           >
-            İlk giderinizi ekleyin veya bir ekstre dosyası yükleyin.
+            İlk giderinizi ekleyin veya ekstre yükleyin.
           </EmptyState>
         ) : filtered.length === 0 ? (
           <EmptyState icon={<Search className="size-6" />} title="Bu filtrelerle işlem bulunamadı" action={<Button onClick={clearFilters}>Filtreleri temizle</Button>}>
-            {period === 'month' ? `${periodLabel(month, startDay)} içinde eşleşen kayıt yok. Dönemi “Tüm tarihler” yapmayı deneyin.` : 'Arama veya filtreleri değiştirin.'}
+            {period === 'month' ? 'Dönemi “Tüm tarihler” yapmayı deneyin.' : 'Arama veya filtreleri değiştirin.'}
           </EmptyState>
         ) : (
           <TransactionList
@@ -460,7 +459,7 @@ export default function TransactionsPage() {
         open={bulkCatOpen}
         onOpenChange={setBulkCatOpen}
         title="Toplu kategori değiştir"
-        description={`${selected.size} işlemin kategorisi değişecek. Bu seçim manuel sayılır; kurallar sonradan ezmez.`}
+        description={`${selected.size} işlemin kategorisi değişecek.`}
         size="sm"
         footer={
           <>

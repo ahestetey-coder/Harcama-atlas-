@@ -29,7 +29,7 @@ export function ImportSheet() {
           else leave()
         }}
         title="İçe aktar"
-        description="Dosya bu cihazda okunur. Onaylamadığınız hiçbir satır kaydedilmez."
+        description="Dosya yalnızca bu cihazda okunur."
         size="full"
       >
         <Suspense
@@ -43,7 +43,7 @@ export function ImportSheet() {
         </Suspense>
       </Modal>
       <ConfirmDialog open={confirm} onOpenChange={setConfirm} title="İçe aktarma bırakılsın mı?" confirmLabel="Bırak" danger onConfirm={leave}>
-        Okunan satırlar henüz kaydedilmedi. Pencereyi kapatırsanız bu dosyayı yeniden seçmeniz gerekir.
+        Okunan satırlar henüz kaydedilmedi.
       </ConfirmDialog>
     </>
   )

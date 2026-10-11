@@ -28,7 +28,7 @@ export default function ImportHistoryPage() {
 
   return (
     <div>
-      <PageHeader title="Aktarım geçmişi" subtitle="Her içe aktarma ayrı kaydedilir ve tümüyle geri alınabilir. Orijinal dosyalar saklanmaz." />
+      <PageHeader title="Aktarım geçmişi" subtitle="Tümüyle geri alınabilir." />
       <Card className="overflow-hidden">
         {!imports ? null : imports.length === 0 ? (
           <EmptyState icon={<History className="size-6" />} title="Henüz aktarım yok" action={<Button variant="primary" onClick={() => openImport()}>Dosya içe aktar</Button>}>
@@ -94,8 +94,8 @@ export default function ImportHistoryPage() {
           }
         }}
       >
-        “{undo?.rec.fileName}” ile gelen {undo?.count} işlem tek adımda silinecek. Diğer kayıtlarınıza dokunulmaz.
-        {undo && undo.edited > 0 && <p className="mt-2 font-medium text-warning">Bunlardan {undo.edited} tanesini sonradan düzenlediniz; onlar da silinecek.</p>}
+        “{undo?.rec.fileName}” ile gelen {undo?.count} işlem silinecek.
+        {undo && undo.edited > 0 && <p className="mt-2 font-medium text-warning">Düzenlediğiniz {undo.edited} işlem de silinecek.</p>}
       </ConfirmDialog>
     </div>
   )

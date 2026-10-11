@@ -8,7 +8,7 @@ import { ReportMeta, ReportView } from "../components/Report";
 import { REPORT_KIND_LABEL, type ReportKind } from "../cloud/research";
 import { PlanBadge, PlanGate } from "../components/PlanGate";
 import { useReports } from "../state/coach";
-import { Alert, Badge, Card, Segmented } from "../components/ui/primitives";
+import { Alert, Badge, Card, More, Segmented } from "../components/ui/primitives";
 
 interface Topic {
   id: string;
@@ -118,13 +118,12 @@ export default function LearningPage() {
         points={[
           "Risk, likidite, masraf ve çeşitlendirme gibi temel kavramlar",
           "Editör onaylı günlük, haftalık ve aylık ekonomi raporları",
-          "Her bilginin kaynağı ve tarihi; resmî veri, haber, uzman yorumu ve tahmin ayrı gösterilir",
+          "Her bilginin kaynağı ve tarihi",
         ]}
       >
         <div className="flex flex-col gap-4">
           <Alert tone="info">
-            Bu sayfa genel bilgilendirme içindir; yatırım tavsiyesi değildir ve
-            belirli bir ürünün alınmasını veya satılmasını önermez.
+            Genel bilgidir; yatırım tavsiyesi değildir.
           </Alert>
 
           <section aria-label="Temel kavramlar">
@@ -185,13 +184,28 @@ export default function LearningPage() {
                 ]}
               />
             </div>
-            <p className="mb-3 text-[12.5px] text-muted">
-              Raporlar herkese aynıdır; seçilmiş resmî kurumlar, haber
-              kaynakları ve uzmanlardan derlenir, editör onayından sonra
-              yayınlanır. Her konu aynı 7 başlıkla anlatılır ve her cümlenin
-              dayandığı kaynak numarasıyla gösterilir. Yatırım tavsiyesi
-              değildir.
+            <p className="text-[12.5px] text-muted">
+              Editör onayından sonra yayınlanır.
             </p>
+            <More className="mb-3">
+              Raporlar herkese aynıdır; seçilmiş resmî kurumlar, haber
+              kaynakları ve uzmanlardan derlenir. Her cümlenin kaynağı
+              numarasıyla gösterilir.
+              <span className="mt-2 flex flex-wrap gap-2 text-[12.5px]">
+                <span className="inline-flex items-center gap-1.5">
+                  <Badge tone="teal">Resmî veri</Badge> kurumun açıkladığı
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Badge tone="neutral">Haber</Badge> olanı aktarır
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Badge tone="accent">Uzman yorumu</Badge> bir kişinin görüşüdür
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Badge tone="warning">Tahmin</Badge> gerçekleşmeyebilir
+                </span>
+              </span>
+            </More>
             {news && news.length > 0 ? (
               <div className="flex flex-col gap-3">
                 {news.map((r, i) => (
@@ -205,24 +219,8 @@ export default function LearningPage() {
             ) : (
               <Card className="p-5">
                 <p className="text-sm text-muted">
-                  {news
-                    ? "Henüz yayınlanmış rapor yok. Raporlar yöneticinin seçtiği kaynaklardan hazırlanır ve editör onayından sonra burada görünür; uygulama kendi başına haber yazmaz."
-                    : "Yükleniyor…"}
+                  {news ? "Henüz yayınlanmış rapor yok." : "Yükleniyor…"}
                 </p>
-                <div className="mt-3 flex flex-wrap gap-2 text-[12.5px] text-muted">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Badge tone="teal">Resmî veri</Badge> kurumun açıkladığı
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Badge tone="neutral">Haber</Badge> olanı aktarır
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Badge tone="accent">Uzman yorumu</Badge> bir kişinin görüşüdür
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Badge tone="warning">Tahmin</Badge> gerçekleşmeyebilir
-                  </span>
-                </div>
               </Card>
             )}
           </section>
@@ -245,8 +243,7 @@ function Assumptions() {
         <Scale className="size-5 text-accent" /> Varsayımlar ve kaynaklar
       </h2>
       <p className="mb-3 text-[12.5px] text-muted">
-        Özgürlük Rotası'ndaki bütün hesaplar bu varsayımlara dayanır. Sonuçlar
-        eğitim ve benzetim amaçlıdır; kişiye özel yatırım tavsiyesi değildir.
+        Rotadaki hesaplar bu varsayımlara dayanır.
       </p>
       <Card className="p-0">
         <ul className="divide-y divide-line">

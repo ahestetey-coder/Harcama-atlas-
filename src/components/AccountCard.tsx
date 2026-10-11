@@ -62,8 +62,8 @@ export function AccountCard() {
         onConfirm={() => void remove()}
       >
         <p>
-          Hesabınız ve buluttaki verileriniz kalıcı olarak silinir: yöneticisi olduğunuz ortak gruplar (içindeki herkesin harcamalarıyla), diğer gruplara
-          eklediğiniz harcamalar, üyelikleriniz ve davetleriniz. Bu işlem geri alınamaz.
+          Hesabınız ve buluttaki verileriniz kalıcı olarak silinir. Yöneticisi olduğunuz ortak gruplar, içindeki herkesin harcamalarıyla birlikte gider. Geri
+          alınamaz.
         </p>
         <Checkbox className="mt-3" label="Bu cihazdaki kayıtlarımı da sil" checked={wipeLocal} onChange={setWipeLocal} />
         <p className="mt-3">

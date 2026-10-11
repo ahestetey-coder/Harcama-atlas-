@@ -155,7 +155,7 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
           )}
         </div>
       )}
-      <p className="text-[12.5px] text-subtle">Hedefler yalnızca bu cihazda tutulur. Para ekleme kaydı bir hatırlatmadır; bankanızda para taşımaz.</p>
+      <p className="text-[12.5px] text-subtle">Hedefler bu cihazda tutulur; bankada para taşınmaz.</p>
 
       <MoveDialog moving={moving} onClose={() => setMoving(null)} />
       <ConfirmDialog
