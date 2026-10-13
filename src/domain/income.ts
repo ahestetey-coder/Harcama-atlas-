@@ -22,6 +22,8 @@ export interface IncomeMatch {
   incomeId: string
   nominal: IsoDate
   raise: boolean
+  /** Maaş bandının altında (A ÷ 1,6'ya kadar): eski ya da düşük maaş; tabanı değiştirmez. */
+  low?: boolean
 }
 
 export interface Payday {
@@ -137,6 +139,11 @@ function inRaiseBand(amountKurus: number, a: number): boolean {
   return amountKurus > a + tolerance(a) && amountKurus <= Math.round(a * SALARY_RAISE_MAX)
 }
 
+/** Düşük maaş bandı: bandın altı, A ÷ 1,6'ya kadar (maaş tanımı güncellenmeden önceki maaşlar). */
+function inLowBand(amountKurus: number, a: number): boolean {
+  return amountKurus < a - tolerance(a) && amountKurus >= Math.round(a / SALARY_RAISE_MAX)
+}
+
 /** Eşleştirme sırası: önce maaş, sonra büyük tutar, sonra kimlik. */
 function byPriority(a: RecurringIncome, b: RecurringIncome): number {
   return Number(b.kind === 'salary') - Number(a.kind === 'salary') || b.amountKurus - a.amountKurus || a.id.localeCompare(b.id)
@@ -178,11 +185,19 @@ export function matchIncomes(real: Transaction[], defs: RecurringIncome[], range
     if (hit) out.set(hit.id, { txId: hit.id, incomeId: s.def.id, nominal: s.nominal, raise: false })
     else open.push(s)
   }
-  for (const s of open) {
-    if (s.def.kind !== 'salary' || s.def.cadence !== 'monthly') continue
+  const salaries = open.filter((s) => s.def.kind === 'salary' && s.def.cadence === 'monthly')
+  const still: typeof slots = []
+  for (const s of salaries) {
     const a = s.def.amountKurus
     const hit = closest(near(s.nominal, (x) => inRaiseBand(x, a)), a, s.nominal)
     if (hit) out.set(hit.id, { txId: hit.id, incomeId: s.def.id, nominal: s.nominal, raise: true })
+    else still.push(s)
+  }
+  // 3. tur: maaş tanımı değişmeden önceki (ya da düşen) maaşlar ek gelir sayılmasın
+  for (const s of still) {
+    const a = s.def.amountKurus
+    const hit = closest(near(s.nominal, (x) => inLowBand(x, a)), a, s.nominal)
+    if (hit) out.set(hit.id, { txId: hit.id, incomeId: s.def.id, nominal: s.nominal, raise: false, low: true })
   }
   return out
 }
@@ -214,12 +229,14 @@ export function incomeBasis(a: {
   const txById = new Map(realIncome.map((t) => [t.id, t]))
 
   // Kayıtlı dönemler ve dönem başına eşleşmeyen gelir
+  // Kayıtlı dönem: ilk kayıttan önce başlamış (kısmen kaydedilmiş ilk ay sayılmaz)
+  const first = real.reduce<IsoDate | null>((m, t) => (m === null || t.date < m ? t.date : m), null)
   const covered = new Set<MonthKey>()
   const unmatched = new Map<MonthKey, number>()
   let unmatchedNow = 0
   for (const t of real) {
     const p = periodOf(t.date, startDay)
-    covered.add(p)
+    if (first !== null && first <= periodRange(p, startDay).start) covered.add(p)
     if (t.type !== 'income' || matches.has(t.id)) continue
     unmatched.set(p, (unmatched.get(p) ?? 0) + t.amountKurus)
     if (t.date >= ps && t.date <= today) unmatchedNow += t.amountKurus
@@ -242,7 +259,7 @@ export function incomeBasis(a: {
           .filter((m) => m.incomeId === d.id && recent.has(periodOf(m.nominal, startDay)))
           .sort((x, y) => y.nominal.localeCompare(x.nominal) || txById.get(y.txId)!.date.localeCompare(txById.get(x.txId)!.date))
         // Yıl içinde gelir vergisi dilimi artınca net maaş düşer: son gerçek maaş daha düşükse o esas alınır
-        const lastNormal = own.find((m) => !m.raise)
+        const lastNormal = own.find((m) => !m.raise && !m.low)
         if (lastNormal) eff = Math.min(amount, txById.get(lastNormal.txId)!.amountKurus)
         // Zam ipucu yalnızca birincil maaşta ve en son eşleşme zamsa; taban değişmez
         if (d.id === salary?.id && own[0]?.raise) salaryUpdate = txById.get(own[0].txId)!.amountKurus
@@ -272,12 +289,10 @@ export function incomeBasis(a: {
   if (monthly === 0) {
     const prevSum = unmatched.get(prev) ?? 0
     confidence = 'low'
-    if (unmatchedNow > 0) {
-      // Bu dönemin kaydı taban olur; ek gelir sayılmaz
-      monthly = unmatchedNow
+    if (unmatchedNow > 0 || prevSum > 0) {
+      // Bu dönemin kaydı henüz eksik olabilir: geçen dönemle büyük olanı taban olur; bu dönemki ek gelir sayılmaz
+      monthly = Math.max(unmatchedNow, prevSum)
       oneOff -= unmatchedNow
-    } else if (prevSum > 0) {
-      monthly = prevSum
     } else if (a.journey) {
       const rent = active.some((d) => d.kind === 'rent')
       monthly = (a.journey.monthlyIncomeKurus || 0) + (rent ? 0 : (a.journey.passiveIncomeKurus ?? 0))

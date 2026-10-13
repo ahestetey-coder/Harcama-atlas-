@@ -216,8 +216,29 @@ describe('gelir tabanı', () => {
   })
   it('yalnızca düzensiz gelir: kaynak kayıtlar; 3 dönem kayıtlıysa güven yüksek', () => {
     const three = [tx('2026-06-20', 30000), tx('2026-07-20', 25000), tx('2026-08-20', 20000)]
-    expect(basis(three, [])).toMatchObject({ monthlyKurus: 2_000_000, source: 'records', confidence: 'high', plannedKurus: 0 })
-    expect(basis(three.slice(1), [])).toMatchObject({ monthlyKurus: 2_000_000, source: 'records', confidence: 'low' })
+    // Haziran döneminden önce kayıt var: üç dönem de tam kayıtlı
+    const early = tx('2026-06-01', 100, { type: 'expense' })
+    expect(basis([early, ...three], [])).toMatchObject({ monthlyKurus: 2_000_000, source: 'records', confidence: 'high', plannedKurus: 0 })
+    // İlk kayıt Haziran döneminin ortasında: o dönem sayılmaz, iki dönem kalır
+    expect(basis(three, [])).toMatchObject({ monthlyKurus: 2_000_000, source: 'records', confidence: 'low' })
+  })
+  it('kısmen kaydedilmiş ilk dönem düzensiz geliri sıfırlamaz', () => {
+    // Takvim ayı: Temmuz yalnızca 500 TL ile başladı, Ağustos ve Eylül 40.000
+    const txs = [tx('2026-07-20', 500), tx('2026-08-01', 40000), tx('2026-09-01', 40000), tx('2026-10-01', 40000)]
+    expect(basis(txs, [], { startDay: 1, today: '2026-10-05' })).toMatchObject({ monthlyKurus: 4_000_000, source: 'records' })
+  })
+  it('kayıt yedeği: bu dönemin eksik geliri geçen dönemin tam gelirinden küçükse geçen dönem esas alınır', () => {
+    const txs = [tx('2026-09-15', 40000), tx('2026-10-03', 500)]
+    expect(basis(txs, [], { startDay: 1, today: '2026-10-05' })).toMatchObject({ monthlyKurus: 4_000_000, source: 'records', oneOffKurus: 0 })
+  })
+  it('maaş tanımı güncellenince eski (düşük) maaşlar ek gelir sayılmaz', () => {
+    const old = ['2026-07-15', '2026-08-15', '2026-09-15'].map((d) => tx(d, 60000))
+    const raised = [...old, tx('2026-10-15', 72000)]
+    const b = basis(raised, [inc({ amountKurus: 7_200_000 })], { today: '2026-10-20' })!
+    expect(b).toMatchObject({ monthlyKurus: 7_200_000, irregularKurus: 0, oneOffKurus: 0, salaryUpdateKurus: null })
+    // İlk kez girilen maaş 55.000; geçmişte 40.000 kaydedilmiş
+    const first = ['2026-07-15', '2026-08-15', '2026-09-15'].map((d) => tx(d, 40000))
+    expect(basis(first, [inc({ amountKurus: 5_500_000 })])).toMatchObject({ monthlyKurus: 5_500_000, irregularKurus: 0 })
   })
   it('bu dönemin fazla geliri = eşleşmeyen gelir − düzensiz gelir', () => {
     const salaries = ['2026-06-15', '2026-07-15', '2026-08-15', '2026-09-15'].map((d) => tx(d, 60000))

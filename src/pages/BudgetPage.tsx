@@ -549,7 +549,7 @@ function CoachBudgetCard() {
             </Alert>
           ) : auto.savingCutKurus > 0 ? (
             <Alert tone="warning" className="mt-3">
-              Birikim, %20 hedefinin {formatKurus(auto.savingCutKurus)} altında.
+              Birikim, hedefin {formatKurus(auto.savingCutKurus)} altında.
             </Alert>
           ) : null}
           {auto.historyKurus !== null && auto.historyKurus < auto.flexibleKurus * 0.8 && (

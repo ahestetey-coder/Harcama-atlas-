@@ -130,8 +130,8 @@ export default function SettingsPage() {
           </h2>
           <p className="mt-1 text-sm text-muted">Ayınız hangi gün başlıyor?</p>
           <More>
-            Maaşınız ayın 15’inde yatıyorsa 15 seçin; ay, 15’inden sonraki ayın 14’üne kadar sayılır. Maaş hafta sonuna denk gelirse önceki iş günü yatar; o gelir yine
-            yeni ayınıza sayılır.
+            Maaşınız ayın 15’inde yatıyorsa 15 seçin; ay, 15’inden sonraki ayın 14’üne kadar sayılır. Maaş hafta sonuna denk gelirse önceki iş günü yatar; ayınız maaş
+            gününde başlıyorsa o gelir yine yeni ayınıza sayılır.
           </More>
           {hasSalary && (
             <div className="mt-4 flex items-center justify-between gap-3">

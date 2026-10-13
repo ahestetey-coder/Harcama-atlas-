@@ -63,9 +63,9 @@ export function detailedCoverage(a: FactsInput): Partial<Record<AmountKey, Cover
     if (ls.length) out[key] = { kurus: ls.reduce((s, l) => s + l.monthlyKurus, 0), from: ls.some((l) => l.source === 'asset') ? 'debts' : 'payments' }
   }
   put('housingKurus', lines.filter((l) => l.housing))
-  put('billsKurus', lines.filter((l) => l.kind === 'bill' || l.kind === 'subscription'))
+  put('billsKurus', lines.filter((l) => l.kind === 'bill'))
   put('cardPaymentKurus', lines.filter((l) => l.source === 'asset' && (types.get(l.key) === 'card' || types.get(l.key) === 'overdraft')))
-  put('loanPaymentKurus', lines.filter((l) => l.key.startsWith('inst:') || l.source === 'statement' || (l.source === 'asset' && LOAN_TYPES.includes(types.get(l.key)!))))
+  put('loanPaymentKurus', lines.filter((l) => l.source === 'asset' && LOAN_TYPES.includes(types.get(l.key)!)))
   if (!a.gates.assets) return out
   let consumer: number | null = null
   for (const as of a.assets) {

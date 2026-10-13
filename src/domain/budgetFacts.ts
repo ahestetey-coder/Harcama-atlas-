@@ -169,7 +169,7 @@ export function collectFixedLines(a: FactsInput, period: MonthKey, history: Map<
     if (p.housingKurus > 0)
       lines.push(profileLine('housingKurus', mortgage ? 'Konut kredisi taksiti' : 'Kira ve aidat', mortgage ? 'debt' : 'housing', p.housingKurus, { housing: true, consumer: false, inSpending: true }))
   }
-  if (!lines.some((l) => l.kind === 'bill' || l.kind === 'subscription') && declared(p?.billsKurus)) {
+  if (!lines.some((l) => l.kind === 'bill') && declared(p?.billsKurus)) {
     billsDeclared = true
     if (p.billsKurus > 0) lines.push(profileLine('billsKurus', 'Faturalar', 'bill', p.billsKurus, { housing: false, consumer: false, inSpending: true }))
   }
@@ -178,7 +178,8 @@ export function collectFixedLines(a: FactsInput, period: MonthKey, history: Map<
     lines.push(line)
     cardLines.push(line)
   }
-  const loanLine = lines.some((l) => l.key.startsWith('inst:') || l.key.startsWith('stmt:')) || assetTypes.has('loan') || assetTypes.has('auto') || assetTypes.has('personal')
+  // Ekstre ve elle eklenen taksitler kart alışverişidir (kart asgarisinden düşülür), kredi değildir
+  const loanLine = assetTypes.has('loan') || assetTypes.has('auto') || assetTypes.has('personal')
   if (!loanLine && declared(p?.loanPaymentKurus) && p.loanPaymentKurus > 0)
     lines.push(profileLine('loanPaymentKurus', 'Kredi taksitleri', 'debt', p.loanPaymentKurus, { housing: false, consumer: true, inSpending: true }))
 
@@ -227,8 +228,12 @@ export function budgetFacts(a: FactsInput): BucketInput | null {
     if (cut > 0) avg.set(id, cur - cut)
     return Math.max(0, k) - cut
   }
-  // İş yeri anahtarı olmayan düzenli ödeme, kategorisinin ortalamasında da duruyor
-  for (const r of usedRecurring(a)) if (r.categoryId && !r.matchKey) net(r.categoryId, monthlyEquivalent(r.amountKurus, r.cadence))
+  // Düzenli ödeme kategorisinin ortalamasında da durur ("Ekim kirası" gibi açıklamalar iş yeri anahtarına
+  // uymaz): kategori başına düzenli ödemelerin toplamından, anahtarla zaten dışarıda kalan kısım düşülür
+  const raw = new Map(flexibleCategoryAveragesWithMonths(a.txs, startDay, today, new Set()).averages.map((c) => [c.categoryId, c.averageKurus]))
+  const byCategory = new Map<string, number>()
+  for (const r of usedRecurring(a)) if (r.categoryId) byCategory.set(r.categoryId, (byCategory.get(r.categoryId) ?? 0) + monthlyEquivalent(r.amountKurus, r.cadence))
+  for (const [id, k] of byCategory) net(id, k - Math.max(0, (raw.get(id) ?? 0) - (avg.get(id) ?? 0)))
   const fixed = collectFixedLines(a, period, avg)
   // Beyan ve Yolculuk testindeki konut ve faturalar geçmişte de görünür
   for (const l of fixed) {

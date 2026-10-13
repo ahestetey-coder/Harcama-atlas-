@@ -827,7 +827,9 @@ export class AtlasRepository {
       if (d.settings) {
         const local = cur.recurringIncomes ?? []
         const ids = new Set(local.map((i) => i.id))
-        const incoming = (d.settings.recurringIncomes ?? []).filter((i) => !ids.has(i.id))
+        // Yerelde maaş varsa yedekteki aylık maaşlar eklenmez (iki maaş, geliri iki kat sayardı)
+        const hasSalary = primarySalary(local) !== null
+        const incoming = (d.settings.recurringIncomes ?? []).filter((i) => !ids.has(i.id) && !(hasSalary && i.kind === 'salary' && i.cadence === 'monthly'))
         const patch: Partial<Omit<Settings, 'id'>> = {}
         if (incoming.length) patch.recurringIncomes = [...local, ...incoming]
         if (!cur.budgetProfile && d.settings.budgetProfile) patch.budgetProfile = d.settings.budgetProfile

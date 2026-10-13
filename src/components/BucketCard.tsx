@@ -294,7 +294,7 @@ export function BucketCard() {
               </li>
             ))}
             {b.reservedKurus > 0 && <li>Yıllık gelirin {formatKurus(b.reservedKurus)} kısmı sonraki aylara ayrıldı.</li>}
-            <li>Maaş hafta sonuna denk gelirse önceki iş günü yatar; o gelir yine yeni ayınıza sayılır.</li>
+            <li>Maaş hafta sonuna denk gelirse önceki iş günü yatar; ayınız maaş gününde başlıyorsa o gelir yine yeni ayınıza sayılır.</li>
             <li>Uygulama yatırım ürünü önermez.</li>
           </ul>
         </More>

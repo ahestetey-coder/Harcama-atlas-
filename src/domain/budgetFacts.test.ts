@@ -288,17 +288,18 @@ describe('sabit satırlar: kaynaklar ve öncelik', () => {
     expect(keys(facts({ settings }).fixed)).toEqual(['profile:housingKurus', 'profile:billsKurus', 'profile:cardPaymentKurus', 'profile:loanPaymentKurus'])
     // Kira kaydı → beyandaki kira yok
     expect(keys(facts({ settings, recurring: [rent()] }).fixed)).toEqual(['rec:kira', 'profile:billsKurus', 'profile:cardPaymentKurus', 'profile:loanPaymentKurus'])
-    // Abonelik de fatura türünü karşılar
+    // Abonelik faturaları karşılamaz (200 TL'lik abonelik 2.000 TL faturayı gizlemesin)
     const netflix = rec({ id: 'netflix', kind: 'subscription', amountKurus: tl(200), categoryId: 'cat-abonelik' })
-    expect(keys(facts({ settings, recurring: [netflix] }).fixed)).not.toContain('profile:billsKurus')
+    expect(keys(facts({ settings, recurring: [netflix] }).fixed)).toContain('profile:billsKurus')
+    expect(keys(facts({ settings, recurring: [billsRec()] }).fixed)).not.toContain('profile:billsKurus')
     // Kart veya KMH borcu → beyandaki kart ödemesi yok
     expect(keys(facts({ settings, assets: [card()] }).fixed)).not.toContain('profile:cardPaymentKurus')
     expect(keys(facts({ settings, assets: [debt('overdraft', 5_000, { debtTerms: { monthlyRatePct: 4, minPaymentKurus: tl(500) } })] }).fixed)).not.toContain('profile:cardPaymentKurus')
-    // Taksit, ekstre taksiti ya da kredi borcu → beyandaki kredi taksiti yok
+    // Kart taksitleri (elle ya da ekstreden) kredi değildir; yalnızca kredi borcu beyandaki kredi taksitini gizler
     const inst = rec({ id: 'tel', kind: 'installment', startDate: '2026-05-01', occurrences: 12 })
-    expect(keys(facts({ settings, recurring: [inst] }).fixed)).not.toContain('profile:loanPaymentKurus')
+    expect(keys(facts({ settings, recurring: [inst] }).fixed)).toContain('profile:loanPaymentKurus')
     const stmt = tx('2026-10-01', 1_500, { description: 'TEKNOSA 3/6 TAKSIT', installment: { current: 3, total: 6 } })
-    expect(keys(facts({ settings, txs: [stmt] }).fixed)).not.toContain('profile:loanPaymentKurus')
+    expect(keys(facts({ settings, txs: [stmt] }).fixed)).toContain('profile:loanPaymentKurus')
     for (const type of ['loan', 'auto', 'personal'] as const)
       expect(keys(facts({ settings, assets: [debt(type, 10_000, { debtTerms: { monthlyRatePct: 0, minPaymentKurus: tl(1_000) } })] }).fixed)).not.toContain('profile:loanPaymentKurus')
     // Kart borcu kredi beyanını engellemez
@@ -398,6 +399,11 @@ describe('geçmiş ve netleştirme', () => {
     const key = merchantKey('EV SAHIBI KIRA')
     expect(key).not.toBe('')
     const f = facts({ txs: history, recurring: [rent({ matchKey: key })] })
+    expect(f.history).toEqual({ needKurus: tl(10_500), wantKurus: tl(3_000), months: 3 })
+  })
+
+  it('iş yeri anahtarı açıklamaya uymayan kira ("Kira" ↔ "EV SAHIBI KIRA") yine de bir kez düşülür', () => {
+    const f = facts({ txs: history, recurring: [rent({ matchKey: merchantKey('Kira') })] })
     expect(f.history).toEqual({ needKurus: tl(10_500), wantKurus: tl(3_000), months: 3 })
   })
 
@@ -519,7 +525,7 @@ describe('paket kapıları', () => {
 
   it('Ücretsizde girilmiş veri okunur (READ_LOCKED_DATA)', () => {
     const f = facts({ ...all, gates: FREE })
-    expect(keys(f.fixed)).toEqual(['rec:kira', 'rec:fatura', 'inst:tel', expect.stringMatching(/^stmt:/), 'debt:kart'])
+    expect(keys(f.fixed)).toEqual(['rec:kira', 'rec:fatura', 'inst:tel', expect.stringMatching(/^stmt:/), 'debt:kart', 'profile:loanPaymentKurus'])
     expect(line(f, 'debt:kart')!.monthlyKurus).toBe(tl(2_500))
     expect(f.consumerBalanceKurus).toBe(tl(20_000))
     expect(f.liquidKurus).toBe(tl(30_000))
@@ -534,7 +540,7 @@ describe('paket kapıları', () => {
   it('kapılar tek tek', () => {
     const only = (g: Partial<FactsGates>) => keys(facts({ ...all, gates: { ...LOCKED, ...g } }).fixed)
     expect(only({ recurring: true })).toEqual(['rec:kira', 'rec:fatura', 'profile:cardPaymentKurus', 'profile:loanPaymentKurus'])
-    expect(only({ installments: true })).toEqual(['inst:tel', expect.stringMatching(/^stmt:/), 'profile:housingKurus', 'profile:billsKurus', 'profile:cardPaymentKurus'])
+    expect(only({ installments: true })).toEqual(['inst:tel', expect.stringMatching(/^stmt:/), 'profile:housingKurus', 'profile:billsKurus', 'profile:cardPaymentKurus', 'profile:loanPaymentKurus'])
     expect(only({ assets: true })).toEqual(['debt:kart', 'profile:housingKurus', 'profile:billsKurus', 'profile:loanPaymentKurus'])
   })
 })

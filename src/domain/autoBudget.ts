@@ -160,11 +160,11 @@ export function flexibleCategoryAveragesWithMonths(txs: Transaction[], startDay:
   const months = new Set<MonthKey>()
   const totals = new Map<string, number>()
   for (const t of txs) {
-    if (!isSpending(t)) continue
+    if (!isSpending(t) || t.source === 'planned') continue
     const p = periodOf(t.date, startDay)
     if (!wanted.has(p)) continue
     months.add(p)
-    if (!t.categoryId || t.installment || t.source === 'planned' || fixedKeys.has(merchantKey(t.description))) continue
+    if (!t.categoryId || t.installment || fixedKeys.has(merchantKey(t.description))) continue
     totals.set(t.categoryId, (totals.get(t.categoryId) ?? 0) + (t.type === 'expense' ? t.amountKurus : -t.amountKurus))
   }
   if (!months.size) return { averages: [], months: 0 }

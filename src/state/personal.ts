@@ -1,13 +1,16 @@
 import { useMemo } from 'react'
 import { debtRecurring } from '../domain/assets'
-import { todayIso } from '../domain/dates'
-import { attributeEarlySalary, primarySalary } from '../domain/income'
+import { dayOf, todayIso } from '../domain/dates'
+import { attributeEarlySalary, personalCycleDay, primarySalary } from '../domain/income'
 import { personalListView, personalView } from '../domain/personal'
 import { plannedIncomes, plannedInstallments } from '../domain/recurring'
-import type { IsoDate, RecurringPayment, Transaction } from '../domain/types'
+import type { IsoDate, RecurringIncome, RecurringPayment, Transaction } from '../domain/types'
 import { useMembers } from './cloud'
 import { useAssets, useGroups, useRecurring, useSettings, useTransactions } from './data'
 import { usePlan } from './plan'
+
+/** Maaş gününe denk gelen döngü günü (29–31 → 28); maaş yoksa null. */
+const salaryCycleDay = (s: RecurringIncome | null) => (s ? Math.min(28, dayOf(s.startDate)) : null)
 
 /** Kayıtlı düzenli ödemeler ve taksitli borçlardan gelen taksit kalemleri birlikte. */
 export function useAllRecurring(): RecurringPayment[] | undefined {
@@ -34,7 +37,8 @@ export function usePersonalTransactions(): { counted: Transaction[]; list: Trans
   const installments = usePlan().has('installments')
   const settings = useSettings()
   const incomes = settings?.recurringIncomes
-  const salaryCycle = settings?.cycleSource === 'salary'
+  // Ay döngüsü maaş gününde başlıyorsa (maaşa bağlı ya da elle aynı gün seçilmiş) erken yatan maaş yeni aya yazılır
+  const salaryCycle = !!settings && personalCycleDay(settings) === salaryCycleDay(primarySalary(settings.recurringIncomes))
   return useMemo(() => {
     if (!all || !groups) return undefined
     const own = personalView(all, groups, selfId)
