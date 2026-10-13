@@ -24,6 +24,8 @@ export interface CoachDebt {
   fixed?: boolean
   /** Ödeme planından bilinen son ödeme tarihi (taksitli kredi, kart taksitleri). */
   endDate?: IsoDate
+  /** Ödemesi ortalama gidere zaten giriyor (kart taksitleri, planlı kredi taksitleri); planda iki kez sayılmaz. */
+  inSpending?: boolean
 }
 
 export type DebtStrategy = 'avalanche' | 'snowball'
@@ -201,7 +203,9 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
   const buffer = Math.max(0, surplus - usable)
   const debts = input.debts.filter((d) => d.balanceKurus > 0)
   const minimums = debts.reduce((s, d) => s + Math.min(d.balanceKurus, d.minPaymentKurus), 0)
-  const monthly = input.debtsInExpenses ? usable + minimums : usable
+  // Ortalama gidere zaten giren ödemeler, gider düşülmüş fazladan ikinci kez düşülmez
+  const counted = input.debtsInExpenses ? minimums : debts.filter((d) => d.inSpending).reduce((s, d) => s + Math.min(d.balanceKurus, d.minPaymentKurus), 0)
+  const monthly = usable + counted
   const shortfall = Math.max(0, minimums - monthly)
 
   const payoff = debts.length ? simulateDebts(debts, Math.max(monthly, minimums), input.strategy) : null
@@ -362,7 +366,7 @@ export function coachMessages(i: MessageInput): CoachMessage[] {
         id: `plan-debt-${i.month}`,
         tone: 'plan',
         title: 'Bu ayın planı',
-        body: `Borçlara toplam ${tl(phase.monthlyKurus)} ödeyin. ${first ? `İlk kapanacak borç: ${first.name}${first.paidOffMonth ? ` (${first.paidOffMonth}. ay)` : ''}.` : ''}`,
+        body: `Borçlara toplam ${tl(phase.monthlyKurus)} ödeyin. ${first ? `İlk kapanacak borç: ${first.name}${first.paidOffMonth ? ` (${monthLabel(addMonthsClamped(i.today, first.paidOffMonth - 1).slice(0, 7))})` : ''}.` : ''}`,
       })
     } else if (phase?.id === 'emergency') {
       out.push({ id: `plan-em-${i.month}`, tone: 'plan', title: 'Bu ayın planı', body: `Acil durum birikimine ${tl(phase.monthlyKurus)} ekleyin; ${tl(p.emergencyGapKurus)} kaldı.`, link: { to: '/yatirimlar', label: 'Yatırımlarım' } })

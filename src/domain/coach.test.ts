@@ -140,3 +140,13 @@ describe('koç: borç bitiş tarihi', () => {
     expect(a).toContain('Hepsi bittiğinde: Eylül 2027')
   })
 })
+
+describe('koç: gidere giren borç ödemeleri', () => {
+  it('ortalama gidere giren taksit plandaki tutardan ikinci kez düşülmez', () => {
+    const d = debt({ balanceKurus: 1000000, minPaymentKurus: 100000, fixed: true, inSpending: true })
+    const p = buildCoachPlan({ profile: profile(), facts: facts(), debts: [d], debtsInExpenses: false, strategy: 'avalanche' })
+    // 27.000 kullanılabilir + gidere giren 1.000 taksit
+    expect(p.monthlyPlanKurus).toBe(2800000)
+    expect(p.shortfallKurus).toBe(0)
+  })
+})

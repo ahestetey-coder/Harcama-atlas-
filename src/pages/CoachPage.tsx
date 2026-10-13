@@ -609,7 +609,7 @@ function DebtPanel({ state, plan, onChange }: { state: CoachState; plan: CoachPl
           onChange={(v) => onChange({ strategy: v })}
           options={(Object.keys(STRATEGY_LABEL) as DebtStrategy[]).map((k) => ({ value: k, label: STRATEGY_LABEL[k] }))}
         />
-        <LabeledSwitch label="Borç ödemelerim aylık giderlerime dahil" hint="Taksitleri gider olarak giriyorsanız açın." checked={state.settings.debtsInExpenses} onChange={(v) => onChange({ debtsInExpenses: v })} />
+        <LabeledSwitch label="Borç ödemelerim aylık giderlerime dahil" hint="Kart ve kredi taksitleri zaten sayılıyor. Diğer borç ödemelerini de gider olarak giriyorsanız açın." checked={state.settings.debtsInExpenses} onChange={(v) => onChange({ debtsInExpenses: v })} />
       </div>
       {plan.shortfallKurus > 0 && (
         <Alert tone="danger" className="mt-3" icon={<AlertTriangle className="size-4" />}>

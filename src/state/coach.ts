@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { listPublishedReports, type Report } from '../cloud/research'
 import { DEBT_TYPE_LABEL, debtPlanStatus, debtTypeOf, holdingSummary } from '../domain/assets'
 import { buildCoachPlan, coachMessages, estimatedMinPayment, lastDebtEnd, scheduledDebtEnds, type CoachDebt, type CoachMessage, type CoachPlan } from '../domain/coach'
-import { currentPeriod, monthLabel, todayIso } from '../domain/dates'
+import { currentPeriod, monthLabel, periodRange, todayIso } from '../domain/dates'
 import { RISK_PROFILES } from '../domain/assumptions'
 import { MONTH_NAMES } from '../domain/dates'
 import { buildJourney, emergencyMonthsFor, reachDateLabel, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult } from '../domain/journey'
@@ -39,6 +39,7 @@ export function useCoachDebts(): CoachDebtInfo[] | null {
   return useMemo(() => {
     if (!assets || !recurring || !personal) return null
     const today = todayIso()
+    const periodStart = periodRange(currentPeriod(startDay), startDay).start
     const out: CoachDebtInfo[] = []
     for (const a of assets) {
       if (a.archived || a.kind !== 'debt') continue
@@ -50,12 +51,14 @@ export function useCoachDebts(): CoachDebtInfo[] | null {
       if (st && st.remaining > 0) {
         const p = a.debtPlan!
         const endDate = nthDue({ cadence: 'monthly', startDate: p.dueDate! }, p.installments! - 1)
-        out.push({ id: a.id, name: a.name, balanceKurus: bal, monthlyRatePct: 0, minPaymentKurus: p.installmentKurus!, fixed: true, endDate, remainingPayments: st.remaining, missingRate: false, typeLabel })
+        out.push({ id: a.id, name: a.name, balanceKurus: bal, monthlyRatePct: 0, minPaymentKurus: p.installmentKurus!, fixed: true, endDate, remainingPayments: st.remaining, missingRate: false, typeLabel, inSpending: p.dueDate! < periodStart })
         continue
       }
+      // Tek seferde ödenecek borç: son ödeme, girilen ödeme tarihi
+      const onceDate = a.debtPlan?.mode === 'once' && a.debtPlan.dueDate && a.debtPlan.dueDate >= today ? a.debtPlan.dueDate : undefined
       const rate = a.debtTerms?.monthlyRatePct ?? 0
       const min = a.debtTerms?.minPaymentKurus
-      out.push({ id: a.id, name: a.name, balanceKurus: bal, monthlyRatePct: rate, minPaymentKurus: min ?? estimatedMinPayment(bal, rate), estimatedMin: !min, missingRate: !a.debtTerms, typeLabel })
+      out.push({ id: a.id, name: a.name, balanceKurus: bal, monthlyRatePct: rate, minPaymentKurus: min ?? estimatedMinPayment(bal, rate), estimatedMin: !min, missingRate: !a.debtTerms, typeLabel, endDate: onceDate })
     }
     if (installmentDebt > 0) {
       const manual = new Set(recurring.filter((i) => i.kind === 'installment' && i.matchKey).map((i) => i.matchKey!))
@@ -67,7 +70,7 @@ export function useCoachDebts(): CoachDebtInfo[] | null {
       const later = (d: IsoDate) => (endDate = !endDate || d > endDate ? d : endDate)
       for (const p of plans) if (p.nextDates.length) later(p.nextDates[p.nextDates.length - 1])
       for (const r of recurring) if (r.kind === 'installment' && r.active && r.occurrences && (progressOf(r, today).remaining ?? 0) > 0) later(nthDue(r, r.occurrences - 1))
-      out.push({ id: 'taksitler', name: 'Kalan taksitler', balanceKurus: installmentDebt, monthlyRatePct: 0, minPaymentKurus: pay, fixed: true, endDate, missingRate: false, typeLabel: 'Taksitler' })
+      out.push({ id: 'taksitler', name: 'Kalan taksitler', balanceKurus: installmentDebt, monthlyRatePct: 0, minPaymentKurus: pay, fixed: true, endDate, missingRate: false, typeLabel: 'Taksitler', inSpending: true })
     }
     return out
   }, [assets, installmentDebt, recurring, personal, startDay])
@@ -168,7 +171,7 @@ export function coachSummary(s: CoachState, today: IsoDate = todayIso()) {
       ? {
           duzenliOdemeler: payments.slice(0, 15).map((r) => {
             const left = r.occurrences ? (progressOf(r, today).remaining ?? 0) : null
-            return { tur: RECURRING_KIND_LABEL[r.kind], tutar: tl(r.amountKurus), siklik: CADENCE_LABEL[r.cadence], kalanOdeme: left ?? 'süresiz', sonOdeme: r.occurrences ? month(nthDue(r, r.occurrences - 1)) : null }
+            return { tur: RECURRING_KIND_LABEL[r.kind], ...(r.groupId ? { ortakGrupGideri: true } : {}), tutar: tl(r.amountKurus), siklik: CADENCE_LABEL[r.cadence], kalanOdeme: left ?? 'süresiz', sonOdeme: r.occurrences ? month(nthDue(r, r.occurrences - 1)) : null }
           }),
         }
       : {}),
