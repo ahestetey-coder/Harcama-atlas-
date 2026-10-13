@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listPublishedReports, type Report } from '../cloud/research'
-import { holdingSummary } from '../domain/assets'
-import { buildCoachPlan, coachMessages, estimatedMinPayment, type CoachDebt, type CoachMessage, type CoachPlan } from '../domain/coach'
-import { currentPeriod, todayIso } from '../domain/dates'
+import { DEBT_TYPE_LABEL, debtPlanStatus, debtTypeOf, holdingSummary } from '../domain/assets'
+import { buildCoachPlan, coachMessages, estimatedMinPayment, lastDebtEnd, scheduledDebtEnds, type CoachDebt, type CoachMessage, type CoachPlan } from '../domain/coach'
+import { currentPeriod, monthLabel, todayIso } from '../domain/dates'
 import { RISK_PROFILES } from '../domain/assumptions'
 import { MONTH_NAMES } from '../domain/dates'
 import { buildJourney, emergencyMonthsFor, reachDateLabel, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult } from '../domain/journey'
-import { futureLoad, installmentPlans } from '../domain/recurring'
-import type { CoachSettings, CoachShare } from '../domain/types'
+import { monthlyEquivalent } from '../domain/income'
+import { addMonthsClamped, futureLoad, installmentPlans, nthDue, progressOf } from '../domain/recurring'
+import { CADENCE_LABEL, INCOME_CADENCE_LABEL, INCOME_KIND_LABEL, RECURRING_KIND_LABEL, type CoachSettings, type CoachShare, type IsoDate, type RecurringIncome, type RecurringPayment } from '../domain/types'
 import { useAuth } from './auth'
 import { useBudgetStatus, useDuePayments, useInstallmentDebt, useJourneyFacts } from './budget'
 import { usePersonalCycle } from './cycle'
@@ -22,6 +23,10 @@ export const MEMORY_MAX = 50
 export interface CoachDebtInfo extends CoachDebt {
   /** Faiz oranı girilmemiş (0 sayıldı). */
   missingRate: boolean
+  /** Borç türü (Kredi kartı, İhtiyaç kredisi…); koça adı yerine bu gider. */
+  typeLabel: string
+  /** Ödeme planında kalan taksit sayısı. */
+  remainingPayments?: number
 }
 
 /** Koçun borç listesi: Borçlarım'daki borçlar ve düzenli ödemelerdeki kalan taksitler. */
@@ -39,15 +44,30 @@ export function useCoachDebts(): CoachDebtInfo[] | null {
       if (a.archived || a.kind !== 'debt') continue
       const bal = holdingSummary(a, today).valueKurus
       if (bal <= 0) continue
+      const typeLabel = DEBT_TYPE_LABEL[debtTypeOf(a)]
+      // Aylık taksit planı varsa: taksit tutarı ve son taksit tarihi belli; bakiye faizi zaten içerir.
+      const st = debtPlanStatus(a.debtPlan, today)
+      if (st && st.remaining > 0) {
+        const p = a.debtPlan!
+        const endDate = nthDue({ cadence: 'monthly', startDate: p.dueDate! }, p.installments! - 1)
+        out.push({ id: a.id, name: a.name, balanceKurus: bal, monthlyRatePct: 0, minPaymentKurus: p.installmentKurus!, fixed: true, endDate, remainingPayments: st.remaining, missingRate: false, typeLabel })
+        continue
+      }
       const rate = a.debtTerms?.monthlyRatePct ?? 0
       const min = a.debtTerms?.minPaymentKurus
-      out.push({ id: a.id, name: a.name, balanceKurus: bal, monthlyRatePct: rate, minPaymentKurus: min ?? estimatedMinPayment(bal, rate), estimatedMin: !min, missingRate: !a.debtTerms })
+      out.push({ id: a.id, name: a.name, balanceKurus: bal, monthlyRatePct: rate, minPaymentKurus: min ?? estimatedMinPayment(bal, rate), estimatedMin: !min, missingRate: !a.debtTerms, typeLabel })
     }
     if (installmentDebt > 0) {
       const manual = new Set(recurring.filter((i) => i.kind === 'installment' && i.matchKey).map((i) => i.matchKey!))
-      const load = futureLoad(recurring, installmentPlans(personal.counted, manual), currentPeriod(startDay), 1, startDay)[0]
+      const plans = installmentPlans(personal.counted, manual)
+      const load = futureLoad(recurring, plans, currentPeriod(startDay), 1, startDay)[0]
       const pay = Math.max(1, Math.min(installmentDebt, load?.installmentKurus || installmentDebt))
-      out.push({ id: 'taksitler', name: 'Kalan taksitler', balanceKurus: installmentDebt, monthlyRatePct: 0, minPaymentKurus: pay, fixed: true, missingRate: false })
+      // Son taksit: ekstredeki taksitlerin ve elle eklenen taksitlerin en geç tarihi
+      let endDate: IsoDate | undefined
+      const later = (d: IsoDate) => (endDate = !endDate || d > endDate ? d : endDate)
+      for (const p of plans) if (p.nextDates.length) later(p.nextDates[p.nextDates.length - 1])
+      for (const r of recurring) if (r.kind === 'installment' && r.active && r.occurrences && (progressOf(r, today).remaining ?? 0) > 0) later(nthDue(r, r.occurrences - 1))
+      out.push({ id: 'taksitler', name: 'Kalan taksitler', balanceKurus: installmentDebt, monthlyRatePct: 0, minPaymentKurus: pay, fixed: true, endDate, missingRate: false, typeLabel: 'Taksitler' })
     }
     return out
   }, [assets, installmentDebt, recurring, personal, startDay])
@@ -73,6 +93,10 @@ export interface CoachState {
   /** Okunmamış mesajlar önce. */
   messages: Array<CoachMessage & { read: boolean }>
   budget: ReturnType<typeof useBudgetStatus>
+  /** Kayıtlı düzenli ödemeler (abonelik, fatura, elle eklenen taksit). */
+  recurring: RecurringPayment[]
+  /** Düzenli gelirler (maaş, kira, ek gelir). */
+  incomes: RecurringIncome[]
 }
 
 export function useCoach(): CoachState | null {
@@ -84,11 +108,12 @@ export function useCoach(): CoachState | null {
   const budget = useBudgetStatus(month)
   const due = useDuePayments()
   const closed = useClosedDebts()
+  const recurring = useRecurring()
   const live = useLiveState()
   const usd = live.usd?.valueTl ?? null
   const gold = live.goldGram?.valueTl ?? null
   return useMemo(() => {
-    if (!settings || !facts || !debts) return null
+    if (!settings || !facts || !debts || !recurring) return null
     const cs = settings.coach ?? DEFAULT_COACH
     const profile = settings.journey ?? null
     const plan = profile ? buildCoachPlan({ profile, facts, debts, debtsInExpenses: cs.debtsInExpenses, strategy: cs.strategy, emergencyMonths: emergencyMonthsFor(profile) }) : null
@@ -97,8 +122,8 @@ export function useCoach(): CoachState | null {
     const read = new Set(cs.dismissed)
     const messages = coachMessages({ plan, hasProfile: !!profile, budget, due, month, today: todayIso(), closedDebts: closed, route }).map((m) => ({ ...m, read: read.has(m.id) }))
     messages.sort((a, b) => Number(a.read) - Number(b.read))
-    return { profile, facts, settings: cs, debts, plan, journey, messages, budget }
-  }, [settings, facts, debts, budget, due, month, closed, usd, gold])
+    return { profile, facts, settings: cs, debts, plan, journey, messages, budget, recurring, incomes: settings.recurringIncomes ?? [] }
+  }, [settings, facts, debts, budget, due, month, closed, usd, gold, recurring])
 }
 
 /** Editör onaylı, yayınlanmış ortak ekonomi raporları (hesapla giriş yapılmışsa). */
@@ -121,21 +146,62 @@ export function useReports(limit = 10): Report[] | null {
  * Yapay zekâya gönderilen özet: yalnızca toplamlar ve kullanıcının açık bıraktığı bilgi grupları;
  * borç adları, işlemler ve açıklamalar gönderilmez.
  */
-export function coachSummary(s: CoachState) {
+export function coachSummary(s: CoachState, today: IsoDate = todayIso()) {
   const share = { ...DEFAULT_SHARE, ...s.settings.share }
   const tl = (k: number | null | undefined) => (k == null ? null : Math.round(k / 100))
   const p = s.plan
-  return {
-    ...(share.income ? { aylikGelir: tl(s.profile?.monthlyIncomeKurus), gelirDuzeni: s.profile?.incomeStability ?? null } : {}),
+  const month = (d: IsoDate | null | undefined) => (d ? monthLabel(d.slice(0, 7)) : null)
+  const ends = new Map(scheduledDebtEnds(s.debts, today).map((e) => [e.id, e]))
+  const allEnd = lastDebtEnd([...ends.values()])
+  const incomes = s.incomes.filter((i) => i.active && (i.cadence !== 'once' || i.startDate >= today))
+  const regularIncome = incomes.filter((i) => i.cadence !== 'once').reduce((n, i) => n + monthlyEquivalent(i.amountKurus, i.cadence), 0)
+  const payments = s.recurring.filter((r) => r.active && (r.occurrences ? (progressOf(r, today).remaining ?? 0) > 0 : true))
+  const out = {
+    ...(share.income
+      ? {
+          aylikGelir: tl(s.profile?.monthlyIncomeKurus ?? (regularIncome || null)),
+          gelirDuzeni: s.profile?.incomeStability ?? null,
+          ...(incomes.length ? { duzenliGelirler: incomes.slice(0, 8).map((i) => ({ tur: INCOME_KIND_LABEL[i.kind], tutar: tl(i.amountKurus), siklik: INCOME_CADENCE_LABEL[i.cadence], ...(i.cadence === 'once' ? { tarih: i.startDate } : {}) })) } : {}),
+        }
+      : {}),
+    ...(share.expenses && payments.length
+      ? {
+          duzenliOdemeler: payments.slice(0, 15).map((r) => {
+            const left = r.occurrences ? (progressOf(r, today).remaining ?? 0) : null
+            return { tur: RECURRING_KIND_LABEL[r.kind], tutar: tl(r.amountKurus), siklik: CADENCE_LABEL[r.cadence], kalanOdeme: left ?? 'süresiz', sonOdeme: r.occurrences ? month(nthDue(r, r.occurrences - 1)) : null }
+          }),
+        }
+      : {}),
     ...(share.expenses ? { ortalamaAylikGider: tl(s.facts.averageExpenseKurus), zorunluGider: tl(s.profile?.essentialMonthlyKurus) } : {}),
     ...(share.goals ? { hizliKullanilabilirBirikim: tl(s.facts.liquidKurus), toplamVarlik: tl(s.facts.assetsKurus) } : {}),
-    ...(share.debts ? { borclar: s.debts.map((d, i) => ({ borc: d.fixed ? 'Taksitler' : `Borç ${i + 1}`, bakiye: tl(d.balanceKurus), aylikFaizYuzde: d.monthlyRatePct, aylikOdeme: tl(d.minPaymentKurus) })) } : {}),
+    ...(share.debts && s.debts.length
+      ? {
+          borclar: s.debts.map((d, i) => {
+            const e = ends.get(d.id)
+            return {
+              borc: d.id === 'taksitler' ? 'Taksitler' : `Borç ${i + 1}`,
+              tur: d.typeLabel,
+              bakiye: tl(d.balanceKurus),
+              aylikFaizYuzde: d.monthlyRatePct,
+              aylikOdeme: tl(d.minPaymentKurus),
+              ...(d.remainingPayments ? { kalanTaksit: d.remainingPayments } : {}),
+              sonOdeme: e?.date ? month(e.date) : 'bu ödemeyle kapanmıyor',
+              dayanak: e?.source === 'plan' ? 'ödeme planı' : d.estimatedMin ? 'tahmini asgari ödeme' : 'girilen aylık ödeme',
+            }
+          }),
+          borcBitisi: {
+            aciklama: 'Ek ödeme yapılmadan, planlanan taksit ve aylık ödemelerle uygulamanın hesapladığı tarihler. "Borcum ne zaman biter?" sorusunu bunlarla yanıtla.',
+            hepsiBiter: allEnd ? month(allEnd) : 'bazı borçlar bu ödemelerle kapanmıyor',
+          },
+        }
+      : {}),
     ...(p && share.debts && share.goals && share.income
       ? {
           plan: {
             aylikPlanaAyrilan: tl(p.monthlyPlanKurus),
             tampon: tl(p.bufferKurus),
-            borcsuzOlmaAy: p.payoff?.months ?? null,
+            planlaBorcsuzOlmaAy: p.payoff?.months ?? null,
+            planlaBorcsuzOlmaTarihi: p.payoff?.months ? month(addMonthsClamped(today, p.payoff.months - 1)) : null,
             toplamFaiz: tl(p.payoff?.totalInterestKurus),
             acilDurumHedefi: tl(p.emergencyTargetKurus),
             acilDurumEksik: tl(p.emergencyGapKurus),
@@ -159,13 +225,23 @@ export function coachSummary(s: CoachState) {
             ilerlemeYuzde: Math.round(s.journey.indicators.goalRatio * 100),
             riskTutumu: s.profile.risk ?? null,
             acilFonHedefAy: s.journey.indicators.emergencyMonths,
-            ...freedomSummary(s.journey.plan, s.settings.strategy, todayIso()),
+            ...freedomSummary(s.journey.plan, s.settings.strategy, today),
           },
         }
       : {}),
     ...(share.budget && s.budget?.total ? { buDonemButce: { harcanan: tl(s.budget.total.spentKurus), limit: tl(s.budget.total.effectiveKurus) } } : {}),
   }
+  // Sunucu 6.000 karakterden uzun özeti reddeder: önce ayrıntı listeleri kısaltılır.
+  const fits = () => JSON.stringify(out).length <= SUMMARY_MAX
+  if (!fits() && out.duzenliOdemeler) out.duzenliOdemeler = out.duzenliOdemeler.slice(0, 5)
+  if (!fits()) delete (out as { duzenliOdemeler?: unknown }).duzenliOdemeler
+  if (!fits()) delete (out as { duzenliGelirler?: unknown }).duzenliGelirler
+  return out
 }
+
+/** Sunucudaki özet sınırının (6.000) biraz altı. */
+export const SUMMARY_MAX = 5800
+
 
 /** Koça gönderilen hafıza notları. */
 export function coachMemoryText(s: CoachState): string[] {

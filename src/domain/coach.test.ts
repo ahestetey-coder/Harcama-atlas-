@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answer, buildCoachPlan, coachMessages, restructure, simulateDebts, type CoachDebt } from './coach'
+import { answer, buildCoachPlan, coachMessages, restructure, scheduledDebtEnds, simulateDebts, type CoachDebt } from './coach'
 import type { JourneyFacts, JourneyProfile } from './journey'
 
 const profile = (o: Partial<JourneyProfile> = {}): JourneyProfile => ({
@@ -72,7 +72,7 @@ describe('koç: plan', () => {
     // 60.000 acil durum hedefi / 27.000 → 3 ay
     expect(p.phases[1]).toMatchObject({ startMonth: 1, endMonth: 4 })
     expect(p.phases[2].startMonth).toBe(4)
-    expect(answer('invest', p, facts(), null)).toContain('27.000 ₺')
+    expect(answer('invest', p, facts(), null, '2026-10-13')).toContain('27.000 ₺')
   })
   it('borç ödemeleri gidere dahilse asgariler plana eklenir', () => {
     const p = buildCoachPlan({ profile: profile(), facts: facts(), debts: [debt({ balanceKurus: 1000000, minPaymentKurus: 100000 })], debtsInExpenses: true, strategy: 'avalanche' })
@@ -115,5 +115,28 @@ describe('borç takvimi (Özgürlük Rotası)', () => {
     expect(simulateDebts([...debts, { id: 'c', name: 'KMH', balanceKurus: 200000, monthlyRatePct: 1, minPaymentKurus: 20000 }], 400000, 'snowball').totalInterestKurus).toBeGreaterThanOrEqual(
       simulateDebts([...debts, { id: 'c', name: 'KMH', balanceKurus: 200000, monthlyRatePct: 1, minPaymentKurus: 20000 }], 400000, 'avalanche').totalInterestKurus,
     )
+  })
+})
+
+describe('koç: borç bitiş tarihi', () => {
+  it('ödeme planı olan borcun son taksit tarihini kullanır', () => {
+    const e = scheduledDebtEnds([debt({ id: 'k', name: 'Konut kredisi', balanceKurus: 1200000, minPaymentKurus: 100000, fixed: true, endDate: '2027-09-15' })], '2026-10-13')
+    expect(e[0]).toMatchObject({ date: '2027-09-15', source: 'plan' })
+  })
+  it('plansız borçta aylık ödemeyle ay ay hesaplar', () => {
+    // 300.000 kuruş, faizsiz, ayda 100.000 → 3. ay (Aralık 2026)
+    const e = scheduledDebtEnds([debt({ balanceKurus: 300000, monthlyRatePct: 0, minPaymentKurus: 100000 })], '2026-10-13')
+    expect(e[0]).toMatchObject({ date: '2026-12-13', source: 'payment' })
+  })
+  it('"Borcum ne zaman biter?" yanıtı her borcun bitiş ayını ve hepsinin bitişini söyler', () => {
+    const debts = [
+      debt({ id: 'k', name: 'Taşıt kredisi', balanceKurus: 1200000, monthlyRatePct: 0, minPaymentKurus: 100000, fixed: true, endDate: '2027-09-15' }),
+      debt({ id: 'c', name: 'Kart', balanceKurus: 300000, monthlyRatePct: 0, minPaymentKurus: 100000 }),
+    ]
+    const p = buildCoachPlan({ profile: profile({ monthlyIncomeKurus: 2300000 }), facts: facts(), debts, debtsInExpenses: true, strategy: 'avalanche' })
+    const a = answer('debtFree', p, facts(), null, '2026-10-13')
+    expect(a).toContain('Taşıt kredisi, Eylül 2027')
+    expect(a).toContain('Kart, Aralık 2026')
+    expect(a).toContain('Hepsi bittiğinde: Eylül 2027')
   })
 })

@@ -364,7 +364,7 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
     setTyping(true)
     setTimeout(
       () => {
-        setThread((t) => [...t, { key: `c-${t.length}`, from: 'coach', text: answer(q, plan, state.facts, state.budget) }])
+        setThread((t) => [...t, { key: `c-${t.length}`, from: 'coach', text: answer(q, plan, state.facts, state.budget, todayIso()) }])
         setTyping(false)
       },
       reduced ? 0 : 750,
@@ -780,8 +780,8 @@ function AiCard({ consent, onChange }: { consent: boolean; onChange: (v: boolean
 const MEMORY_KIND: Record<CoachMemoryKind, string> = { hedef: 'Hedef', tercih: 'Tercih', not: 'Not', sohbet: 'Sohbet özeti' }
 
 const SHARE_ROWS: Array<{ key: keyof CoachShare; label: string; value: (s: CoachState) => string }> = [
-  { key: 'income', label: 'Gelir', value: (s) => (s.profile ? `${formatKurus(s.profile.monthlyIncomeKurus)} / ay` : 'Yolculuk anketinde girilmedi') },
-  { key: 'expenses', label: 'Giderler', value: (s) => (s.facts.averageExpenseKurus ? `Ortalama ${formatKurus(s.facts.averageExpenseKurus)} / ay` : 'Henüz yeterli kayıt yok') },
+  { key: 'income', label: 'Gelir', value: (s) => (s.profile ? `${formatKurus(s.profile.monthlyIncomeKurus)} / ay` : s.incomes.some((i) => i.active) ? 'Düzenli gelirleriniz' : 'Yolculuk anketinde girilmedi') },
+  { key: 'expenses', label: 'Giderler', value: (s) => `${s.facts.averageExpenseKurus ? `Ortalama ${formatKurus(s.facts.averageExpenseKurus)} / ay` : 'Henüz yeterli kayıt yok'}${s.recurring.some((r) => r.active) ? ' · düzenli ödemeler (adları gönderilmez)' : ''}` },
   { key: 'debts', label: 'Borçlar', value: (s) => (s.debts.length ? `${s.debts.length} borç, toplam ${formatKurus(s.debts.reduce((n, d) => n + d.balanceKurus, 0))} (adları gönderilmez)` : 'Borç yok') },
   { key: 'goals', label: 'Birikim ve hedefler', value: (s) => `Hızlı kullanılabilir ${formatKurus(s.facts.liquidKurus)}${s.plan?.goalKurus ? ` · hedef ${formatKurus(s.plan.goalKurus)}` : ''}` },
   { key: 'budget', label: 'Bu dönemin bütçesi', value: (s) => (s.budget?.total ? `${formatKurus(s.budget.total.spentKurus)} / ${formatKurus(s.budget.total.effectiveKurus)}` : 'Bütçe yok') },

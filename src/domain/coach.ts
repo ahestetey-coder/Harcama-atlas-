@@ -1,6 +1,8 @@
 import type { BudgetStatus } from './budget'
 import { monthsToTarget, SCENARIOS, targetCapital, type IncomeStability, type JourneyFacts, type JourneyProfile } from './journey'
-import type { DuePayment } from './recurring'
+import { monthLabel } from './dates'
+import { addMonthsClamped, type DuePayment } from './recurring'
+import type { IsoDate } from './types'
 
 /**
  * Plus+ koç: borç kapatma, acil durum birikimi ve yatırıma ayrılacak tutar planı.
@@ -20,6 +22,8 @@ export interface CoachDebt {
   estimatedMin?: boolean
   /** Taksit gibi sabit planlı, faizsiz borç: erken ödeme hedeflenmez. */
   fixed?: boolean
+  /** Ödeme planından bilinen son ödeme tarihi (taksitli kredi, kart taksitleri). */
+  endDate?: IsoDate
 }
 
 export type DebtStrategy = 'avalanche' | 'snowball'
@@ -104,6 +108,35 @@ export function simulateDebts(debts: CoachDebt[], monthlyBudgetKurus: number, st
     payments,
     interest,
   }
+}
+
+export interface DebtEnd {
+  id: string
+  name: string
+  /** Son ödeme tarihi; bu ödemeyle hiç kapanmıyorsa null. */
+  date: IsoDate | null
+  /** Tarih ödeme planından mı geldi, aylık ödemeyle benzetimden mi. */
+  source: 'plan' | 'payment'
+}
+
+/**
+ * Ek ödeme yapılmadan, yalnızca planlanan taksit ve aylık (asgari) ödemelerle her borcun biteceği tarih.
+ * Planı olan borçta son taksit tarihi, diğerlerinde faizle ay ay benzetim kullanılır.
+ */
+export function scheduledDebtEnds(debts: CoachDebt[], today: IsoDate): DebtEnd[] {
+  return debts
+    .filter((d) => d.balanceKurus > 0)
+    .map((d) => {
+      if (d.endDate) return { id: d.id, name: d.name, date: d.endDate, source: 'plan' as const }
+      const m = simulateDebts([{ ...d, fixed: true }], d.minPaymentKurus, 'avalanche').months
+      return { id: d.id, name: d.name, date: m === null ? null : addMonthsClamped(today, m - 1), source: 'payment' as const }
+    })
+}
+
+/** Bütün borçların bittiği tarih; biri kapanmıyorsa null. */
+export function lastDebtEnd(ends: DebtEnd[]): IsoDate | null {
+  if (!ends.length || ends.some((e) => !e.date)) return null
+  return ends.reduce((a, e) => (e.date! > a ? e.date! : a), ends[0].date!)
 }
 
 /** Gelir düzenine göre fazlanın plana ayrılan kısmı; kalanı tampon olarak bırakılır. */
@@ -354,13 +387,11 @@ export const QUESTIONS: Array<{ id: QuestionId; text: string }> = [
 
 const monthsText = (m: number) => (m < 12 ? `${m} ay` : m % 12 === 0 ? `${m / 12} yıl` : `${Math.floor(m / 12)} yıl ${m % 12} ay`)
 
-export function answer(q: QuestionId, p: CoachPlan, facts: JourneyFacts, budget: BudgetStatus | null): string {
+export function answer(q: QuestionId, p: CoachPlan, facts: JourneyFacts, budget: BudgetStatus | null, today: IsoDate): string {
   switch (q) {
     case 'debtFree': {
       if (!p.debts.length) return 'Kayıtlı borcunuz yok. Borçlarım sayfasında borç eklerseniz kapatma planını hemen çıkarırım.'
-      if (!p.payoff?.months) return `Bu ödeme tutarıyla borçlar kapanmıyor: faiz, ödemeden hızlı büyüyor. Aylık ödemeyi artırmak veya daha düşük faizle yapılandırmak gerekiyor.`
-      const s = p.interestSavedKurus > 0 ? ` Sadece asgari ödeseydiniz ${tl(p.interestSavedKurus)} daha fazla faiz öderdiniz.` : ''
-      return `Ayda ${tl(p.phases[0].monthlyKurus)} ödemeyle bütün borçlar ${monthsText(p.payoff.months)} içinde kapanır; toplam faiz ${tl(p.payoff.totalInterestKurus)}.${s}`
+      return debtFreeAnswer(p, today)
     }
     case 'invest': {
       if (p.monthlyPlanKurus <= 0) return 'Şu an gider gelirin üstünde, yatırıma ayrılacak tutar yok. Önce bütçe dengesini kuralım.'
@@ -385,4 +416,21 @@ export function answer(q: QuestionId, p: CoachPlan, facts: JourneyFacts, budget:
       return `Bu dönem ${tl(t.spentKurus)} harcandı, bütçenin %${Math.round(t.ratio * 100)}'i.${f ? ` Bu hızla dönem sonu tahmini ${tl(f.projectedKurus)}.` : ''}`
     }
   }
+}
+
+const endText = (e: DebtEnd) => (e.date ? monthLabel(e.date.slice(0, 7)) : 'bu ödemeyle kapanmıyor')
+
+/** "Borcum ne zaman biter?": önce planlanan ödemelerle her borcun bitiş tarihi, sonra plana göre hızlandırma. */
+export function debtFreeAnswer(p: CoachPlan, today: IsoDate): string {
+  const ends = scheduledDebtEnds(p.debts, today)
+  const last = lastDebtEnd(ends)
+  const head =
+    ends.length === 1
+      ? `Planlanan ödemelerle ${ends[0].name} için son ödeme: ${endText(ends[0])}.`
+      : `Planlanan ödemelerle son ödeme tarihleri: ${ends.map((e) => `${e.name}, ${endText(e)}`).join('; ')}.${last ? ` Hepsi bittiğinde: ${monthLabel(last.slice(0, 7))}.` : ''}`
+  if (!p.payoff?.months) return `${head} Bu ödemelerle borçların hepsi kapanmıyor; faiz, ödemeden hızlı büyüyor. Aylık ödemeyi artırmak veya daha düşük faizle yapılandırmak gerekiyor.`
+  const planEnd = addMonthsClamped(today, p.payoff.months - 1)
+  if (!last || planEnd.slice(0, 7) >= last.slice(0, 7)) return head
+  const s = p.interestSavedKurus > 0 ? `, ${tl(p.interestSavedKurus)} daha az faiz ödersiniz` : ''
+  return `${head} Plana göre ayda ${tl(p.phases[0].monthlyKurus)} ayırırsanız borçsuz olma tarihi ${monthLabel(planEnd.slice(0, 7))} olur${s}.`
 }
