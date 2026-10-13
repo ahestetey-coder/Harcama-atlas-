@@ -191,4 +191,25 @@ describe('düzenli gelirler', () => {
     expect(plannedIncomes([], [salary({ active: false })], '2026-10-20')).toEqual([])
     expect(plannedIncomes([], [salary({ startDate: '2026-11-01', createdAt: '2026-10-01T00:00:00.000Z' })], '2026-10-20')).toEqual([])
   })
+
+  it('tek seferlik gelir eklenme gününden önce de olsa bir kez yansır, tekrarlamaz', () => {
+    const once = salary({ id: 't1', kind: 'other', name: 'Satış', cadence: 'once', amountKurus: 2000000, startDate: '2026-09-20', createdAt: '2026-10-01T00:00:00.000Z' })
+    const out = plannedIncomes([], [once], '2026-10-20')
+    expect(out.map((t) => [t.id, t.date, t.amountKurus])).toEqual([['plan:inc:t1:2026-09-20', '2026-09-20', 2000000]])
+    expect(plannedIncomes([], [once], '2027-12-31')).toHaveLength(1)
+    expect(plannedIncomes([], [once], '2026-09-19')).toEqual([])
+    // Gerçek kaydı girilmişse planlı satır üretilmez
+    expect(plannedIncomes([tx('2026-09-21', 20000, 'Satış', { type: 'income' })], [once], '2026-10-20')).toEqual([])
+  })
+
+  it('1,2 kat maaş (zam) planlı satırı düşürür', () => {
+    const real = [tx('2026-08-15', 45000, 'Maaş', { type: 'income' }), tx('2026-09-14', 54000, 'Maaş', { type: 'income' })]
+    expect(plannedIncomes(real, [salary()], '2026-09-30')).toEqual([])
+  })
+
+  it('planlı satır tarihleri hafta sonuna kaydırılmaz', () => {
+    // 15 Kas 2026 Pazar: maaş Cuma yatsa da planlı satır nominal günde kalır
+    const out = plannedIncomes([], [salary({ startDate: '2026-11-15', createdAt: '2026-11-01T00:00:00.000Z' })], '2026-11-20')
+    expect(out.map((t) => [t.id, t.date])).toEqual([['plan:inc:g1:2026-11-15', '2026-11-15']])
+  })
 })

@@ -6,6 +6,8 @@ import { AtlasRepository, UserFacingError } from './repository'
 import { buildDefaultCategories, buildDefaultRules, RULES_BEFORE_V3 } from './seed'
 import { buildCommit } from '../import/enrich'
 import type { DraftRow } from '../import/types'
+import { personalCycleDay } from '../domain/income'
+import type { RecurringIncome } from '../domain/types'
 
 let db: AtlasDb
 let repo: AtlasRepository
@@ -318,5 +320,225 @@ describe('harcama grupları', () => {
     expect(reparsed.backup.data.transactions[0].groupId).toBeNull()
     await repo.restoreBackup(reparsed.backup, 'replace')
     expect((await db.groups.toArray()).map((x) => x.name).sort()).toEqual(['Bireysel', 'Ortak'])
+  })
+})
+
+describe('düzenli gelir ve maaş', () => {
+  const rent = { name: 'Kira geliri', kind: 'rent' as const, amountKurus: 1_000_000, cadence: 'monthly' as const, startDate: '2026-09-01', active: true }
+  const incomes = async () => (await repo.getSettings()).recurringIncomes ?? []
+
+  it('düzenli gelirde tarihi, sıklığı ve türü doğrular', async () => {
+    await expect(repo.saveRecurringIncome({ ...rent, startDate: '2026-02-30' })).rejects.toThrow('Geçerli bir tarih seçin.')
+    await expect(repo.saveRecurringIncome({ ...rent, startDate: '01.09.2026' })).rejects.toBeInstanceOf(UserFacingError)
+    await expect(repo.saveRecurringIncome({ ...rent, cadence: 'daily' as never })).rejects.toThrow('Geçerli bir sıklık seçin.')
+    await expect(repo.saveRecurringIncome({ ...rent, cadence: 'toString' as never })).rejects.toThrow('Geçerli bir sıklık seçin.')
+    await expect(repo.saveRecurringIncome({ ...rent, kind: 'bonus' as never })).rejects.toThrow('Geçerli bir gelir türü seçin.')
+    expect(await incomes()).toHaveLength(0)
+    const once = await repo.saveRecurringIncome({ ...rent, name: 'Prim', kind: 'other', cadence: 'once', startDate: '2026-10-05' })
+    expect(await incomes()).toEqual([once])
+    expect(once).toMatchObject({ cadence: 'once', startDate: '2026-10-05' })
+  })
+
+  it('örnek hesap: 60.000 TL, ayın 15i, döngü maaşa bağlı (bugün 12 Ekim 2026)', async () => {
+    const s = await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: true }, '2026-10-12')
+    expect(s).toMatchObject({ name: 'Maaş', kind: 'salary', cadence: 'monthly', amountKurus: 6_000_000, startDate: '2026-09-15', active: true })
+    const st = await repo.getSettings()
+    expect(st.cycleSource).toBe('salary')
+    expect(st.recurringIncomes).toEqual([s])
+    expect(personalCycleDay(st)).toBe(15)
+  })
+
+  it('başlangıç, bugün veya öncesindeki son maaş günüdür; ayda o gün yoksa o günün olduğu son ay', async () => {
+    const start = async (day: number, today: string) => (await repo.saveSalary({ amountKurus: 100_000, day, followCycle: false }, today)).startDate
+    expect(await start(12, '2026-10-12')).toBe('2026-10-12')
+    expect(await start(5, '2026-10-12')).toBe('2026-10-05')
+    expect(await start(31, '2026-10-12')).toBe('2026-08-31')
+    expect(await start(30, '2026-03-10')).toBe('2026-01-30')
+    expect(await start(31, '2026-01-10')).toBe('2025-12-31')
+    expect(await start(29, '2028-03-01')).toBe('2028-02-29')
+    expect(await incomes()).toHaveLength(1)
+  })
+
+  it('tek bir birincil maaşı günceller; adı, kimliği ve diğer gelirleri korur', async () => {
+    const small = await repo.saveRecurringIncome({ ...rent, name: 'Ek iş', kind: 'salary', amountKurus: 500_000 })
+    const big = await repo.saveRecurringIncome({ ...rent, name: 'Maaş (ABC A.Ş.)', kind: 'salary', amountKurus: 5_000_000, startDate: '2026-01-15' })
+    const weekly = await repo.saveRecurringIncome({ ...rent, name: 'Haftalık', kind: 'salary', cadence: 'weekly', amountKurus: 9_000_000 })
+    const kira = await repo.saveRecurringIncome(rent)
+    const s = await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: false }, '2026-10-12')
+    expect(s).toMatchObject({ id: big.id, name: 'Maaş (ABC A.Ş.)', amountKurus: 6_000_000, createdAt: big.createdAt })
+    // Maaş günü değişmediyse eski başlangıç korunur (geçmiş dönemlerin planlı maaşı silinmez)
+    expect(s.startDate).toBe('2026-01-15')
+    const list = await incomes()
+    expect(list.map((i) => i.id)).toEqual([small.id, big.id, weekly.id, kira.id])
+    expect(list.find((i) => i.id === small.id)).toEqual(small)
+    expect(list.find((i) => i.id === kira.id)).toEqual(kira)
+    // Gün değişince başlangıç yeni güne taşınır
+    expect((await repo.saveSalary({ amountKurus: 6_000_000, day: 20, followCycle: false }, '2026-10-12')).startDate).toBe('2026-09-20')
+    expect(await incomes()).toHaveLength(4)
+  })
+
+  it('pasif maaşı birincil saymaz; yeni maaş ekler', async () => {
+    await repo.saveRecurringIncome({ ...rent, kind: 'salary', amountKurus: 9_000_000, active: false })
+    const s = await repo.saveSalary({ amountKurus: 6_000_000, day: 1, followCycle: false }, '2026-10-12')
+    expect(s.name).toBe('Maaş')
+    expect(await incomes()).toHaveLength(2)
+  })
+
+  it('döngüyü yalnızca anahtar açıksa maaşa bağlar; kapatılınca elle döngüye döner', async () => {
+    await repo.saveSettings({ cycleStartDay: 10 })
+    await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: false }, '2026-10-12')
+    expect((await repo.getSettings()).cycleSource).toBeUndefined()
+    await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: true }, '2026-10-12')
+    expect((await repo.getSettings()).cycleSource).toBe('salary')
+    await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: false }, '2026-10-12')
+    let st = await repo.getSettings()
+    expect(st.cycleSource).toBe('manual')
+    expect(st.cycleStartDay).toBe(10)
+    expect(personalCycleDay(st)).toBe(10)
+    await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: false }, '2026-10-12')
+    st = await repo.getSettings()
+    expect(st.cycleSource).toBe('manual')
+  })
+
+  it('geçersiz maaşı reddeder ve hiçbir şey yazmaz', async () => {
+    for (const day of [0, 32, 15.5, NaN]) await expect(repo.saveSalary({ amountKurus: 6_000_000, day, followCycle: true }, '2026-10-12')).rejects.toThrow('Maaş gününü seçin.')
+    await expect(repo.saveSalary({ amountKurus: 0, day: 15, followCycle: true }, '2026-10-12')).rejects.toThrow('Geçerli bir tutar girin.')
+    await expect(repo.saveSalary({ amountKurus: 100.5, day: 15, followCycle: true }, '2026-10-12')).rejects.toBeInstanceOf(UserFacingError)
+    const st = await repo.getSettings()
+    expect(st.recurringIncomes ?? []).toHaveLength(0)
+    expect(st.cycleSource).toBeUndefined()
+  })
+})
+
+describe('bütçe beyanı', () => {
+  it('örnek hesabın beyanını kaydeder, değişikliği birleştirir ve null ile boşaltır', async () => {
+    const before = new Date().toISOString()
+    const p = await repo.saveBudgetProfile({ housing: 'rent', housingKurus: 1_800_000, billsKurus: 300_000, cardPaymentKurus: 400_000, consumerDebtKurus: 2_000_000, emergencyFundKurus: 0 })
+    expect(p.updatedAt >= before).toBe(true)
+    expect((await repo.getSettings()).budgetProfile).toEqual(p)
+    await repo.saveBudgetProfile({ earners: 1, dependents: 0, housingKurus: null })
+    expect((await repo.getSettings()).budgetProfile).toMatchObject({ housing: 'rent', housingKurus: null, billsKurus: 300_000, cardPaymentKurus: 400_000, consumerDebtKurus: 2_000_000, emergencyFundKurus: 0, earners: 1, dependents: 0 })
+  })
+
+  it('geçersiz değerleri reddeder ve önceki beyanı korur', async () => {
+    const p = await repo.saveBudgetProfile({ billsKurus: 300_000, earners: 2, dependents: 1 })
+    const bad: Parameters<typeof repo.saveBudgetProfile>[0][] = [
+      { billsKurus: -1 },
+      { housingKurus: 100.5 },
+      { cardPaymentKurus: NaN },
+      { emergencyFundKurus: Infinity },
+      { loanPaymentKurus: '100' as never },
+      { consumerDebtKurus: Number.MAX_SAFE_INTEGER + 2 },
+      { earners: 3 as never },
+      { earners: 0 as never },
+      { dependents: -1 },
+      { dependents: 21 },
+      { dependents: 1.5 },
+      { housing: 'tent' as never },
+    ]
+    for (const patch of bad) await expect(repo.saveBudgetProfile(patch), JSON.stringify(patch)).rejects.toBeInstanceOf(UserFacingError)
+    expect((await repo.getSettings()).budgetProfile).toEqual(p)
+    // Sınırlar geçerlidir
+    await repo.saveBudgetProfile({ dependents: 20, earners: null, billsKurus: 0 })
+    expect((await repo.getSettings()).budgetProfile).toMatchObject({ dependents: 20, earners: null, billsKurus: 0 })
+  })
+
+  it('bilinmeyen alanları yazmaz', async () => {
+    await repo.saveBudgetProfile({ billsKurus: 100, foo: 1 } as never)
+    expect((await repo.getSettings()).budgetProfile).not.toHaveProperty('foo')
+  })
+})
+
+describe('yedek: maaş, tek seferlik gelir ve bütçe beyanı', () => {
+  const once = { name: 'Prim', kind: 'other' as const, amountKurus: 2_000_000, cadence: 'once' as const, startDate: '2026-10-05', active: true }
+  const roundTrip = async () => {
+    const backup = await repo.exportBackup()
+    const parsed = parseBackup(JSON.stringify(backup))
+    if (!parsed.ok) throw new Error(parsed.message)
+    return { backup, parsed: parsed.backup }
+  }
+
+  it('tek seferlik gelir yoksa sürüm 1 yazar; eski (v1) yedek geri yüklenir', async () => {
+    await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: false }, '2026-10-12')
+    const { backup, parsed } = await roundTrip()
+    expect(backup.backupVersion).toBe(1)
+    // Eski sürümün yedeği: yeni alanlar yok
+    const old = JSON.parse(JSON.stringify(backup))
+    delete old.data.settings.cycleSource
+    delete old.data.settings.budgetProfile
+    const r = parseBackup(JSON.stringify(old))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    await repo.clearAll()
+    await repo.restoreBackup(r.backup, 'replace')
+    expect((await repo.getSettings()).recurringIncomes).toEqual(parsed.data.settings!.recurringIncomes)
+  })
+
+  it('tek seferlik gelir sürüm 2 ile yazılır ve aynen geri gelir', async () => {
+    const o = await repo.saveRecurringIncome(once)
+    const { backup, parsed } = await roundTrip()
+    expect(backup.backupVersion).toBe(2)
+    expect(parsed.data.settings?.recurringIncomes).toEqual([o])
+    await repo.clearAll()
+    await repo.restoreBackup(parsed, 'replace')
+    expect((await repo.getSettings()).recurringIncomes).toEqual([o])
+  })
+
+  it('döngü kaynağı ve bütçe beyanı yedekte atılmaz, geri yüklenir', async () => {
+    await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: true }, '2026-10-12')
+    const profile = await repo.saveBudgetProfile({ housing: 'mortgage', housingKurus: 1_800_000, earners: 2, dependents: 3, emergencyFundKurus: null })
+    const { parsed } = await roundTrip()
+    expect(parsed.data.settings).toMatchObject({ cycleSource: 'salary', budgetProfile: profile })
+    await repo.clearAll()
+    expect((await repo.getSettings()).cycleSource).toBeUndefined()
+    await repo.restoreBackup(parsed, 'replace')
+    const st = await repo.getSettings()
+    expect(st.cycleSource).toBe('salary')
+    expect(st.budgetProfile).toEqual(profile)
+    expect(personalCycleDay(st)).toBe(15)
+  })
+
+  it('daha yeni sürümün yedeğinde "güncelleyin" der; bozuk beyanı reddeder', async () => {
+    const { backup } = await roundTrip()
+    const r = parseBackup(JSON.stringify({ ...backup, backupVersion: 3 }))
+    expect(!r.ok && r.message).toMatch(/güncelleyin/)
+    const bad = { ...backup, data: { ...backup.data, settings: { ...backup.data.settings!, budgetProfile: { earners: 3, updatedAt: '' } } } }
+    expect(parseBackup(JSON.stringify(bad)).ok).toBe(false)
+    const badCycle = { ...backup, data: { ...backup.data, settings: { ...backup.data.settings!, cycleSource: 'payday' } } }
+    expect(parseBackup(JSON.stringify(badCycle)).ok).toBe(false)
+  })
+
+  it('birleştirmede gelirleri kimliğe göre ekler, yereli korur; beyan ve döngü kaynağı yalnızca yerelde yoksa alınır', async () => {
+    const salary = await repo.saveSalary({ amountKurus: 6_000_000, day: 15, followCycle: true }, '2026-10-12')
+    const prim = await repo.saveRecurringIncome(once)
+    const profile = await repo.saveBudgetProfile({ housing: 'rent', housingKurus: 1_800_000 })
+    const { parsed } = await roundTrip()
+
+    await repo.clearAll()
+    const local: RecurringIncome = { ...salary, amountKurus: 6_500_000, updatedAt: new Date().toISOString() }
+    await repo.saveSettings({ recurringIncomes: [local] })
+    await repo.restoreBackup(parsed, 'merge')
+    let st = await repo.getSettings()
+    expect(st.recurringIncomes).toEqual([local, prim])
+    expect(st.budgetProfile).toEqual(profile)
+    expect(st.cycleSource).toBe('salary')
+
+    // Yerelde beyan ve elle seçilmiş döngü günü varsa korunur
+    await repo.clearAll()
+    const mine = await repo.saveBudgetProfile({ billsKurus: 300_000 })
+    await repo.saveSettings({ cycleStartDay: 10 })
+    await repo.restoreBackup(parsed, 'merge')
+    st = await repo.getSettings()
+    expect(st.budgetProfile).toEqual(mine)
+    expect(st.cycleSource).toBeUndefined()
+    expect(st.cycleStartDay).toBe(10)
+    expect(st.recurringIncomes).toEqual([salary, prim])
+
+    // Yerelde döngü kaynağı varsa korunur; ikinci birleştirme gelirleri çoğaltmaz
+    await repo.saveSettings({ cycleSource: 'manual' })
+    await repo.restoreBackup(parsed, 'merge')
+    st = await repo.getSettings()
+    expect(st.cycleSource).toBe('manual')
+    expect(st.recurringIncomes).toEqual([salary, prim])
   })
 })

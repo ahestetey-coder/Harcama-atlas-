@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { averageMonthlyIncome, flexibleCategoryAverages, suggestBudget, type AutoBudgetInput } from './autoBudget'
+import { averageMonthlyIncome, flexibleCategoryAverages, flexibleCategoryAveragesWithMonths, suggestBudget, type AutoBudgetInput } from './autoBudget'
+import { buildBucketBudget, fixedSpendSplit, toAutoBudget, type FixedLine } from './bucketBudget'
 import { merchantKey, normalizeText } from './normalize'
 import type { Transaction } from './types'
 
@@ -102,5 +103,103 @@ describe('koçun otomatik bütçesi', () => {
       new Set([merchantKey('TURKCELL FATURA')]),
     )
     expect(avg).toEqual([{ categoryId: 'market', averageKurus: 1_750_00 }])
+  })
+})
+
+describe('dört kovalı bütçeden koç bütçesine', () => {
+  const line = (key: string, kind: FixedLine['kind'], kurus: number, flags: Partial<FixedLine> = {}): FixedLine => ({
+    key,
+    label: key,
+    kind,
+    monthlyKurus: kurus,
+    periodKurus: kurus,
+    housing: false,
+    consumer: false,
+    inSpending: true,
+    source: 'recurring',
+    ...flags,
+  })
+
+  it('alanları eşler: toplam = düzenli + borç + serbest', () => {
+    const fixed = [
+      line('rec:kira', 'housing', 18_000_00, { housing: true }),
+      line('rec:fatura', 'bill', 3_000_00),
+      line('rec:dizi', 'subscription', 300_00),
+      line('fee:bank', 'fee', 200_00, { source: 'history' }),
+      // Haftalık ödeme: bu dönem 5 kez, aylık karşılığı daha düşük
+      line('inst:telefon', 'debt', 2_000_00, { consumer: true, periodKurus: 2_500_00 }),
+      line('debt:kart', 'debt', 4_000_00, { consumer: true, inSpending: false, source: 'asset' }),
+    ]
+    const b = buildBucketBudget({
+      income: { monthlyKurus: 70_000_00, source: 'plan', plannedKurus: 70_000_00, irregularKurus: 0, oneOffKurus: 0, reservedKurus: 0, upcoming: [], salaryUpdateKurus: null, confidence: 'high' },
+      fixed,
+      consumerBalanceKurus: 20_000_00,
+      goalsKurus: 5_000_00,
+      liquidKurus: null,
+      household: { stability: 'regular', dependents: 0, earners: null },
+      journeySpending: null,
+      candidates: [],
+      history: { needKurus: 15_000_00, wantKurus: 8_000_00, months: 3 },
+      payday: null,
+      detail: true,
+      periodDays: 31,
+    })!
+    const split = fixedSpendSplit(fixed)
+    expect(split).toEqual({ recurringKurus: 21_500_00, debtKurus: 2_500_00 })
+    const a = toAutoBudget(b, 'plan', 5_000_00, split.recurringKurus, split.debtKurus)
+    expect(a.incomeKurus).toBe(70_000_00)
+    expect(a.incomeSource).toBe('plan')
+    expect(a.savingKurus).toBe(b.saving.kurus + b.saving.debtExtraKurus)
+    expect(a.goalsKurus).toBe(5_000_00)
+    expect(a.extraSavingKurus).toBe(a.savingKurus - 5_000_00)
+    expect(a.savingCutKurus).toBe(b.saving.cutKurus)
+    expect(a.flexibleKurus).toBe(b.buckets.needs.kurus + b.buckets.wants.kurus)
+    expect(a.totalKurus).toBe(b.spendKurus)
+    expect(a.recurringKurus + a.debtKurus + a.flexibleKurus).toBe(a.totalKurus)
+    expect(a.historyKurus).toBe(23_000_00)
+    expect(a.weeklyKurus).toBe(b.weeklyKurus)
+    expect(a.categoryLimits).toBe(b.categoryLimits)
+    expect(a.shortfallKurus).toBe(0)
+    expect(a.buckets).toBe(b)
+  })
+
+  it('hedefler birikimden büyükse hedef payı birikimle sınırlı', () => {
+    const b = buildBucketBudget({
+      income: { monthlyKurus: 60_000_00, source: 'records', plannedKurus: 0, irregularKurus: 60_000_00, oneOffKurus: 0, reservedKurus: 0, upcoming: [], salaryUpdateKurus: null, confidence: 'low' },
+      fixed: [line('rec:kira', 'housing', 18_000_00, { housing: true }), line('rec:fatura', 'bill', 3_000_00), line('debt:kart', 'debt', 4_000_00, { consumer: true, inSpending: false, source: 'asset' })],
+      consumerBalanceKurus: 0,
+      goalsKurus: 15_000_00,
+      liquidKurus: 0,
+      household: { stability: 'variable', dependents: 0, earners: null },
+      journeySpending: null,
+      candidates: [],
+      history: null,
+      payday: null,
+      detail: false,
+      periodDays: 30,
+    })!
+    const a = toAutoBudget(b, 'records', 15_000_00, 21_000_00, 0)
+    expect(a.incomeSource).toBe('records')
+    expect(a.savingKurus).toBe(9_000_00)
+    expect(a.goalsKurus).toBe(9_000_00)
+    expect(a.extraSavingKurus).toBe(0)
+    expect(a.savingCutKurus).toBe(6_000_00)
+    expect(a.weeklyKurus).toBeNull()
+    expect(a.categoryLimits).toEqual({})
+  })
+
+  it('gelir kaynağı maaş tanımı olabilir', () => {
+    expect(suggestBudget({ ...base, incomeSource: 'plan' })!.incomeSource).toBe('plan')
+  })
+
+  it('kategori ortalamalarıyla birlikte harcama görülen dönem sayısını verir', () => {
+    const txs = [tx('2026-09-03', 3_000, 'expense', 'market'), tx('2026-08-03', 1_000, 'expense', 'market'), tx('2026-10-02', 9_000, 'expense', 'market')]
+    const r = flexibleCategoryAveragesWithMonths(txs, 1, '2026-10-08', new Set())
+    expect(r).toEqual({ averages: [{ categoryId: 'market', averageKurus: 2_000_00 }], months: 2 })
+    expect(flexibleCategoryAverages(txs, 1, '2026-10-08', new Set())).toEqual(r.averages)
+    expect(flexibleCategoryAveragesWithMonths([], 1, '2026-10-08', new Set())).toEqual({ averages: [], months: 0 })
+    // Yalnızca bu dönemde harcama varsa geçmiş dönem sayılmaz
+    expect(flexibleCategoryAveragesWithMonths([txs[2]], 1, '2026-10-08', new Set()).months).toBe(0)
+    expect(flexibleCategoryAveragesWithMonths(txs, 1, '2026-10-08', new Set(), 1).months).toBe(1)
   })
 })

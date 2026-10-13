@@ -11,6 +11,7 @@ import { ConfirmDialog } from '../components/ui/Modal'
 import { Badge, Button, Card, Field, Input, More, Segmented, Select, Switch } from '../components/ui/primitives'
 import { APP_CONFIG } from '../config/app'
 import { toUserMessage } from '../data/repository'
+import { personalCycleDay, primarySalary } from '../domain/income'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { PAYMENT_LABEL, type PaymentMethod, type ThemePreference } from '../domain/types'
 import { downloadOcrAssets, ocrAssetInfo, ocrCacheStatus } from '../import/ocr'
@@ -30,6 +31,9 @@ export default function SettingsPage() {
   const [resetOpen, setResetOpen] = useState(false)
   const [ocr, setOcr] = useState<{ status: Awaited<ReturnType<typeof ocrCacheStatus>>; bytes?: number } | null>(null)
   const [dl, setDl] = useState<{ done: number; total: number } | null>(null)
+  // Ay döngüsü maaş gününe bağlanabilir (yalnızca birincil maaş varsa)
+  const hasSalary = !!primarySalary(settings?.recurringIncomes)
+  const followSalary = hasSalary && settings?.cycleSource === 'salary'
 
   useEffect(() => {
     if (settings) setBudget(settings.monthlyBudgetKurus ? formatKurusPlain(settings.monthlyBudgetKurus) : '')
@@ -125,13 +129,33 @@ export default function SettingsPage() {
             <Repeat className="size-5 text-accent" /> Ay döngüsü
           </h2>
           <p className="mt-1 text-sm text-muted">Ayınız hangi gün başlıyor?</p>
-          <More>Maaşınız ayın 15’inde yatıyorsa 15 seçin; ay, 15’inden sonraki ayın 14’üne kadar sayılır.</More>
+          <More>
+            Maaşınız ayın 15’inde yatıyorsa 15 seçin; ay, 15’inden sonraki ayın 14’üne kadar sayılır. Maaş hafta sonuna denk gelirse önceki iş günü yatar; o gelir yine
+            yeni ayınıza sayılır.
+          </More>
+          {hasSalary && (
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-ink" aria-hidden>
+                Maaş gününe göre
+              </span>
+              <Switch
+                label="Maaş gününe göre"
+                checked={followSalary}
+                onChange={async (on) => {
+                  await repo.saveSettings({ cycleSource: on ? 'salary' : 'manual' })
+                  const d = personalCycleDay({ ...settings, cycleSource: on ? 'salary' : 'manual' })
+                  toast(on ? `Ayınız artık her ayın ${d}. gününde başlıyor.` : d > 1 ? `Ay döngünüz her ayın ${d}’i olarak ayarlandı.` : 'Takvim ayına dönüldü.')
+                }}
+              />
+            </div>
+          )}
           <Field label="Kişisel ay döngünüz" htmlFor="set-cycle" className="mt-4">
             <CycleSelect
               id="set-cycle"
-              value={settings?.cycleStartDay ?? 1}
+              value={followSalary ? personalCycleDay(settings ?? {}) : (settings?.cycleStartDay ?? 1)}
+              disabled={followSalary}
               onChange={async (d) => {
-                await repo.saveSettings({ cycleStartDay: d && d > 1 ? d : undefined })
+                await repo.saveSettings({ cycleStartDay: d && d > 1 ? d : undefined, cycleSource: 'manual' })
                 toast(d && d > 1 ? `Ay döngünüz her ayın ${d}’i olarak ayarlandı.` : 'Takvim ayına dönüldü.')
               }}
             />

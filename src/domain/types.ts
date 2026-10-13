@@ -1,7 +1,7 @@
 import type { SplitRule } from './split'
 import type { BudgetPlan } from './budget'
 import type { BudgetMode } from './autoBudget'
-import type { JourneyProfile } from './journey'
+import type { Housing, JourneyProfile } from './journey'
 /** Takvim günü: 'YYYY-AA-GG'. Saat dilimi bilgisi taşımaz; gün kayması olmaz. */
 export type IsoDate = string
 /** Takvim ayı: 'YYYY-AA'. */
@@ -188,19 +188,60 @@ export interface Settings {
   coach?: CoachSettings
   /** Maaş, kira geliri gibi düzenli gelirler; günü gelince özete planlı gelir olarak yansır. */
   recurringIncomes?: RecurringIncome[]
+  /** 'salary': kişisel ay döngüsü maaş gününde başlar. Boşsa cycleStartDay (boşsa takvim ayı). */
+  cycleSource?: CycleSource
+  /** Her pakette: ayrıntılı kayıt yoksa bütçede kullanılan kısa sabit gider beyanı. */
+  budgetProfile?: BudgetProfile
+  updatedAt: string
+}
+
+/** Kişisel ay döngüsünün kaynağı. */
+export type CycleSource = 'salary' | 'manual'
+
+/**
+ * Bütçe için kısa beyan (her pakette). Aynı türden ayrıntılı kayıt (düzenli ödeme, borç, varlık)
+ * varsa o kullanılır; bu değerler yalnızca boşluğu doldurur.
+ */
+export interface BudgetProfile {
+  housing?: Housing
+  /** Kira + aidat; housing === 'mortgage' ise konut kredisi taksiti. */
+  housingKurus?: number | null
+  /** Elektrik, su, doğalgaz, internet, telefon. */
+  billsKurus?: number | null
+  /** Kart asgari + KMH ödemesi (transferle ödenir, harcama bütçesi dışında). */
+  cardPaymentKurus?: number | null
+  /** Konut dışı kredi taksitleri (gider olarak kaydedilir, bütçe içinde). */
+  loanPaymentKurus?: number | null
+  /** Kart, KMH, ihtiyaç kredisi toplam bakiyesi. */
+  consumerDebtKurus?: number | null
+  /** Hemen kullanılabilir birikim (acil durum fonu). */
+  emergencyFundKurus?: number | null
+  earners?: 1 | 2 | null
+  dependents?: number | null
   updatedAt: string
 }
 
 export type IncomeKind = 'salary' | 'rent' | 'other'
+
+/** Gelir sıklığı: düzenli ödemelerin sıklıkları ve tek seferlik gelir. */
+export type IncomeCadence = RecurringCadence | 'once'
+
+export const INCOME_CADENCE_LABEL: Record<IncomeCadence, string> = {
+  monthly: 'Aylık',
+  weekly: 'Haftalık',
+  yearly: 'Yıllık',
+  once: 'Tek sefer',
+}
 
 /** Düzenli gelir. Yalnızca bu cihazda tutulur; gerçek gelir kaydı girilirse o ayın planlı geliri düşer. */
 export interface RecurringIncome {
   id: string
   name: string
   kind: IncomeKind
+  /** Net (ele geçen) tutar. */
   amountKurus: number
-  cadence: RecurringCadence
-  /** İlk gelir günü; sonrakiler sıklığa göre hesaplanır. */
+  cadence: IncomeCadence
+  /** Maaşta maaş günü; tek seferlik gelirde gelirin tarihi; diğerlerinde ilk gelir günü. */
   startDate: IsoDate
   active: boolean
   createdAt: string

@@ -1,9 +1,9 @@
 import { Pencil, Trash2, Wallet } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { toUserMessage } from '../data/repository'
-import { todayIso } from '../domain/dates'
+import { formatDate, todayIso } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
-import { CADENCE_LABEL, INCOME_KIND_LABEL, type IncomeKind, type RecurringCadence, type RecurringIncome } from '../domain/types'
+import { INCOME_CADENCE_LABEL, INCOME_KIND_LABEL, type IncomeCadence, type IncomeKind, type RecurringIncome } from '../domain/types'
 import { useRepo, useSettings } from '../state/data'
 import { useUi } from '../state/ui'
 import { Button, Card, Field, IconButton, Input, More, Select } from './ui/primitives'
@@ -14,7 +14,7 @@ interface Draft {
   kind: IncomeKind
   amount: string
   startDate: string
-  cadence: RecurringCadence
+  cadence: IncomeCadence
 }
 
 const EMPTY: Draft = { name: '', kind: 'salary', amount: '', startDate: todayIso(), cadence: 'monthly' }
@@ -22,7 +22,15 @@ const EMPTY: Draft = { name: '', kind: 'salary', amount: '', startDate: todayIso
 function whenLabel(it: RecurringIncome): string {
   const day = Number(it.startDate.slice(8, 10))
   if (it.cadence === 'monthly') return `her ayın ${day}. günü`
-  return CADENCE_LABEL[it.cadence].toLocaleLowerCase('tr')
+  if (it.cadence === 'once') return `tek sefer · ${formatDate(it.startDate, 'long')}`
+  return INCOME_CADENCE_LABEL[it.cadence].toLocaleLowerCase('tr')
+}
+
+/** Tarih alanının adı ve boş bırakılınca gösterilen uyarı (gelirin türüne ve sıklığına göre). */
+function dateField(d: Pick<Draft, 'kind' | 'cadence'>): { label: string; missing: string } {
+  if (d.cadence === 'once') return { label: 'Tarih', missing: 'Tarihi seçin.' }
+  if (d.kind === 'salary' && d.cadence === 'monthly') return { label: 'Maaş günü', missing: 'Maaş gününü seçin.' }
+  return { label: 'İlk gelir günü', missing: 'İlk gelir gününü seçin.' }
 }
 
 /** Maaş, kira geliri gibi düzenli gelirler: günü gelince özete kendiliğinden eklenir. */
@@ -45,10 +53,11 @@ export function RecurringIncomeCard() {
     const amt = parseUserAmount(draft.amount)
     if (!draft.name.trim()) return setError('Bir ad girin (ör. Maaş).')
     if (!amt.ok || amt.kurus <= 0) return setError('Geçerli bir tutar girin. Örnek: 45.000')
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.startDate)) return setError('İlk gelir gününü seçin.')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.startDate)) return setError(dateField(draft).missing)
     try {
       await repo.saveRecurringIncome({ id: draft.id, name: draft.name, kind: draft.kind, amountKurus: amt.kurus, cadence: draft.cadence, startDate: draft.startDate, active: true })
-      toast(draft.id ? 'Düzenli gelir güncellendi.' : 'Düzenli gelir eklendi.')
+      const once = draft.cadence === 'once'
+      toast(draft.id ? (once ? 'Tek seferlik gelir güncellendi.' : 'Düzenli gelir güncellendi.') : once ? 'Tek seferlik gelir eklendi.' : 'Düzenli gelir eklendi.')
       setDraft(null)
       setError(undefined)
     } catch (err) {
@@ -108,14 +117,14 @@ export function RecurringIncomeCard() {
           <Field label="Tutar (TL)" htmlFor="ri-amount">
             <Input id="ri-amount" className="num" inputMode="decimal" placeholder="0,00" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} />
           </Field>
-          <Field label="İlk gelir günü" htmlFor="ri-date">
+          <Field label={dateField(draft).label} htmlFor="ri-date">
             <Input id="ri-date" type="date" value={draft.startDate} onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} />
           </Field>
           <Field label="Sıklık" htmlFor="ri-cadence">
-            <Select id="ri-cadence" value={draft.cadence} onChange={(e) => setDraft({ ...draft, cadence: e.target.value as RecurringCadence })}>
-              {(['monthly', 'weekly', 'yearly'] as RecurringCadence[]).map((c) => (
+            <Select id="ri-cadence" value={draft.cadence} onChange={(e) => setDraft({ ...draft, cadence: e.target.value as IncomeCadence })}>
+              {(Object.keys(INCOME_CADENCE_LABEL) as IncomeCadence[]).map((c) => (
                 <option key={c} value={c}>
-                  {CADENCE_LABEL[c]}
+                  {INCOME_CADENCE_LABEL[c]}
                 </option>
               ))}
             </Select>

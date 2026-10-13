@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { currentPeriod, normalizeStartDay } from '../domain/dates'
+import { personalCycleDay } from '../domain/income'
 import { useGroupMap, useSettings } from './data'
 import { useUi } from './ui'
 
-/** Kişisel ay döngüsünün başlangıç günü (Ayarlar). */
+/** Kişisel ay döngüsünün başlangıç günü: maaş gününe bağlıysa maaş günü (29–31 → 28), yoksa Ayarlar'daki gün. */
 export function usePersonalCycle(): number {
-  return normalizeStartDay(useSettings()?.cycleStartDay)
+  return personalCycleDay(useSettings() ?? {})
 }
 
 /**

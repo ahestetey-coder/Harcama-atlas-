@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { hasErrors, type TxFieldErrors } from '../data/validation'
 import { SHARED_READONLY, toUserMessage } from '../data/repository'
 import { formatDate, isIsoDate, periodLabel, periodOf, todayIso } from '../domain/dates'
+import { personalCycleDay } from '../domain/income'
 import { formatKurusPlain, parseUserAmount } from '../domain/money'
 import { merchantKey, normalizeText } from '../domain/normalize'
 import { evaluateRules } from '../domain/rules'
@@ -103,6 +104,16 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
     return c ?? null
   }, [rules, s.description, s.categoryId, activeCats])
 
+  // Toast eylemi: ay döngüsü maaş gününe bağlanır (döngü hiçbir zaman kendiliğinden değişmez)
+  const followSalaryCycle = async () => {
+    try {
+      await repo.saveSettings({ cycleSource: 'salary' })
+      toast(`Ayınız artık her ayın ${personalCycleDay(await repo.getSettings())}. gününde başlıyor.`)
+    } catch (err) {
+      toast(toUserMessage(err), { kind: 'error' })
+    }
+  }
+
   const categoryChanged = !!s.categoryId && s.categoryId !== (tx?.categoryId ?? '')
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setS((p) => ({ ...p, [k]: v }))
@@ -146,16 +157,24 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         toast('İşlem güncellendi.')
       } else {
         const saved = await repo.addTransaction(input, learn)
+        let salary = false
         if (s.type === 'income' && s.repeat) {
           const name = s.description.trim()
           const kind = /kira/iu.test(name) ? 'rent' : /maaş|maas|ücret|ucret|bordro/iu.test(name) ? 'salary' : 'other'
           await repo.saveRecurringIncome({ name, kind, amountKurus: amt.kurus, cadence: 'monthly', startDate: s.date, active: true })
+          salary = kind === 'salary'
         }
         setHighlightId(saved.id)
         const savedPeriod = periodOf(saved.date, startDay)
         const other = savedPeriod !== month
+        // Yeni düzenli maaşta, ay döngüsü hiç seçilmemişse maaş gününe bağlamayı önerir
+        const offerCycle = salary && settings?.cycleSource === undefined && settings?.cycleStartDay == null
         toast(other ? `Kaydedildi. İşlem ${periodLabel(savedPeriod, startDay)} döneminde.` : s.type === 'income' ? (s.repeat ? 'Gelir kaydedildi; her ay kendiliğinden eklenecek.' : 'Gelir kaydedildi.') : 'Gider kaydedildi.', {
-          action: other ? { label: 'O aya git', onClick: () => setMonth(savedPeriod) } : undefined,
+          action: other
+            ? { label: 'O aya git', onClick: () => setMonth(savedPeriod) }
+            : offerCycle
+              ? { label: 'Ayım maaş günümde başlasın', onClick: () => void followSalaryCycle() }
+              : undefined,
         })
       }
       onDone()

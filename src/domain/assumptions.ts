@@ -44,6 +44,66 @@ export const DTI_LIMIT = 0.36
 /** Birikim oranı hedefi (gelirin payı). */
 export const SAVING_RATE_TARGET = 0.2
 
+// ---------- Gelire göre bütçe (dört kova) ----------
+
+/** 50/30/20: ihtiyaçlar (zorunlu sabitler dahil) %50, istekler %30, birikim %20 (Warren ve Tyagi 2005). */
+export const NEEDS_SHARE = 0.5
+/** İsteklere en fazla gelirin bu payı ayrılır. */
+export const WANTS_SHARE = 0.3
+/** En az birikim oranı (ürün kuralı). */
+export const MIN_SAVING_RATE = 0.1
+/** Gelir dar ise birikime bu oranla başlanır (ürün kuralı). */
+export const LOW_INCOME_SAVING_RATE = 0.05
+/** İsteklere korunan en düşük pay (ürün kuralı). */
+export const WANTS_FLOOR = 0.1
+/** Konut gideri / gelir üst sınırı (HUD; brüt gelir tanımı, nette daha sıkı). */
+export const HOUSING_LIMIT = 0.3
+/** Kart ve tüketici kredisi ödemeleri / gelir üst sınırı (uygulama kuralı; birincil kaynak yok). */
+export const CONSUMER_DEBT_LIMIT = 0.2
+/** Girilmemiş kart asgari ödemesi için alt sınır: bakiyenin %20'si (limit ≤ 50.000 TL; doğrulanmalı). */
+export const CARD_MIN_RATE = 0.2
+/** Acil durum fonu aralığı (ay). Tek gelir, bakmakla yükümlü kişi veya değişken gelirde 6–9; düzensizde 9. */
+export const EMERGENCY_RANGE = { regular: [3, 6], singleOrDependents: [6, 9], irregular: [9, 9] } as const
+
+export type TuikGroup =
+  | 'housing'
+  | 'transport'
+  | 'food'
+  | 'restaurants'
+  | 'furnishings'
+  | 'clothing'
+  | 'communication'
+  | 'personalCare'
+  | 'alcoholTobacco'
+  | 'recreation'
+  | 'health'
+  | 'education'
+  | 'insuranceFinance'
+
+/**
+ * TÜİK Hanehalkı Bütçe Araştırması, "Hanehalkı Tüketim Harcaması, 2025" (yayım 2 Haziran 2026,
+ * COICOP 2018): harcama grubunun toplam tüketim harcaması içindeki payı, baz puan (% × 100).
+ * Toplam 10010 (yuvarlama). Birincil bülten açılamadı; değerler aynı rakamları veren iki habere
+ * dayanır (cnbce.com h30893, dunya.com 827124). Yayından önce bültenle karşılaştırılmalı.
+ */
+export const TUIK_HBA_2025_BP: Record<TuikGroup, number> = {
+  housing: 2930,
+  transport: 2050,
+  food: 1730,
+  restaurants: 690,
+  furnishings: 530,
+  clothing: 430,
+  communication: 360,
+  personalCare: 330,
+  alcoholTobacco: 250,
+  recreation: 230,
+  health: 220,
+  education: 180,
+  insuranceFinance: 80,
+}
+/** Hedef birikimde tüketime kalan pay (1 − SAVING_RATE_TARGET). */
+export const CONSUMPTION_AT_TARGET = 0.8
+
 // ---------- Hedef seviyeleri ----------
 
 /** Lean FI: hedef harcamanın %70'i; Fat FI: %150'si. */
@@ -127,16 +187,17 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     id: 'emergency',
     title: 'Acil durum fonu',
-    value: `${EMERGENCY_MONTHS.regular} ay (düzenli gelir), ${EMERGENCY_MONTHS.variableOrDependents} ay (değişken gelir ya da bakmakla yükümlü kişi), ${EMERGENCY_MONTHS.irregular} ay (düzensiz gelir) zorunlu gider.`,
-    source: 'Yaygın finansal planlama standardı.',
-    reason: 'Beklenmedik bir gider ya da gelir kesintisinin yeni borca dönmesini önler.',
+    value: `Önce ${STARTER_MONTHS} aylık zorunlu gider (başlangıç fonu), sonra ${EMERGENCY_RANGE.regular[0]}–${EMERGENCY_RANGE.regular[1]} ay. Tek gelir, bakmakla yükümlü kişi ya da değişken gelirde ${EMERGENCY_RANGE.singleOrDependents[0]}–${EMERGENCY_RANGE.singleOrDependents[1]} ay; düzensiz gelirde ${EMERGENCY_RANGE.irregular[0]} ay. Yalnızca mevduat ve nakit sayılır.`,
+    source:
+      "Federal Reserve, FEDS Notes (2018), \"Assessing Families' Liquid Savings Using the Survey of Consumer Finances\": https://www.federalreserve.gov/econres/notes/feds-notes/assessing-families-liquid-savings-using-the-survey-of-consumer-finances-20181119.htm; FINRA: https://www.finra.org/investors/insights/how-avoid-bad-financial-luck-friday-13th. 6–9 ay ve düzensiz gelirde 9 ay ürün kuralıdır.",
+    reason: 'Beklenmedik bir gider ya da gelir kesintisinin yeni borca dönmesini önler. Zorunlu gider: sabit giderler ve ihtiyaçlar.',
   },
   {
     id: 'dti',
     title: 'Borç ödemesi / gelir sınırı',
-    value: `%${DTI_LIMIT * 100}`,
-    source: 'Kredi değerlendirmesinde yaygın kullanılan eşik.',
-    reason: 'Aylık borç ödemeleri bu oranı aştığında bütçe kırılganlaşır.',
+    value: `%${DTI_LIMIT * 100} (konut kredisi dahil bütün borç ödemeleri; kira sayılmaz)`,
+    source: 'Fannie Mae Selling Guide, B3-6-02 "Debt-to-Income Ratios": https://selling-guide.fanniemae.com/sel/b3-6-02/debt-income-ratios',
+    reason: 'Aylık borç ödemeleri bu oranı aştığında bütçe kırılganlaşır. Eşik brüt gelir üzerinden tanımlıdır; net gelire uygulamak daha sıkıdır.',
   },
   {
     id: 'saving',
@@ -144,6 +205,63 @@ export const ASSUMPTIONS: Assumption[] = [
     value: `Gelirin en az %${SAVING_RATE_TARGET * 100}'si`,
     source: 'Warren, E. ve Tyagi, A. W. (2005), All Your Worth (50/30/20 kuralı).',
     reason: 'Gelirin yarısı ihtiyaçlara, %30 isteklere, en az %20 birikime.',
+  },
+  {
+    id: 'budget-split',
+    title: 'Gelirin dağılımı (50/30/20)',
+    value: `Zorunlu sabitler ve ihtiyaçlar %${NEEDS_SHARE * 100} (bilgi için), istekler en fazla %${Math.round(WANTS_SHARE * 100)}, birikim ve borç kapatma en az %${SAVING_RATE_TARGET * 100}. Sıra: önce %${LOW_INCOME_SAVING_RATE * 100} birikim, %${WANTS_FLOOR * 100} istek, birikim %${MIN_SAVING_RATE * 100}'a, sonra %${SAVING_RATE_TARGET * 100}'ye; kalan isteklere, artan birikime.`,
+    source: 'Warren, E. ve Tyagi, A. W. (2005), All Your Worth: The Ultimate Lifetime Money Plan; https://foxnews.com/story/running-in-circles.amp',
+    reason: 'İhtiyaçlar bir tahmindir ve kısılmaz; gelir yetmezse önce istek ve birikim küçülür.',
+  },
+  {
+    id: 'housing',
+    title: 'Konut gideri / gelir sınırı',
+    value: `%${Math.round(HOUSING_LIMIT * 100)} (kira ve aidat ya da konut kredisi taksiti)`,
+    source: 'ABD Konut ve Kentsel Gelişim Bakanlığı (HUD), PD&R Edge: https://www.huduser.gov/portal/pdredge/pdr_edge_featd_article_092214.html',
+    reason: 'Tanım brüt gelir üzerindedir; burada net gelire uygulandığı için daha sıkıdır.',
+  },
+  {
+    id: 'consumer-debt',
+    title: 'Kart ve tüketici kredisi ödemeleri',
+    value: `Gelirin en fazla %${CONSUMER_DEBT_LIMIT * 100}'si. Aşarsa %${WANTS_FLOOR * 100}'un üstündeki istekler borca ayrılır.`,
+    source: 'Uygulama kuralı (onaylı ürün planı); birincil bir kaynak bulunamadı.',
+    reason: 'Kart, KMH ve ihtiyaç kredisi yüksek faizlidir; ödemeleri büyüdükçe yeni borç riski artar.',
+  },
+  {
+    id: 'saving-floors',
+    title: 'Birikim ve istek tabanları',
+    value: `Birikim en az %${MIN_SAVING_RATE * 100}; gelir dar ise %${LOW_INCOME_SAVING_RATE * 100} ile başlanır. İsteklere en az %${WANTS_FLOOR * 100} ayrılır.`,
+    source: 'Ürün kuralı; akademik kaynağı yok.',
+    reason: 'Gelir dar olsa da birikime küçük bir payla başlanır; isteklere hiç pay bırakmayan bütçe uzun sürmez.',
+  },
+  {
+    id: 'tuik-hba-2025',
+    title: 'Kategori başlangıç payları (TÜİK 2025)',
+    value: `İhtiyaçlar: Market %${(TUIK_HBA_2025_BP.food / 100).toLocaleString('tr-TR')}, Akaryakıt %${(TUIK_HBA_2025_BP.transport / 200).toLocaleString('tr-TR')}, Ulaşım %${(TUIK_HBA_2025_BP.transport / 200).toLocaleString('tr-TR')}, Faturalar %${(TUIK_HBA_2025_BP.communication / 100).toLocaleString('tr-TR')}, Sağlık %${(TUIK_HBA_2025_BP.health / 100).toLocaleString('tr-TR')}, Eğitim %${(TUIK_HBA_2025_BP.education / 100).toLocaleString('tr-TR')}. İstekler: Restoran/Kafe %${(TUIK_HBA_2025_BP.restaurants / 100).toLocaleString('tr-TR')}, Giyim %${(TUIK_HBA_2025_BP.clothing / 100).toLocaleString('tr-TR')}, Eğlence %${(TUIK_HBA_2025_BP.recreation / 100).toLocaleString('tr-TR')}, Diğer %${((TUIK_HBA_2025_BP.furnishings + TUIK_HBA_2025_BP.personalCare + TUIK_HBA_2025_BP.alcoholTobacco) / 100).toLocaleString('tr-TR')} (mobilya, kişisel bakım, alkol ve tütün). Konut ve kira (%${(TUIK_HBA_2025_BP.housing / 100).toLocaleString('tr-TR')}) ile sigorta ve finansal hizmetler (%${(TUIK_HBA_2025_BP.insuranceFinance / 100).toLocaleString('tr-TR')}) dışarıda. İhtiyaçların başlangıcı: gelir × ihtiyaç payı × ${CONSUMPTION_AT_TARGET.toLocaleString('tr-TR')}.`,
+    source:
+      'TÜİK Hanehalkı Bütçe Araştırması, "Hanehalkı Tüketim Harcaması, 2025" (yayım 2 Haziran 2026, COICOP 2018). Birincil bülten (veriportali.tuik.gov.tr) açılamadı; birincil bülten doğrulanmalı. Rakamlar 2025 değerleri birebir aynı olan iki kaynaktan: https://www.cnbce.com/veriler/tuik-son-tabloyu-acikladi-konut-kira-ulastirma-hangi-kaleme-ne-kadar-harcadik-h30893; https://www.dunya.com/kose-yazisi/kazanc-kira-mutfak-ve-yola-gidiyor/827124',
+    reason: `Harcama geçmişiniz yokken kategori limitleri bu paylarla başlar ve üç dönemde sizin harcamanıza geçer. Ulaştırmanın Akaryakıt ile Ulaşım arasında yarı yarıya bölünmesi varsayımdır; ${CONSUMPTION_AT_TARGET.toLocaleString('tr-TR')} katsayısı 1 − birikim hedefi (%${SAVING_RATE_TARGET * 100}). Konut grubu yükletilmiş kira içerdiği için dışarıda.`,
+  },
+  {
+    id: 'card-min',
+    title: 'Kart asgari ödemesi tahmini',
+    value: `Girilmemiş kart asgari ödemesi bakiyenin en az %${CARD_MIN_RATE * 100}'si sayılır. Toplam kart limiti 50.000 TL'ye kadar %20, üstünde %40; limit bilinmediği için %40 kademesi uygulanmaz.`,
+    source: 'Sözcü, 4 Ağustos 2026: https://www.sozcu.com.tr/kredi-kartinda-bu-siniri-asanlar-daha-fazla-odeme-yapacak-p342271. Yayından önce BDDK kart yönetmeliğiyle doğrulanmalı.',
+    reason: 'Asgari ödeme girilmemişse kart yükü olduğundan düşük görünmesin diye alt sınır kullanılır.',
+  },
+  {
+    id: 'income-conservative',
+    title: 'Gelir tabanı',
+    value: 'Maaş ve düzenli gelirler esas alınır. Düzensiz gelir: son 3 dönemin en düşüğü (en az 2 dönem kayıt gerekir; gelir olmayan dönem 0 sayılır). Yıllık gelir ilk ödemeden itibaren ayda 1/12 sayılır. Tek seferlik gelir yalnızca birikim ve borç kapatmaya gider.',
+    source: 'Temkinli varsayım (ürün kuralı).',
+    reason: 'Bütçe gelmesi kesin olmayan gelire dayanmaz; fazla gelir harcamaya değil birikime gider.',
+  },
+  {
+    id: 'payday',
+    title: 'Maaş günü ve hafta sonu',
+    value: 'Maaş günü hafta sonuna denk gelirse önceki iş günü yatar; o gelir yine yeni ayınıza sayılır. Resmî tatiller hesaba katılmaz.',
+    source: 'Basitleştirici varsayım.',
+    reason: 'Erken yatan maaş, ait olduğu dönemin bütçesini besler.',
   },
   {
     id: 'returns',

@@ -20,7 +20,7 @@ test('mobil: alt menü, Ekle menüsü, kart listesi, yatay taşma yok', async ({
   await expect(page.getByRole('button', { name: /Mobil Fırın, 45,90 ₺, düzenle/ })).toBeVisible()
   await expect(page.getByRole('table')).toBeHidden()
 
-  for (const r of ['', 'islemler', 'ice-aktar', 'kategoriler', 'aktarimlar', 'yedekleme', 'ayarlar']) {
+  for (const r of ['', 'islemler', 'ice-aktar', 'kategoriler', 'aktarimlar', 'yedekleme', 'ayarlar', 'butce']) {
     await page.goto('./#/' + r)
     await page.waitForTimeout(300)
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)

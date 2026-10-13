@@ -1,75 +1,51 @@
 import { useMemo } from 'react'
-import { averageMonthlyIncome, flexibleCategoryAverages, suggestBudget, type AutoBudget, type AutoBudgetGoal, type BudgetMode } from '../domain/autoBudget'
+import { flexibleCategoryAverages, type AutoBudget, type BudgetMode } from '../domain/autoBudget'
 import { budgetStatus, DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus } from '../domain/budget'
-import { currentPeriod, periodLength, todayIso } from '../domain/dates'
-import { goalProgress } from '../domain/goals'
-import { addMonthsClamped, fixedPayments, futureLoad, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
-import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, INSTALLMENT_DEBT, portfolio } from '../domain/assets'
+import { budgetFacts, READ_LOCKED_DATA, type FactsGates } from '../domain/budgetFacts'
+import { buildBucketBudget, fixedSpendSplit, toAutoBudget } from '../domain/bucketBudget'
+import { todayIso } from '../domain/dates'
+import { addMonthsClamped, fixedPayments, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
+import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, portfolio } from '../domain/assets'
 import { estimatedMinPayment } from '../domain/coach'
-import { averageMonthlyExpense, SAVING_RATE_TARGET, SPEND_GROUPS, spendGroupOf, type JourneyFacts, type RecurringLoad, type SpendBreakdown } from '../domain/journey'
+import { averageMonthlyExpense, SPEND_GROUPS, spendGroupOf, type JourneyFacts, type RecurringLoad, type SpendBreakdown } from '../domain/journey'
 import type { CoachDebt } from '../domain/coach'
 import { usePersonalCycle } from './cycle'
 import { useAssets, useCategories, useGoals, useRecurring, useSettings } from './data'
 import { useAllRecurring, usePersonalTransactions } from './personal'
 import { usePlan } from './plan'
 
-/** Koçun otomatik bütçesi; paketteki özellikler kadar veri kullanır (cihazda, kural tabanlı). */
+/**
+ * Koçun otomatik bütçesi: gelire göre dört kova (zorunlu sabitler, ihtiyaçlar, istekler, birikim ve
+ * borç kapatma). Her pakette hesaplanır; girilmiş ödeme, borç ve varlık verisi her pakette okunur
+ * (READ_LOCKED_DATA). Hedefler Plus'ta, Yolculuk testi Plus+'ta, kategori limitleri ve haftalık
+ * bütçe Plus'ta girer. Cihazda, kural tabanlı.
+ */
 export function useAutoBudget(): AutoBudget | null | undefined {
   const personal = usePersonalTransactions()
   const startDay = usePersonalCycle()
   const settings = useSettings()
-  const items = useAllRecurring()
+  // debt:* kalemleri okunmaz: taksitli borç varlıktan bir kez sayılır
+  const recurring = useRecurring()
   const assets = useAssets()
   const goals = useGoals()
+  const categories = useCategories()
   const { has } = usePlan()
   return useMemo(() => {
-    if (!personal || !settings || !items || !assets || !goals) return undefined
-    const today = todayIso()
-    const period = currentPeriod(startDay)
-    let income = averageMonthlyIncome(personal.counted, startDay, today)
-    let source: 'records' | 'journey' | null = income ? 'records' : null
-    const j = has('journey') ? settings.journey : undefined
-    if (!income && j && j.monthlyIncomeKurus > 0) {
-      income = j.monthlyIncomeKurus + (j.passiveIncomeKurus ?? 0)
-      source = 'journey'
+    if (!personal || !settings || !recurring || !assets || !goals || !categories) return undefined
+    const gates: FactsGates = {
+      recurring: READ_LOCKED_DATA || has('subscriptions'),
+      assets: READ_LOCKED_DATA || has('assets'),
+      installments: READ_LOCKED_DATA || has('installments'),
+      goals: has('goals'),
+      journey: has('journey'),
+      detail: has('advancedBudget'),
     }
-    // Pakette olmayan özelliklerin verisi hesaba katılmaz
-    const used = items.filter((i) =>
-      i.kind !== 'installment' ? has('subscriptions') : i.id.startsWith('debt:') ? has('assets') : has('installments'),
-    )
-    const manualKeys = new Set(items.filter((i) => i.kind === 'installment' && i.matchKey).map((i) => i.matchKey!))
-    const plans = has('installments') ? installmentPlans(personal.counted, manualKeys) : []
-    const load = futureLoad(used, plans, period, 1, startDay)[0]
-    let debt = load?.installmentKurus ?? 0
-    if (has('assets'))
-      for (const a of assets) {
-        if (a.archived || a.kind !== 'debt' || a.debtPlan?.mode === 'monthly' || !INSTALLMENT_DEBT.includes(debtTypeOf(a))) continue
-        const bal = holdingSummary(a, today).valueKurus
-        if (bal > 0 && a.debtTerms?.minPaymentKurus) debt += Math.min(bal, a.debtTerms.minPaymentKurus)
-      }
-    const goalRows: AutoBudgetGoal[] = []
-    if (has('goals'))
-      for (const g of goals) {
-        if (g.archived) continue
-        const p = goalProgress(g, today)
-        if (p.status === 'done') continue
-        const monthly = p.monthlyNeededKurus ?? p.monthlyAverageKurus
-        if (monthly > 0) goalRows.push({ id: g.id, name: g.name, monthlyKurus: monthly })
-      }
-    const advanced = has('advancedBudget')
-    const fixedKeys = new Set(used.filter((i) => i.active && i.matchKey).map((i) => i.matchKey!))
-    return suggestBudget({
-      incomeKurus: income,
-      incomeSource: source,
-      recurringKurus: load?.recurringKurus ?? 0,
-      debtKurus: debt,
-      goals: goalRows,
-      minSavingRate: j ? SAVING_RATE_TARGET : 0.1,
-      categoryAverages: advanced ? flexibleCategoryAverages(personal.counted, startDay, today, fixedKeys) : null,
-      weekly: advanced,
-      periodDays: periodLength(period, startDay),
-    })
-  }, [personal, settings, items, assets, goals, has, startDay])
+    const facts = budgetFacts({ txs: personal.counted, settings, recurring, assets, goals, categories, startDay, today: todayIso(), gates })
+    const buckets = facts && buildBucketBudget(facts)
+    if (!facts || !buckets) return null
+    const { recurringKurus, debtKurus } = fixedSpendSplit(facts.fixed)
+    return toAutoBudget(buckets, facts.income.source, facts.goalsKurus, recurringKurus, debtKurus)
+  }, [personal, settings, recurring, assets, goals, categories, has, startDay])
 }
 
 export interface BudgetSetup {

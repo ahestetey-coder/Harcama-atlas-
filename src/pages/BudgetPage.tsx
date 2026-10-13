@@ -3,12 +3,14 @@ import { motion } from 'motion/react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
+import { BucketCard } from '../components/BucketCard'
 import { CategoryIcon, MonthSwitcher } from '../components/common'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { Modal } from '../components/ui/Modal'
 import { Alert, Button, Card, EmptyState, Field, IconButton, Input, More, Segmented, Select, Switch } from '../components/ui/primitives'
 import { toUserMessage } from '../data/repository'
 import type { BudgetMode } from '../domain/autoBudget'
+import type { IncomeSource } from '../domain/income'
 import { DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus, type LimitStatus } from '../domain/budget'
 import { currentPeriod as currentPeriodFor, formatDate, periodLabel } from '../domain/dates'
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
@@ -20,6 +22,13 @@ import { useUi } from '../state/ui'
 import { useBudgetSetup, useBudgetStatus } from '../state/budget'
 import { usePlan } from '../state/plan'
 
+/** Koçun kullandığı gelirin kaynağı. */
+const INCOME_ROW_LABEL: Record<IncomeSource, string> = {
+  plan: 'Gelir (maaş ve düzenli gelirler)',
+  records: 'Gelir (kaydettiğiniz gelirler)',
+  journey: 'Gelir (Yolculuk testinden)',
+}
+
 const EMPTY_STATUS: BudgetStatus = { total: null, categories: [], week: null, forecast: null, warnings: [] }
 
 type Editing = { kind: 'total' } | { kind: 'week' } | { kind: 'category'; categoryId: string | null } | null
@@ -28,6 +37,7 @@ export default function BudgetPage() {
   return (
     <div>
       <BudgetHeader />
+      <BucketCard />
       <CoachBudgetCard />
       <PlanGate
         feature="advancedBudget"
@@ -51,11 +61,7 @@ function BudgetHeader() {
   return (
     <PageHeader
       title="Bütçe planı"
-      subtitle={
-        <span className="inline-flex items-center gap-2">
-          <PlanBadge plan="plus" /> Kişisel harcamalar
-        </span>
-      }
+      subtitle="Kişisel harcamalar"
       actions={<MonthSwitcher month={month} onChange={setMonth} />}
     />
   )
@@ -520,10 +526,7 @@ function CoachBudgetCard() {
           <Button size="sm" className="mt-3" icon={<Plus className="size-4" />} onClick={() => openTransactionForm(undefined, { type: 'income' })}>
             Gelir ekle
           </Button>
-          <More>
-            Koç son üç dönemdeki gelirlerinizin ortalamasını kullanır
-            {has('journey') && !settings.journey ? ' (ya da Yolculuk testindeki gelirinizi)' : ''}. O zamana kadar elle girdiğiniz bütçe geçerli.
-          </More>
+          <More>Koç önce maaşınızı ve düzenli gelirlerinizi, yoksa son dönemlerdeki gelirinizin en düşüğünü kullanır.</More>
         </div>
       ) : (
         <>
@@ -532,20 +535,21 @@ function CoachBudgetCard() {
             <span className="text-[13px] text-muted">{periodLabel(currentPeriodFor(startDay), startDay)} için harcama bütçesi</span>
           </div>
           <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2">
-            <Row label={auto.incomeSource === 'records' ? 'Gelir (kaydettiğiniz gelirler)' : 'Gelir (Yolculuk testinden)'} value={formatKurus(auto.incomeKurus)} />
+            <Row label={INCOME_ROW_LABEL[auto.incomeSource]} value={formatKurus(auto.incomeKurus)} />
             {auto.goalsKurus > 0 && <Row label="Birikim hedefleri" value={`−${formatKurus(auto.goalsKurus)}`} />}
-            {auto.extraSavingKurus > 0 && <Row label="Genel birikim payı" value={`−${formatKurus(auto.extraSavingKurus)}`} />}
+            {auto.extraSavingKurus > 0 && <Row label="Birikim ve borç kapatma" value={`−${formatKurus(auto.extraSavingKurus)}`} />}
+            {(auto.buckets?.outsideKurus ?? 0) > 0 && <Row label="Bütçe dışında: kart/KMH ödemesi" value={`−${formatKurus(auto.buckets!.outsideKurus)}`} />}
             {auto.recurringKurus > 0 && <Row label="Bütçe içinde: düzenli ödemeler" value={formatKurus(auto.recurringKurus)} />}
             {auto.debtKurus > 0 && <Row label="Bütçe içinde: borç ve taksitler" value={formatKurus(auto.debtKurus)} />}
             <Row label="Serbest harcama" value={auto.weeklyKurus ? `${formatKurus(auto.flexibleKurus)} · haftada ${formatKurus(auto.weeklyKurus)}` : formatKurus(auto.flexibleKurus)} strong />
           </dl>
           {auto.shortfallKurus > 0 ? (
             <Alert tone="danger" className="mt-3">
-              Düzenli ödemeler ve borç taksitleri gelirinizi {formatKurus(auto.shortfallKurus)} aşıyor; bu dönem birikim ayrılamadı.
+              Giderleriniz gelirinizi {formatKurus(auto.shortfallKurus)} aşıyor; bu dönem birikim ayrılamadı.
             </Alert>
           ) : auto.savingCutKurus > 0 ? (
             <Alert tone="warning" className="mt-3">
-              Ödemeler yüksek olduğu için birikimden {formatKurus(auto.savingCutKurus)} kısıldı.
+              Birikim, %20 hedefinin {formatKurus(auto.savingCutKurus)} altında.
             </Alert>
           ) : null}
           {auto.historyKurus !== null && auto.historyKurus < auto.flexibleKurus * 0.8 && (

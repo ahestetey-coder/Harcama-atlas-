@@ -26,7 +26,6 @@ import { usePersonalCycle, useCycle } from '../state/cycle'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 import { usePlan } from '../state/plan'
-import { PlanBadge } from '../components/PlanGate'
 import { useBudgetSetup, useBudgetStatus, useDuePayments } from '../state/budget'
 import { useCoach } from '../state/coach'
 
@@ -388,7 +387,7 @@ export default function DashboardPage() {
                 Tümü ({listMonthTxs.length})
               </Link>
             </div>
-            <TransactionList transactions={listMonthTxs.slice(0, 6)} categories={categories} compact onEdit={openTransactionForm} markUncounted={!groupFilter} />
+            <TransactionList transactions={listMonthTxs.slice(0, 6)} categories={categories} compact onEdit={openTransactionForm} markUncounted={!groupFilter} moved={groupFilter ? undefined : personal?.moved} />
           </Card>
 
           {/* Gruplara göre (Bireysel / Ortak / …) */}
@@ -473,7 +472,8 @@ export default function DashboardPage() {
             link={drawer.categoryId !== undefined ? `/islemler?ay=${month}&kategori=${drawer.categoryId ?? 'none'}` : `/islemler?ay=${month}`}
             onEdit={(t) => {
               setDrawer(null)
-              openTransactionForm(t)
+              // Maaş gününe taşınan satır sayım kopyasıdır; tarihi değişmesin diye kaydın kendisi açılır
+              openTransactionForm(personal?.moved.has(t.id) ? (allTxs?.find((x) => x.id === t.id) ?? t) : t)
             }}
           />
         )}
@@ -631,8 +631,7 @@ function BudgetPlanLink() {
   const over = warnings.some((w) => w.status.state === 'over')
   return (
     <Link to="/butce" className="mt-2 inline-flex items-center gap-2 rounded-full px-1 py-1 text-[12.5px] font-semibold text-emerald-200 hover:text-white">
-      {enabled ? 'Bütçe planı' : 'Kategori limitleri'}
-      {!enabled && <PlanBadge plan="plus" />}
+      Bütçe planı
       {warnings.length > 0 ? (
         <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', over ? 'bg-rose-400/20 text-rose-100' : 'bg-amber-400/20 text-amber-100')}>{warnings.length} uyarı</span>
       ) : (

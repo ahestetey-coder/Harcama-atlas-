@@ -83,8 +83,11 @@ export default function TransactionsPage() {
     if (!txs) return []
     const q = normalizeText(query)
     const range = period === 'month' ? periodRange(month, startDay) : period === 'custom' ? { start: from || '0000-01-01', end: to || '9999-12-31' } : null
+    // Hafta sonu erken yatan maaş, sayıldığı dönemde (maaş gününün dönemi) listelenir
+    const moved = period === 'month' && !groupFilter ? personal?.moved : undefined
     return txs.filter((t) => {
-      if (range && (t.date < range.start || t.date > range.end)) return false
+      const d = moved?.get(t.id) ?? t.date
+      if (range && (d < range.start || d > range.end)) return false
       if (category === 'none' ? t.categoryId !== null : category && t.categoryId !== category) return false
       if (!matchesGroup(t, groupFilter)) return false
       if (!matchesMember(t, person.value, person.selfId)) return false
@@ -95,7 +98,7 @@ export default function TransactionsPage() {
       if (q && !t.normalizedDescription.includes(q) && !normalizeText(t.note ?? '').includes(q)) return false
       return true
     })
-  }, [txs, query, period, month, from, to, category, groupFilter, person.value, person.selfId, type, payment, source, importId, startDay])
+  }, [txs, query, period, month, from, to, category, groupFilter, person.value, person.selfId, type, payment, source, importId, startDay, personal])
 
   // Görünmeyen seçimleri temizle
   useEffect(() => {
@@ -415,6 +418,7 @@ export default function TransactionsPage() {
           <TransactionList
             transactions={filtered}
             markUncounted={!groupFilter}
+            moved={groupFilter ? undefined : personal?.moved}
             categories={catMap}
             selectable
             selected={selected}

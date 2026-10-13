@@ -89,6 +89,15 @@ export function diffDays(a: IsoDate, b: IsoDate): number {
   return Math.round((Date.UTC(y1, m1 - 1, d1) - Date.UTC(y2, m2 - 1, d2)) / 86_400_000)
 }
 
+/** Cumartesi → Cuma, Pazar → Cuma; resmî tatiller modellenmez. */
+export function previousBusinessDay(d: IsoDate): IsoDate {
+  const [y, m, day] = d.split('-').map(Number)
+  const wd = new Date(Date.UTC(y, m - 1, day, 12)).getUTCDay()
+  if (wd === 6) return addDays(d, -1)
+  if (wd === 0) return addDays(d, -2)
+  return d
+}
+
 export type DateOrder = 'dmy' | 'mdy' | 'auto'
 
 export type DateParseResult =

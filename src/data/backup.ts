@@ -8,7 +8,14 @@ import { CURRENT_SCHEMA_VERSION } from './db'
 z.config(z.locales.tr())
 
 export const BACKUP_FORMAT = 'harcama-atlasi-yedek'
-export const BACKUP_VERSION = 1
+/**
+ * 2: tek seferlik gelir (cadence 'once'). Eski sürüm 'once'u tanımaz; bu yüzden dışa aktarım yalnızca
+ * 'once' varsa 2 yazar, yoksa 1 (diğer yeni alanları eski sürüm zararsızca atar).
+ */
+export const BACKUP_VERSION = 2
+
+/** Düzenli gelir tanımı üst sınırı (tek seferlik gelirler de sayılır). */
+export const MAX_RECURRING_INCOMES = 200
 
 const isoDate = z.string().refine(isIsoDate, 'Geçersiz tarih')
 const kurus = z.number().int().nonnegative()
@@ -177,14 +184,29 @@ const settingsSchema = z.object({
         name: z.string().max(80),
         kind: z.enum(['salary', 'rent', 'other']),
         amountKurus: kurus,
-        cadence: z.enum(['weekly', 'monthly', 'yearly']),
+        cadence: z.enum(['weekly', 'monthly', 'yearly', 'once']),
         startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         active: z.boolean(),
         createdAt: z.string(),
         updatedAt: z.string(),
       }),
     )
-    .max(50)
+    .max(MAX_RECURRING_INCOMES)
+    .optional(),
+  cycleSource: z.enum(['salary', 'manual']).optional(),
+  budgetProfile: z
+    .object({
+      housing: z.enum(['rent', 'mortgage', 'owned', 'family']).optional(),
+      housingKurus: kurus.nullable().optional(),
+      billsKurus: kurus.nullable().optional(),
+      cardPaymentKurus: kurus.nullable().optional(),
+      loanPaymentKurus: kurus.nullable().optional(),
+      consumerDebtKurus: kurus.nullable().optional(),
+      emergencyFundKurus: kurus.nullable().optional(),
+      earners: z.union([z.literal(1), z.literal(2)]).nullable().optional(),
+      dependents: z.number().int().min(0).max(20).nullable().optional(),
+      updatedAt: z.string(),
+    })
     .optional(),
   journey: z
     .object({

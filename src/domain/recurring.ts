@@ -1,4 +1,5 @@
 import { addDays, daysInMonth, monthOf, periodOf, periodRange, toIsoDate } from './dates'
+import { incomeDates, matchIncomes } from './income'
 import { cleanDescription, merchantKey } from './normalize'
 import type { IsoDate, MonthKey, RecurringIncome, RecurringPayment, Transaction } from './types'
 
@@ -311,27 +312,26 @@ export function plannedInstallments(real: Transaction[], items: RecurringPayment
 
 /**
  * Düzenli gelirlerden günü gelmiş (bugün dahil) gelirleri "planlı gelir" olarak üretir; kaydedilmez.
- * Gelir, eklendiği günden sonraki tarihler için üretilir. ±10 gün içinde tutarı en çok %15 farklı gerçek
- * bir gelir kaydı varsa o tarih atlanır; böylece maaşı elle girseniz de iki kez sayılmaz.
+ * Gelir, eklendiği günden sonraki tarihler için üretilir; tek seferlik gelir yalnızca kendi tarihinde.
+ * ±10 gün içinde tutarı en çok %15 farklı (maaşta zam bandında) gerçek bir gelir kaydı varsa o tarih
+ * atlanır; böylece maaşı elle girseniz de iki kez sayılmaz. Tarihler nominaldir, hafta sonuna kaydırılmaz.
  * `real` yalnızca kayıtlı işlemleri içermelidir.
  */
 export function plannedIncomes(real: Transaction[], incomes: RecurringIncome[], today: IsoDate): Transaction[] {
   const out: Transaction[] = []
-  const used = new Set<string>()
-  const received = real.filter((t) => t.type === 'income' && t.source !== 'planned').sort((a, b) => a.date.localeCompare(b.date))
-  for (const it of incomes) {
-    if (!it.active) continue
+  const range = (it: RecurringIncome): { from: IsoDate; to: IsoDate } | null => {
+    if (!it.active) return null
+    // Tek seferlik gelir, eklenme gününden önce de olsa kendi tarihinde bir kez yansır
     const created = it.createdAt.slice(0, 10)
-    const from = created > it.startDate ? created : it.startDate
-    if (from > today) continue
-    for (const d of occurrencesBetween(it, it.startDate, today)) {
-      if (d < from) continue
-      const tol = Math.max(100, Math.round(it.amountKurus * 0.15))
-      const hit = received.find((t) => !used.has(t.id) && Math.abs(t.amountKurus - it.amountKurus) <= tol && Math.abs(dayDiff(t.date, d)) <= 10)
-      if (hit) {
-        used.add(hit.id)
-        continue
-      }
+    const from = it.cadence === 'once' || created <= it.startDate ? it.startDate : created
+    return from > today ? null : { from, to: today }
+  }
+  const matched = new Set([...matchIncomes(real, incomes, range).values()].map((m) => `${m.incomeId}|${m.nominal}`))
+  for (const it of incomes) {
+    const r = range(it)
+    if (!r) continue
+    for (const d of incomeDates(it, r.from, r.to)) {
+      if (matched.has(`${it.id}|${d}`)) continue
       const at = `${d}T00:00:00.000Z`
       out.push({
         id: `plan:inc:${it.id}:${d}`,

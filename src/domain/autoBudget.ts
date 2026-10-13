@@ -1,6 +1,10 @@
 import { addMonths, periodOf } from './dates'
 import { merchantKey } from './normalize'
 import { isSpending, type IsoDate, type MonthKey, type Transaction } from './types'
+import type { BucketBudget } from './bucketBudget'
+import type { IncomeSource } from './income'
+
+export type { IncomeSource } from './income'
 
 /**
  * Koçun otomatik bütçesi: gelirden önce birikim (hedefler ve birikim payı) ayrılır; kalan tutar
@@ -25,7 +29,7 @@ export interface CategoryAverage {
 export interface AutoBudgetInput {
   /** Aylık gelir; bilinmiyorsa null (otomatik bütçe kurulamaz). */
   incomeKurus: number | null
-  incomeSource: 'records' | 'journey' | null
+  incomeSource: IncomeSource | null
   /** Dönemdeki düzenli ödemeler (fatura, abonelik). */
   recurringKurus: number
   /** Dönemdeki borç ve taksit ödemeleri. */
@@ -44,7 +48,7 @@ export interface AutoBudgetInput {
 
 export interface AutoBudget {
   incomeKurus: number
-  incomeSource: 'records' | 'journey'
+  incomeSource: IncomeSource
   /** Toplam birikim payı (hedefler + ek birikim). */
   savingKurus: number
   goalsKurus: number
@@ -66,6 +70,8 @@ export interface AutoBudget {
   cutPct: number
   /** Zorunlu ödemeler gelirden fazlaysa açık. */
   shortfallKurus: number
+  /** Dört kovalı bütçe (gelir tabanlı motor kullanıldıysa). */
+  buckets?: BucketBudget
 }
 
 /** En fazla bu kadar kategoriye limit konur (en çok harcananlar). */
@@ -144,10 +150,11 @@ export function averageMonthlyIncome(txs: Transaction[], startDay: number, today
 }
 
 /**
- * Serbest harcamanın kategori ortalamaları (son `count` tamamlanmış dönem). Taksitler, planlı
- * taksitler ve düzenli ödeme olarak tanınan harcamalar sabit kısımda sayıldığı için dışarıda kalır.
+ * Serbest harcamanın kategori ortalamaları (son `count` tamamlanmış dönem) ve harcama görülen dönem
+ * sayısı. Taksitler, planlı taksitler ve düzenli ödeme olarak tanınan harcamalar sabit kısımda
+ * sayıldığı için dışarıda kalır.
  */
-export function flexibleCategoryAverages(txs: Transaction[], startDay: number, today: IsoDate, fixedKeys: Set<string>, count = 3): CategoryAverage[] {
+export function flexibleCategoryAveragesWithMonths(txs: Transaction[], startDay: number, today: IsoDate, fixedKeys: Set<string>, count = 3): { averages: CategoryAverage[]; months: number } {
   const current = periodOf(today, startDay)
   const wanted = new Set<MonthKey>(Array.from({ length: count }, (_, i) => addMonths(current, -(i + 1))))
   const months = new Set<MonthKey>()
@@ -160,6 +167,15 @@ export function flexibleCategoryAverages(txs: Transaction[], startDay: number, t
     if (!t.categoryId || t.installment || t.source === 'planned' || fixedKeys.has(merchantKey(t.description))) continue
     totals.set(t.categoryId, (totals.get(t.categoryId) ?? 0) + (t.type === 'expense' ? t.amountKurus : -t.amountKurus))
   }
-  if (!months.size) return []
-  return [...totals.entries()].map(([categoryId, k]) => ({ categoryId, averageKurus: Math.max(0, Math.round(k / months.size)) })).filter((c) => c.averageKurus > 0)
+  if (!months.size) return { averages: [], months: 0 }
+  const averages = [...totals.entries()].map(([categoryId, k]) => ({ categoryId, averageKurus: Math.max(0, Math.round(k / months.size)) })).filter((c) => c.averageKurus > 0)
+  return { averages, months: months.size }
+}
+
+/**
+ * Serbest harcamanın kategori ortalamaları (son `count` tamamlanmış dönem). Taksitler, planlı
+ * taksitler ve düzenli ödeme olarak tanınan harcamalar sabit kısımda sayıldığı için dışarıda kalır.
+ */
+export function flexibleCategoryAverages(txs: Transaction[], startDay: number, today: IsoDate, fixedKeys: Set<string>, count = 3): CategoryAverage[] {
+  return flexibleCategoryAveragesWithMonths(txs, startDay, today, fixedKeys, count).averages
 }

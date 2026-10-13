@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addMonths, currentPeriod, inferDateOrder, monthLabel, normalizeStartDay, parseDate, periodLabel, periodLength, periodOf, periodRange, todayIso } from './dates'
+import { addMonths, currentPeriod, inferDateOrder, monthLabel, normalizeStartDay, parseDate, periodLabel, periodLength, periodOf, periodRange, previousBusinessDay, todayIso } from './dates'
 
 describe('Türkçe tarih ayrıştırma', () => {
   const d = (s: unknown, o?: Parameters<typeof parseDate>[1]) => {
@@ -70,5 +70,14 @@ describe('ay döngüsü (başlangıç günü)', () => {
     expect(normalizeStartDay(31)).toBe(1)
     expect(normalizeStartDay(undefined)).toBe(1)
     expect(normalizeStartDay(0)).toBe(1)
+  })
+})
+
+describe('önceki iş günü', () => {
+  it('hafta sonu Cuma gününe çekilir, hafta içi aynı kalır', () => {
+    expect(previousBusinessDay('2026-11-15')).toBe('2026-11-13')
+    expect(previousBusinessDay('2026-11-14')).toBe('2026-11-13')
+    expect(previousBusinessDay('2026-11-01')).toBe('2026-10-30')
+    for (const d of ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-10-15']) expect(previousBusinessDay(d)).toBe(d)
   })
 })

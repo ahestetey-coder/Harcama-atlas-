@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { debtRecurring } from '../domain/assets'
 import { todayIso } from '../domain/dates'
+import { attributeEarlySalary, primarySalary } from '../domain/income'
 import { personalListView, personalView } from '../domain/personal'
 import { plannedIncomes, plannedInstallments } from '../domain/recurring'
-import type { RecurringPayment, Transaction } from '../domain/types'
+import type { IsoDate, RecurringPayment, Transaction } from '../domain/types'
 import { useMembers } from './cloud'
 import { useAssets, useGroups, useRecurring, useSettings, useTransactions } from './data'
 import { usePlan } from './plan'
@@ -15,30 +16,42 @@ export function useAllRecurring(): RecurringPayment[] | undefined {
   return useMemo(() => (recurring && assets ? [...recurring, ...debtRecurring(assets)] : undefined), [recurring, assets])
 }
 
+const NO_MOVES: ReadonlyMap<string, IsoDate> = new Map()
+
 /**
  * "Tümü" görünümü (src/domain/personal.ts): `counted` toplamlara girenler (kendi giderleriniz ve
  * paylaşım fark satırları), `list` bunlara ek olarak üyelerin ortak giderleri (yalnızca bilgi için).
  * Plus'ta ödeme günü gelmiş ama henüz ekstrede görülmemiş taksitler "planlı taksit", günü gelmiş
- * düzenli gelirler (her pakette) "planlı gelir" olarak eklenir.
+ * düzenli gelirler (her pakette) "planlı gelir" olarak eklenir. Ay döngüsü maaş gününe bağlıysa hafta
+ * sonu yüzünden erken yatan maaş `counted`ta maaş gününe taşınır (`list` değişmez); `moved`: işlem
+ * kimliği → sayıldığı gün.
  */
-export function usePersonalTransactions(): { counted: Transaction[]; list: Transaction[] } | undefined {
+export function usePersonalTransactions(): { counted: Transaction[]; list: Transaction[]; moved: ReadonlyMap<string, IsoDate> } | undefined {
   const all = useTransactions()
   const groups = useGroups()
   const items = useAllRecurring()
   const { selfId } = useMembers()
   const installments = usePlan().has('installments')
-  const incomes = useSettings()?.recurringIncomes
+  const settings = useSettings()
+  const incomes = settings?.recurringIncomes
+  const salaryCycle = settings?.cycleSource === 'salary'
   return useMemo(() => {
     if (!all || !groups) return undefined
-    const counted = personalView(all, groups, selfId)
+    const own = personalView(all, groups, selfId)
     const list = personalListView(all, groups, selfId)
     const today = todayIso()
-    const planned = [...(installments && items ? plannedInstallments(counted, items, today) : []), ...(incomes?.length ? plannedIncomes(counted, incomes, today) : [])]
-    if (!planned.length) return { counted, list }
+    const planned = [...(installments && items ? plannedInstallments(own, items, today) : []), ...(incomes?.length ? plannedIncomes(own, incomes, today) : [])]
     const byDate = (a: Transaction, b: Transaction) => (a.date === b.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date))
-    return {
-      counted: [...counted, ...planned].sort(byDate),
-      list: [...list, ...planned].sort(byDate),
+    let counted = planned.length ? [...own, ...planned].sort(byDate) : own
+    let moved = NO_MOVES
+    const salary = salaryCycle ? primarySalary(incomes) : null
+    if (salary) {
+      const r = attributeEarlySalary(counted, salary, today)
+      if (r.moved.size) {
+        counted = r.txs.sort(byDate)
+        moved = r.moved
+      }
     }
-  }, [all, groups, selfId, items, installments, incomes])
+    return { counted, list: planned.length ? [...list, ...planned].sort(byDate) : list, moved }
+  }, [all, groups, selfId, items, installments, incomes, salaryCycle])
 }

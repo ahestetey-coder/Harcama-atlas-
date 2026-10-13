@@ -3,19 +3,24 @@ import { APP_CONFIG } from '../config/app'
 import { merchantKey, normalizeText, cleanDescription } from '../domain/normalize'
 import { PRIORITY, validateRulePattern } from '../domain/rules'
 import { debtPlanStatus, holdingSummary, quantityAt, type Asset, type AssetKind, type AssetQuote, type AssetTrade, type AssetValuation, type DebtPlan, type DebtTerms, type DebtType } from '../domain/assets'
-import { todayIso } from '../domain/dates'
+import { dayOf, isIsoDate, todayIso } from '../domain/dates'
 import type { GoalContribution, SavingsGoal } from '../domain/goals'
-import type { Category, ImportRecord, Member, RecurringIncome, RecurringPayment, Rule, Settings, SpendGroup, Transaction, TxSource } from '../domain/types'
-import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from './backup'
+import { primarySalary } from '../domain/income'
+import { addMonthsClamped } from '../domain/recurring'
+import { INCOME_CADENCE_LABEL, INCOME_KIND_LABEL, type BudgetProfile, type Category, type CycleSource, type ImportRecord, type IsoDate, type Member, type RecurringIncome, type RecurringPayment, type Rule, type Settings, type SpendGroup, type Transaction, type TxSource } from '../domain/types'
+import { BACKUP_FORMAT, MAX_RECURRING_INCOMES, type Backup } from './backup'
 import { CURRENT_SCHEMA_VERSION, type AtlasDb } from './db'
 import { buildDefaultCategories, buildDefaultGroups, buildDefaultRules, buildSelfMember, OTHER_CATEGORY_ID } from './seed'
-import { hasErrors, validateTransaction } from './validation'
+import { BUDGET_PROFILE_KURUS_KEYS, budgetProfileError, hasErrors, validateTransaction } from './validation'
 
 export function newId(): string {
   return crypto.randomUUID()
 }
 
 const nowIso = () => new Date().toISOString()
+
+/** saveBudgetProfile'ın kabul ettiği alanlar; diğerleri yazılmaz. */
+const BUDGET_PROFILE_KEYS = [...BUDGET_PROFILE_KURUS_KEYS, 'housing', 'earners', 'dependents'] as const
 
 export const SHARED_READONLY = 'Bu harcamayı grup üyesi ekledi; yalnızca o değiştirebilir veya silebilir.'
 export class UserFacingError extends Error {
@@ -473,9 +478,14 @@ export class AtlasRepository {
     const name = cleanDescription(input.name).slice(0, 80)
     if (!name) throw new UserFacingError('Bir ad girin.')
     if (!Number.isInteger(input.amountKurus) || input.amountKurus <= 0) throw new UserFacingError('Geçerli bir tutar girin.')
+    if (!isIsoDate(input.startDate)) throw new UserFacingError('Geçerli bir tarih seçin.')
+    if (!Object.hasOwn(INCOME_CADENCE_LABEL, input.cadence)) throw new UserFacingError('Geçerli bir sıklık seçin.')
+    if (!Object.hasOwn(INCOME_KIND_LABEL, input.kind)) throw new UserFacingError('Geçerli bir gelir türü seçin.')
     const cur = await this.getSettings()
     const list = cur.recurringIncomes ?? []
     const prev = input.id ? list.find((i) => i.id === input.id) : undefined
+    // Yedek dosyası bu sınırı aşarsa geri yüklenemez
+    if (!prev && list.length >= MAX_RECURRING_INCOMES) throw new UserFacingError(`En fazla ${MAX_RECURRING_INCOMES} gelir eklenebilir; eski tek seferlik gelirleri silin.`)
     const now = nowIso()
     const item: RecurringIncome = { ...input, name, id: prev?.id ?? newId(), createdAt: prev?.createdAt ?? now, updatedAt: now }
     await this.saveSettings({ recurringIncomes: prev ? list.map((i) => (i.id === prev.id ? item : i)) : [...list, item] })
@@ -485,6 +495,42 @@ export class AtlasRepository {
   async deleteRecurringIncome(id: string): Promise<void> {
     const cur = await this.getSettings()
     await this.saveSettings({ recurringIncomes: (cur.recurringIncomes ?? []).filter((i) => i.id !== id) })
+  }
+
+  /**
+   * Maaş penceresi: birincil maaşı (en büyük aktif aylık maaş) günceller, yoksa "Maaş" adıyla ekler.
+   * Başlangıç, bugün veya öncesindeki son maaş günüdür (ayda o gün yoksa ayın son günü).
+   * followCycle açıksa ay döngüsü maaş gününde başlar; kapatılırsa ve maaşa bağlıysa elle döngüye döner.
+   */
+  async saveSalary(input: { amountKurus: number; day: number; followCycle: boolean }, today: IsoDate = todayIso()): Promise<RecurringIncome> {
+    if (!Number.isInteger(input.day) || input.day < 1 || input.day > 31) throw new UserFacingError('Maaş gününü seçin.')
+    return this.db.transaction('rw', this.db.settings, async () => {
+      const cur = await this.getSettings()
+      const prev = primarySalary(cur.recurringIncomes)
+      // Bugün veya öncesinde, maaş gününün takvimde gerçekten olduğu en son ay (31 → 30'a kırpılmasın)
+      let latest = addMonthsClamped(today, 0, input.day)
+      for (let k = 0; k > -12 && (latest > today || dayOf(latest) !== input.day); k--) latest = addMonthsClamped(today, k - 1, input.day)
+      // Maaş günü değişmediyse eski başlangıç korunur; geçmiş dönemlerin planlı maaşı silinmesin
+      const startDate = prev && prev.startDate <= today && dayOf(prev.startDate) === input.day ? prev.startDate : latest
+      const item = await this.saveRecurringIncome({ id: prev?.id, name: prev?.name ?? 'Maaş', kind: 'salary', amountKurus: input.amountKurus, cadence: 'monthly', startDate, active: true })
+      const cycleSource: CycleSource | undefined = input.followCycle ? 'salary' : cur.cycleSource === 'salary' ? 'manual' : cur.cycleSource
+      if (cycleSource !== cur.cycleSource) await this.saveSettings({ cycleSource })
+      return item
+    })
+  }
+
+  // ---------- Bütçe beyanı ----------
+
+  /** Sabit gider beyanını günceller; yalnızca verilen alanlar değişir. null alanı boşaltır. */
+  async saveBudgetProfile(patch: Partial<Omit<BudgetProfile, 'updatedAt'>>): Promise<BudgetProfile> {
+    const err = budgetProfileError(patch)
+    if (err) throw new UserFacingError(err)
+    const picked: Partial<Record<(typeof BUDGET_PROFILE_KEYS)[number], unknown>> = {}
+    for (const k of BUDGET_PROFILE_KEYS) if (k in patch) picked[k] = patch[k]
+    const cur = await this.getSettings()
+    const profile = { ...cur.budgetProfile, ...picked, updatedAt: nowIso() } as BudgetProfile
+    await this.saveSettings({ budgetProfile: profile })
+    return profile
   }
 
   // ---------- Düzenli ödemeler (Plus) ----------
@@ -674,25 +720,29 @@ export class AtlasRepository {
   // ---------- Yedekleme ----------
 
   async exportBackup(): Promise<Backup> {
-    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring, this.db.goals, this.db.assets], async () => ({
-      format: BACKUP_FORMAT,
-      backupVersion: BACKUP_VERSION,
-      schemaVersion: CURRENT_SCHEMA_VERSION,
-      app: APP_CONFIG.name,
-      exportedAt: nowIso(),
-      data: {
-        transactions: await this.db.transactions.toArray(),
-        categories: await this.db.categories.toArray(),
-        groups: await this.db.groups.toArray(),
-        members: await this.db.members.toArray(),
-        rules: await this.db.rules.toArray(),
-        imports: await this.db.imports.toArray(),
-        recurring: await this.db.recurring.toArray(),
-        goals: await this.db.goals.toArray(),
-        assets: await this.db.assets.toArray(),
-        settings: (await this.db.settings.get('settings')) ?? null,
-      },
-    }))
+    return this.db.transaction('r', [this.db.transactions, this.db.categories, this.db.groups, this.db.members, this.db.rules, this.db.imports, this.db.settings, this.db.recurring, this.db.goals, this.db.assets], async () => {
+      const settings = (await this.db.settings.get('settings')) ?? null
+      return {
+        format: BACKUP_FORMAT,
+        // Eski sürüm yalnızca tek seferlik geliri ayrıştıramaz; o yoksa dosya eski sürümde de açılsın
+        backupVersion: settings?.recurringIncomes?.some((i) => i.cadence === 'once') ? 2 : 1,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        app: APP_CONFIG.name,
+        exportedAt: nowIso(),
+        data: {
+          transactions: await this.db.transactions.toArray(),
+          categories: await this.db.categories.toArray(),
+          groups: await this.db.groups.toArray(),
+          members: await this.db.members.toArray(),
+          rules: await this.db.rules.toArray(),
+          imports: await this.db.imports.toArray(),
+          recurring: await this.db.recurring.toArray(),
+          goals: await this.db.goals.toArray(),
+          assets: await this.db.assets.toArray(),
+          settings,
+        },
+      }
+    })
   }
 
   async counts(): Promise<{ transactions: number; categories: number; rules: number; imports: number }> {
@@ -708,7 +758,8 @@ export class AtlasRepository {
   /**
    * Yedeği geri yükler.
    * - replace: mevcut tüm veriler silinir, yedek yüklenir (tek işlemde).
-   * - merge: aynı kimlikli kayıtlar korunur (yedektekiler atlanır), yeniler eklenir.
+   * - merge: aynı kimlikli kayıtlar korunur (yedektekiler atlanır), yeniler eklenir. Ayarlardan yalnızca
+   *   düzenli gelirler (kimliğe göre), bütçe beyanı ve döngü kaynağı (yerelde yoksa) alınır.
    */
   async restoreBackup(backup: Backup, mode: RestoreMode): Promise<RestoreReport> {
     const d = backup.data
@@ -772,6 +823,17 @@ export class AtlasRepository {
       if (d.assets?.length) {
         const existing = new Set((await this.db.assets.bulkGet(d.assets.map((a) => a.id))).filter(Boolean).map((a) => a!.id))
         await this.db.assets.bulkAdd(d.assets.filter((a) => !existing.has(a.id)))
+      }
+      if (d.settings) {
+        const local = cur.recurringIncomes ?? []
+        const ids = new Set(local.map((i) => i.id))
+        const incoming = (d.settings.recurringIncomes ?? []).filter((i) => !ids.has(i.id))
+        const patch: Partial<Omit<Settings, 'id'>> = {}
+        if (incoming.length) patch.recurringIncomes = [...local, ...incoming]
+        if (!cur.budgetProfile && d.settings.budgetProfile) patch.budgetProfile = d.settings.budgetProfile
+        // Yerelde elle seçilmiş döngü günü de bir seçimdir; yedekteki maaş döngüsü onu ezmez
+        if (!cur.cycleSource && cur.cycleStartDay == null && d.settings.cycleSource) patch.cycleSource = d.settings.cycleSource
+        if (Object.keys(patch).length) await this.saveSettings(patch)
       }
       return report
     })

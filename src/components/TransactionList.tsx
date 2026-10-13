@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { formatDate } from '../domain/dates'
+import { dayOf, formatDate, MONTH_SHORT, periodOf, periodRange } from '../domain/dates'
 import { formatKurus } from '../domain/money'
-import { isReadOnlyTx, PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type Category, type Member, type SpendGroup, type Transaction } from '../domain/types'
+import { isReadOnlyTx, PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type Category, type IsoDate, type Member, type SpendGroup, type Transaction } from '../domain/types'
 import { cn } from '../lib/cn'
 import { useMembers } from '../state/cloud'
+import { usePersonalCycle } from '../state/cycle'
 import { useGroupMap } from '../state/data'
 import { useUi } from '../state/ui'
 import { CategoryIcon, GroupBadge, IncomeIcon, Money, TransferIcon } from './common'
@@ -25,9 +26,11 @@ interface Props {
   markUncounted?: boolean
   /** Görüntülenecek en fazla satır (performans). */
   limit?: number
+  /** Hafta sonu yüzünden erken yatan maaş: işlem kimliği → sayıldığı gün (usePersonalTransactions().moved). */
+  moved?: ReadonlyMap<string, IsoDate>
 }
 
-function TxMeta({ t, group, member, uncounted }: { t: Transaction; group?: SpendGroup; member?: Pick<Member, 'name' | 'color'>; uncounted?: boolean }) {
+function TxMeta({ t, group, member, uncounted, period }: { t: Transaction; group?: SpendGroup; member?: Pick<Member, 'name' | 'color'>; uncounted?: boolean; period?: string | null }) {
   return (
     <>
       {member && (
@@ -50,12 +53,23 @@ function TxMeta({ t, group, member, uncounted }: { t: Transaction; group?: Spend
         </Badge>
       )}
       {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge tone={t.source === 'settlement' ? 'accent' : undefined}>{t.source === 'planned' && t.type === 'income' ? 'Düzenli gelir' : SOURCE_LABEL[t.source]}</Badge>}
+      {period && <Badge className="num">{period}</Badge>}
     </>
   )
 }
 
-export function TransactionList({ transactions, categories, selectable, selected, onToggle, onToggleAll, onEdit, onDelete, compact, markUncounted, limit = 500 }: Props) {
+export function TransactionList({ transactions, categories, selectable, selected, onToggle, onToggleAll, onEdit, onDelete, compact, markUncounted, limit = 500, moved }: Props) {
   const { highlightId, setHighlightId } = useUi()
+  const startDay = usePersonalCycle()
+  // Erken yatan maaş başka dönemde sayılıyorsa satırda o dönemin başlangıcı: "15 Kas dönemi"
+  const periodBadge = (t: Transaction): string | null => {
+    const at = moved?.get(t.id)
+    if (!at) return null
+    const p = periodOf(at, startDay)
+    if (p === periodOf(t.date, startDay)) return null
+    const start = periodRange(p, startDay).start
+    return `${dayOf(start)} ${MONTH_SHORT[Number(start.slice(5, 7)) - 1]} dönemi`
+  }
   const groups = useGroupMap()
   const { map: members, selfId } = useMembers()
   // Ortak gruptaki her işlemde ekleyen kişi görünür; üyeden gelen işlemlerde her zaman
@@ -125,7 +139,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                         {t.description}
                       </div>
                       <div className="mt-0.5 flex flex-wrap gap-1 empty:hidden">
-                        <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} uncounted={markUncounted} />
+                        <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} uncounted={markUncounted} period={periodBadge(t)} />
                       </div>
                     </td>
                     <td className="border-b border-line py-2.5 pl-3">
@@ -200,7 +214,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-subtle">
                       <span className="num whitespace-nowrap">{formatDate(t.date)}</span>
                       <span className={cn('whitespace-nowrap font-medium', cat || t.type === 'transfer' || t.type === 'income' ? 'text-muted' : 'text-warning')}>{cat?.name ?? (t.type === 'transfer' ? 'Transfer' : t.type === 'income' ? 'Gelir' : 'Kategorisiz')}</span>
-                      <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} uncounted={markUncounted} />
+                      <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} uncounted={markUncounted} period={periodBadge(t)} />
                     </div>
                   </button>
                   <div className="shrink-0 text-right text-[14px] font-semibold">
