@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildJourney } from './journey'
-import { estimate, reachRange, isQuickAnswers, LEAD_CODE_RE, newLeadCode, quickResult, quickScenario, QUICK_QUESTIONS, seedFacts, seedProfile, type QuickAnswers } from './quickTest'
+import { estimate, reachRange, isQuickAnswers, LEAD_CODE_RE, newLeadCode, quickResult, quickScenario, QUICK_QUESTIONS, seedFacts, seedProfile, targetSplit, type QuickAnswers } from './quickTest'
 
 const answers = (o: Partial<QuickAnswers> = {}): QuickAnswers => ({
   v: 1,
@@ -90,5 +90,21 @@ describe('web hızlı testi', () => {
     expect(r(120, null, null)).toBe('2036+')
     expect(r(null, null, null)).toBeNull()
     expect(r(5, 6, 7)).toBe('2027')
+  })
+})
+
+describe('targetSplit', () => {
+  const life = (dream: number, spend: number) => {
+    const s = targetSplit(dream * 100, spend * 100)
+    return (spend * s.pct) / 100 + (s.annualBigSpendKurus ?? 0) / 100 / 12
+  }
+  it('gerçek harcama değişse de hedef yaşam hayal edilen tutar kalır', () => {
+    expect(life(120_000, 45_000)).toBeCloseTo(120_000, -1)
+    expect(life(120_000, 60_000)).toBeCloseTo(120_000, -1)
+    expect(life(60_000, 50_000)).toBeCloseTo(60_000, -1)
+    expect(targetSplit(60_000_00, 50_000_00)).toEqual({ pct: 120, annualBigSpendKurus: undefined })
+  })
+  it('hayal bugünkü harcamanın yarısından azsa alt sınır %50', () => {
+    expect(targetSplit(20_000_00, 100_000_00)).toEqual({ pct: 50, annualBigSpendKurus: undefined })
   })
 })
