@@ -18,6 +18,7 @@ const READY: Partial<Record<Feature, string>> = {
   assets: '/yatirimlar',
   advancedSplit: '/',
   journey: '/yolculuk',
+  webRefine: '/yolculuk',
   scenarios: '/senaryolar',
   learning: '/ogren',
   aiCoach: '/koc',
@@ -52,6 +53,7 @@ const PLANS: Array<{ plan: Plan; tagline: string; items: Item[] }> = [
       { text: 'Kategori, iş yeri ve dönem karşılaştırmalı raporlar', feature: 'reports' },
       { text: 'Yatırımlarım ve Borçlarım: altın, döviz, fon, hisse, kripto, emtia, mevduat; türüne göre borçlar ve kart taksitleri', feature: 'assets' },
       { text: 'Yüzde, ağırlık veya özel tutarla ortak gider paylaşımı', feature: 'advancedSplit' },
+      { text: "Web'deki Finansal Harita testini gerçek rakamlarınla netleştirme: kesin özgürlük yılı ve sıradaki durak", feature: 'webRefine' },
     ],
   },
   {

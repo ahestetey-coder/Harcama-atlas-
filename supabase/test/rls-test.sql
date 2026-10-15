@@ -419,4 +419,63 @@ reset role;
 update public.ha_user_plans set expires_at = now() - interval '1 day';
 select public.ha_plan_of('55555555-5555-5555-5555-555555555555') = 'free' as plan_expired \gset
 \if :plan_expired \else \echo 'HATA: süresi biten paket' \q \endif
+-- Web Finansal Harita testi: girişsiz kayıt, doğrudan okuma yok, e-posta ya da kodla sahiplenme
+insert into auth.users (id, email, email_confirmed_at) values
+  ('66666666-6666-6666-6666-666666666666', 'Elif@Ornek.com', now()),
+  ('77777777-7777-7777-7777-777777777777', 'can@ornek.com', null),
+  ('88888888-8888-8888-8888-888888888888', 'baska@ornek.com', now());
+set role anon;
+select public.ha_submit_freedom_lead('ATL-ABC234', 'Elif', 'elif@ornek.com', '{"v":1,"gelir":"g3"}'::jsonb, '{"level":2}'::jsonb, true) = 'ATL-ABC234' as lead_ok \gset
+\if :lead_ok \else \echo 'HATA: web testi kaydı' \q \endif
+select public.ha_submit_freedom_lead('ATL-CAN234', 'Can', 'can@ornek.com', '{"v":1}'::jsonb, null, false) = 'ATL-CAN234' as lead2_ok \gset
+\if :lead2_ok \else \echo 'HATA: ikinci kayıt' \q \endif
+do $$ begin
+  perform public.ha_submit_freedom_lead('kotu-kod', 'X', 'x@y.co', '{"v":1}'::jsonb, null, false);
+  raise exception 'HATA: geçersiz kod kabul edildi';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+do $$ begin
+  perform count(*) from public.ha_freedom_leads;
+  raise exception 'HATA: anon kayıtları okudu';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  perform * from public.ha_claim_freedom_lead(null);
+  raise exception 'HATA: anon sahiplendi';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
+-- Sıradan üye tabloyu okuyamaz
+select pg_temp.as_user('88888888-8888-8888-8888-888888888888');
+select count(*) = 0 as leads_hidden from public.ha_freedom_leads \gset
+\if :leads_hidden \else \echo 'HATA: üye web kayıtlarını gördü' \q \endif
+-- Başka e-postalı kişi e-postayla alamaz
+select count(*) = 0 as other_email from public.ha_claim_freedom_lead(null) \gset
+\if :other_email \else \echo 'HATA: başkasının kaydı e-postayla alındı' \q \endif
+reset role;
+-- Doğrulanmış e-posta (büyük/küçük harf farkıyla) kendi kaydını alır
+select pg_temp.as_user('66666666-6666-6666-6666-666666666666');
+select count(*) = 1 and min(code) = 'ATL-ABC234' and min(name) = 'Elif' as claim_email from public.ha_claim_freedom_lead(null) \gset
+\if :claim_email \else \echo 'HATA: e-postayla sahiplenme' \q \endif
+reset role;
+-- E-postası doğrulanmamış kişi e-postayla alamaz, kodla alır
+select pg_temp.as_user('77777777-7777-7777-7777-777777777777');
+select count(*) = 0 as unconfirmed_blocked from public.ha_claim_freedom_lead('') \gset
+\if :unconfirmed_blocked \else \echo 'HATA: doğrulanmamış e-posta' \q \endif
+select count(*) = 1 as claim_code from public.ha_claim_freedom_lead('atl-can234') \gset
+\if :claim_code \else \echo 'HATA: kodla sahiplenme' \q \endif
+-- Başkasının sahiplendiği kod alınamaz
+select count(*) = 0 as taken_blocked from public.ha_claim_freedom_lead('ATL-ABC234') \gset
+\if :taken_blocked \else \echo 'HATA: sahiplenilmiş kod alındı' \q \endif
+reset role;
+-- Yönetici bütün kayıtları okur
+select pg_temp.as_user(:'osman');
+select count(*) = 2 as admin_reads from public.ha_freedom_leads \gset
+\if :admin_reads \else \echo 'HATA: yönetici kayıtları okuyamadı' \q \endif
+reset role;
+-- Hesap silinince sahiplenilen kayıt da silinir
+delete from auth.users where id = '66666666-6666-6666-6666-666666666666';
+select count(*) = 0 as lead_deleted from public.ha_freedom_leads where code = 'ATL-ABC234' \gset
+\if :lead_deleted \else \echo 'HATA: hesapla birlikte silinmedi' \q \endif
 \echo 'TUM SQL TESTLERI GECTI'

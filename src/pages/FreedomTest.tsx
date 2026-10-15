@@ -58,7 +58,22 @@ const num = (s: string) => Number(s.replace(',', '.'))
  * Özgürlük Rotası v2 testi: uygulamadaki verilerle önceden doldurulur, kullanıcı doğrular.
  * Üstteki canlı özet, her değişiklikte hedef motoruyla yeniden hesaplanır.
  */
-export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts: JourneyFacts; rates: BaseRates; initial?: JourneyProfile; onDone: () => void; onCancel?: () => void }) {
+export function FreedomTest({
+  facts,
+  rates,
+  initial,
+  onDone,
+  onCancel,
+  seed,
+}: {
+  facts: JourneyFacts
+  rates: BaseRates
+  initial?: JourneyProfile
+  onDone: () => void
+  onCancel?: () => void
+  /** Web'deki Finansal Harita testinden ön doldurma: initial tahminidir, test ilk kez yapılıyor sayılır. */
+  seed?: { hasDebts: boolean }
+}) {
   const repo = useRepo()
   const settings = useSettings()
   const assets = useAssets()
@@ -80,7 +95,8 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
       housing: initial?.housing ?? ('rent' as Housing),
       income: plain(initial?.monthlyIncomeKurus),
       stability: initial?.incomeStability ?? ('regular' as IncomeStability),
-      spending: Object.fromEntries(SPEND_GROUPS.map((g) => [g, plain(initial?.spending?.[g] ?? fromData?.[g])])) as Record<SpendGroup, string>,
+      // Web testinden gelindiyse uygulamadaki gerçek harcama ortalaması tahmine üstün gelir
+      spending: Object.fromEntries(SPEND_GROUPS.map((g) => [g, plain(seed ? (fromData?.[g] ?? initial?.spending?.[g]) : (initial?.spending?.[g] ?? fromData?.[g]))])) as Record<SpendGroup, string>,
       debts: {} as Record<string, { rate: string; pay: string }>,
       strategy: coach.strategy as DebtStrategy,
       pct: initial?.targetSpendPct ?? 100,
@@ -252,7 +268,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
         await repo.saveAsset({ id: a.id, kind: a.kind, name: a.name, unit: a.unit, debtTerms: { monthlyRatePct: rate, minPaymentKurus: pay } })
       }
       await repo.saveSettings({ journey: profile, coach: { ...coach, strategy: f.strategy } })
-      toast(initial ? 'Test yenilendi; rotanız güncellendi.' : 'Rotanız hazır.')
+      toast(initial && !seed ? 'Test yenilendi; rotanız güncellendi.' : 'Rotanız hazır.')
       onDone()
     } catch (e) {
       setError(toUserMessage(e))
@@ -261,7 +277,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
     }
   }
 
-  if (initial && left === 0)
+  if (initial && !seed && left === 0)
     return (
       <Card className="p-5">
         <p className="text-[13.5px] text-muted">Bu ayki {TESTS_PER_MONTH} test hakkınızı kullandınız. Rotanız yine kendiliğinden güncellenir.</p>
@@ -275,6 +291,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
 
   const last = step === STEPS.length - 1
   const tag = (has: boolean) => (has ? <Badge tone="accent">Uygulamadan</Badge> : <Badge tone="warning">Eksik</Badge>)
+  const webTag = <Badge tone="info">Web testinden · tahmini</Badge>
   const reach = preview.reachAge === null ? 'Ulaşılamıyor' : `${Math.ceil(preview.reachAge)} yaşında`
   return (
     <Card className="overflow-hidden p-5" aria-label="Finansal özgürlük testi">
@@ -283,8 +300,13 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
       </h2>
       <p className="mt-1 text-[13.5px] text-muted">
         Bilgileri kontrol edin; tutarlar bugünün parasıyla.
-        {initial && ` Bu ay ${left} test hakkınız var.`}
+        {initial && !seed && ` Bu ay ${left} test hakkınız var.`}
       </p>
+      {seed && (
+        <p className="mt-3 rounded-xl bg-info-soft px-3.5 py-2.5 text-[13px] text-ink">
+          Web testindeki cevaplarınla dolduruldu. <span className="font-medium">"Web testinden"</span> işaretli tutarlar aralık tahminidir; gerçek rakamlarınla değiştir, rotan ve özgürlük yılın netleşsin.
+        </p>
+      )}
       <More>
         Bilgiler uygulamadaki kayıtlarınızdan getirildi. Borç, düzenli ödeme ya da varlık değişince rotanız testsiz güncellenir. Testi ayda {TESTS_PER_MONTH} kez yenileyebilirsiniz.
       </More>
@@ -355,7 +377,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
           )}
           {step === 1 && (
             <>
-              <Field label={<span className="inline-flex items-center gap-2">Aylık net gelir (TL) {tag(!!initial)}</span>} htmlFor="t-income">
+              <Field label={<span className="inline-flex items-center gap-2">Aylık net gelir (TL) {seed ? webTag : tag(!!initial)}</span>} htmlFor="t-income">
                 <Input id="t-income" inputMode="decimal" value={f.income} onChange={(e) => set('income', e.target.value)} placeholder="0,00" />
               </Field>
               <Field label="Gelir düzeni" htmlFor="t-stability">
@@ -372,7 +394,7 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
           {step === 2 && (
             <>
               <p className="text-[13px] text-muted md:col-span-2">
-                {fromData ? 'Son 3 dönemin ortalamasıyla dolduruldu.' : 'Harcama kaydı yok; tahmini girin.'}
+                {fromData ? 'Son 3 dönemin ortalamasıyla dolduruldu.' : seed ? 'Web testindeki cevabından tahmin edildi; gerçek rakamlarınla düzeltin.' : 'Harcama kaydı yok; tahmini girin.'}
               </p>
               {SPEND_GROUPS.map((g) => (
                 <Field key={g} label={<span className="inline-flex items-center gap-2">{SPEND_GROUP_LABEL[g]} (TL)</span>} htmlFor={`t-spend-${g}`}>
@@ -407,7 +429,19 @@ export function FreedomTest({ facts, rates, initial, onDone, onCancel }: { facts
           {step === 3 && (
             <>
               {debts.length === 0 ? (
-                <p className="text-[13px] text-muted md:col-span-2">Kayıtlı borç yok.</p>
+                <p className="text-[13px] text-muted md:col-span-2">
+                  {seed?.hasDebts ? (
+                    <>
+                      Web testinde borcun olduğunu söyledin ama uygulamada kayıtlı borç yok. Doğru plan için borçlarını{' '}
+                      <a href="#/borclar" className="font-medium text-accent hover:underline">
+                        Borçlar ve ödemeler
+                      </a>{' '}
+                      sayfasına ekleyip teste dön.
+                    </>
+                  ) : (
+                    'Kayıtlı borç yok.'
+                  )}
+                </p>
               ) : (
                 <ul className="flex flex-col gap-3 md:col-span-2" aria-label="Borçlarınız">
                   {debts.map((d) => {

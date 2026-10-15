@@ -319,11 +319,24 @@ export interface MessageInput {
   closedDebts: string[]
   /** Finansal özgürlük rotasındaki konum. */
   route?: { level: number; total: number; current: { id: string; title: string; next: string } | null }
+  /** Web'deki Finansal Harita testinden bağlanan tahmini sonuç (test henüz netleştirilmediyse). */
+  webTest?: { level: number; total: number; stage: string | null; years: string | null } | null
 }
 
 /** Belirli kurallarla kişiye gönderilen koç mesajları (önem sırasıyla). */
 export function coachMessages(i: MessageInput): CoachMessage[] {
   const out: CoachMessage[] = []
+  if (!i.hasProfile && i.webTest) {
+    const w = i.webTest
+    out.push({
+      id: 'web-test',
+      tone: 'plan',
+      title: 'Web testindeki haritan hazır',
+      body: `Web testine göre ${w.total} duraklı rotanın ${w.level}. seviyesindesin${w.stage ? `; sıradaki durak: ${w.stage}` : ''}${w.years ? ` ve özgürlük yılın şimdilik ${w.years} arası görünüyor` : ''}. Bu aralıklarla yapılmış bir tahmin; gerçek rakamlarını 5 dakikada netleştir, planını rotana göre hazırlayayım.`,
+      link: { to: '/yolculuk', label: 'Rotamı netleştir' },
+    })
+    return out
+  }
   if (!i.hasProfile) {
     out.push({ id: 'survey', tone: 'plan', title: 'Sizi tanıyalım', body: 'Finansal özgürlük testini yapın; gelirinizi, giderlerinizi, güvencelerinizi ve hedefinizi öğrenip planınızı rotanıza göre hazırlayayım.', link: { to: '/yolculuk', label: 'Teste git' } })
     return out
