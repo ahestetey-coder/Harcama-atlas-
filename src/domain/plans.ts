@@ -24,6 +24,8 @@ export type Feature =
   | 'scenarios'
   | 'aiCoach'
   | 'learning'
+  /** Web'deki Finansal Harita testini uygulamada gerçek rakamlarla netleştirme. */
+  | 'webRefine'
 
 export const FEATURE_PLAN: Record<Feature, Plan> = {
   advancedBudget: 'plus',
@@ -37,6 +39,7 @@ export const FEATURE_PLAN: Record<Feature, Plan> = {
   scenarios: 'plusplus',
   aiCoach: 'plusplus',
   learning: 'plusplus',
+  webRefine: 'plus',
 }
 
 /** Paket, istenen paketi kapsıyor mu (Plus+ ⊃ Plus ⊃ Ücretsiz)? */

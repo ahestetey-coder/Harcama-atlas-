@@ -55,20 +55,10 @@ test('web testi: girişsiz çözülür, sonuç uygulamanın rota motoruyla hesap
   await expect(cont).toHaveAttribute('href', /#\/yolculuk\?kod=ATL-[A-HJ-NP-Z2-9]{6}$/)
 })
 
-test('web testinden uygulamaya: sonuç Yolculuk’ta tekrar açılır, ön doldurulmuş testle rota netleşir', async ({ page }) => {
-  await solveWebTest(page)
-  await page.getByRole('link', { name: "Web'de devam et" }).click()
-  // Ücretsiz pakette web sonucu görünür, netleştirme Plus+ ister
-  await expect(page.getByRole('region', { name: 'Web testindeki haritan' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Plus+ ile rotamı netleştir' })).toBeVisible()
-
-  await page.goto('./#/paketler')
-  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus+', exact: true }).click()
-  await page.goto('./#/yolculuk')
+async function refine(page: import('@playwright/test').Page) {
   const card = page.getByRole('region', { name: 'Web testindeki haritan' })
   await expect(card).toContainText('Dengeli Yolcu')
   await card.getByRole('button', { name: /Rotamı netleştir/ }).click()
-
   const t = page.getByRole('region', { name: 'Finansal özgürlük testi' })
   await expect(t).toContainText('Web testindeki cevaplarınla dolduruldu')
   await t.getByLabel('Yaşınız').fill('34')
@@ -79,7 +69,38 @@ test('web testinden uygulamaya: sonuç Yolculuk’ta tekrar açılır, ön doldu
   for (let i = 0; i < 6; i++) await t.getByRole('button', { name: 'İleri' }).click()
   await t.getByRole('button', { name: /Testi tamamla/ }).click()
   await expect(t).toBeHidden()
-  // Netleşen rota: web kartı kalkar, 8 aşamalı rota görünür
-  await expect(page.getByRole('region', { name: 'Web testindeki haritan' })).toHaveCount(0)
-  await expect(page.getByRole('region', { name: 'Rota' })).toBeVisible()
+  await expect(card).toHaveCount(0)
+}
+
+async function setPlan(page: import('@playwright/test').Page, plan: 'Plus' | 'Plus+') {
+  await page.goto('./#/paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: plan, exact: true }).click()
+  await page.goto('./#/yolculuk')
+}
+
+test('web testinden uygulamaya: paketsiz kişi Paketler’e, Plus netleştirip özetini görür', async ({ page }) => {
+  await solveWebTest(page)
+  await page.getByRole('link', { name: "Web'de devam et" }).click()
+  // Ücretsiz pakette web sonucu görünür, netleştirme Plus ister ve Paketler'e gider
+  await expect(page.getByRole('region', { name: 'Web testindeki haritan' })).toBeVisible()
+  await page.getByRole('link', { name: 'Plus ile rotamı netleştir' }).click()
+  await expect(page).toHaveURL(/#\/paketler/)
+
+  await setPlan(page, 'Plus')
+  await refine(page)
+  // Plus: netleşen rota özeti; tam panel ve koç Plus+ tanıtımıyla kilitli
+  const sum = page.getByRole('region', { name: 'Netleşen rotan' })
+  await expect(sum).toContainText('Gerçek rakamlarınla')
+  await expect(sum).toContainText('Özgürlük tarihin')
+  await expect(page.getByRole('heading', { name: "Tam rota ve koç Plus+'ta" })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toHaveCount(0)
+})
+
+test('web testinden uygulamaya: Plus+ netleştirince 8 aşamalı rota açılır', async ({ page }) => {
+  await solveWebTest(page)
+  await page.getByRole('link', { name: "Web'de devam et" }).click()
+  await expect(page.getByRole('region', { name: 'Web testindeki haritan' })).toBeVisible()
+  await setPlan(page, 'Plus+')
+  await refine(page)
+  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toBeVisible()
 })

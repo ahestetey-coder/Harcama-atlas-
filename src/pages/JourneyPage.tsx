@@ -39,7 +39,7 @@ import { usePersonalCycle } from '../state/cycle'
 import { useAssets, useRepo, useSettings } from '../state/data'
 import { FreedomResult } from './FreedomResult'
 import { FreedomTest } from './FreedomTest'
-import { LinkWebTestCard, WebResultCard } from './WebTestCard'
+import { LinkWebTestCard, RefinedSummary, WebResultCard } from './WebTestCard'
 import { LevelRing } from '../components/LevelRing'
 import { seedProfile } from '../domain/quickTest'
 import { usePlan } from '../state/plan'
@@ -58,6 +58,21 @@ export default function JourneyPage() {
           </span>
         }
       />
+      <JourneyBody />
+    </div>
+  )
+}
+
+/**
+ * Yolculuk erişimi: Plus+ tam paneli görür. Plus, web testinden geldiyse rotasını netleştirir ve
+ * özetini görür (panel ve koç Plus+'ta). Paketi olmayan web sonucunu görür, netleştirme Paketler'e gider.
+ */
+function JourneyBody() {
+  const { has } = usePlan()
+  const web = useSettings()?.webTest
+  if (!has('journey') && has('webRefine') && web) return <JourneyContent limited />
+  return (
+    <>
       <WebTestTeaser />
       <PlanGate
         feature="journey"
@@ -71,16 +86,16 @@ export default function JourneyPage() {
       >
         <JourneyContent />
       </PlanGate>
-    </div>
+    </>
   )
 }
 
-/** Paketi Yolculuğu kapsamayan kişi de web testindeki haritasını görür; netleştirme Plus+ ister. */
+/** Paketi olmayan kişi de web testindeki haritasını görür; netleştirme Plus ister. */
 function WebTestTeaser() {
   const { has } = usePlan()
   const settings = useSettings()
   const web = settings?.webTest
-  if (has('journey') || !web || settings?.journey?.confirmedAt) return null
+  if (has('webRefine') || !web || settings?.journey?.confirmedAt) return null
   return (
     <div className="mb-4">
       <WebResultCard link={web} locked />
@@ -88,7 +103,7 @@ function WebTestTeaser() {
   )
 }
 
-function JourneyContent() {
+function JourneyContent({ limited = false }: { limited?: boolean }) {
   const settings = useSettings()
   const facts = useJourneyFacts()
   const repo = useRepo()
@@ -121,6 +136,15 @@ function JourneyContent() {
       </>
     )
   }
+  if (limited)
+    return (
+      <>
+        <RefinedSummary profile={profile} facts={facts} rates={rates} onRetake={() => setTesting(true)} />
+        <PlanGate feature="journey" title="Tam rota ve koç Plus+'ta" points={['8 aşamanın her biri için hedef, kalan koşullar ve sonraki adım', 'Gelecek senaryoları ve TL, USD ya da gram altın bazında plan', 'Rotana göre seni takip eden finans koçu']}>
+          {null}
+        </PlanGate>
+      </>
+    )
   return <Dashboard profile={profile} facts={facts} rates={rates} onRetake={() => setTesting(true)} />
 }
 
