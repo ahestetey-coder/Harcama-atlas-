@@ -39,6 +39,7 @@ import {
 import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
+import { targetSplit } from '../domain/quickTest'
 import { DEFAULT_COACH } from '../state/coach'
 import { useAssets, useRepo, useSettings } from '../state/data'
 import { useUi } from '../state/ui'
@@ -87,6 +88,9 @@ export function FreedomTest({
   const fromData = facts.spendingByGroup
   const [f, setF] = useState(() => {
     const age = initial?.age
+    // Web testinden gelindiyse ve gerçek harcama varsa hedef, hayal edilen tutar korunarak gerçek harcamaya göre bölünür
+    const lifeNow = fromData ? SPEND_GROUPS.reduce((s, g) => s + (fromData[g] ?? 0), 0) + (facts.recurringList ?? []).filter((r) => !r.installment && r.remainingMonths === null).reduce((s, r) => s + r.monthlyKurus, 0) : 0
+    const split = seed && initial && lifeNow > 0 ? targetSplit(initial.targetMonthlyExpenseKurus, lifeNow) : null
     return {
       age: age ? String(age) : '',
       targetAge: String(initial?.targetAge ?? (age ? age + initial!.horizonYears : DEFAULT_TARGET_AGE)),
@@ -99,9 +103,9 @@ export function FreedomTest({
       spending: Object.fromEntries(SPEND_GROUPS.map((g) => [g, plain(seed ? (fromData?.[g] ?? initial?.spending?.[g]) : (initial?.spending?.[g] ?? fromData?.[g]))])) as Record<SpendGroup, string>,
       debts: {} as Record<string, { rate: string; pay: string }>,
       strategy: coach.strategy as DebtStrategy,
-      pct: initial?.targetSpendPct ?? 100,
+      pct: split?.pct ?? initial?.targetSpendPct ?? 100,
       ownHome: initial?.ownHomePlan ?? false,
-      big: plain(initial?.annualBigSpendKurus),
+      big: plain(split ? split.annualBigSpendKurus : initial?.annualBigSpendKurus),
       goal: initial?.goal ?? ('independence' as JourneyGoal),
       goalName: initial?.goalName ?? '',
       answers: initial?.riskAnswers ?? Array.from({ length: RISK_QUESTIONS.length }, () => (initial?.risk === 'cautious' ? 1 : initial?.risk === 'bold' ? 3 : 2)),

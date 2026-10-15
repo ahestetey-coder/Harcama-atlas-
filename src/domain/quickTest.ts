@@ -238,15 +238,24 @@ function spendGroups(spendTl: number): SpendBreakdown {
 }
 
 /**
+ * Hayal edilen aylık yaşamı testteki iki alana böler: bugünkü harcamanın %50–160'ı (testteki sınır)
+ * ve aşan kısım yıllık büyük harcama olarak. Harcama değişince (ör. uygulamadaki gerçek ortalama)
+ * yeniden çağrılır ki hedef yine hayal edilen tutar olsun.
+ */
+export function targetSplit(dreamKurus: number, spendKurus: number): { pct: number; annualBigSpendKurus: number | undefined } {
+  const pct = Math.max(50, Math.min(160, Math.round((dreamKurus / Math.max(1, spendKurus)) * 100)))
+  const excess = Math.max(0, dreamKurus - (spendKurus * pct) / 100)
+  return { pct, annualBigSpendKurus: excess > 0 ? Math.round((excess * 12) / K) * K : undefined }
+}
+
+/**
  * Hızlı test cevaplarından tahmini profil. Yaş sorulmadığı için boş bırakılır (motor 35 varsayar);
  * hedef yaşam gideri, hayal edilen pasif gelirin bugünkü harcamaya oranıdır.
  */
 export function seedProfile(a: QuickAnswers): JourneyProfile {
   const e = estimate(a)
   const spending = spendGroups(e.spendTl)
-  // Hedef yaşam = bugünkü harcamanın %50–160'ı (testteki sınır); fazlası yıllık büyük harcama olarak taşınır
-  const pct = Math.max(50, Math.min(160, Math.round((a.hayal / Math.max(1, e.spendTl)) * 100)))
-  const excessTl = Math.max(0, a.hayal - (e.spendTl * pct) / 100)
+  const { pct, annualBigSpendKurus } = targetSplit(a.hayal * K, e.spendTl * K)
   return {
     goal: GOAL_MAP[a.amac],
     horizonYears: 15,
@@ -260,7 +269,7 @@ export function seedProfile(a: QuickAnswers): JourneyProfile {
     confirmedAt: '',
     spending,
     targetSpendPct: pct,
-    annualBigSpendKurus: excessTl > 0 ? Math.round(excessTl * 12) * K : undefined,
+    annualBigSpendKurus,
     riskAnswers: [1, 2, 3, 4].map(() => (a.dusus === 'sat' ? 1 : a.dusus === 'al' ? 4 : 2)),
     risk: a.dusus === 'sat' ? 'cautious' : a.dusus === 'al' ? 'bold' : 'balanced',
     base: 'TRY',
