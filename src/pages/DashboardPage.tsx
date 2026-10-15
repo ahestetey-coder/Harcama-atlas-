@@ -43,11 +43,11 @@ export default function DashboardPage() {
   const personal = usePersonalTransactions()
   const person = groupFilter ? memberFilter : { ...memberFilter, value: '', options: [] }
   // Bütün panel seçili gruba ve kişiye göre hesaplanır (Tümü / Bireysel / Ortak / Grupsuz…)
-  const groupTxs = useMemo(() => (groupFilter ? allTxs?.filter((t) => matchesGroup(t, groupFilter)) : personal?.counted), [allTxs, personal, groupFilter])
+  const groupTxs = useMemo(() => (groupFilter ? personal?.all.filter((t) => matchesGroup(t, groupFilter)) : personal?.counted), [personal, groupFilter])
   const txs = useMemo(() => groupTxs?.filter((t) => matchesMember(t, person.value, person.selfId)), [groupTxs, person.value, person.selfId])
   const personTxs = useMemo(
-    () => (groupFilter ? allTxs?.filter((t) => matchesMember(t, person.value, person.selfId)) : personal?.counted),
-    [groupFilter, allTxs, personal, person.value, person.selfId],
+    () => (groupFilter ? personal?.all.filter((t) => matchesMember(t, person.value, person.selfId)) : personal?.counted),
+    [groupFilter, personal, person.value, person.selfId],
   )
   const categories = useCategoryMap()
   const budgetSetup = useBudgetSetup()

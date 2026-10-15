@@ -29,7 +29,7 @@ const NO_MOVES: ReadonlyMap<string, IsoDate> = new Map()
  * sonu yüzünden erken yatan maaş `counted`ta maaş gününe taşınır (`list` değişmez); `moved`: işlem
  * kimliği → sayıldığı gün.
  */
-export function usePersonalTransactions(): { counted: Transaction[]; list: Transaction[]; moved: ReadonlyMap<string, IsoDate> } | undefined {
+export function usePersonalTransactions(): { counted: Transaction[]; list: Transaction[]; all: Transaction[]; moved: ReadonlyMap<string, IsoDate> } | undefined {
   const all = useTransactions()
   const groups = useGroups()
   const items = useAllRecurring()
@@ -57,6 +57,8 @@ export function usePersonalTransactions(): { counted: Transaction[]; list: Trans
         moved = r.moved
       }
     }
-    return { counted, list: planned.length ? [...list, ...planned].sort(byDate) : list, moved }
+    // Grup seçiliyken kullanılan tam liste: kayıtlı tüm işlemler + planlı satırlar (elle verilen gruplarıyla)
+    const allWithPlanned = planned.length ? [...all, ...planned].sort(byDate) : all
+    return { counted, list: planned.length ? [...list, ...planned].sort(byDate) : list, all: allWithPlanned, moved }
   }, [all, groups, selfId, items, installments, incomes, plannedGroups, salaryCycle])
 }
