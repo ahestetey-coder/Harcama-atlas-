@@ -39,6 +39,10 @@ import { usePersonalCycle } from '../state/cycle'
 import { useAssets, useRepo, useSettings } from '../state/data'
 import { FreedomResult } from './FreedomResult'
 import { FreedomTest } from './FreedomTest'
+import { LinkWebTestCard, WebResultCard } from './WebTestCard'
+import { LevelRing } from '../components/LevelRing'
+import { seedProfile } from '../domain/quickTest'
+import { usePlan } from '../state/plan'
 import { useBaseRates } from '../state/livePrices'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
@@ -54,6 +58,7 @@ export default function JourneyPage() {
           </span>
         }
       />
+      <WebTestTeaser />
       <PlanGate
         feature="journey"
         title="Finansal Özgürlük Yolculuğum"
@@ -70,14 +75,52 @@ export default function JourneyPage() {
   )
 }
 
+/** Paketi Yolculuğu kapsamayan kişi de web testindeki haritasını görür; netleştirme Plus+ ister. */
+function WebTestTeaser() {
+  const { has } = usePlan()
+  const settings = useSettings()
+  const web = settings?.webTest
+  if (has('journey') || !web || settings?.journey?.confirmedAt) return null
+  return (
+    <div className="mb-4">
+      <WebResultCard link={web} locked />
+    </div>
+  )
+}
+
 function JourneyContent() {
   const settings = useSettings()
   const facts = useJourneyFacts()
+  const repo = useRepo()
   const [testing, setTesting] = useState(false)
+  const [refining, setRefining] = useState(false)
   const rates = useBaseRates(settings?.journey)
   if (!settings || !facts) return null
   const profile = settings.journey
-  if (!profile || testing) return <FreedomTest facts={facts} rates={rates} initial={profile} onDone={() => setTesting(false)} onCancel={profile ? () => setTesting(false) : undefined} />
+  const web = settings.webTest
+  // Web testinden gelen kişi önce kendi sonucunu görür, sonra ön doldurulmuş testle netleştirir
+  if (!profile && web && !refining) return <WebResultCard link={web} onRefine={() => setRefining(true)} />
+  if (!profile || testing) {
+    const seeded = !profile && !!web
+    const done = () => {
+      setTesting(false)
+      setRefining(false)
+      if (seeded && web) void repo.saveSettings({ webTest: { ...web, refinedAt: new Date().toISOString() } }).catch(() => {})
+    }
+    return (
+      <>
+        {!profile && !web && <LinkWebTestCard />}
+        <FreedomTest
+          facts={facts}
+          rates={rates}
+          initial={profile ?? (web ? seedProfile(web.answers) : undefined)}
+          seed={seeded ? { hasDebts: web!.answers.borc === 'kredi_rahat' || web!.answers.borc === 'zor' } : undefined}
+          onDone={done}
+          onCancel={profile ? () => setTesting(false) : seeded ? () => setRefining(false) : undefined}
+        />
+      </>
+    )
+  }
   return <Dashboard profile={profile} facts={facts} rates={rates} onRetake={() => setTesting(true)} />
 }
 
@@ -220,29 +263,6 @@ function Bar({ value, label, className, delay = 0 }: { value: number; label: str
   )
 }
 
-/** Seviye halkası: tamamlanan aşamalar + sıradakinin ilerlemesi. */
-function LevelRing({ position, total, level }: { position: number; total: number; level: number }) {
-  const reduced = useReducedMotion()
-  const r = 40
-  const frac = Math.max(0, Math.min(1, position / total))
-  return (
-    <div className="relative size-[104px] shrink-0">
-      <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden>
-        <circle cx={50} cy={50} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={9} />
-        <motion.circle cx={50} cy={50} r={r} fill="none" stroke="var(--accent)" strokeWidth={9} strokeLinecap="round" initial={reduced ? false : { pathLength: 0 }} animate={{ pathLength: frac }} transition={{ duration: 1.4, ease: 'easeInOut' }} />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center text-center leading-none">
-        <div>
-          <div className="num font-display text-[26px] font-bold text-ink">
-            {level}
-            <span className="text-[15px] font-semibold text-muted">/{total}</span>
-          </div>
-          <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted">seviye</div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }: { j: JourneyResult; profile: JourneyProfile; fmt: Fmt; base: PlanBase; left: number; tested: boolean; saving: number; onBase: (b: PlanBase) => void; onRetake: () => void }) {
   const goalLabel = profile.goal === 'custom' && profile.goalName ? profile.goalName : JOURNEY_GOAL_LABEL[profile.goal]

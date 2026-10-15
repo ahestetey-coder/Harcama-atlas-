@@ -2,6 +2,7 @@ import { migrateAssetKind } from '../domain/assets'
 import { z } from 'zod'
 import { APP_CONFIG } from '../config/app'
 import { isIsoDate } from '../domain/dates'
+import { isQuickAnswers, LEAD_CODE_RE, type QuickAnswers } from '../domain/quickTest'
 import { CURRENT_SCHEMA_VERSION } from './db'
 
 // Doğrulama hata mesajları Türkçe
@@ -242,6 +243,16 @@ const settingsSchema = z.object({
       partTimeIncomeKurus: kurus.optional(),
       withdrawalCustom: z.boolean().optional(),
       inflationPct: z.number().min(0).max(200).optional(),
+    })
+    .optional(),
+  webTest: z
+    .object({
+      code: z.string().regex(LEAD_CODE_RE),
+      answers: z.custom<QuickAnswers>(isQuickAnswers, 'Geçersiz web testi cevabı'),
+      name: z.string().max(60).optional(),
+      createdAt: z.string(),
+      linkedAt: z.string(),
+      refinedAt: z.string().optional(),
     })
     .optional(),
   coach: z

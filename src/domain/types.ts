@@ -1,3 +1,4 @@
+import type { WebTestLink } from './quickTest'
 import type { SplitRule } from './split'
 import type { BudgetPlan } from './budget'
 import type { BudgetMode } from './autoBudget'
@@ -192,6 +193,8 @@ export interface Settings {
   cycleSource?: CycleSource
   /** Her pakette: ayrıntılı kayıt yoksa bütçede kullanılan kısa sabit gider beyanı. */
   budgetProfile?: BudgetProfile
+  /** Web'deki Finansal Harita testinden bağlanan kayıt (devam kodu ve aralıklı cevaplar). */
+  webTest?: WebTestLink
   updatedAt: string
 }
 

@@ -886,3 +886,75 @@ end $$;
 revoke all on function public.ha_plan_of(uuid), public.ha_my_plan(), public.ha_admin_set_plan(uuid, text, timestamptz) from public, anon;
 grant execute on function public.ha_my_plan(), public.ha_admin_set_plan(uuid, text, timestamptz) to authenticated;
 grant execute on function public.ha_plan_of(uuid) to service_role;
+
+-- ---------------------------------------------------------------------------------------------
+-- Web "Finansal Harita" testi (#/harita, girişsiz)
+--
+-- Ziyaretçi 10 soruluk hızlı testi çözer; sonucu açmak için adını, e-postasını ve KVKK onayını verir.
+-- Kayıt yalnızca ha_submit_freedom_lead ile eklenir (anon dahil); tabloyu kimse doğrudan okuyamaz ve
+-- yazamaz, yalnızca yönetici okur. Kişi uygulamaya girdiğinde kendi kaydını ha_claim_freedom_lead ile
+-- alır: devam koduyla ya da doğrulanmış e-postası testteki e-postayla aynıysa. Hesap silinince kayıt da silinir.
+
+create table if not exists public.ha_freedom_leads (
+  code text primary key check (code ~ '^ATL-[A-HJ-NP-Z2-9]{6}$'),
+  name text not null check (char_length(name) between 2 and 60),
+  email text not null check (char_length(email) between 5 and 254 and email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'),
+  answers jsonb not null check (jsonb_typeof(answers) = 'object' and pg_column_size(answers) < 4000),
+  summary jsonb check (summary is null or (jsonb_typeof(summary) = 'object' and pg_column_size(summary) < 4000)),
+  marketing boolean not null default false,
+  kvkk_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  claimed_by uuid references auth.users (id) on delete cascade,
+  claimed_at timestamptz
+);
+create index if not exists ha_freedom_leads_email_idx on public.ha_freedom_leads (lower(email), created_at desc);
+alter table public.ha_freedom_leads enable row level security;
+revoke all on public.ha_freedom_leads from anon, authenticated;
+grant select on public.ha_freedom_leads to authenticated;
+drop policy if exists "ha_freedom_leads_admin_read" on public.ha_freedom_leads;
+create policy "ha_freedom_leads_admin_read" on public.ha_freedom_leads for select to authenticated using (public.ha_is_admin());
+
+create or replace function public.ha_submit_freedom_lead(p_code text, p_name text, p_email text, p_answers jsonb, p_summary jsonb, p_marketing boolean) returns text
+  language plpgsql security definer set search_path = public as $$
+declare
+  v_email text := lower(trim(p_email));
+begin
+  if p_code is null or p_code !~ '^ATL-[A-HJ-NP-Z2-9]{6}$' then raise exception 'Geçersiz devam kodu'; end if;
+  if p_answers is null or (p_answers ->> 'v') is null then raise exception 'Test cevapları eksik'; end if;
+  -- Kötüye kullanım sınırı: aynı e-postayla 24 saatte en çok 5 kayıt
+  if (select count(*) from public.ha_freedom_leads where lower(email) = v_email and created_at > now() - interval '1 day') >= 5 then
+    raise exception 'Bu e-postayla bugün çok fazla test gönderildi';
+  end if;
+  insert into public.ha_freedom_leads (code, name, email, answers, summary, marketing)
+    values (p_code, trim(p_name), v_email, p_answers, p_summary, coalesce(p_marketing, false));
+  return p_code;
+end $$;
+
+-- p_code boşsa doğrulanmış e-postayla son kayıt alınır. Başkasının sahiplendiği kayıt alınamaz.
+create or replace function public.ha_claim_freedom_lead(p_code text) returns table (code text, name text, answers jsonb, created_at timestamptz)
+  language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
+declare
+  me uuid := auth.uid();
+  v_email text;
+  v_code text;
+begin
+  if me is null then raise exception 'Giriş yapılmamış'; end if;
+  if p_code is not null and trim(p_code) <> '' then
+    select l.code into v_code from public.ha_freedom_leads l
+      where l.code = upper(trim(p_code)) and (l.claimed_by is null or l.claimed_by = me);
+  else
+    select lower(u.email) into v_email from auth.users u where u.id = me and u.email_confirmed_at is not null;
+    if v_email is null then return; end if;
+    select l.code into v_code from public.ha_freedom_leads l
+      where lower(l.email) = v_email and (l.claimed_by is null or l.claimed_by = me)
+      order by l.created_at desc limit 1;
+  end if;
+  if v_code is null then return; end if;
+  update public.ha_freedom_leads l set claimed_by = me, claimed_at = coalesce(l.claimed_at, now()) where l.code = v_code;
+  return query select l.code, l.name, l.answers, l.created_at from public.ha_freedom_leads l where l.code = v_code;
+end $$;
+
+revoke all on function public.ha_submit_freedom_lead(text, text, text, jsonb, jsonb, boolean), public.ha_claim_freedom_lead(text) from public, anon;
+grant execute on function public.ha_submit_freedom_lead(text, text, text, jsonb, jsonb, boolean) to anon, authenticated;
+grant execute on function public.ha_claim_freedom_lead(text) to authenticated;

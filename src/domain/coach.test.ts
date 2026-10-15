@@ -94,6 +94,14 @@ describe('koç: plan', () => {
     expect(m).toHaveLength(1)
     expect(m[0].link?.to).toBe('/yolculuk')
   })
+  it('web testi bağlıysa tahmini haritayı anar ve netleştirmeye çağırır', () => {
+    const m = coachMessages({ plan: null, hasProfile: false, budget: null, due: [], month: '2026-10', today: '2026-10-06', closedDebts: [], webTest: { level: 2, total: 8, stage: 'Acil durum fonu', years: '2051–2063' } })
+    expect(m).toHaveLength(1)
+    expect(m[0].id).toBe('web-test')
+    expect(m[0].body).toContain('2. seviyesindesin')
+    expect(m[0].body).toContain('2051–2063')
+    expect(m[0].link).toEqual({ to: '/yolculuk', label: 'Rotamı netleştir' })
+  })
 })
 
 describe('borç takvimi (Özgürlük Rotası)', () => {

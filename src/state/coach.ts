@@ -15,6 +15,7 @@ import { usePersonalCycle } from './cycle'
 import { useLiveState } from './livePrices'
 import { useAssets, useRecurring, useSettings } from './data'
 import { usePersonalTransactions } from './personal'
+import { quickResult, reachRange } from '../domain/quickTest'
 
 export const DEFAULT_COACH: CoachSettings = { strategy: 'avalanche', debtsInExpenses: false, dismissed: [], aiConsent: false }
 export const DEFAULT_SHARE: CoachShare = { income: true, expenses: true, debts: true, goals: true, budget: true }
@@ -123,7 +124,9 @@ export function useCoach(): CoachState | null {
     const journey = profile ? buildJourney(profile, facts, { USD: usd ?? (profile.base === 'USD' ? profile.baseRateTl : null), XAU: gold ?? (profile.base === 'XAU' ? profile.baseRateTl : null) }, { strategy: cs.strategy }) : null
     const route = journey ? { level: journey.level, total: journey.stages.length, current: journey.current } : undefined
     const read = new Set(cs.dismissed)
-    const messages = coachMessages({ plan, hasProfile: !!profile, budget, due, month, today: todayIso(), closedDebts: closed, route }).map((m) => ({ ...m, read: read.has(m.id) }))
+    const web = !profile && settings.webTest ? quickResult(settings.webTest.answers) : null
+    const webTest = web ? { level: web.level, total: web.journey.stages.length, stage: web.journey.current?.title ?? null, years: reachRange(web) } : null
+    const messages = coachMessages({ plan, hasProfile: !!profile, budget, due, month, today: todayIso(), closedDebts: closed, route, webTest }).map((m) => ({ ...m, read: read.has(m.id) }))
     messages.sort((a, b) => Number(a.read) - Number(b.read))
     return { profile, facts, settings: cs, debts, plan, journey, messages, budget, recurring, incomes: settings.recurringIncomes ?? [] }
   }, [settings, facts, debts, budget, due, month, closed, usd, gold, recurring])

@@ -1,5 +1,5 @@
 import { MotionConfig } from 'motion/react'
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { TransactionFormHost } from './components/TransactionForm'
@@ -13,6 +13,7 @@ import { PlanProvider } from './state/plan'
 import { ThemeProvider } from './state/theme'
 import { UiProvider } from './state/ui'
 import { UpdatePrompt } from './components/UpdatePrompt'
+import { captureLeadCodeFromUrl, WebTestLinker } from './state/webTest'
 
 const loaders = {
   transactions: () => import('./pages/TransactionsPage'),
@@ -56,6 +57,24 @@ const JourneyPage = lazy(loaders.journey)
 const ScenariosPage = lazy(loaders.scenarios)
 const LearningPage = lazy(loaders.learning)
 const CoachPage = lazy(loaders.coach)
+/** Girişsiz web testi: uygulama kabuğu ve oturum olmadan açılır. */
+const FreedomMapPage = lazy(() => import('./pages/FreedomMapPage'))
+
+const isPublicTest = () => /^#\/harita(?:[/?]|$)/.test(window.location.hash)
+
+function usePublicTestRoute(): boolean {
+  const [pub, setPub] = useState(isPublicTest)
+  useEffect(() => {
+    const on = () => {
+      captureLeadCodeFromUrl()
+      setPub(isPublicTest())
+    }
+    captureLeadCodeFromUrl()
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
+  return pub
+}
 
 /** Uygulama açıldıktan sonra boşta kalınca bütün sayfalar önceden yüklenir; geçişte bekleme olmaz. */
 function usePrefetchPages() {
@@ -88,6 +107,7 @@ function Layout() {
       </Suspense>
       <TransactionFormHost />
       <UpdatePrompt />
+      <WebTestLinker />
     </AppShell>
   )
 }
@@ -169,12 +189,19 @@ function AuthGate() {
 }
 
 export default function App() {
+  const publicTest = usePublicTestRoute()
   return (
     <MotionConfig reducedMotion="user">
       <ThemeProvider>
-        <AuthProvider>
-          <AuthGate />
-        </AuthProvider>
+        {publicTest ? (
+          <Suspense fallback={<AuthSplash />}>
+            <FreedomMapPage />
+          </Suspense>
+        ) : (
+          <AuthProvider>
+            <AuthGate />
+          </AuthProvider>
+        )}
       </ThemeProvider>
     </MotionConfig>
   )

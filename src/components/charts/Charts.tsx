@@ -337,6 +337,88 @@ export function ScenarioLines({ rows, caption }: { rows: ScenarioRow[]; caption:
   )
 }
 
+export interface ExtraSavingRow {
+  year: number
+  base: number | null
+  plus: number | null
+  target: number
+}
+
+/** Web testi: bugünkü tempo ile ek aylık birikimli tempo ve hedef çizgisi (yıl ekseni). */
+export function ExtraSavingLines({ rows, plusLabel, caption }: { rows: ExtraSavingRow[]; plusLabel: string; caption: string }) {
+  const reduced = useReducedMotion()
+  const last = rows[rows.length - 1]?.year ?? 0
+  const step = last <= 10 ? 1 : last <= 20 ? 2 : 5
+  const ticks = rows.filter((r) => r.year % step === 0 || r.year === last).map((r) => r.year)
+  const series = [
+    { key: 'base' as const, label: 'Bugünkü tempo', color: 'var(--asset-3)', dash: '6 5' },
+    { key: 'plus' as const, label: plusLabel, color: 'var(--asset-1)', dash: undefined },
+  ]
+  return (
+    <div>
+      <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted" aria-hidden>
+        {series.map((s) => (
+          <span key={s.key} className="inline-flex items-center gap-1.5">
+            <span className="h-0 w-4 border-t-2" style={{ borderColor: s.color, borderStyle: s.dash ? 'dashed' : 'solid' }} /> {s.label}
+          </span>
+        ))}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0 w-4 border-t-2 border-dotted" style={{ borderColor: 'var(--subtle)' }} /> Hedef
+        </span>
+      </div>
+      <div className="mt-2 h-56" aria-hidden>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="year" type="number" domain={[0, last]} ticks={ticks} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? 'Bugün' : `${v}. yıl`)} />
+            <YAxis tickLine={false} axisLine={false} width={68} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => formatKurusCompact(v)} domain={[0, 'auto']} />
+            <Tooltip
+              cursor={{ stroke: 'var(--border-strong)' }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const p = payload[0].payload as ExtraSavingRow
+                return (
+                  <TooltipBox
+                    title={p.year === 0 ? 'Bugün' : `${p.year}. yıl sonu`}
+                    lines={[...series.map((s) => [s.label, p[s.key] === null ? 'Hedefte' : formatKurus(p[s.key]!)] as [string, string]), ['Hedef', formatKurus(p.target)]]}
+                  />
+                )
+              }}
+            />
+            <Line type="linear" dataKey="target" stroke="var(--subtle)" strokeWidth={1.5} strokeDasharray="2 4" dot={false} isAnimationActive={!reduced} />
+            {series.map((s) => (
+              <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} dot={false} connectNulls={false} activeDot={{ r: 5, stroke: 'var(--surface)', strokeWidth: 2 }} isAnimationActive={!reduced} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{caption}</caption>
+        <thead>
+          <tr>
+            <th>Yıl</th>
+            {series.map((s) => (
+              <th key={s.key}>{s.label}</th>
+            ))}
+            <th>Hedef</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.year}>
+              <td>{r.year}</td>
+              {series.map((s) => (
+                <td key={s.key}>{r[s.key] === null ? 'Hedefte' : formatKurus(r[s.key]!)}</td>
+              ))}
+              <td>{formatKurus(r.target)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 /** Borç bakiyesi: plan ile yalnızca asgari ödeme karşılaştırması (ay ekseni). */
 export function DebtPayoffChart({ plan, minOnly }: { plan: number[]; minOnly: number[] | null }) {
   const reduced = useReducedMotion()

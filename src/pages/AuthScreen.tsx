@@ -29,7 +29,7 @@ export function AuthSplash() {
 }
 
 /** Yavaşça süzülen renkli ışık lekeleri (hareket azaltma tercihinde durur). */
-function AuroraBackground() {
+export function AuroraBackground() {
   const blobs = [
     { className: 'left-[-10%] top-[-15%] size-[42rem] bg-emerald-400/25 dark:bg-emerald-500/20', x: [0, 60, -20, 0], y: [0, 40, 80, 0], d: 22 },
     { className: 'right-[-15%] top-[10%] size-[36rem] bg-cyan-400/20 dark:bg-cyan-500/15', x: [0, -50, 30, 0], y: [0, 60, -30, 0], d: 26 },
