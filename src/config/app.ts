@@ -16,6 +16,8 @@ export const APP_CONFIG = {
   privacyUrl: 'https://ahestetey-coder.github.io/Harcama-atlas-/gizlilik.html',
   /** Mağaza sayfaları. Boşken web testindeki indirme düğmeleri "Yakında" görünür. */
   storeLinks: { ios: '', android: '' } as { ios: string; android: string },
+  /** Deneme yayını: Paketler'de paketler ödemesiz seçilir. Mağaza ödemesi bağlanınca false yapın. */
+  testPurchases: true,
 } as const
 
 /** İçe aktarma sınırları. */

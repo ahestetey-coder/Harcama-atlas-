@@ -887,6 +887,27 @@ revoke all on function public.ha_plan_of(uuid), public.ha_my_plan(), public.ha_a
 grant execute on function public.ha_my_plan(), public.ha_admin_set_plan(uuid, text, timestamptz) to authenticated;
 grant execute on function public.ha_plan_of(uuid) to service_role;
 
+-- Deneme yayını: kişi kendi paketini ödemesiz seçer (Paketler sayfası). Mağaza ödemesi bağlanınca
+-- APP_CONFIG.testPurchases false yapılır ve bu fonksiyon kaldırılır (drop function public.ha_test_choose_plan(text)).
+create or replace function public.ha_test_choose_plan(p_plan text) returns text
+  language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+begin
+  if me is null then raise exception 'Giriş yapılmamış'; end if;
+  if p_plan = 'free' then
+    delete from public.ha_user_plans where user_id = me;
+  elsif p_plan in ('plus', 'plusplus') then
+    insert into public.ha_user_plans (user_id, plan, expires_at, granted_by) values (me, p_plan, null, me)
+      on conflict (user_id) do update set plan = excluded.plan, expires_at = null, granted_by = me, granted_at = now();
+  else
+    raise exception 'Geçersiz paket';
+  end if;
+  return p_plan;
+end $$;
+revoke all on function public.ha_test_choose_plan(text) from public, anon;
+grant execute on function public.ha_test_choose_plan(text) to authenticated;
+
 -- ---------------------------------------------------------------------------------------------
 -- Web "Finansal Harita" testi (#/harita, girişsiz)
 --

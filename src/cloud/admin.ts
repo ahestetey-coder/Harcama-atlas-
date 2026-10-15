@@ -84,6 +84,11 @@ export async function getMyPlan(client: SupabaseClient): Promise<AccountPlan> {
   return !error && (data === 'plus' || data === 'plusplus') ? data : 'free'
 }
 
+/** Deneme yayını: kişi kendi paketini ödemesiz seçer. */
+export async function chooseTestPlan(client: SupabaseClient, plan: AccountPlan): Promise<void> {
+  await call(client, 'ha_test_choose_plan', { p_plan: plan })
+}
+
 /** Yönetici: paket tanımlanmış hesaplar (süresi bitenler dahil). */
 export async function listPlans(client: SupabaseClient): Promise<UserPlan[]> {
   const { data, error } = await client.from('ha_user_plans').select('user_id, plan, expires_at')

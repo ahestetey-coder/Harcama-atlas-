@@ -17,6 +17,8 @@ interface PlanCtx {
   canPreview: boolean
   setPreview: (p: Plan | null) => void
   has: (f: Feature) => boolean
+  /** Hesabın paketini sunucudan yeniden okur. */
+  refresh: () => void
 }
 
 const Ctx = createContext<PlanCtx | null>(null)
@@ -28,6 +30,8 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [pref, setPref] = useState(() => readPref('planPreview'))
   const { backend, user } = auth
   const [account, setAccount] = useState<{ uid: string; plan: Plan } | null>(null)
+  const [tick, setTick] = useState(0)
+  const refresh = useCallback(() => setTick((t) => t + 1), [])
   useEffect(() => {
     if (!backend || !user) return
     let alive = true
@@ -35,7 +39,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false
     }
-  }, [backend, user])
+  }, [backend, user, tick])
   const purchased: Plan = user && account?.uid === user.id ? account.plan : 'free'
   const canPreview = admin || isDemo || !auth.enabled
   const preview = canPreview && isPlan(pref) && pref !== 'free' && pref !== purchased ? pref : null
@@ -48,7 +52,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   }, [])
   const has = useCallback((f: Feature) => hasFeature(plan, f), [plan])
 
-  const value = useMemo(() => ({ plan, purchased, preview, canPreview, setPreview, has }), [plan, purchased, preview, canPreview, setPreview, has])
+  const value = useMemo(() => ({ plan, purchased, preview, canPreview, setPreview, has, refresh }), [plan, purchased, preview, canPreview, setPreview, has, refresh])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
