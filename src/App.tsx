@@ -33,6 +33,7 @@ const loaders = {
   assets: () => import('./pages/AssetsPage'),
   debts: () => import('./pages/DebtsPage'),
   journey: () => import('./pages/JourneyPage'),
+  mapTest: () => import('./pages/MapTestPage'),
   scenarios: () => import('./pages/ScenariosPage'),
   learning: () => import('./pages/LearningPage'),
   coach: () => import('./pages/CoachPage'),
@@ -54,6 +55,7 @@ const ReportsPage = lazy(loaders.reports)
 const AssetsPage = lazy(loaders.assets)
 const DebtsPage = lazy(loaders.debts)
 const JourneyPage = lazy(loaders.journey)
+const MapTestPage = lazy(loaders.mapTest)
 const ScenariosPage = lazy(loaders.scenarios)
 const LearningPage = lazy(loaders.learning)
 const CoachPage = lazy(loaders.coach)
@@ -161,6 +163,7 @@ const router = createHashRouter([
       { path: '/varliklar', element: <OldAssetsRoute /> },
       { path: '/borclar', element: <DebtsPage /> },
       { path: '/yolculuk', element: <JourneyPage /> },
+      { path: '/finansal-harita', element: <MapTestPage /> },
       { path: '/senaryolar', element: <ScenariosPage /> },
       { path: '/ogren', element: <LearningPage /> },
       { path: '/koc', element: <CoachPage /> },

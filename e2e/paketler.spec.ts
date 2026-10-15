@@ -6,7 +6,7 @@ test('Plus bütçe: ücretsizde kilitli; önizlemede kategori limiti, uyarı ve 
   await expect(page.getByRole('heading', { name: 'Gelişmiş bütçe' })).toBeVisible()
   await page.getByRole('link', { name: 'Paketleri incele' }).click()
   await expect(page.getByRole('heading', { name: 'Paketler', level: 1 })).toBeVisible()
-  await expect(page.getByText('Kullandığınız paket')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Mevcut paketiniz' })).toContainText('Ücretsiz')
 
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
   await page.getByRole('link', { name: 'Aç' }).first().click()
@@ -325,6 +325,8 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await expect(page.getByRole('heading', { name: 'Önce yolculuğunuzu oluşturun' })).toBeVisible()
 
   await page.goto('./#/yolculuk')
+  // İlk kez: Finansal Harita testi önerilir; ayrıntılı teste doğrudan geçilebilir
+  await page.getByRole('button', { name: 'Doğrudan ayrıntılı teste geç' }).click()
   const t = page.getByRole('region', { name: 'Finansal özgürlük testi' })
   await t.getByRole('button', { name: 'İleri' }).click()
   await expect(t.getByRole('alert')).toContainText('Yaşınızı 15 ile 99 arasında girin.')

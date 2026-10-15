@@ -7,7 +7,7 @@ import { cloudErrorMessage } from '../cloud/errors'
 import { APP_CONFIG } from '../config/app'
 import { PageHeader } from '../components/AppShell'
 import { PlanBadge } from '../components/PlanGate'
-import { Alert, Card, More, Segmented } from '../components/ui/primitives'
+import { Alert, Button, Card, More, Segmented } from '../components/ui/primitives'
 import { PLAN_LABEL, type Feature, type Plan } from '../domain/plans'
 import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
@@ -121,9 +121,25 @@ export default function PlansPage() {
         </Card>
       )}
 
+      <Card className="mb-5 flex flex-wrap items-center justify-between gap-3 p-5" aria-label="Mevcut paketiniz">
+        <div>
+          <div className="text-[13px] text-muted">Mevcut paketiniz</div>
+          <div className="mt-0.5 flex items-center gap-2 font-display text-2xl font-bold text-ink">
+            {PLAN_LABEL[purchased]}
+            {purchased !== 'free' && <PlanBadge plan={purchased} />}
+          </div>
+          {preview && <p className="mt-1 text-[12.5px] text-muted">Şu an {PLAN_LABEL[preview]} önizlemesindesiniz.</p>}
+        </div>
+        {testBuy && purchased !== 'free' && (
+          <Button variant="secondary" loading={busy === 'free'} disabled={busy !== null} onClick={() => choose('free')}>
+            Ücretsize dön
+          </Button>
+        )}
+      </Card>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {PLANS.map((p, i) => {
-          const current = plan === p.plan
+          const current = plan === p.plan || purchased === p.plan
           return (
             <motion.div key={p.plan} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.3 }}>
               <Card
@@ -137,7 +153,7 @@ export default function PlansPage() {
                   <h2 className="font-display text-xl font-bold text-ink">{PLAN_LABEL[p.plan]}</h2>
                   {current ? (
                     <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11.5px] font-semibold text-accent-strong dark:text-accent">
-                      {preview ? 'Önizlemede' : 'Kullandığınız paket'}
+                      {purchased === p.plan ? 'Mevcut paketiniz' : 'Önizlemede'}
                     </span>
                   ) : (
                     <PlanBadge plan={p.plan} />
