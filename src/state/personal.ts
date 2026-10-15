@@ -4,7 +4,7 @@ import { dayOf, todayIso } from '../domain/dates'
 import { attributeEarlySalary, personalCycleDay, primarySalary } from '../domain/income'
 import { personalListView, personalView } from '../domain/personal'
 import { plannedIncomes, plannedInstallments } from '../domain/recurring'
-import type { IsoDate, RecurringIncome, RecurringPayment, Transaction } from '../domain/types'
+import { applyPlannedGroups, type IsoDate, type RecurringIncome, type RecurringPayment, type Transaction } from '../domain/types'
 import { useMembers } from './cloud'
 import { useAssets, useGroups, useRecurring, useSettings, useTransactions } from './data'
 import { usePlan } from './plan'
@@ -37,6 +37,7 @@ export function usePersonalTransactions(): { counted: Transaction[]; list: Trans
   const installments = usePlan().has('installments')
   const settings = useSettings()
   const incomes = settings?.recurringIncomes
+  const plannedGroups = settings?.plannedGroups
   // Ay döngüsü maaş gününde başlıyorsa (maaşa bağlı ya da elle aynı gün seçilmiş) erken yatan maaş yeni aya yazılır
   const salaryCycle = !!settings && personalCycleDay(settings) === salaryCycleDay(primarySalary(settings.recurringIncomes))
   return useMemo(() => {
@@ -44,7 +45,7 @@ export function usePersonalTransactions(): { counted: Transaction[]; list: Trans
     const own = personalView(all, groups, selfId)
     const list = personalListView(all, groups, selfId)
     const today = todayIso()
-    const planned = [...(installments && items ? plannedInstallments(own, items, today) : []), ...(incomes?.length ? plannedIncomes(own, incomes, today) : [])]
+    const planned = applyPlannedGroups([...(installments && items ? plannedInstallments(own, items, today) : []), ...(incomes?.length ? plannedIncomes(own, incomes, today) : [])], plannedGroups)
     const byDate = (a: Transaction, b: Transaction) => (a.date === b.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date))
     let counted = planned.length ? [...own, ...planned].sort(byDate) : own
     let moved = NO_MOVES
@@ -57,5 +58,5 @@ export function usePersonalTransactions(): { counted: Transaction[]; list: Trans
       }
     }
     return { counted, list: planned.length ? [...list, ...planned].sort(byDate) : list, moved }
-  }, [all, groups, selfId, items, installments, incomes, salaryCycle])
+  }, [all, groups, selfId, items, installments, incomes, plannedGroups, salaryCycle])
 }

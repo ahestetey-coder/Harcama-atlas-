@@ -189,6 +189,8 @@ export interface Settings {
   coach?: CoachSettings
   /** Maaş, kira geliri gibi düzenli gelirler; günü gelince özete planlı gelir olarak yansır. */
   recurringIncomes?: RecurringIncome[]
+  /** Planlı (kaydedilmeyen) taksitlere elle verilen grup: planlı işlem kimliği → grup (null = grupsuz). */
+  plannedGroups?: Record<string, string | null>
   /** 'salary': kişisel ay döngüsü maaş gününde başlar. Boşsa cycleStartDay (boşsa takvim ayı). */
   cycleSource?: CycleSource
   /** Her pakette: ayrıntılı kayıt yoksa bütçede kullanılan kısa sabit gider beyanı. */
@@ -354,6 +356,12 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   shared: 'Üyeden',
   settlement: 'Paylaşım',
   planned: 'Planlı taksit',
+}
+
+/** Planlı satırlara elle verilen grubu uygular (planlı satırlar her açılışta yeniden üretilir). */
+export function applyPlannedGroups(txs: Transaction[], groups: Record<string, string | null> | undefined): Transaction[] {
+  if (!groups) return txs
+  return txs.map((t) => (t.source === 'planned' && t.id in groups ? { ...t, groupId: groups[t.id] } : t))
 }
 
 /** Bu cihazda değiştirilemeyen işlem: üyenin harcaması veya paylaşımdaki payınız. */

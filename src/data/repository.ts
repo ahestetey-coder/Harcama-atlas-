@@ -207,7 +207,15 @@ export class AtlasRepository {
   async bulkSetGroup(ids: string[], groupId: string | null): Promise<number> {
     await this.assertGroup(groupId)
     const now = nowIso()
-    return this.db.transactions
+    // Planlı taksitler kaydedilmez, her açılışta yeniden üretilir; seçilen grup ayarlarda saklanır
+    const planned = ids.filter((id) => id.startsWith('plan:'))
+    if (planned.length) {
+      const cur = await this.getSettings()
+      const plannedGroups = { ...cur.plannedGroups }
+      for (const id of planned) plannedGroups[id] = groupId
+      await this.saveSettings({ plannedGroups })
+    }
+    const n = await this.db.transactions
       .where('id')
       .anyOf(ids)
       .filter((t) => t.source !== 'shared')
@@ -215,6 +223,7 @@ export class AtlasRepository {
         t.groupId = groupId
         t.updatedAt = now
       })
+    return n + planned.length
   }
 
   // ---------- Harcama grupları ----------
