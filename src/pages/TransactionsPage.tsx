@@ -17,7 +17,7 @@ import { downloadBlob } from '../lib/download'
 import { transactionsToCsv } from '../lib/csvExport'
 import { APP_CONFIG } from '../config/app'
 import { useMemberFilter } from '../state/cloud'
-import { useCategories, useCategoryMap, useGroupFilter, useGroupMap, useGroups, useImports, useRepo, useTransactions } from '../state/data'
+import { useCategories, useCategoryMap, useGroupFilter, useGroupMap, useGroups, useImports, useRepo } from '../state/data'
 import { useCycle } from '../state/cycle'
 import { usePersonalTransactions } from '../state/personal'
 import { isCounted } from '../domain/personal'
@@ -34,7 +34,6 @@ const TYPE_TABS: Array<{ value: TxType | 'all'; label: string }> = [
 ]
 
 export default function TransactionsPage() {
-  const allTxs = useTransactions()
   // "Tümü" kişiseldir (src/domain/personal.ts); bir grup seçilince grubun bütün işlemleri görünür
   const personal = usePersonalTransactions()
   const categories = useCategories()
@@ -46,7 +45,7 @@ export default function TransactionsPage() {
   const [groupFilter, setGroupFilter] = useGroupFilter()
   const memberFilter = useMemberFilter()
   const person = groupFilter ? memberFilter : { ...memberFilter, value: '', options: [] }
-  const txs = groupFilter ? allTxs : personal?.list
+  const txs = groupFilter ? personal?.all : personal?.list
   const { month, setMonth, openTransactionForm, openImport, toast } = useUi()
   const { startDay } = useCycle()
   const [params, setParams] = useSearchParams()
