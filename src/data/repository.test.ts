@@ -7,7 +7,7 @@ import { buildDefaultCategories, buildDefaultRules, RULES_BEFORE_V3 } from './se
 import { buildCommit } from '../import/enrich'
 import type { DraftRow } from '../import/types'
 import { personalCycleDay } from '../domain/income'
-import type { RecurringIncome } from '../domain/types'
+import { applyPlannedGroups, type RecurringIncome } from '../domain/types'
 
 let db: AtlasDb
 let repo: AtlasRepository
@@ -289,6 +289,16 @@ describe('harcama grupları', () => {
     expect(await repo.bulkSetGroup([t.id], 'grp-bireysel')).toBe(1)
     expect((await db.transactions.get(t.id))?.groupId).toBe('grp-bireysel')
     await expect(repo.bulkSetGroup([t.id], 'yok')).rejects.toBeInstanceOf(UserFacingError)
+  })
+  it('planlı taksitin grubu ayarlarda saklanır ve yeniden üretilen satıra uygulanır', async () => {
+    const id = 'plan:rec:debt:d1:2026-10-15'
+    expect(await repo.bulkSetGroup([id], 'grp-ortak')).toBe(1)
+    const s = await repo.getSettings()
+    expect(s.plannedGroups).toEqual({ [id]: 'grp-ortak' })
+    const row = { id, date: '2026-10-15', amountKurus: 100, type: 'expense', description: 'Kredi', normalizedDescription: 'kredi', categoryId: null, groupId: null, source: 'planned', createdAt: '', updatedAt: '' } as const
+    expect(applyPlannedGroups([row], s.plannedGroups)[0].groupId).toBe('grp-ortak')
+    await repo.bulkSetGroup([id], null)
+    expect(applyPlannedGroups([{ ...row, groupId: 'x' }], (await repo.getSettings()).plannedGroups)[0].groupId).toBeNull()
   })
   it('grup ekler; aynı ad iki kez eklenemez; silinen grubun işlemleri silinmez, grupsuz kalır', async () => {
     const g = await repo.addGroup({ name: 'İş', color: '#000' })
