@@ -1,12 +1,18 @@
 import { Check, Clock, FlaskConical, Sparkles } from 'lucide-react'
 import { motion } from 'motion/react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { chooseTestPlan } from '../cloud/admin'
+import { cloudErrorMessage } from '../cloud/errors'
+import { APP_CONFIG } from '../config/app'
 import { PageHeader } from '../components/AppShell'
 import { PlanBadge } from '../components/PlanGate'
 import { Alert, Card, More, Segmented } from '../components/ui/primitives'
 import { PLAN_LABEL, type Feature, type Plan } from '../domain/plans'
 import { cn } from '../lib/cn'
+import { useAuth } from '../state/auth'
 import { usePlan } from '../state/plan'
+import { useUi } from '../state/ui'
 
 /** Uygulamada kullanılabilir olan Plus/Plus+ özellikleri. Diğerleri "Yakında" gösterilir. */
 const READY: Partial<Record<Feature, string>> = {
@@ -70,7 +76,26 @@ const PLANS: Array<{ plan: Plan; tagline: string; items: Item[] }> = [
 ]
 
 export default function PlansPage() {
-  const { plan, purchased, preview, canPreview, setPreview } = usePlan()
+  const { plan, purchased, preview, canPreview, setPreview, refresh } = usePlan()
+  const { backend, user } = useAuth()
+  const { toast } = useUi()
+  const [busy, setBusy] = useState<Plan | null>(null)
+  // Deneme yayınında girişli kişi paketini ödemesiz seçer
+  const testBuy = APP_CONFIG.testPurchases && !!backend && !!user
+  const choose = async (p: Plan) => {
+    if (!backend) return
+    setBusy(p)
+    try {
+      await chooseTestPlan(backend.client, p)
+      if (preview) setPreview(null)
+      refresh()
+      toast(p === 'free' ? 'Ücretsiz pakete geçtin.' : `${PLAN_LABEL[p]} açıldı. Deneme sürümünde ücret alınmaz.`)
+    } catch (e) {
+      toast(cloudErrorMessage(e), { kind: 'error' })
+    } finally {
+      setBusy(null)
+    }
+  }
   return (
     <div>
       <PageHeader title="Paketler" subtitle="Temel özellikler hep ücretsiz" />
@@ -138,21 +163,38 @@ export default function PlansPage() {
                     )
                   })}
                 </ul>
-                {p.plan !== 'free' && purchased !== p.plan && (
+                {testBuy && purchased !== p.plan ? (
                   <button
                     type="button"
-                    disabled
-                    className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 text-sm font-semibold text-subtle"
+                    disabled={busy !== null}
+                    onClick={() => choose(p.plan)}
+                    className={cn(
+                      'mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold disabled:opacity-60',
+                      p.plan === 'free' ? 'border border-line bg-surface-2 text-ink' : 'bg-accent text-white hover:brightness-105',
+                    )}
                   >
-                    <Sparkles className="size-4" /> Satın alma yakında
+                    <Sparkles className="size-4" />
+                    {busy === p.plan ? 'Seçiliyor…' : p.plan === 'free' ? 'Ücretsize dön' : `${PLAN_LABEL[p.plan]} seç · deneme sürümünde ücretsiz`}
                   </button>
+                ) : (
+                  p.plan !== 'free' &&
+                  purchased !== p.plan && (
+                    <button
+                      type="button"
+                      disabled
+                      className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 text-sm font-semibold text-subtle"
+                    >
+                      <Sparkles className="size-4" /> Satın alma yakında
+                    </button>
+                  )
                 )}
               </Card>
             </motion.div>
           )
         })}
       </div>
-      <Alert tone="info" className="mt-5" title="Ödeme nasıl olacak?">
+      <Alert tone="info" className="mt-5" title={testBuy ? 'Deneme sürümü' : 'Ödeme nasıl olacak?'}>
+        {testBuy && 'Şu an paketler ücretsiz seçilir. Yayında '}
         App Store ve Google Play üzerinden alınacak. Kart bilgileriniz bize gelmez.
       </Alert>
     </div>
