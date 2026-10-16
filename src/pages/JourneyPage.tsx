@@ -218,7 +218,7 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
   const ind = j.indicators
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <Hero j={j} profile={profile} fmt={fmt} base={base} left={left} tested={tested} onBase={(b) => void changeBase(b)} onRetake={onRetake} saving={ind.monthlySavingKurus} />
 
       {(!profile.targetAge || !profile.spending) && tested && (
@@ -291,7 +291,7 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
   const today = todayIso()
   const open = cur?.conditions.filter((c) => !c.done) ?? []
   return (
-    <Card className="relative overflow-hidden p-5" aria-label="Rota">
+    <Card className="relative overflow-hidden p-4" aria-label="Rota">
       <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-accent/10 blur-3xl" aria-hidden />
       <div className="relative flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
@@ -299,8 +299,8 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
         </h2>
         <Segmented label="Plan birimi" value={base} onChange={onBase} options={(Object.keys(BASE_LABEL) as PlanBase[]).map((b) => ({ value: b, label: BASE_LABEL[b] }))} />
       </div>
-      <div className="relative mt-4 flex items-center gap-4">
-        <LevelRing position={j.position} total={j.stages.length} level={j.level} />
+      <div className="relative mt-3 flex items-center gap-3">
+        <LevelRing position={j.position} total={j.stages.length} level={j.level} small />
         <div className="min-w-0 flex-1">
           <p className="text-[13px] text-muted">
             <span className="font-semibold text-ink">
@@ -317,10 +317,10 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
           </p>
           {cur ? (
             <>
-              <p className="mt-1 font-display text-[17px] font-semibold leading-snug text-ink">
+              <p className="mt-0.5 font-display text-[15px] font-semibold leading-snug text-ink">
                 <span className="text-accent">Hedef:</span> {cur.goal}
               </p>
-              <p className="mt-1 text-[13px] text-muted">
+              <p className="mt-0.5 text-[12.5px] text-muted">
                 {open.length > 1 ? `${open.length} koşul kaldı: ` : 'Kalan: '}
                 <span className="font-medium text-ink">{open.map((c) => c.leftText).join(' · ')}</span>
                 {cur.etaMonths !== undefined && (
@@ -329,11 +329,11 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
               </p>
             </>
           ) : (
-            <p className="mt-1 font-display text-[17px] font-semibold text-ink">Finansal özgürlüğe ulaştınız. Hedefinizi koruyun.</p>
+            <p className="mt-0.5 font-display text-[15px] font-semibold text-ink">Finansal özgürlüğe ulaştınız. Hedefinizi koruyun.</p>
           )}
         </div>
       </div>
-      <div className="relative mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+      <div className="relative mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
         <Button size="sm" variant={tested ? 'soft' : 'primary'} icon={<ClipboardCheck className="size-4" />} onClick={onRetake} disabled={left === 0}>
           {left === 0 ? 'Bu ayın test hakları bitti' : tested ? `Testi yenile · bu ay ${left} hak` : 'Testi yap'}
         </Button>
@@ -352,9 +352,9 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
   const [opened, setOpened] = useState<StageId | null>(null)
   const today = todayIso()
   return (
-    <Card className="p-4 sm:p-5">
+    <Card className="p-4">
       <h3 className="font-display text-base font-semibold">Rotanız</h3>
-      <ol className="mt-4" aria-label="Aşamalar">
+      <ol className="mt-3" aria-label="Aşamalar">
         {j.stages.map((s, i) => {
           const isCur = j.current?.id === s.id
           const last = i === j.stages.length - 1
@@ -364,7 +364,7 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
           const openConds = s.conditions.filter((c) => !c.done).length
           const delay = reduced ? 0 : 0.15 + i * 0.12
           return (
-            <li key={s.id} className="relative grid grid-cols-[40px_1fr] gap-3 pb-4 last:pb-0">
+            <li key={s.id} className="relative grid grid-cols-[40px_1fr] gap-3 pb-3 last:pb-0">
               {!last && (
                 <div className="absolute bottom-0 left-[18px] top-10 w-1 overflow-hidden rounded-full bg-surface-2" aria-hidden>
                   <motion.div className="w-full origin-top rounded-full bg-accent" style={{ height: '100%' }} initial={reduced ? false : { scaleY: 0 }} animate={{ scaleY: fill }} transition={{ duration: 0.6, delay: delay + 0.2, ease: 'easeOut' }} />
@@ -387,7 +387,7 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
                 </motion.span>
               </div>
               <motion.div
-                className={cn('min-w-0 rounded-2xl border p-3.5', isCur ? 'border-accent bg-accent-soft/40 shadow-card' : s.done ? 'border-line bg-surface' : 'border-line bg-surface')}
+                className={cn('min-w-0 rounded-2xl border p-3', isCur ? 'border-accent bg-accent-soft/40 shadow-card' : s.done ? 'border-line bg-surface' : 'border-line bg-surface')}
                 initial={reduced ? false : { opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.35, delay }}
