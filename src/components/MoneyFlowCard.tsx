@@ -27,7 +27,7 @@ export function flowNote(r: FlowRow): string {
 
 function Bar({ r, delay, thin }: { r: FlowRow; delay: number; thin?: boolean }) {
   const reduced = useReducedMotion()
-  const over = !r.ok && r.key !== 'saving'
+  const over = !r.ok
   const ratio = r.targetKurus > 0 ? Math.max(0, r.spentKurus) / r.targetKurus : r.spentKurus > 0 ? 1 : 0
   return (
     <div className={cn('overflow-hidden rounded-full bg-surface-2', thin ? 'h-1.5' : 'h-2')}>
@@ -77,7 +77,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
             <div className="mt-1.5">
               <Bar r={r} delay={0.1 * i} />
             </div>
-            <div className={cn('mt-1 text-[11.5px] font-medium', r.ok ? 'text-accent' : 'text-warning')}>{flowNote(r)}</div>
+            <div className={cn('mt-1 text-[11.5px] font-medium', r.ok ? 'text-accent' : 'text-danger')}>{flowNote(r)}</div>
           </li>
         ))}
       </ul>
@@ -103,7 +103,7 @@ export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; c
         </Link>
       </div>
       <p className="num mt-0.5 text-[12.5px] text-muted">
-        {tl(flow.incomeKurus)} gelir · {flow.personal ? 'kişisel oranlar' : 'sabit oranlar (50/30/20)'}
+        {tl(flow.incomeKurus)} gelir · {flow.personal ? 'Bütçe\u2019deki bilimsel oranlar' : 'sabit oranlar (50/30/20)'}
       </p>
       <ul className="mt-3 flex flex-col gap-2.5">
         {flow.rows.map((r, i) => (
@@ -113,7 +113,7 @@ export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; c
                 <span className="size-2 shrink-0 rounded-full" style={{ background: FLOW_META[r.key].color }} aria-hidden />
                 {FLOW_META[r.key].label} <span className="text-subtle">{pct(r.share)}</span>
               </span>
-              <span className={cn('num font-medium', r.ok ? 'text-ink' : 'text-warning')}>
+              <span className={cn('num font-medium', r.ok ? 'text-ink' : 'text-danger')}>
                 {tl(r.spentKurus)} <span className="text-subtle">/ {tl(r.targetKurus)}</span>
               </span>
             </div>

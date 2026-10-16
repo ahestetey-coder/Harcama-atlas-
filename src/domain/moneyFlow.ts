@@ -7,8 +7,8 @@ import { isSpending, type Category, type MonthKey, type Transaction } from './ty
 
 /**
  * Aylık paranın yolu: gelirin dört kovaya bilimsel hedef dağılımı (ihtiyaçlar, istekler, borç ve
- * taksit, birikim) ve dönemde her kovaya harcanan tutar. Hedefler Plus'ta dört kovalı bütçe
- * motorundan (kişisel), Ücretsiz pakette sabit 50/30/20 oranlarından gelir. Saf fonksiyonlar.
+ * taksit, birikim) ve dönemde her kovaya harcanan tutar. Hedefler dört kovalı bütçe
+ * motorundan (Bütçe sayfasındaki dağılımla aynı, her pakette); gelir motora girmemişse sabit 50/30/20. Saf fonksiyonlar.
  */
 
 export type FlowKey = 'needs' | 'wants' | 'debt' | 'saving'
@@ -30,7 +30,8 @@ export function personalShares(a: AutoBudget): FlowShares | null {
   const b = a.buckets
   if (!b || b.incomeKurus <= 0) return null
   const income = b.incomeKurus
-  const debt = Math.max(0, a.debtKurus)
+  // Kart/KMH ödemesi harcama bütçesi dışında ama borç kovasındadır
+  const debt = Math.max(0, a.debtKurus + b.outsideKurus)
   const wants = Math.max(0, b.buckets.wants.kurus)
   const saving = Math.max(0, b.buckets.saving.kurus)
   const needs = Math.max(0, income - debt - wants - saving)

@@ -1,6 +1,6 @@
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Bot, CalendarClock, ChartColumn, ChevronDown, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Repeat, Scale, Target, Wallet } from 'lucide-react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Bot, CalendarClock, ChevronDown, ChevronRight, Users, FileUp, FlaskConical, Minus, PiggyBank, Plus, Scale, Target, Wallet } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { CategoryDonut, DailyBars, type DonutSlice } from '../components/charts/Charts'
@@ -15,7 +15,6 @@ import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { compareWithPrevious, summarizeMonth, type CategoryTotal } from '../domain/summary'
 import { findSettlement, settlementRangeText } from '../domain/personal'
 import { isSpending, type Member, type SpendGroup, type Transaction } from '../domain/types'
-import { FEATURE_PLAN, type Feature } from '../domain/plans'
 import { AnimatedKurus } from '../components/ui/AnimatedMoney'
 import { cn } from '../lib/cn'
 import { useCategoryMap, useData, useGroupFilter, useGroupMap, useGroups, useRepo, useTransactions } from '../state/data'
@@ -260,8 +259,7 @@ export default function DashboardPage() {
               Gider ekleyin veya ekstrenizi içe aktarın.
             </EmptyState>
           </Card>
-          <Shortcuts className="lg:col-span-5" />
-          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-12" />}
+          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-5" />}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
@@ -349,8 +347,7 @@ export default function DashboardPage() {
           </motion.section>
 
           {shared}
-          <Shortcuts className="lg:order-first lg:col-span-5" />
-          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-12" />}
+          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:order-first lg:col-span-5" />}
 
           {/* Kategori dağılımı */}
           <Card className="p-5 lg:col-span-7">
@@ -513,44 +510,6 @@ function HeroStat({ label, value, tone }: { label: string; value: string; tone?:
 function greeting(): string {
   const h = new Date().getHours()
   return h < 6 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar'
-}
-
-/** Alt çubukta olmayan özelliklere kısayollar: ödemeler, hedefler, raporlar. */
-function Shortcuts({ className }: { className?: string }) {
-  const { has } = usePlan()
-  const due = useDuePayments(has('subscriptions')).length
-  const items: Array<{ to: string; label: string; icon: ReactNode; tone: string; feature: Feature; badge?: string }> = [
-    { to: '/borclar?bolum=odemeler', label: 'Ödemeler', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', feature: 'subscriptions', badge: due ? `${due} yaklaşan` : undefined },
-    { to: '/hedefler', label: 'Hedefler', icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', feature: 'goals' },
-    { to: '/raporlar', label: 'Raporlar', icon: <ChartColumn />, tone: 'from-indigo-500 to-blue-700', feature: 'reports' },
-  ]
-  return (
-    <Card className={cn('flex flex-col p-5', className)} aria-label="Kısayollar">
-      <h2 className="mb-3 font-display text-base font-semibold">Kısayollar</h2>
-      <div className="grid flex-1 auto-rows-fr grid-cols-3 gap-2">
-        {items.map((it, i) => {
-          const need = has(it.feature) ? null : FEATURE_PLAN[it.feature]
-          return (
-            <motion.div key={it.to} className="flex" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 + i * 0.04, type: 'spring', stiffness: 380, damping: 28 }}>
-              <Link
-                to={it.to}
-                className="pressable relative flex min-h-[92px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface-2 px-1 py-3 text-center transition-colors hover:border-line-strong hover:bg-surface-3"
-              >
-                <span className={cn('grid size-10 place-items-center rounded-xl bg-gradient-to-br text-white shadow-card [&>svg]:size-5', it.tone)}>{it.icon}</span>
-                <span className="text-[12.5px] font-semibold leading-tight text-ink">{it.label}</span>
-                {it.badge && <span className="absolute right-1.5 top-1.5 rounded-full bg-warning-soft px-1.5 text-[10px] font-bold leading-4 text-warning">{it.badge}</span>}
-                {need && (
-                  <span className={cn('absolute right-1.5 top-1.5 rounded-full px-1.5 text-[9.5px] font-bold leading-4 text-white', need === 'plus' ? 'bg-emerald-600' : 'bg-violet-600')}>
-                    {need === 'plus' ? 'Plus' : 'Plus+'}
-                  </span>
-                )}
-              </Link>
-            </motion.div>
-          )
-        })}
-      </div>
-    </Card>
-  )
 }
 
 function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareWithPrevious> }) {

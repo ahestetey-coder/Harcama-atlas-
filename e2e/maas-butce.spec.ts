@@ -56,13 +56,15 @@ test('Ücretsiz: maaş ve sabit giderlerle dört kovalı bütçe kurulur, harcam
   await expect(page.getByRole('region', { name: 'Bütçe belirleme' }).getByLabel('Dönemlik harcama bütçesi (TL)')).toHaveValue('47.000,00')
   await expect(card.getByRole('button', { name: 'Bu bütçeyi kullan' })).toHaveCount(0)
 
-  // 5) Özet: aylık paranın yolu Ücretsizde sabit oranlarla, harcanan / hedef
+  // 5) Özet: aylık paranın yolu Bütçe'deki dağılımla aynı limitler; kısayollar yok
   await page.goto('./#/')
   const flow = page.getByRole('region', { name: 'Aylık paranın yolu' })
-  await expect(flow).toContainText('sabit oranlar (50/30/20)')
-  await expect(flow).toContainText('İhtiyaçlar %50')
-  await expect(flow).toContainText('/ 30.000 ₺')
-  await expect(flow).toContainText('/ 12.000 ₺')
+  await expect(flow).toContainText('Bütçe’deki bilimsel oranlar')
+  await expect(flow).toContainText('/ 41.000 ₺')
+  await expect(flow).toContainText('/ 6.000 ₺')
+  await expect(flow).toContainText('/ 4.000 ₺')
+  await expect(flow).toContainText('/ 9.000 ₺')
+  await expect(page.getByRole('region', { name: 'Kısayollar' })).toHaveCount(0)
 })
 
 test('Ayarlar: ay döngüsü maaş gününe bağlanır ve çözülür; tek seferlik gelir bir kez sayılır', async ({ page }) => {
