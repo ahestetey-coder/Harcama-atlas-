@@ -83,7 +83,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11.5px] text-subtle">50/30/20 kuralı: kira, fatura, kredi ve taksit ödemeleri dahil zorunlu giderler en fazla %50, istekler %30. Kalan %20 birikim ve borç kapatmaya: borç kapatma taksitlerin üstüne ek ödemedir, ikisi de gelirden bu ay kalandan ayrılır.</p>
+      <p className="mt-2 text-[11.5px] text-subtle">50/30/20 kuralı: kira, fatura, kredi ve taksit ödemeleri dahil zorunlu giderler en fazla %50, istekler %30. Kalan %20 birikim ve borç kapatmaya: borç kapatma taksitlerin üstüne ek ödemedir. İkisi, zorunlu giderler ve istek payı düşüldükten sonra kalandan ayrılır; zorunlu giderler %50'yi aşarsa fark birikimden eksilir.</p>
     </>
   )
 }

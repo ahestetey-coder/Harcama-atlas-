@@ -41,14 +41,16 @@ describe('moneyFlow', () => {
     expect(s.debt).toBeCloseTo(0.15)
   })
 
-  it('taksit zorunlu giderde; borç kapatma kalandan ayrılır, birikim ondan sonra', () => {
+  it('taksit zorunlu giderde; istek payından sonra kalan önce borç kapatmaya, sonra birikime', () => {
     const f = buildMoneyFlow(10_000_000, ruleShares(null, true), { fixed: 0, needs: 2_000_000, wants: 1_000_000, debt: 4_800_000 })
     const [needs, , debt, saving] = f.rows
     expect(needs.spentKurus).toBe(6_800_000)
     expect(needs.ok).toBe(false)
     expect(debt.targetKurus).toBe(1_000_000)
-    expect(debt.spentKurus).toBe(1_000_000)
-    expect(saving.spentKurus).toBe(1_200_000)
-    expect(saving.ok).toBe(true)
+    // İstek payı (3.000.000) ayrılır; kalan 200.000 önce borç kapatmaya
+    expect(debt.spentKurus).toBe(200_000)
+    expect(debt.ok).toBe(false)
+    expect(saving.spentKurus).toBe(0)
+    expect(saving.ok).toBe(false)
   })
 })
