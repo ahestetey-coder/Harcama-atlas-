@@ -106,7 +106,7 @@ test('web testinden uygulamaya: Plus+ netleştirince 8 aşamalı rota açılır'
   const sim = page.getByRole('region', { name: 'Özgürlük simülasyonu' })
   await expect(sim).toContainText('Finansal bağımsızlığa varış')
   await expect(sim.getByRole('list', { name: 'Rota takvimi' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Aylık paranın yolu' })).toContainText('Birikim')
+  await expect(page.getByRole('region', { name: 'Aylık paranın yolu' })).toContainText('Borç kapama ve birikim')
 })
 
 test('uygulama içi Finansal Harita testi: ücretsizde çözülür, sonuç paket önerir; Plus rotasını kurar', async ({ page }) => {

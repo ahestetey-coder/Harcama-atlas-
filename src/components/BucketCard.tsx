@@ -1,15 +1,14 @@
 import { CalendarClock, Plus, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { toUserMessage } from '../data/repository'
-import { CONSUMER_DEBT_LIMIT, DTI_LIMIT, HOUSING_LIMIT, MIN_SAVING_RATE, NEEDS_SHARE, SAVING_RATE_TARGET, WANTS_SHARE } from '../domain/assumptions'
+import { CONSUMER_DEBT_LIMIT, DTI_LIMIT, HOUSING_LIMIT, MIN_SAVING_RATE } from '../domain/assumptions'
 import type { BucketBudget, BucketKind } from '../domain/bucketBudget'
 import { dayOf, formatDate } from '../domain/dates'
 import { personalCycleDay, primarySalary } from '../domain/income'
 import { formatKurus } from '../domain/money'
 import type { Settings } from '../domain/types'
 import { cn } from '../lib/cn'
-import { useBudgetSetup, useMoneyFlow } from '../state/budget'
-import { FlowCells } from './MoneyFlowCard'
+import { useBudgetSetup } from '../state/budget'
 import { useRepo, useSettings } from '../state/data'
 import { usePlan } from '../state/plan'
 import { useUi } from '../state/ui'
@@ -41,34 +40,6 @@ const limitText = (rate: number) => `%${Math.round(rate * 100)}`
 /** Kova çubuğunun ekran okuyucu metni. */
 export function bucketAriaLabel(b: BucketBudget): string {
   return `Dağılım: ${ROWS.map((r) => `${r.short} ${pctText(b.buckets[r.key].pct)}`).join(', ')}`
-}
-
-/** 50/30/20 kuralı, esnetilmez; hedefler gelirden, planlanan tutarlar bütçe motorundan. */
-const RULE_ROWS = [
-  { key: 'needs', label: 'Zorunlu giderler ve ihtiyaçlar', short: 'zorunlu giderler ve ihtiyaçlar', share: NEEDS_SHARE, color: 'bg-info' },
-  { key: 'wants', label: 'İstekler', short: 'istekler', share: WANTS_SHARE, color: 'bg-amber-400' },
-  { key: 'saving', label: 'Birikim ve borç kapatma', short: 'birikim ve borç kapatma', share: SAVING_RATE_TARGET, color: 'bg-accent' },
-] as const
-
-export function ruleAriaLabel(): string {
-  return `50/30/20 hedefi: ${RULE_ROWS.map((r) => `${r.short} ${pctText(r.share)}`).join(', ')}`
-}
-
-/** Kural satırları: hedef tutar ve bütçedeki planlanan; zorunlu giderler hedefi aşarsa ya da birikim altında kalırsa uyarı. */
-export function ruleRows(b: BucketBudget): Array<{ key: string; label: string; color: string; share: number; targetKurus: number; ok: boolean; note: string }> {
-  const k = b.buckets
-  return RULE_ROWS.map((r) => {
-    const targetKurus = Math.round(b.incomeKurus * r.share)
-    if (r.key === 'needs') {
-      const planned = k.fixed.kurus + k.needs.kurus
-      const over = planned - targetKurus
-      const parts = `zorunlu sabitler ${formatKurus(k.fixed.kurus)} + ihtiyaçlar ${formatKurus(k.needs.kurus)}`
-      return { ...r, targetKurus, ok: over <= 0, note: over > 0 ? `Planlanan ${formatKurus(planned)} (${parts}), hedefi ${formatKurus(over)} aşıyor.` : `Planlanan ${formatKurus(planned)} (${parts}).` }
-    }
-    if (r.key === 'wants') return { ...r, targetKurus, ok: k.wants.kurus <= targetKurus, note: `Bütçede ${formatKurus(k.wants.kurus)}` }
-    const short = targetKurus - k.saving.kurus
-    return { ...r, targetKurus, ok: short <= 0, note: short > 0 ? `Ayrılan ${formatKurus(k.saving.kurus)} · ${formatKurus(short)} eksik` : `Ayrılan ${formatKurus(k.saving.kurus)}` }
-  })
 }
 
 /** Kartın tek kalın cümlesi: maaş günü ne kadar birikime ayrılacak ya da açık ne kadar. */
@@ -146,7 +117,6 @@ export function bucketChip(b: BucketBudget, s: Pick<Settings, 'cycleSource' | 'c
  */
 export function BucketCard() {
   const setup = useBudgetSetup()
-  const flow = useMoneyFlow()
   const settings = useSettings()
   const repo = useRepo()
   const { has } = usePlan()
@@ -195,12 +165,12 @@ export function BucketCard() {
   const alert = bucketAlert(b)
   const chip = bucketChip(b, settings)
   const destination = mainDestination(b)
+  const scale = Math.max(b.incomeKurus, b.buckets.fixed.kurus + b.buckets.needs.kurus)
   const offerCopy = !has('advancedBudget') && setup.mode === 'manual' && b.spendKurus > 0 && settings.monthlyBudgetKurus !== b.spendKurus
   const cycleDay = personalCycleDay({ ...settings, cycleSource: 'salary' })
   const { minMonths, maxMonths, essentialKurus } = b.emergency
   const c = b.checks
   const stage = stageText(b)
-  const needsRow = ruleRows(b).find((r) => r.key === 'needs')
 
   return (
     <Card className="mb-4 p-5" aria-label="Bütçe dağılımı">
@@ -229,13 +199,30 @@ export function BucketCard() {
 
       <p className={cn('mt-3 font-semibold', b.shortfallKurus > 0 ? 'text-danger' : 'text-ink')}>{bucketHeadline(b)}</p>
 
-      {flow && <FlowCells flow={flow} />}
-      {needsRow && !needsRow.ok && <p className="num mt-2 text-[12.5px] font-medium text-danger">Zorunlu giderler ve ihtiyaçlar: {needsRow.note}</p>}
-      {(destination || b.oneOffKurus > 0) && (
-        <p className="mt-1.5 text-[12.5px] text-subtle">
-          Birikim {[destination && `→ ${destination}`, b.oneOffKurus > 0 && `+${formatKurus(b.oneOffKurus)} ek gelir`].filter(Boolean).join(' · ')}
-        </p>
-      )}
+      <div role="img" aria-label={bucketAriaLabel(b)} className="mt-3 flex h-3 overflow-hidden rounded-full bg-surface-2">
+        {ROWS.map((r) => (
+          <div key={r.key} className={cn('h-full', r.color)} style={{ width: `${(b.buckets[r.key].kurus / scale) * 100}%` }} />
+        ))}
+      </div>
+
+      <dl className="mt-3 text-[13px]">
+        {ROWS.map((r) => (
+          <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 border-b border-line/60 py-1.5 last:border-b-0">
+            <dt className="flex min-w-0 items-center gap-2 text-muted">
+              <span className={cn('size-2.5 shrink-0 rounded-full', r.color)} aria-hidden />
+              {r.label}
+            </dt>
+            <dd className="num text-ink">
+              {formatKurus(b.buckets[r.key].kurus)} <span className="text-subtle">· {pctText(b.buckets[r.key].pct)}</span>
+            </dd>
+            {r.key === 'saving' && (destination || b.oneOffKurus > 0) && (
+              <dd className="col-span-2 mt-0.5 pl-[18px] text-[12.5px] text-subtle">
+                {[destination && `→ ${destination}`, b.oneOffKurus > 0 && `+${formatKurus(b.oneOffKurus)} ek gelir`].filter(Boolean).join(' · ')}
+              </dd>
+            )}
+          </div>
+        ))}
+      </dl>
 
       {alert && (
         <Alert tone={alert.tone} className="mt-3">
