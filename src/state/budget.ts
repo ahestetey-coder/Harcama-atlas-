@@ -4,7 +4,7 @@ import { budgetStatus, DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus }
 import { budgetFacts, READ_LOCKED_DATA, type FactsGates } from '../domain/budgetFacts'
 import { buildBucketBudget, fixedSpendSplit, toAutoBudget } from '../domain/bucketBudget'
 import { periodOf, todayIso } from '../domain/dates'
-import { buildMoneyFlow, flowSpent, RULE_SHARES, type MoneyFlowResult } from '../domain/moneyFlow'
+import { buildMoneyFlow, flowSpent, ruleShares, type MoneyFlowResult } from '../domain/moneyFlow'
 import { addMonthsClamped, fixedPayments, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
 import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, portfolio } from '../domain/assets'
 import { estimatedMinPayment } from '../domain/coach'
@@ -119,7 +119,9 @@ export function useMoneyFlow(opts: { month?: string; incomeKurus?: number } = {}
     const keys = new Set((recurring ?? []).filter((r) => r.kind === 'installment').map((r) => r.matchKey ?? '').filter(Boolean))
     const fixedKeys = new Set((recurring ?? []).filter((r) => r.kind !== 'installment' && r.active).map((r) => r.matchKey ?? '').filter(Boolean))
     const spent = flowSpent(personal.counted, month ?? periodOf(todayIso(), startDay), startDay, categories, keys, fixedKeys)
-    return buildMoneyFlow(income, RULE_SHARES, spent)
+    const b = auto?.buckets
+    const part = b && b.buckets.saving.kurus > 0 ? b.destinations.debtKurus / b.buckets.saving.kurus : null
+    return buildMoneyFlow(income, ruleShares(part, spent.debt > 0 || (auto?.debtKurus ?? 0) > 0), spent)
   }, [personal, auto, recurring, categories, month, incomeKurus, startDay])
 }
 

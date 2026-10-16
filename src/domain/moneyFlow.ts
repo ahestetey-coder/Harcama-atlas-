@@ -16,10 +16,23 @@ export const FLOW_KEYS: FlowKey[] = ['fixed', 'needs', 'wants', 'debt', 'saving'
 export type FlowShares = Record<FlowKey, number>
 
 /**
- * 50/30/20 kuralı, esnetilmez: zorunlu giderler ve ihtiyaçlar (kira, fatura, borç ve taksit dahil)
- * %50, istekler %30, birikim ve borç kapatma %20. Bütçe sayfası ve Özet aynı hedefleri gösterir.
+ * 50/30/20 kuralı, esnetilmez: zorunlu giderler ve ihtiyaçlar (kira, fatura) %50, istekler %30,
+ * birikim ve borç kapatma %20. Bütçe sayfası ve Özet aynı hedefleri gösterir.
  */
 export const RULE_SHARES: FlowShares = { fixed: 0, needs: NEEDS_SHARE, wants: WANTS_SHARE, debt: 0, saving: SAVING_RATE_TARGET }
+
+/** Borç varken %20 yarı yarıya ayrılır (motor bir pay vermediyse). */
+export const DEFAULT_DEBT_PART = 0.5
+
+/**
+ * %20'lik kova birikim ve borç kapatma olarak ikiye ayrılır; toplam %20 kalır. Borç payı bütçe
+ * motorunun birikimden borca ayırdığı orandan, motor ayırmadıysa ve borç ödemesi varsa yarı yarıya.
+ */
+export function ruleShares(engineDebtPart: number | null, hasDebt: boolean): FlowShares {
+  const part = engineDebtPart != null && engineDebtPart > 0 ? Math.min(1, engineDebtPart) : hasDebt ? DEFAULT_DEBT_PART : 0
+  const debt = Math.round(SAVING_RATE_TARGET * part * 1000) / 1000
+  return { ...RULE_SHARES, debt, saving: SAVING_RATE_TARGET - debt }
+}
 
 /** Taksit ve kredi ödemesi mi: ekstre taksiti, borç planından yansıyan satır ya da taksit kaydıyla eşleşen gider. */
 export function isDebtPayment(t: Transaction, installmentKeys: ReadonlySet<string>): boolean {
@@ -66,19 +79,14 @@ export interface MoneyFlowResult {
 }
 
 export function buildMoneyFlow(incomeKurus: number, shares: FlowShares, raw: Record<Exclude<FlowKey, 'saving'>, number>): MoneyFlowResult {
-  // Payı olmayan kova gösterilmez; harcaması bir üst kovaya girer (borç → zorunlu sabitler → ihtiyaçlar)
+  // Zorunlu sabitler ayrı kova değilse ihtiyaçlara girer
   const spent = { ...raw }
-  if (shares.debt <= 0) {
-    if (shares.fixed > 0) spent.fixed += spent.debt
-    else spent.needs += spent.debt
-    spent.debt = 0
-  }
   if (shares.fixed <= 0) {
     spent.needs += spent.fixed
     spent.fixed = 0
   }
   const left = incomeKurus - spent.fixed - spent.needs - spent.wants - spent.debt
-  const rows = FLOW_KEYS.filter((k) => k === 'saving' || k === 'needs' || shares[k] > 0).map((key) => {
+  const rows = FLOW_KEYS.filter((k) => k !== 'fixed' || shares.fixed > 0).map((key) => {
     const targetKurus = Math.round(incomeKurus * shares[key])
     const spentKurus = key === 'saving' ? left : spent[key]
     return { key, share: shares[key], targetKurus, spentKurus, ok: key === 'saving' ? spentKurus >= targetKurus : spentKurus <= targetKurus }

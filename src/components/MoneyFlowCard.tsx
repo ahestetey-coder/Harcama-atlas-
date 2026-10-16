@@ -11,8 +11,8 @@ export const FLOW_META: Record<FlowKey, { label: string; color: string }> = {
   fixed: { label: 'Zorunlu sabitler', color: '#64748b' },
   needs: { label: 'Zorunlu giderler ve ihtiyaçlar', color: '#0284c7' },
   wants: { label: 'İstekler', color: '#d97706' },
-  debt: { label: 'Borç ve taksit', color: '#8b5cf6' },
-  saving: { label: 'Birikim ve borç kapatma', color: '#059669' },
+  debt: { label: 'Borç kapatma', color: '#8b5cf6' },
+  saving: { label: 'Birikim', color: '#059669' },
 }
 
 /** Tam lira: 1765000 → "17.650 ₺" */
@@ -62,7 +62,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
           ) : null,
         )}
       </div>
-      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {flow.rows.map((r, i) => (
           <li key={r.key} className="rounded-xl border border-line p-2.5">
             <div className="flex items-center justify-between gap-1 text-[12px] text-muted">
@@ -82,7 +82,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11.5px] text-subtle">50/30/20 kuralı: kira, fatura, borç ve taksit dahil zorunlu giderler en fazla %50, istekler %30, birikim en az %20. Birikim, gelirden bu ay kalan.</p>
+      <p className="mt-2 text-[11.5px] text-subtle">50/30/20 kuralı: zorunlu giderler en fazla %50, istekler %30; birikim ve borç kapatma birlikte %20. Borç kapatma bu ayki kredi ve taksit ödemeleri, birikim gelirden bu ay kalan.</p>
     </>
   )
 }
