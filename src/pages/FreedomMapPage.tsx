@@ -39,7 +39,7 @@ import { AnimatedKurus, AnimatedNumber } from '../components/ui/AnimatedMoney'
 import { Badge, Button, Card, Checkbox, Field, Input, Spinner } from '../components/ui/primitives'
 import { leadsAvailable, rememberLeadCode, rememberLocalLead, submitLead } from '../cloud/freedomLead'
 import { APP_CONFIG } from '../config/app'
-import { SAVING_GROWTH_PCT } from '../domain/assumptions'
+import { DEFAULT_INFLATION_PCT, nominalPct, SAVING_GROWTH_PCT } from '../domain/assumptions'
 import { SCENARIOS } from '../domain/journey'
 import { formatKurusCompact } from '../domain/money'
 import { newLeadCode, QUICK_QUESTIONS, QUICK_TEST_VERSION, quickResult, quickScenario, reachRange, type QuickAnswers, type QuickQuestion, type QuickResult } from '../domain/quickTest'
@@ -820,7 +820,7 @@ function Simulator({ result }: { result: QuickResult }) {
       </div>
       <ExtraSavingLines rows={rows} plusLabel={`Ayda +${tl(extra)} ile`} caption="Birikimin yıllara göre tahmini seyri, bugünün parasıyla" />
       <p className="text-[12px] text-subtle">
-        Bileşik büyümeyle hesaplanır: birikim her yıl enflasyonun üstünde %{SCENARIOS.mid.realReturnPct.toLocaleString('tr-TR')} getiriyle büyür, aylık birikimin de yılda %{SAVING_GROWTH_PCT} artar. Tutarlar bugünün parasıyladır.
+        Bileşik büyümeyle hesaplanır: birikim her yıl enflasyon kadar, üstüne de %{SCENARIOS.mid.realReturnPct.toLocaleString('tr-TR')} büyür (enflasyon %{DEFAULT_INFLATION_PCT} ise yılda yaklaşık %{nominalPct(SCENARIOS.mid.realReturnPct).toLocaleString('tr-TR')}). Aylık birikimin de yılda %{SAVING_GROWTH_PCT} artar. Tutarlar bugünün parasıyladır.
       </p>
     </Card>
   )
