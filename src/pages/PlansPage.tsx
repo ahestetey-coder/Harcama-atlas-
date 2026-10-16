@@ -60,6 +60,7 @@ const PLANS: Array<{ plan: Plan; tagline: string; items: Item[] }> = [
       { text: 'Yatırımlarım ve Borçlarım: altın, döviz, fon, hisse, kripto, emtia, mevduat; türüne göre borçlar ve kart taksitleri', feature: 'assets' },
       { text: 'Yüzde, ağırlık veya özel tutarla ortak gider paylaşımı', feature: 'advancedSplit' },
       { text: "Web'deki Finansal Harita testini gerçek rakamlarınla netleştirme: kesin özgürlük yılı ve sıradaki durak", feature: 'webRefine' },
+      { text: 'Finansal Özgürlük Yolculuğum: Özgürlük Rotası testi, 8 duraklı rota ve yıl yıl simülasyon', feature: 'journey' },
     ],
   },
   {
@@ -67,7 +68,6 @@ const PLANS: Array<{ plan: Plan; tagline: string; items: Item[] }> = [
     tagline: 'Finansal özgürlük yolculuğunu oluştur ve ilerlemeni izle',
     items: [
       { text: 'Plus’ın bütün özellikleri' },
-      { text: 'Finansal Özgürlük Yolculuğum: mini anket ve animasyonlu hedef rotası', feature: 'journey' },
       { text: 'Gelecek senaryoları: temkinli, orta ve olumlu varsayımlar', feature: 'scenarios' },
       { text: 'Finans koçu: borç kapatma ve yapılandırma planı, yatırıma ayrılacak tutar, kişiye özel mesajlar', feature: 'aiCoach' },
       { text: 'Finansal bilgi ve ekonomi gündemi', feature: 'learning' },
