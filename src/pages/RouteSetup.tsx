@@ -136,6 +136,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       pension: plainTl(cap.bes),
       invest: plainTl(est.investTl),
       dream: plainTl(a.hayal),
+      retire: '',
       age: '',
       years: '15',
       drop: a.dusus,
@@ -210,6 +211,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       age: ageN,
       dependents: Number(f.dependents) || 0,
       passiveIncomeKurus: soft(f.passive) || undefined,
+      pensionIncomeKurus: soft(f.retire) || undefined,
       base: 'TRY',
       targetAge: ageN ? ageN + years : undefined,
       lifeAge: DEFAULT_LIFE_AGE,
@@ -241,7 +243,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     return null
   }
   const confirmStep = () => {
-    const keys: Record<number, Key[]> = { 0: ['income', 'extra', 'passive', 'stability', 'dependents'], 1: ['expenses'], 2: ['debts'], 3: ['emergency', 'invest'], 4: ['years'], 5: ['exp'] }
+    const keys: Record<number, Key[]> = { 0: ['income', 'extra', 'passive', 'stability', 'dependents'], 1: ['expenses'], 2: ['debts'], 3: ['emergency', 'invest'], 4: ['years', 'retire'], 5: ['exp'] }
     setStatus((s) => {
       const n = { ...s }
       for (const k of keys[step] ?? []) if (n[k] === 'web') n[k] = 'ok'
@@ -445,6 +447,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                   <CountField id="rs-age" label="Yaşın" badge={f.age ? undefined : <Badge tone="danger">Eksik</Badge>} value={f.age} onChange={(v) => set('age', v)} placeholder="Örn. 32" />
                   <CountField id="rs-years" label="Kaç yılda varmak istersin?" badge={badge('years')} value={f.years} onChange={(v) => set('years', v)} />
                 </div>
+                {money('retire', 'Beklenen aylık emekli maaşı', 'Hedefe vardığında alacağın SGK ya da BES, bugünün parasıyla. Bu tutar birikimden çekilmez, hedef küçülür. Bilmiyorsan boş bırak.')}
               </>
             )}
             {s.key === 'son' && (
