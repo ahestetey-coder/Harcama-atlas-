@@ -26,7 +26,8 @@ import { usePersonalCycle, useCycle } from '../state/cycle'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 import { usePlan } from '../state/plan'
-import { useBudgetSetup, useBudgetStatus, useDuePayments } from '../state/budget'
+import { useBudgetSetup, useBudgetStatus, useDuePayments, useMoneyFlow } from '../state/budget'
+import { MoneyFlowSummary } from '../components/MoneyFlowCard'
 import { useCoach } from '../state/coach'
 
 const MAX_SLICES = 7
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   const categories = useCategoryMap()
   const budgetSetup = useBudgetSetup()
   const { month, setMonth, openTransactionForm, openImport } = useUi()
+  const moneyFlow = useMoneyFlow({ month })
   const { isDemo, setDemo } = useData()
   const navigate = useNavigate()
   const [drawer, setDrawer] = useState<{ title: string; filter: (t: Transaction) => boolean; categoryId?: string | null; day?: number } | null>(null)
@@ -259,6 +261,7 @@ export default function DashboardPage() {
             </EmptyState>
           </Card>
           <Shortcuts className="lg:col-span-5" />
+          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-12" />}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
@@ -347,6 +350,7 @@ export default function DashboardPage() {
 
           {shared}
           <Shortcuts className="lg:order-first lg:col-span-5" />
+          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-12" />}
 
           {/* Kategori dağılımı */}
           <Card className="p-5 lg:col-span-7">
