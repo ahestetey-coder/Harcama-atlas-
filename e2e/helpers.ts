@@ -105,9 +105,13 @@ export async function takeFreedomTest(page: Page, o: { income: string; essential
   await t.getByLabel('Çalışmadan gelen aylık gelir').fill('')
   await next()
   await expect(t.getByRole('heading', { name: 'Giderlerin' })).toBeVisible()
-  // Tek satırla başlar: ilk satır kira / konut
-  await t.getByLabel('Gider türü').first().selectOption({ label: 'Kira / konut' })
-  await t.getByLabel('Kira / konut tutarı').fill(o.essential)
+  // Liste boş başlar: + ile tür seçilir, tutar yazılır (testi yenilerken son satırlar dolu gelir)
+  const rent = t.getByLabel('Kira / konut', { exact: true })
+  if (!(await rent.count())) {
+    await t.getByRole('button', { name: 'Gider ekle' }).click()
+    await t.getByRole('group', { name: 'Gider kategorisi' }).getByRole('button', { name: 'Kira / konut' }).click()
+  }
+  await rent.fill(o.essential)
   await next()
   await expect(t.getByRole('heading', { name: 'Borçların' })).toBeVisible()
   await next()

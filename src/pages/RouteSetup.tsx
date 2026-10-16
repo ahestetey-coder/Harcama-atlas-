@@ -28,7 +28,7 @@ type Status = 'web' | 'test' | 'app' | 'ok'
 type View = 'setup' | 'calc' | 'final'
 const STEPS = [
   { key: 'gelir', title: 'Gelirin', lead: 'Testte gelir aralığı seçmiştin. Şimdi tam rakamı yaz.' },
-  { key: 'gider', title: 'Giderlerin', lead: 'Ortalama bir ayı düşün; giderlerini türüyle tek tek ekle.' },
+  { key: 'gider', title: 'Giderlerin', lead: 'Ortalama bir ayı düşün. + ile gider türünü seç, tutarını yaz.' },
   { key: 'borc', title: 'Borçların', lead: 'Cevabına göre tahmini borç ekledik. Gerçek borçlarınla değiştir.' },
   { key: 'birikim', title: 'Birikimin', lead: 'Toplam birikimini varlık türlerine böldük. Bugünkü TL karşılıklarını düzelt.' },
   { key: 'hedef', title: 'Hedefin', lead: 'Hayalindeki pasif geliri testte seçtin. Yaşın ve süreyle tamamla.' },
@@ -122,10 +122,10 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       passive: appIncome?.passive ? plainK(appIncome.passive) : '',
       stability: 'regular' as IncomeStability,
       dependents: '0',
-      // Uygulamada harcama kaydı varsa gruplar ondan gelir; yoksa tek boş satırla başlanır, kişi + ile ekler
+      // Uygulamada harcama kaydı varsa gruplar ondan gelir; yoksa liste boş başlar, kişi + ile tür seçip tutar yazar
       expenses: appSpend
         ? SPEND_GROUPS.filter((g) => appSpend[g] > 0).map<ExpenseDraft>((g) => ({ id: newId(), group: g, amount: plainK(appSpend[g]) }))
-        : [{ id: newId(), group: 'housing' as SpendGroup, amount: '' }],
+        : [],
       // Testteki borç cevabı yalnızca tahmindir; kişi gerçek borcunu girmeden rotaya borç eklenmez
       debts: [] as DebtDraft[],
       emergency: plainTl(cap.mevduat),
@@ -545,14 +545,14 @@ function ChipField({ label, badge, children }: { label: string; badge?: ReactNod
 
 /** Giderler: "+" ile kategori seçilir, tutar yazılır; satırlar toplanır. Aynı kategori birden çok kez eklenebilir. */
 function ExpensesEditor({ rows, badge, onChange, extraKurus }: { rows: ExpenseDraft[]; badge: ReactNode; onChange: (r: ExpenseDraft[]) => void; extraKurus: number }) {
+  const [picking, setPicking] = useState(false)
   const [fresh, setFresh] = useState<string | null>(null)
   const total = rows.reduce((s, r) => s + soft(r.amount), 0) + extraKurus
-  const upd = (id: string, p: Partial<ExpenseDraft>) => onChange(rows.map((x) => (x.id === id ? { ...x, ...p } : x)))
-  const add = () => {
+  const add = (group: SpendGroup) => {
     const id = newId()
-    const used = new Set(rows.map((r) => r.group))
     setFresh(id)
-    onChange([...rows, { id, group: SPEND_GROUPS.find((g) => !used.has(g)) ?? 'other', amount: '' }])
+    setPicking(false)
+    onChange([...rows, { id, group, amount: '' }])
   }
   return (
     <div className="flex flex-col gap-3">
@@ -560,26 +560,27 @@ function ExpensesEditor({ rows, badge, onChange, extraKurus }: { rows: ExpenseDr
       <ul className="flex flex-col gap-2" aria-label="Giderler">
         {rows.map((r) => (
           <li key={r.id} className="grid grid-cols-[1fr_auto] items-end gap-2 rounded-xl border border-line bg-surface-2 p-3">
-            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="flex min-w-0 flex-col gap-1.5 text-[13.5px] font-medium text-ink">
-                Gider türü
-                <Select value={r.group} onChange={(e) => upd(r.id, { group: e.target.value as SpendGroup })}>
-                  {SPEND_GROUPS.map((g) => (
-                    <option key={g} value={g}>
-                      {SPEND_GROUP_LABEL[g]}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <MoneyField id={`rs-e-${r.id}`} label={`${SPEND_GROUP_LABEL[r.group]} tutarı`} value={r.amount} autoFocus={r.id === fresh} onChange={(v) => upd(r.id, { amount: v })} />
-            </div>
-            {rows.length > 1 && <Button variant="ghost" size="sm" className="text-danger" aria-label={`${SPEND_GROUP_LABEL[r.group]} giderini sil`} icon={<Trash2 className="size-4" />} onClick={() => onChange(rows.filter((x) => x.id !== r.id))} />}
+            <MoneyField id={`rs-e-${r.id}`} label={SPEND_GROUP_LABEL[r.group]} value={r.amount} autoFocus={r.id === fresh} onChange={(v) => onChange(rows.map((x) => (x.id === r.id ? { ...x, amount: v } : x)))} />
+            <Button variant="ghost" size="sm" className="text-danger" aria-label={`${SPEND_GROUP_LABEL[r.group]} giderini sil`} icon={<Trash2 className="size-4" />} onClick={() => onChange(rows.filter((x) => x.id !== r.id))} />
           </li>
         ))}
       </ul>
-      <Button variant="secondary" icon={<Plus className="size-4" />} onClick={add}>
-        Gider ekle
-      </Button>
+      {picking ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line-strong p-3">
+          <span className="text-[12.5px] font-medium text-muted">Hangi gider?</span>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Gider kategorisi">
+            {SPEND_GROUPS.map((g) => (
+              <button key={g} type="button" onClick={() => add(g)} className="rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink hover:border-accent hover:text-accent">
+                {SPEND_GROUP_LABEL[g]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => setPicking(true)}>
+          Gider ekle
+        </Button>
+      )}
       <div className="flex items-center justify-between rounded-xl bg-accent-soft px-3.5 py-2.5 text-[13.5px]" aria-live="polite">
         <span className="font-medium text-ink">Toplam aylık gider</span>
         <span className="num font-display text-lg font-bold text-ink">{formatKurus(total)}</span>
