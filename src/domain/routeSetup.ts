@@ -41,6 +41,8 @@ export interface RouteSetupData {
   capital?: SetupCapital
   /** Aylık harcama (düzenli ödemeler hariç); uygulamada harcama kaydı yokken kullanılır. */
   spendKurus?: number
+  /** Kurulum formunun son hâli: "Testi yenile" bu rakamlarla dolu açılır. */
+  form?: Record<string, unknown>
   at: string
 }
 
@@ -82,4 +84,48 @@ export function applySetup(facts: JourneyFacts, setup: RouteSetupData | undefine
   }
   if (setup.spendKurus && facts.averageExpenseKurus === null) f = { ...f, averageExpenseKurus: setup.spendKurus, expenseMonths: Math.max(f.expenseMonths, 1) }
   return f
+}
+
+/**
+ * Rotayı yalnızca rota kurulumundan (Finansal Harita testinden sonra 6 adım) çıkan profil besler.
+ * Eski 5/8 adımlı testten kalan profiller (setup alanı yok) yok sayılır.
+ */
+export function routeProfile<P extends { setup?: RouteSetupData }>(p: P | null | undefined): P | null {
+  return p?.setup ? p : null
+}
+
+/** Yarıda kalan rota kurulumu: cihazda saklanır, Finansal Yolculuğum'a dönünce kaldığı yerden açılır. */
+export interface RouteDraft {
+  code: string
+  step: number
+  form: Record<string, unknown>
+  status: Record<string, string>
+}
+const DRAFT_KEY = 'ha:rota-taslak'
+
+export function loadRouteDraft(code: string): RouteDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const d = JSON.parse(raw) as RouteDraft
+    return d && d.code === code && typeof d.step === 'number' && d.form && typeof d.form === 'object' ? d : null
+  } catch {
+    return null
+  }
+}
+
+export function saveRouteDraft(d: RouteDraft) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(d))
+  } catch {
+    // Depolama kapalıysa taslak saklanmaz; kurulum yine çalışır
+  }
+}
+
+export function clearRouteDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // yok say
+  }
 }

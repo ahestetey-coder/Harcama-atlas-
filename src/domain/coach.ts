@@ -338,7 +338,7 @@ export function coachMessages(i: MessageInput): CoachMessage[] {
     return out
   }
   if (!i.hasProfile) {
-    out.push({ id: 'survey', tone: 'plan', title: 'Sizi tanıyalım', body: 'Finansal özgürlük testini yapın; gelirinizi, giderlerinizi, güvencelerinizi ve hedefinizi öğrenip planınızı rotanıza göre hazırlayayım.', link: { to: '/yolculuk', label: 'Teste git' } })
+    out.push({ id: 'survey', tone: 'plan', title: 'Sizi tanıyalım', body: 'Finansal Yolculuğum sayfasında rotanızı belirleyin; gelirinizi, giderlerinizi, borcunuzu ve hedefinizi öğrenip planınızı rotanıza göre hazırlayayım.', link: { to: '/yolculuk', label: 'Rotamı belirle' } })
     return out
   }
   const p = i.plan

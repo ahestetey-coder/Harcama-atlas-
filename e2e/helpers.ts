@@ -58,21 +58,73 @@ export async function filterCategory(page: Page, label: string | null) {
   await expect(dlg).toBeHidden()
 }
 
-/** Finansal özgürlük testini (8 adım) tamamlar: zorunlu gider kira/konut grubuna yazılır; diğer yanıtlar varsayılandır. */
-export async function takeFreedomTest(page: Page, o: { income: string; essential: string; age?: string; targetAge?: string }) {
-  // İlk kez: önce Finansal Harita testi önerilir; ayrıntılı teste doğrudan geçilir
-  const direct = page.getByRole('button', { name: 'Doğrudan ayrıntılı teste geç' })
-  const t = page.getByRole('region', { name: 'Finansal özgürlük testi' })
-  await expect(direct.or(t)).toBeVisible()
-  if (await direct.isVisible()) await direct.click()
-  const next = () => t.getByRole('button', { name: 'İleri' }).click()
-  await t.getByLabel('Yaşınız').fill(o.age ?? '32')
-  if (o.targetAge) await t.getByLabel('Hangi yaşta çalışmayı bırakmak istersiniz?').fill(o.targetAge)
+/** 10 soruyu ve iki ara durağı aynı cevaplarla geçer (web ve uygulama içi test aynı). */
+export async function answerQuestions(page: Page) {
+  await page.getByRole('button', { name: 'Özgürlük rotamı çıkar' }).click()
+
+  await page.getByRole('button', { name: 'Çalışmasam da geçinebilmek' }).click()
+  await expect(page.getByRole('heading', { name: 'Ayda ne kadar pasif gelir seni özgür hissettirir?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Devam' }).click()
+  // Ara durak 1
+  await expect(page.getByRole('heading', { name: 'Zirven belirdi.' })).toBeVisible()
+  await page.getByRole('button', { name: 'Konumumu bul' }).click()
+
+  await page.getByRole('button', { name: '50.000 – 100.000 TL' }).click()
+  await page.getByRole('button', { name: "Gelirimin %10–20'si" }).click()
+  await page.getByRole('button', { name: 'Kredi taksitlerim var, rahat ödüyorum' }).click()
+  await page.getByRole('button', { name: '1 – 3 ay' }).click()
+  // Ara durak 2: cevaplara göre ipucu
+  await expect(page.getByRole('heading', { name: 'Yarıyı geçtin.' })).toBeVisible()
+  await expect(page.getByText('İlk ipucun: İyi bir tempon var.')).toBeVisible()
+  await page.getByRole('button', { name: 'Son 4 soru' }).click()
+
+  await page.getByRole('button', { name: '100.000 – 500.000 TL' }).click()
+  await page.getByRole('button', { name: 'Altın' }).click()
+  await page.getByRole('button', { name: 'Devam' }).click()
+  await page.getByRole('button', { name: 'Ara sıra, para artarsa' }).click()
+  await page.getByRole('button', { name: 'Sakin kalıp beklerim' }).click()
+}
+
+/**
+ * Rotayı kurar: rota yoksa Finansal Harita testi çözülür, sonra 6 adımlık rota kurulumu doldurulur.
+ * Gider yalnızca kira/konut satırına yazılır; testten tahmin edilen birikim sıfırlanır (uygulamada kayıt yoksa).
+ */
+export async function takeFreedomTest(page: Page, o: { income: string; essential: string; age?: string; years?: string }) {
+  const t = page.getByRole('region', { name: 'Rota kurulumu' })
+  const start = page.getByRole('link', { name: 'Özgürlük rotamı çıkar' })
+  await expect(start.or(t)).toBeVisible()
+  if (await start.isVisible()) {
+    await start.click()
+    await answerQuestions(page)
+    await page.getByRole('button', { name: /Rotamı kur · 5 dk/ }).click()
+  }
+  const next = () => t.getByRole('button', { name: 'Onayla ve devam' }).click()
+  await expect(t.getByRole('heading', { name: 'Gelirin' })).toBeVisible()
+  await t.getByLabel('Aylık net ana gelir').fill(o.income)
+  await t.getByLabel('Aylık ek gelir').fill('')
+  await t.getByLabel('Çalışmadan gelen aylık gelir').fill('')
   await next()
-  await t.getByLabel(/Aylık net gelir/).fill(o.income)
+  await expect(t.getByRole('heading', { name: 'Giderlerin' })).toBeVisible()
+  const del = t.getByRole('button', { name: /giderini sil$/ })
+  while ((await del.count()) > 0) await del.first().click()
+  await t.getByRole('button', { name: 'Gider ekle' }).click()
+  await t.getByRole('group', { name: 'Gider kategorisi' }).getByRole('button', { name: 'Kira / konut' }).click()
+  await t.getByLabel('Kira / konut', { exact: true }).fill(o.essential)
   await next()
-  await t.getByLabel(/Kira \/ konut/).fill(o.essential)
-  for (let i = 0; i < 5; i++) await next()
-  await t.getByRole('button', { name: /Testi tamamla/ }).click()
+  await expect(t.getByRole('heading', { name: 'Borçların' })).toBeVisible()
+  await next()
+  await expect(t.getByRole('heading', { name: 'Birikimin' })).toBeVisible()
+  for (const l of ['Acil durum fonu', 'Döviz', 'Altın', 'Hisse ve fon', 'Kripto', 'BES', 'Her ay düzenli yatırıma ayırdığın']) {
+    const f = t.getByLabel(l, { exact: true })
+    if (await f.count()) await f.fill('')
+  }
+  await next()
+  await expect(t.getByRole('heading', { name: 'Hedefin' })).toBeVisible()
+  await t.getByLabel('Yaşın').fill(o.age ?? '32')
+  await t.getByLabel('Kaç yılda varmak istersin?').fill(o.years ?? '23')
+  await next()
+  await t.getByRole('button', { name: 'Rotamı hesapla' }).click()
+  const fin = page.getByRole('region', { name: 'Netleşen haritan' })
+  await fin.getByRole('button', { name: /Finansal özgürlük sayfama git|Rotamı gör/ }).click()
   await expect(t).toBeHidden()
 }

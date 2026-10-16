@@ -5,6 +5,7 @@ import type { SupabaseBackend } from '../cloud/supabaseBackend'
 import type { AtlasRepository } from '../data/repository'
 import { LEAD_CODE_RE } from '../domain/quickTest'
 import { useAuth } from './auth'
+import { routeProfile } from '../domain/routeSetup'
 import { useRepo, useSettings } from './data'
 import { useUi } from './ui'
 
@@ -57,7 +58,7 @@ export function WebTestLinker() {
       if (!lead) return
       await saveWebTest(repo, lead)
       toast("Web'deki finansal haritan hesabına bağlandı.")
-      if (!settings?.journey?.confirmedAt) navigate('/yolculuk')
+      if (!routeProfile(settings?.journey)) navigate('/yolculuk')
     }
     run().catch(() => {
       // Ağ hatası: kod saklı kalır, bir sonraki açılışta yeniden denenir
