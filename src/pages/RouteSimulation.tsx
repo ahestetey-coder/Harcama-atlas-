@@ -82,7 +82,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
   const maxExtra = Math.max(5000, Math.ceil(Math.max(plan.levers.extraMonthlyKurus, profile.monthlyIncomeKurus * 0.3) / 100 / 1000) * 1000)
 
   return (
-    <Card className="relative overflow-hidden p-4 sm:p-5" aria-label="Özgürlük simülasyonu">
+    <Card className="relative overflow-hidden p-4" aria-label="Özgürlük simülasyonu">
       <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-sky-500/10 blur-3xl" aria-hidden />
       <div className="pointer-events-none absolute -bottom-28 -left-20 size-72 rounded-full bg-violet-500/10 blur-3xl" aria-hidden />
       <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -114,7 +114,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
         </div>
       </div>
 
-      <div className="relative mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr] sm:items-end">
+      <div className="relative mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr] sm:items-end">
         <Segmented
           label="Getiri senaryosu"
           value={sc}
@@ -201,7 +201,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
         </tbody>
       </table>
 
-      <ol className="relative -mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Rota takvimi">
+      <ol className="relative -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Rota takvimi">
         {milestones.map((m, i) => {
           const state = m.done ? 'done' : m.month === null ? 'far' : 'eta'
           return (
@@ -243,22 +243,22 @@ function Key({ color, label, dashed, dotted }: { color: string; label: string; d
  * Gelirin dört kovaya dağılımı (gerçek rakamlar) ve bilimsel sınırlar: ihtiyaçlar %50, istekler en fazla
  * %30, birikim en az %20 (50/30/20), borç ödemesi en fazla %36. Altında rotanın sıradaki üç hamlesi.
  */
-export function MoneyFlow({ profile, j }: { profile: JourneyProfile; facts?: JourneyFacts; j: JourneyResult }) {
-  const income = profile.monthlyIncomeKurus + (profile.passiveIncomeKurus ?? 0)
-  const flow = useMoneyFlow({ incomeKurus: income })
-  if (income <= 0 || !flow) return null
+export function MoneyFlow({ j }: { profile?: JourneyProfile; facts?: JourneyFacts; j: JourneyResult }) {
+  // Özet ile aynı gelir ve dönem: bütçe motorunun geliri (maaş ve düzenli gelirler)
+  const flow = useMoneyFlow()
+  if (!flow) return null
   const next = j.stages.filter((s) => !s.done).slice(0, 3)
   return (
-    <Card className="p-4 sm:p-5" aria-label="Aylık paranın yolu">
+    <Card className="p-4" aria-label="Aylık paranın yolu">
       <h3 className="flex items-center gap-2 font-display text-base font-semibold">
         <TrendingUp className="size-4 text-accent" /> Aylık paranın yolu
       </h3>
       <p className="mt-0.5 text-[12.5px] text-muted">
-        {formatKurus(income)} gelirin bilimsel olarak nasıl dağılmalı; altında bu ay harcanan.
+        {formatKurus(flow.incomeKurus)} gelir · 50/30/20 kuralı · Özet ile aynı
       </p>
       <FlowCells flow={flow} />
       {next.length > 0 && (
-        <div className="mt-4 border-t border-line pt-3">
+        <div className="mt-3 border-t border-line pt-2.5">
           <h4 className="text-[13px] font-semibold text-ink">Sıradaki hamlelerin</h4>
           <ol className="mt-2 flex flex-col gap-2">
             {next.map((s, i) => (

@@ -60,9 +60,9 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
           ) : null,
         )}
       </div>
-      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <ul className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-2">
         {flow.rows.map((r, i) => (
-          <li key={r.key} className="rounded-xl border border-line p-2.5">
+          <li key={r.key} className="rounded-xl border border-line p-2">
             <div className="flex items-center justify-between gap-1 text-[12px] text-muted">
               <span className="flex min-w-0 items-center gap-1.5">
                 <span className="size-2 shrink-0 rounded-full" style={{ background: FLOW_META[r.key].color }} aria-hidden /> <span className="truncate">{FLOW_META[r.key].label}</span>
@@ -91,7 +91,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
 export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; className?: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <Card className={cn('p-5', className)} aria-label="Aylık paranın yolu">
+    <Card className={cn('p-4', className)} aria-label="Aylık paranın yolu">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
           <TrendingUp className="size-4 text-accent" /> Aylık paranın yolu
