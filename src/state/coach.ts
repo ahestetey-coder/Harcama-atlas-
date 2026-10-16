@@ -15,7 +15,7 @@ import { usePersonalCycle } from './cycle'
 import { useLiveState } from './livePrices'
 import { useAssets, useRecurring, useSettings } from './data'
 import { usePersonalTransactions } from './personal'
-import { quickResult, reachRange } from '../domain/quickTest'
+import { quickResult, reachRange, type QuickResult } from '../domain/quickTest'
 
 export const DEFAULT_COACH: CoachSettings = { strategy: 'avalanche', debtsInExpenses: false, dismissed: [], aiConsent: false }
 export const DEFAULT_SHARE: CoachShare = { income: true, expenses: true, debts: true, goals: true, budget: true }
@@ -101,6 +101,8 @@ export interface CoachState {
   recurring: RecurringPayment[]
   /** Düzenli gelirler (maaş, kira, ek gelir). */
   incomes: RecurringIncome[]
+  /** Finansal Harita testinin (web ya da uygulama) sonucu; çözülmemişse null. */
+  mapTest: QuickResult | null
 }
 
 export function useCoach(): CoachState | null {
@@ -124,11 +126,12 @@ export function useCoach(): CoachState | null {
     const journey = profile ? buildJourney(profile, facts, { USD: usd ?? (profile.base === 'USD' ? profile.baseRateTl : null), XAU: gold ?? (profile.base === 'XAU' ? profile.baseRateTl : null) }, { strategy: cs.strategy }) : null
     const route = journey ? { level: journey.level, total: journey.stages.length, current: journey.current } : undefined
     const read = new Set(cs.dismissed)
-    const web = !profile && settings.webTest ? quickResult(settings.webTest.answers) : null
+    const mapTest = settings.webTest ? quickResult(settings.webTest.answers) : null
+    const web = profile ? null : mapTest
     const webTest = web ? { level: web.level, total: web.journey.stages.length, stage: web.journey.current?.title ?? null, years: reachRange(web) } : null
     const messages = coachMessages({ plan, hasProfile: !!profile, budget, due, month, today: todayIso(), closedDebts: closed, route, webTest }).map((m) => ({ ...m, read: read.has(m.id) }))
     messages.sort((a, b) => Number(a.read) - Number(b.read))
-    return { profile, facts, settings: cs, debts, plan, journey, messages, budget, recurring, incomes: settings.recurringIncomes ?? [] }
+    return { profile, facts, settings: cs, debts, plan, journey, messages, budget, recurring, incomes: settings.recurringIncomes ?? [], mapTest }
   }, [settings, facts, debts, budget, due, month, closed, usd, gold, recurring])
 }
 
@@ -231,7 +234,25 @@ export function coachSummary(s: CoachState, today: IsoDate = todayIso()) {
             ilerlemeYuzde: Math.round(s.journey.indicators.goalRatio * 100),
             riskTutumu: s.profile.risk ?? null,
             acilFonHedefAy: s.journey.indicators.emergencyMonths,
+            ozgurlukTarihi: routeDates(s.journey.indicators.route, today),
+            ...(s.profile.setup ? { rotaKurulumu: 'Rota kurulumunda kişinin girdiği gerçek rakamlarla hesaplandı.' } : {}),
             ...freedomSummary(s.journey.plan, s.settings.strategy, today),
+          },
+        }
+      : {}),
+    ...(share.goals && s.mapTest
+      ? {
+          finansalHaritaTesti: {
+            aciklama: s.journey
+              ? '10 soruluk ilk test; aralıklarla verilen tahmini cevaplardan. Güncel ve kesin olan ozgurlukRotasi; farklıysa onu esas al.'
+              : '10 soruluk test, aralıklarla verilen tahmini cevaplardan. Kişi henüz gerçek rakamlarla rota kurmadı; Finansal Yolculuğum sayfasında rotasını kurmasını öner.',
+            arketip: s.mapTest.archetype.name,
+            konum: s.mapTest.place.name,
+            seviye: `${s.mapTest.level}/${s.mapTest.journey.stages.length}`,
+            siradakiAsama: s.mapTest.journey.current?.title ?? null,
+            tahminiOzgurlukYili: reachRange(s.mapTest),
+            hedefBirikimTl: tl(s.mapTest.goalKurus),
+            ilkAdim: s.mapTest.firstMove,
           },
         }
       : {}),
@@ -242,7 +263,14 @@ export function coachSummary(s: CoachState, today: IsoDate = todayIso()) {
   if (!fits() && out.duzenliOdemeler) out.duzenliOdemeler = out.duzenliOdemeler.slice(0, 5)
   if (!fits()) delete (out as { duzenliOdemeler?: unknown }).duzenliOdemeler
   if (!fits()) delete (out as { duzenliGelirler?: unknown }).duzenliGelirler
+  if (!fits()) delete (out as { finansalHaritaTesti?: unknown }).finansalHaritaTesti
   return out
+}
+
+/** Rotanın üç getiri varsayımıyla ulaşma tarihleri (ulaşılmıyorsa null). */
+function routeDates(r: { cautious: number | null; mid: number | null; optimistic: number | null }, today: IsoDate) {
+  const when = (m: number | null) => (m === null ? null : reachDateLabel(m, today))
+  return { temkinli: when(r.cautious), orta: when(r.mid), iyimser: when(r.optimistic) }
 }
 
 /** Sunucudaki özet sınırının (6.000) biraz altı. */

@@ -88,15 +88,22 @@ export interface InAppTest {
   renderNext: (result: QuickResult) => ReactNode
   /** Sonucun üstünde, kaydırmadan görünen kısa yönlendirme (paket ya da rota kurulumu). */
   renderTeaser?: (result: QuickResult) => ReactNode
+  /** Daha önce çözülmüş testin cevapları: sayfa açılınca doğrudan kayıtlı sonuç gösterilir. */
+  initial?: QuickAnswers
 }
 
 export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
   const reduced = useReducedMotion()
-  const [screen, setScreen] = useState<Screen>('intro')
+  const saved0 = inApp?.initial
+  const [screen, setScreen] = useState<Screen>(saved0 ? 'result' : 'intro')
   const [idx, setIdx] = useState(0)
-  const [draft, setDraft] = useState<Draft>({ hayal: 60000, nerede: [] })
+  const [draft, setDraft] = useState<Draft>(() => {
+    if (!saved0) return { hayal: 60000, nerede: [] }
+    const { v: _v, ...rest } = saved0
+    return rest
+  })
   const [seen, setSeen] = useState({ summit: false, half: false })
-  const [lead, setLead] = useState<{ name: string; code: string; saved: 'ok' | 'fail' | 'local' } | null>(null)
+  const [lead, setLead] = useState<{ name: string; code: string; saved: 'ok' | 'fail' | 'local' } | null>(saved0 ? { name: inApp?.name ?? '', code: '', saved: 'local' } : null)
   const topRef = useRef<HTMLDivElement>(null)
   const web = !inApp
 

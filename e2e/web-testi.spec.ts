@@ -100,7 +100,7 @@ async function setPlan(page: import('@playwright/test').Page, plan: 'Plus' | 'Pl
   await page.goto('./#/yolculuk')
 }
 
-test('web testinden uygulamaya: paketsiz kişi Paketler’e, Plus netleştirip özetini görür', async ({ page }) => {
+test('web testinden uygulamaya: paketsiz kişi Paketler’e, Plus netleştirince Finansal Yolculuğum açılır', async ({ page }) => {
   await solveWebTest(page)
   await page.getByRole('link', { name: "Web'de devam et" }).click()
   // Ücretsiz pakette web sonucu görünür, netleştirme Plus ister ve Paketler'e gider
@@ -109,13 +109,10 @@ test('web testinden uygulamaya: paketsiz kişi Paketler’e, Plus netleştirip �
   await expect(page).toHaveURL(/#\/paketler/)
 
   await setPlan(page, 'Plus')
-  await setupRoute(page, 'Rotamı gör')
-  // Plus: netleşen rota özeti; tam panel ve koç Plus+ tanıtımıyla kilitli
-  const sum = page.getByRole('region', { name: 'Netleşen rotan' })
-  await expect(sum).toContainText('Gerçek rakamlarınla')
-  await expect(sum).toContainText('Özgürlük tarihin')
-  await expect(page.getByRole('heading', { name: "Tam rota ve koç Plus+'ta" })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toHaveCount(0)
+  await setupRoute(page, 'Finansal özgürlük sayfama git')
+  // Plus: Finansal Yolculuğum paneli test sonucuyla kurulur (koç Plus+'ta)
+  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Özgürlük simülasyonu' })).toContainText('Finansal bağımsızlığa varış')
 })
 
 test('web testinden uygulamaya: Plus+ netleştirince 8 aşamalı rota açılır', async ({ page }) => {
@@ -147,10 +144,11 @@ test('uygulama içi Finansal Harita testi: ücretsizde çözülür, sonuç paket
   await expect(page).toHaveURL(/#\/paketler/)
 
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
+  // Çözülen test kalıcı: bölüm yeniden açılınca kayıtlı sonuç gelir, testi baştan çözmek gerekmez
   await page.goto('./#/finansal-harita')
-  await answerQuestions(page)
+  await expect(page.getByRole('heading', { name: 'Dengeli Yolcu' })).toBeVisible()
   await page.getByRole('button', { name: /Rotamı kur · 5 dk/ }).click()
   await expect(page).toHaveURL(/#\/yolculuk$/)
-  await setupRoute(page, 'Rotamı gör', false)
-  await expect(page.getByRole('region', { name: 'Netleşen rotan' })).toContainText('Gerçek rakamlarınla')
+  await setupRoute(page, 'Finansal özgürlük sayfama git', false)
+  await expect(page.getByRole('region', { name: 'Rota', exact: true })).toBeVisible()
 })

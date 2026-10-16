@@ -40,8 +40,8 @@ import { useAssets, useRepo, useSettings } from '../state/data'
 import { FreedomResult } from './FreedomResult'
 import { FreedomTest } from './FreedomTest'
 import { RouteSetup } from './RouteSetup'
-import { MoneyFlow, MoneyFlowFor, RouteSimulation } from './RouteSimulation'
-import { LinkWebTestCard, RefinedSummary, WebResultCard } from './WebTestCard'
+import { MoneyFlow, RouteSimulation } from './RouteSimulation'
+import { LinkWebTestCard, WebResultCard } from './WebTestCard'
 import { LevelRing } from '../components/LevelRing'
 import { usePlan } from '../state/plan'
 import { useBaseRates } from '../state/livePrices'
@@ -55,7 +55,7 @@ export default function JourneyPage() {
         title="Finansal Özgürlük Yolculuğum"
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plusplus" /> Kişisel rotanız
+            <PlanBadge plan="plus" /> Kişisel rotanız
           </span>
         }
       />
@@ -65,13 +65,12 @@ export default function JourneyPage() {
 }
 
 /**
- * Yolculuk erişimi: Plus+ tam paneli görür. Plus, web testinden geldiyse rotasını netleştirir ve
- * özetini görür (panel ve koç Plus+'ta). Paketi olmayan web sonucunu görür, netleştirme Paketler'e gider.
+ * Yolculuk erişimi: Plus ve Plus+ tam paneli görür; Özgürlük Rotası testi burada çözülür ve sonucu
+ * paneldeki rota, simülasyon ve adımları kurar (koç Plus+'ta). Paketi olmayan Finansal Harita sonucunu görür.
  */
 function JourneyBody() {
   const { has } = usePlan()
   const web = useSettings()?.webTest
-  if (!has('journey') && has('webRefine') && web) return <JourneyContent limited />
   return (
     <>
       <WebTestTeaser />
@@ -127,7 +126,7 @@ function WebTestTeaser() {
   )
 }
 
-function JourneyContent({ limited = false }: { limited?: boolean }) {
+function JourneyContent() {
   const settings = useSettings()
   const facts = useJourneyFacts()
   const rawFacts = useJourneyFacts({ withSetup: false })
@@ -166,18 +165,6 @@ function JourneyContent({ limited = false }: { limited?: boolean }) {
         }}
         onCancel={profile ? () => setTesting(false) : () => setDetailed(false)}
       />
-    )
-  if (limited)
-    return (
-      <>
-        <RefinedSummary profile={profile} facts={facts} rates={rates} onRetake={() => setTesting(true)} />
-        <div className="mt-4">
-          <MoneyFlowFor profile={profile} facts={facts} rates={rates} />
-        </div>
-        <PlanGate feature="journey" title="Tam rota ve koç Plus+'ta" points={['8 aşamanın her biri için hedef, kalan koşullar ve sonraki adım', 'Gelecek senaryoları ve TL, USD ya da gram altın bazında plan', 'Rotana göre seni takip eden finans koçu']}>
-          {null}
-        </PlanGate>
-      </>
     )
   return <Dashboard profile={profile} facts={facts} rates={rates} onRetake={() => setTesting(true)} />
 }

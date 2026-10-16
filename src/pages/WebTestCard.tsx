@@ -65,7 +65,7 @@ export function WebResultCard({ link, onRefine, locked }: { link: WebTestLink; o
             <Link to="/paketler" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 px-5 text-[15px] font-semibold text-white shadow-[0_8px_20px_-10px_rgb(5_150_105/0.8)] hover:brightness-110">
               <Sparkles className="size-4" /> Plus ile rotamı kur
             </Link>
-            <p className="text-center text-[12.5px] text-subtle">Rota kurulumu Plus ve Plus+ paketlerinde. 8 aşamalı Yolculuk ve koç Plus+'ta.</p>
+            <p className="text-center text-[12.5px] text-subtle">Rota kurulumu ve 8 duraklı Yolculuk Plus ve Plus+ paketlerinde. Koç Plus+'ta.</p>
           </>
         ) : (
           <>

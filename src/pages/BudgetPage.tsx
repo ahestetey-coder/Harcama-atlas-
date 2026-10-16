@@ -564,11 +564,6 @@ function CoachBudgetCard() {
             Koç bütçeyi gelirinize, ödemelerinize ve birikim hedeflerinize göre her dönem yeniden hesaplar; hesap cihazınızda yapılır. Bir değeri elle değiştirirseniz bütçe elle moda geçer.
             {auto.historyKurus !== null && auto.historyKurus < auto.flexibleKurus * 0.8 && ` Son dönemlerde serbest harcamanız ayda ortalama ${formatKurus(auto.historyKurus)} oldu.`}
           </More>
-          {!has('journey') && (
-            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
-              <PlanBadge plan="plusplus" /> Plus+'ta koç Yolculuk testini de kullanır.
-            </p>
-          )}
         </>
       )}
     </Card>

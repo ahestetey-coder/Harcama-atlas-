@@ -17,15 +17,19 @@ import FreedomMapPage, { UnlockStrip } from './FreedomMapPage'
 export default function MapTestPage() {
   const repo = useRepo()
   const settings = useSettings()
+  // Ayarlar yüklenmeden çizilmez: kayıtlı sonuç varsa sayfa doğrudan sonuçla açılır
+  if (!settings) return null
+  const saved = settings.webTest?.answers
   return (
     <div>
-      <PageHeader title="Finansal Harita testi" subtitle="10 soru · 2 dakika · Ücretsiz" />
+      <PageHeader title="Finansal Harita testi" subtitle={saved ? 'Kayıtlı sonucun · istersen testi yeniden çöz' : '10 soru · 2 dakika · Ücretsiz'} />
       <FreedomMapPage
         inApp={{
-          name: settings?.webTest?.name,
+          initial: saved,
+          name: settings.webTest?.name,
           onSave: async (answers) => {
             const now = new Date().toISOString()
-            await repo.saveSettings({ webTest: { code: newLeadCode(), answers, name: settings?.webTest?.name, createdAt: now, linkedAt: now, source: 'app' } })
+            await repo.saveSettings({ webTest: { code: newLeadCode(), answers, name: settings.webTest?.name, createdAt: now, linkedAt: now, source: 'app' } })
           },
           renderNext: (r) => <NextStep result={r} />,
           renderTeaser: () => <Teaser />,
@@ -105,7 +109,7 @@ function NextStep({ result }: { result: QuickResult }) {
                 <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">Önerilen</span>
               </div>
               <ul className="mt-2 flex flex-col gap-1 text-[13px] text-white/90">
-                {['6 adımda rota kurulumu', 'Kesin özgürlük yılı ve borçsuzluk tarihi', 'Aylık paranın yolu ve bütçe', 'Yatırım ve borç takibi'].map((t) => (
+                {['6 adımda rota kurulumu', 'Kesin özgürlük yılı ve borçsuzluk tarihi', 'Finansal Yolculuğum: 8 duraklı rota ve simülasyon', 'Aylık paranın yolu, yatırım ve borç takibi'].map((t) => (
                   <li key={t} className="flex items-start gap-1.5">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-300" /> {t}
                   </li>
@@ -115,7 +119,7 @@ function NextStep({ result }: { result: QuickResult }) {
             <div className="rounded-xl border border-white/20 bg-white/5 p-3.5">
               <PlanBadge plan="plusplus" />
               <ul className="mt-2 flex flex-col gap-1 text-[13px] text-white/90">
-                {["Plus'taki her şey", 'Canlı özgürlük simülasyonu', '8 duraklı tam rota ve senaryolar', 'Seni takip eden koç'].map((t) => (
+                {["Plus'taki her şey", 'Rotana göre seni takip eden koç', 'Gelecek senaryoları', 'Finansal bilgi ve gündem'].map((t) => (
                   <li key={t} className="flex items-start gap-1.5">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-violet-300" /> {t}
                   </li>

@@ -58,7 +58,8 @@ test('Bütçe belirleme: Ücretsizde yalnızca elle girilir; Plus\'ta koç gelir
   await expect(form).toBeHidden()
   await expect(card).toContainText('Serbest harcama')
   await expect(card).toContainText(/haftada [\d.]+,00 ₺/)
-  await expect(card).toContainText("Plus+'ta koç")
+  // Plus'ta Yolculuk testi de açık: koç bütçesi onu da kullanır, Plus+ notu gösterilmez
+  await expect(card).not.toContainText("Plus+'ta koç")
   await page.goto('./#/')
   await expect(page.getByRole('region', { name: 'Aylık bütçe' })).toContainText('Koç belirledi')
   await open(page, 'butce')

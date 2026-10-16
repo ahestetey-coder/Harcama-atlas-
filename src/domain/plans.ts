@@ -35,7 +35,7 @@ export const FEATURE_PLAN: Record<Feature, Plan> = {
   reports: 'plus',
   assets: 'plus',
   advancedSplit: 'plus',
-  journey: 'plusplus',
+  journey: 'plus',
   scenarios: 'plusplus',
   aiCoach: 'plusplus',
   learning: 'plusplus',
