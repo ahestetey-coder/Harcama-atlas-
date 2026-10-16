@@ -6,7 +6,7 @@ import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, ReferenceLine, 
 import { Slider } from '../components/Slider'
 import { AnimatedNumber } from '../components/ui/AnimatedMoney'
 import { Badge, Card, Segmented } from '../components/ui/primitives'
-import { DTI_LIMIT, NEEDS_SHARE, SAVING_GROWTH_PCT, SAVING_RATE_TARGET, WANTS_SHARE } from '../domain/assumptions'
+import { DEFAULT_INFLATION_PCT, DTI_LIMIT, NEEDS_SHARE, nominalPct, SAVING_GROWTH_PCT, SAVING_RATE_TARGET, WANTS_SHARE } from '../domain/assumptions'
 import { buildFreedomPlan, buildJourney, SCENARIOS, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult, type ScenarioKey, type StageId } from '../domain/journey'
 import { formatKurus, formatKurusCompact } from '../domain/money'
 import { cn } from '../lib/cn'
@@ -220,7 +220,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
         })}
       </ol>
       <p className="relative mt-3 text-[12px] text-subtle">
-        Bugünün parasıyla. Birikim her ay seçilen reel getiriyle bileşik büyür, aylık birikim yılda %{SAVING_GROWTH_PCT} artar; borç kapanınca taksiti birikime geçer. Tahmindir, garanti değildir.
+        Bugünün parasıyla. Birikim her yıl enflasyon kadar, üstüne de %{SCENARIOS[sc].realReturnPct.toLocaleString('tr-TR')} bileşik büyür (enflasyon %{DEFAULT_INFLATION_PCT} ise yılda yaklaşık %{nominalPct(SCENARIOS[sc].realReturnPct).toLocaleString('tr-TR')}); aylık birikim yılda %{SAVING_GROWTH_PCT} artar; borç kapanınca taksiti birikime geçer. Tahmindir, garanti değildir.
       </p>
     </Card>
   )

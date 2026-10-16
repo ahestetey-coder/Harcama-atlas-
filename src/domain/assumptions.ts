@@ -165,6 +165,9 @@ export const SCENARIO_RETURN_PCT = { cautious: half(RISK_PROFILES[0].realReturnP
  */
 export const SAVING_GROWTH_PCT = 1
 
+/** Reel getirinin nominal karşılığı (%): (1 + reel) × (1 + enflasyon) − 1, bir ondalık. */
+export const nominalPct = (realPct: number, inflationPct = DEFAULT_INFLATION_PCT) => Math.round(((1 + realPct / 100) * (1 + inflationPct / 100) - 1) * 1000) / 10
+
 // ---------- Monte Carlo ----------
 
 export const MC_RUNS = 1000
@@ -284,7 +287,7 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     id: 'compound',
     title: 'Bileşik büyüme ve varış yılı',
-    value: `Birikim her ay beklenen reel getiriyle büyür (getiri getiriye eklenir). Aylık birikim de her yıl reel %${SAVING_GROWTH_PCT} artar. Varış yılı aralığı: temkinli %${SCENARIO_RETURN_PCT.cautious.toLocaleString('tr-TR')}, orta %${SCENARIO_RETURN_PCT.mid.toLocaleString('tr-TR')}, olumlu %${SCENARIO_RETURN_PCT.optimistic.toLocaleString('tr-TR')} reel getiri.`,
+    value: `Birikim her yıl enflasyon kadar, üstüne de beklenen reel getiri kadar büyür (getiri getiriye eklenir); tutarlar bugünün parasıyla gösterildiği için yalnızca enflasyonun üstündeki kısım görünür. Örneğin enflasyon %${DEFAULT_INFLATION_PCT} ise orta senaryoda birikim yılda yaklaşık %${nominalPct(SCENARIO_RETURN_PCT.mid).toLocaleString('tr-TR')} büyür. Aylık birikim de her yıl reel %${SAVING_GROWTH_PCT} artar. Varış yılı aralığı: temkinli %${SCENARIO_RETURN_PCT.cautious.toLocaleString('tr-TR')}, orta %${SCENARIO_RETURN_PCT.mid.toLocaleString('tr-TR')}, olumlu %${SCENARIO_RETURN_PCT.optimistic.toLocaleString('tr-TR')} reel getiri.`,
     source: 'Getiriler: yukarıdaki risk profilleri (Dimson, Marsh ve Staunton). Birikim artışı: OECD ülkelerinde uzun dönem ortalama reel ücret artışı yıllık ~%1.',
     reason: 'Uzun vadede birikimin büyük kısmı yatırılan paradan değil getiriden gelir; gelir de yıllar içinde artar. İkisini saymamak varış yılını gereğinden uzağa atar.',
   },
