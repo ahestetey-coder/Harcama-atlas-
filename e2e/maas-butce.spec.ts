@@ -38,7 +38,7 @@ test('Ücretsiz: maaş ve sabit giderlerle dört kovalı bütçe kurulur, harcam
 
   // 3) 25.000 / 20.000 / 6.000 / 9.000; uyarı yok (konut tam %30 sınırda geçer)
   // Hedefler 50/30/20, esnetilmez; Yolculuk'taki hücrelerle aynı tasarım
-  await expect(card.getByRole('img', { name: 'Zorunlu giderler ve ihtiyaçlar %50, İstekler %30, Birikim ve borç kapatma %20' })).toBeVisible()
+  await expect(card.getByRole('img', { name: /^Zorunlu giderler ve ihtiyaçlar %50, İstekler %30, Borç kapatma %\d+, Birikim %\d+$/ })).toBeVisible()
   await expect(card).toContainText('Harcanan 0 ₺ / 30.000 ₺')
   await expect(card).toContainText('Harcanan 0 ₺ / 18.000 ₺')
   await expect(card).toContainText('/ 12.000 ₺')
@@ -61,7 +61,7 @@ test('Ücretsiz: maaş ve sabit giderlerle dört kovalı bütçe kurulur, harcam
   await page.goto('./#/')
   const flow = page.getByRole('region', { name: 'Aylık paranın yolu' })
   await expect(flow).toContainText('50/30/20 kuralı')
-  await expect(flow.getByRole('img', { name: 'Zorunlu giderler ve ihtiyaçlar %50, İstekler %30, Birikim ve borç kapatma %20' })).toBeVisible()
+  await expect(flow.getByRole('img', { name: /^Zorunlu giderler ve ihtiyaçlar %50, İstekler %30, Borç kapatma %\d+, Birikim %\d+$/ })).toBeVisible()
   await expect(flow).toContainText('Harcanan 0 ₺ / 30.000 ₺')
   await expect(flow).toContainText('Harcanan 0 ₺ / 18.000 ₺')
   await expect(flow).toContainText('Kalan 60.000 ₺ / 12.000 ₺')
