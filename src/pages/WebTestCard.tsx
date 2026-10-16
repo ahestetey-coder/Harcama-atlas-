@@ -41,8 +41,8 @@ export function WebResultCard({ link, onRefine, locked }: { link: WebTestLink; o
       </div>
       <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[13px]">
         <div>
-          <div className="text-muted">Hedef birikim</div>
-          <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(r.goalKurus)}</div>
+          <div className="text-muted">{r.nextStep ? `İlk adım · ${r.nextStep.title}` : 'Hedef birikim'}</div>
+          <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(r.nextStep?.kurus ?? r.goalKurus)}</div>
         </div>
         <div>
           <div className="text-muted">Sıradaki durak</div>
@@ -151,8 +151,8 @@ export function RefinedSummary({ profile, facts, rates, onRetake }: { profile: J
       </div>
       <div className="relative mt-4 grid grid-cols-1 gap-3 border-t border-line pt-4 text-[13px] sm:grid-cols-2">
         <div>
-          <div className="text-muted">Hedef birikim</div>
-          <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(j.indicators.goalKurus)}</div>
+          <div className="text-muted">{j.nextStep ? `Sıradaki adım · ${j.nextStep.title}` : 'Hedef birikim'}</div>
+          <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(j.nextStep?.targetKurus ?? j.indicators.goalKurus)}</div>
         </div>
         <div>
           <div className="text-muted">Sıradaki durak</div>

@@ -354,6 +354,8 @@ export interface QuickResult {
   place: { name: string; text: string }
   /** Hedef birikim (kuruş): uygulamadaki hedef motoruyla. */
   goalKurus: number
+  /** Büyük hedeften önceki sıradaki küçük özgürlük adımı; yoksa null. */
+  nextStep: { title: string; kurus: number } | null
   /** Varış: olumlu–temkinli senaryo aralığı (ay); ulaşılamıyorsa null. */
   reach: { fastMonths: number | null; midMonths: number | null; slowMonths: number | null }
   insights: QuickInsight[]
@@ -406,6 +408,7 @@ export function quickResult(a: QuickAnswers): QuickResult {
     archetype: ARCHETYPE[a.dusus],
     place: { name: place.name, text: place.text },
     goalKurus: j.indicators.goalKurus,
+    nextStep: j.nextStep ? { title: j.nextStep.title, kurus: j.nextStep.targetKurus } : null,
     reach: { fastMonths: r.optimistic, midMonths: r.mid, slowMonths: r.cautious },
     insights,
     // Borç rakamları testte tahmin edildi: kesin tutar yerine gerçek borcu girmeye çağırır

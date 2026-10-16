@@ -708,8 +708,9 @@ function Result({ result: r, name, code, saved, onRestart, next, teaser }: { res
         )}
         <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[13px]">
           <div>
-            <div className="text-muted">Hedef birikim</div>
-            <div className="num text-[17px] font-semibold text-ink">{formatKurusCompact(r.goalKurus)}</div>
+            <div className="text-muted">{r.nextStep ? `İlk adım · ${r.nextStep.title}` : 'Hedef birikim'}</div>
+            <div className="num text-[17px] font-semibold text-ink">{formatKurusCompact(r.nextStep?.kurus ?? r.goalKurus)}</div>
+            {r.nextStep && <div className="text-[11.5px] text-subtle">Tam hedef {formatKurusCompact(r.goalKurus)}</div>}
           </div>
           <div>
             <div className="text-muted">Sıradaki durak</div>

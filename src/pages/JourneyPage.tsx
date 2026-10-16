@@ -10,6 +10,7 @@ import { holdingSummary, portfolio } from '../domain/assets'
 import { currentPeriod, periodLabel, todayIso } from '../domain/dates'
 import type { IsoDate } from '../domain/types'
 import {
+  type FreedomStep,
   BASE_LABEL,
   buildJourney,
   DTI_LIMIT,
@@ -315,7 +316,20 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
               ' · bütün aşamaları tamamladınız'
             )}
           </p>
-          {cur ? (
+          {cur?.step ? (
+            <>
+              <p className="mt-0.5 font-display text-[15px] font-semibold leading-snug text-ink">
+                <span className="text-accent">Sıradaki adım:</span> {cur.step.title} · {fmt.base(cur.step.targetKurus)}
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-muted">
+                {cur.step.what}. <span className="font-medium text-ink">{cur.step.leftText}</span>
+                {cur.step.etaMonths !== undefined && (
+                  <span> · {cur.step.etaMonths === null ? 'bugünkü birikim hızıyla ulaşılamıyor' : `bu hızla ~${durationLabel(cur.step.etaMonths)} (${reachDateLabel(cur.step.etaMonths, today)})`}</span>
+                )}
+              </p>
+              <StepLadder steps={j.steps} fmt={fmt} />
+            </>
+          ) : cur ? (
             <>
               <p className="mt-0.5 font-display text-[15px] font-semibold leading-snug text-ink">
                 <span className="text-accent">Hedef:</span> {cur.goal}
@@ -343,6 +357,28 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
         <span className="ml-auto text-[12px] text-subtle">{saving > 0 ? `Aylık birikim ${fmt.tl(saving)}` : 'Şu an aylık birikim yok'}</span>
       </div>
     </Card>
+  )
+}
+
+/** Küçük özgürlük adımları: geçilenler işaretli, sıradaki vurgulu; büyük hedefe giden basamaklar. */
+function StepLadder({ steps, fmt }: { steps: FreedomStep[]; fmt: Fmt }) {
+  const next = steps.find((s) => !s.done)
+  return (
+    <ol className="mt-2 flex flex-wrap gap-1.5" aria-label="Özgürlük adımları">
+      {steps.map((s) => (
+        <li
+          key={s.id}
+          className={cn(
+            'num inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px]',
+            s.done ? 'border-accent/40 bg-accent-soft text-accent' : s === next ? 'border-accent font-semibold text-ink' : 'border-line text-muted',
+          )}
+          title={s.what}
+        >
+          {s.done && <Check className="size-3" strokeWidth={3} aria-hidden />}
+          {s.short} · {fmt.base(s.targetKurus)}
+        </li>
+      ))}
+    </ol>
   )
 }
 
@@ -425,6 +461,7 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
                           <ConditionRow key={ci} c={c} fmt={fmt} today={today} />
                         ))}
                       </ul>
+                      {s.step && <StepLadder steps={j.steps} fmt={fmt} />}
                       {!s.done && (
                         <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-ink">
                           <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-accent" /> <span>

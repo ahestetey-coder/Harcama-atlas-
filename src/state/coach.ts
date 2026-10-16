@@ -5,7 +5,7 @@ import { buildCoachPlan, coachMessages, estimatedMinPayment, lastDebtEnd, schedu
 import { currentPeriod, monthLabel, periodRange, todayIso } from '../domain/dates'
 import { RISK_PROFILES } from '../domain/assumptions'
 import { MONTH_NAMES } from '../domain/dates'
-import { buildJourney, emergencyMonthsFor, reachDateLabel, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult } from '../domain/journey'
+import { buildJourney, emergencyMonthsFor, freedomSteps, reachDateLabel, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult } from '../domain/journey'
 import { monthlyEquivalent } from '../domain/income'
 import { addMonthsClamped, futureLoad, installmentPlans, nthDue, progressOf } from '../domain/recurring'
 import { CADENCE_LABEL, INCOME_CADENCE_LABEL, INCOME_KIND_LABEL, RECURRING_KIND_LABEL, type CoachSettings, type CoachShare, type IsoDate, type RecurringIncome, type RecurringPayment } from '../domain/types'
@@ -299,6 +299,8 @@ export function freedomSummary(p: FreedomPlan, strategy: CoachSettings['strategy
     aylikFark: tl(p.gapKurus),
     tasarrufOraniYuzde: Math.round(p.savingRate * 100),
     hedefSermaye: { lean: tl(p.leanKurus), fi: tl(p.fiKurus), fat: tl(p.fatKurus) },
+    araAdimlar: freedomSteps(p).map((x) => ({ ad: x.title, hedefTl: tl(x.targetKurus), aylikKarsiladigiGiderTl: tl(x.coverMonthlyKurus), ulasildi: x.done })),
+    araAdimNotu: 'Büyük hedefi önce sıradaki ulaşılmamış ara adımla anlat; büyük toplamı ikinci planda tut.',
     bugunkuHizlaUlasmaYasi: p.reachAge === null ? null : Math.ceil(p.reachAge),
     beklenenSenaryo: { profil: p.risk.profile.label, hisseYuzde: Math.round(p.risk.profile.equity * 100), reelGetiriYuzde: p.risk.profile.realReturnPct, oynaklikYuzde: p.risk.profile.volatilityPct },
     riskToleransi: p.risk.tolerance === null ? null : RISK_PROFILES[p.risk.tolerance].label,

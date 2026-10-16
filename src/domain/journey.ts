@@ -274,6 +274,65 @@ export interface Stage {
   conditions: Condition[]
   /** Kalan koşulların en uzun tahmini süresi (ay); null: bu hızla ulaşılamıyor; undefined: süreyle ölçülmez ya da tamam. */
   etaMonths?: number | null
+  /** Büyük sermaye aşamasında sıradaki küçük ara hedef (yalnızca Finansal güvence aşamasında). */
+  step?: FreedomStep
+}
+
+/** Büyük sermaye hedefinden önceki küçük, ulaşılabilir özgürlük adımları (bugünün parasıyla). */
+export interface FreedomStep {
+  id: 'year1' | 'pct10' | 'pct25' | 'coast' | 'half'
+  title: string
+  /** Rota takvimindeki kısa ad. */
+  short: string
+  /** Adımın ne sağladığı, tek cümle. */
+  what: string
+  targetKurus: number
+  /** Birikimin güvenli çekimle her ay karşıladığı gider (kuruş). */
+  coverMonthlyKurus: number
+  done: boolean
+  progress: number
+  leftKurus: number
+  /** Ör. "12.000 $ kaldı". */
+  leftText: string
+  /** Bugünkü birikim hızıyla tahmini süre (ay); null: ulaşılamıyor; undefined: tamam. */
+  etaMonths?: number | null
+}
+
+/**
+ * Finansal güvenceden (Lean FI) önceki ara adımlar: 1 yıllık gider, hedefin %10'u, %25'i, Coast FI ve yarısı.
+ * Tutarlar kullanıcının hedef giderinden ve çekim oranından gelir; büyük hedefi küçük basamaklara böler.
+ */
+export function freedomSteps(plan: Pick<FreedomPlan, 'fiKurus' | 'leanKurus' | 'coastKurus' | 'netKurus' | 'monthlySavingKurus' | 'realReturnPct' | 'targetMonthlyKurus' | 'withdrawal'>, fmt: (kurus: number) => string = tl): FreedomStep[] {
+  const fi = plan.fiKurus
+  if (!(fi > 0)) return []
+  const swr = plan.withdrawal.usedPct / 100
+  const cover = (k: number) => Math.round((k * swr) / 12)
+  const raw: Array<Pick<FreedomStep, 'id' | 'title' | 'short' | 'what' | 'targetKurus'>> = [
+    { id: 'year1', title: 'Bir yıllık özgürlük', short: '1 yıl', what: 'Bir yıl hiç çalışmasanız da hedeflediğiniz yaşamı sürdürebilirsiniz', targetKurus: plan.targetMonthlyKurus * 12 },
+    { id: 'pct10', title: '%10 özgürlük', short: '%10', what: '', targetKurus: Math.round(fi * 0.1) },
+    { id: 'pct25', title: 'Çeyrek özgürlük', short: '%25', what: '', targetKurus: Math.round(fi * 0.25) },
+    { id: 'coast', title: 'Coast FI', short: 'Coast', what: 'Bundan sonra hiç eklemeseniz de birikim getirisiyle hedef yaşınızda tamamlanır', targetKurus: plan.coastKurus },
+    { id: 'half', title: 'Yarı özgürlük', short: '%50', what: '', targetKurus: Math.round(fi * 0.5) },
+  ]
+  const net = Math.max(0, plan.netKurus)
+  const steps: FreedomStep[] = []
+  for (const r of raw.filter((x) => x.targetKurus > 0 && x.targetKurus < plan.leanKurus * 0.97).sort((a, b) => a.targetKurus - b.targetKurus)) {
+    const prev = steps[steps.length - 1]
+    if (prev && r.targetKurus < prev.targetKurus * 1.1) continue
+    const c = cover(r.targetKurus)
+    const done = net >= r.targetKurus
+    steps.push({
+      ...r,
+      what: r.what || `Birikiminiz her ay ${tl(c)} giderinizi karşılar`,
+      coverMonthlyKurus: c,
+      done,
+      progress: clamp01(net / r.targetKurus),
+      leftKurus: Math.max(0, r.targetKurus - net),
+      leftText: done ? 'Ulaşıldı' : `${fmt(r.targetKurus - net)} kaldı`,
+      etaMonths: done ? undefined : monthsToTarget(net, plan.monthlySavingKurus, r.targetKurus, plan.realReturnPct),
+    })
+  }
+  return steps
 }
 
 export interface Check {
@@ -315,6 +374,10 @@ export interface JourneyResult {
   level: number
   /** Özgürlük Rotası v2 hedef motoru: hedef, gereken birikim, borç takvimi, benzetim. */
   plan: FreedomPlan
+  /** Finansal güvenceden önceki küçük özgürlük adımları. */
+  steps: FreedomStep[]
+  /** Sıradaki (ulaşılmamış) küçük adım; hepsi geçildiyse null. */
+  nextStep: FreedomStep | null
 }
 
 const clamp01 = (x: number) => (Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0)
@@ -581,6 +644,14 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
   const independence = capStage('independence', 'Finansal bağımsızlık · FI', 'Bağımsızlık', plan.fiKurus, tm, 'hedeflediğiniz yaşam giderini', 'Hedef sermaye = (hedef yıllık gider − garantili gelir) ÷ çekim oranı (Bengen 1994; Cooley, Hubbard ve Walz 1998; Pfau 2010).')
   const freedom = capStage('freedom', 'Finansal özgürlük · Fat FI', 'Özgürlük', plan.fatKurus, Math.round(tm * FAT_FACTOR), `hedef yaşamın %${FAT_FACTOR * 100}'ini, yani rahat bir yaşamı`, 'Fat FI: hedef harcamanın %150\'si; beklenmedik giderlere ve daha rahat bir yaşama pay bırakır.')
 
+  const steps = freedomSteps(plan, big)
+  const nextStep = security.done ? null : (steps.find((x) => !x.done) ?? null)
+  if (nextStep) {
+    security.step = nextStep
+    security.goal = `Sıradaki adım ${nextStep.title}: ${big(nextStep.targetKurus)} birikim. ${nextStep.what}`
+    security.next = `Önce ${nextStep.title}: ${nextStep.leftText}. Aşama hedefi ${big(plan.leanKurus)}`
+  }
+
   const stages = [balance, starter, debt, emergency, savingStage, security, independence, freedom]
   for (const s of stages) {
     const open = s.conditions.filter((c) => !c.done && c.etaMonths !== undefined)
@@ -634,6 +705,8 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
       indexFactor: indexFactor(p, rates),
     },
     plan,
+    steps,
+    nextStep,
   }
 }
 
