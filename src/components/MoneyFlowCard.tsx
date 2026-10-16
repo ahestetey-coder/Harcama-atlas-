@@ -21,6 +21,7 @@ const pct = (x: number) => `%${Math.round(x * 100)}`
 
 /** Hücrenin durum satırı: hedefin içinde mi, ne kadar aşıldı ya da birikim ne kadar eksik. */
 export function flowNote(r: FlowRow): string {
+  if (r.key === 'debt') return r.targetKurus === 0 ? '✓ borç yok' : r.ok ? '✓ ek ödemeye ayrılabilir' : `! ${tl(r.targetKurus - r.spentKurus)} eksik`
   if (r.key === 'saving') return r.ok ? '✓ hedefte' : r.spentKurus < 0 ? `! ${tl(-r.spentKurus)} açık` : `! ${tl(r.targetKurus - r.spentKurus)} eksik`
   if (r.targetKurus === 0) return r.spentKurus > 0 ? `! ${tl(r.spentKurus)}` : '✓ yok'
   return r.ok ? `✓ ${tl(r.targetKurus - r.spentKurus)} kaldı` : `! ${tl(r.spentKurus - r.targetKurus)} aştı`
@@ -73,7 +74,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
             </div>
             <div className="num mt-1 text-[15px] font-semibold leading-tight text-ink">{tl(r.targetKurus)}</div>
             <div className="num mt-1 text-[11.5px] text-muted">
-              {r.key === 'saving' ? 'Kalan' : 'Harcanan'} {tl(r.spentKurus)} / {tl(r.targetKurus)}
+              {r.key === 'saving' ? 'Kalan' : r.key === 'debt' ? 'Ayrılabilen' : 'Harcanan'} {tl(r.spentKurus)} / {tl(r.targetKurus)}
             </div>
             <div className="mt-1.5">
               <Bar r={r} delay={0.1 * i} />
@@ -82,7 +83,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11.5px] text-subtle">50/30/20 kuralı: zorunlu giderler en fazla %50, istekler %30; birikim ve borç kapatma birlikte %20. Borç kapatma bu ayki kredi ve taksit ödemeleri, birikim gelirden bu ay kalan.</p>
+      <p className="mt-2 text-[11.5px] text-subtle">50/30/20 kuralı: kira, fatura, kredi ve taksit ödemeleri dahil zorunlu giderler en fazla %50, istekler %30. Kalan %20 birikim ve borç kapatmaya: borç kapatma taksitlerin üstüne ek ödemedir, ikisi de gelirden bu ay kalandan ayrılır.</p>
     </>
   )
 }
