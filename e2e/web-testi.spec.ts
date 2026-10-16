@@ -52,7 +52,11 @@ async function setupRoute(page: import('@playwright/test').Page, finish: string,
     await t.getByRole('button', { name: 'Onayla ve devam' }).click()
     await expect(t.getByRole('heading', { name: h })).toBeVisible()
     // Gider adımı tek boş satırla başlar
-    if (h === 'Giderlerin') await t.getByLabel('Kira / konut tutarı').fill('25.000')
+    if (h === 'Giderlerin') {
+      await t.getByRole('button', { name: 'Gider ekle' }).click()
+      await t.getByRole('group', { name: 'Gider kategorisi' }).getByRole('button', { name: 'Kira / konut' }).click()
+      await page.keyboard.type('25000')
+    }
   }
   // Yaş zorunlu
   await t.getByRole('button', { name: 'Onayla ve devam' }).click()
@@ -138,17 +142,15 @@ test('rota kurulumu: giderler + ile kategoriyle eklenip toplanır; yarıda bıra
   const t = page.getByRole('region', { name: 'Rota kurulumu' })
   await t.getByRole('button', { name: 'Onayla ve devam' }).click()
   await expect(t.getByRole('heading', { name: 'Giderlerin' })).toBeVisible()
-  // Tek gider satırıyla başlar; + ile yeni satır eklenir, türü seçilip tutar yazılır
-  const rows = t.getByRole('list', { name: 'Giderler' }).getByRole('listitem')
-  await expect(rows).toHaveCount(1)
-  await t.getByLabel('Gider türü').first().selectOption({ label: 'Kira / konut' })
-  await t.getByLabel('Kira / konut tutarı').fill('20000')
+  // Liste boş başlar; + ile kayıtlı gider türlerinden biri seçilir, tutar yazılır
+  await expect(t.getByRole('list', { name: 'Giderler' }).getByRole('listitem')).toHaveCount(0)
   const add = async (cat: string, amount: string) => {
     await t.getByRole('button', { name: 'Gider ekle' }).click()
+    await t.getByRole('group', { name: 'Gider kategorisi' }).getByRole('button', { name: cat }).click()
     // Yeni satırın tutar alanı odaklanır; doğrudan yazılır
     await page.keyboard.type(amount)
-    await t.getByLabel('Gider türü').last().selectOption({ label: cat })
   }
+  await add('Kira / konut', '20000')
   await add('Gıda ve market', '8000')
   await add('Gıda ve market', '2000')
   await expect(t.getByRole('list', { name: 'Giderler' }).getByRole('listitem')).toHaveCount(3)
@@ -176,6 +178,6 @@ test('rota kurulumu: giderler + ile kategoriyle eklenip toplanır; yarıda bıra
   await page.goto('./#/yolculuk')
   await expect(t.getByRole('heading', { name: 'Borçların' })).toBeVisible()
   await t.getByRole('button', { name: 'Geri' }).click()
-  await expect(t.getByLabel('Kira / konut tutarı')).toHaveValue('20000')
+  await expect(t.getByLabel('Kira / konut', { exact: true })).toHaveValue('20000')
   await expect(t).toContainText('33.000,00 ₺')
 })
