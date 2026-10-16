@@ -1,7 +1,7 @@
 import { ArrowRight, Check, CheckCircle2, ChevronDown, CircleDashed, CircleX, ClipboardCheck, CreditCard, Flag, Info, RotateCcw, Sparkles, Wallet } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/AppShell'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { Alert, Badge, Button, Card, More, Segmented } from '../components/ui/primitives'
@@ -31,6 +31,7 @@ import {
   type StageId,
 } from '../domain/journey'
 import { formatKurus } from '../domain/money'
+import { loadRouteDraft, routeProfile } from '../domain/routeSetup'
 import { summarizeMonth } from '../domain/summary'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
@@ -38,7 +39,6 @@ import { useInstallmentDebt, useJourneyFacts } from '../state/budget'
 import { usePersonalCycle } from '../state/cycle'
 import { useAssets, useRepo, useSettings } from '../state/data'
 import { FreedomResult } from './FreedomResult'
-import { FreedomTest } from './FreedomTest'
 import { RouteSetup } from './RouteSetup'
 import { MoneyFlow, RouteSimulation } from './RouteSimulation'
 import { LinkWebTestCard, WebResultCard } from './WebTestCard'
@@ -79,7 +79,7 @@ function JourneyBody() {
         feature="journey"
         title="Finansal Özgürlük Yolculuğum"
         points={[
-          'Finansal özgürlük testiyle kişisel hedefiniz',
+          'Finansal Harita testi ve rota kurulumuyla kişisel hedefiniz',
           'Uzman ölçütlerine dayanan 8 seviyeli rota',
           'Planınızı TL, USD ya da gram altın bazında izleyin',
           'Yatırımlarım, Borçlarım ve bu ayın gelir-giderini tek yerden görün',
@@ -91,23 +91,18 @@ function JourneyBody() {
   )
 }
 
-/** Testi henüz çözmemiş kişiye: 10 soruluk Finansal Harita testi her pakette açık. */
-function MapTestCta({ onDetailed }: { onDetailed?: () => void }) {
+/** Rotası olmayan kişiye: önce 10 soruluk Finansal Harita testi (her pakette açık), sonra rota kurulumu. */
+function MapTestCta() {
   return (
     <Card className="relative mb-4 overflow-hidden p-5 sm:p-6" aria-label="Finansal Harita testi">
       <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-amber-500/10 blur-3xl" aria-hidden />
       <p className="relative text-[12px] font-medium uppercase tracking-[0.12em] text-muted">Finansal Harita testi · Ücretsiz</p>
-      <h2 className="relative mt-1 font-display text-2xl font-bold text-ink">Finansal özgürlüğüne ne kadar uzaksın?</h2>
-      <p className="relative mt-1 text-[14px] text-muted">10 soruda bugünkü konumunu, gereken birikimi ve özgürlük yılının aralığını gör. Tam rakam gerekmez; rotanı sonra gerçek rakamlarınla kurarsın.</p>
+      <h2 className="relative mt-1 font-display text-2xl font-bold text-ink">Önce rotanı belirle</h2>
+      <p className="relative mt-1 text-[14px] text-muted">Finansal Yolculuğun bu testle başlar. 10 soruda konumunu ve özgürlük yılının aralığını gör; ardından 6 adımda gerçek rakamlarınla rotanı kur.</p>
       <div className="relative mt-4 flex flex-wrap items-center gap-3">
         <Link to="/finansal-harita" className="inline-flex h-12 items-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 px-5 text-[15px] font-semibold text-white shadow-[0_8px_20px_-10px_rgb(5_150_105/0.8)] hover:brightness-110">
           Özgürlük rotamı çıkar <ArrowRight className="size-4" />
         </Link>
-        {onDetailed && (
-          <Button variant="ghost" onClick={onDetailed}>
-            Doğrudan ayrıntılı teste geç
-          </Button>
-        )}
       </div>
     </Card>
   )
@@ -118,7 +113,7 @@ function WebTestTeaser() {
   const { has } = usePlan()
   const settings = useSettings()
   const web = settings?.webTest
-  if (has('webRefine') || !web || settings?.journey?.confirmedAt) return null
+  if (has('webRefine') || !web || routeProfile(settings?.journey)) return null
   return (
     <div className="mb-4">
       <WebResultCard link={web} locked />
@@ -130,43 +125,33 @@ function JourneyContent() {
   const settings = useSettings()
   const facts = useJourneyFacts()
   const rawFacts = useJourneyFacts({ withSetup: false })
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const [testing, setTesting] = useState(false)
-  const [detailed, setDetailed] = useState(false)
-  // Finansal Harita sonucundaki "Rotamı kur" doğrudan kuruluma getirir
-  const [refining, setRefining] = useState(() => params.get('kur') === '1')
+  // Finansal Harita sonucundaki "Rotamı kur" ya da yarıda kalmış kurulum doğrudan kuruluma getirir
+  const [refining, setRefining] = useState(() => {
+    const code = settings?.webTest?.code
+    return params.get('kur') === '1' || (!!code && !!loadRouteDraft(code))
+  })
   useEffect(() => {
     if (params.has('kur')) setParams({}, { replace: true })
   }, [params, setParams])
   const rates = useBaseRates(settings?.journey)
   if (!settings || !facts || !rawFacts) return null
-  const profile = settings.journey
+  // Rota yalnızca yeni rota kurulumundan beslenir; eski testten kalan profil yok sayılır
+  const profile = routeProfile(settings.journey)
   const web = settings.webTest
   // Rota kurulumu: test sonucundaki tahminler 6 adımda gerçek rakamlarla değiştirilir; bitince sayfa bu rakamlarla kurulur
   if (refining && web) return <RouteSetup link={web} facts={rawFacts} rates={rates} onDone={() => setRefining(false)} onCancel={() => setRefining(false)} />
   // Testten gelen kişi önce kendi sonucunu görür, sonra rotasını kurar
   if (!profile && web) return <WebResultCard link={web} onRefine={() => setRefining(true)} />
-  if (!profile && !detailed)
+  if (!profile)
     return (
       <>
-        <MapTestCta onDetailed={() => setDetailed(true)} />
+        <MapTestCta />
         <LinkWebTestCard />
       </>
     )
-  if (!profile || testing)
-    return (
-      <FreedomTest
-        facts={facts}
-        rates={rates}
-        initial={profile}
-        onDone={() => {
-          setTesting(false)
-          setDetailed(false)
-        }}
-        onCancel={profile ? () => setTesting(false) : () => setDetailed(false)}
-      />
-    )
-  return <Dashboard profile={profile} facts={facts} rates={rates} onRetake={() => setTesting(true)} />
+  return <Dashboard profile={profile} facts={facts} rates={rates} onRetake={() => (web ? setRefining(true) : navigate('/finansal-harita'))} />
 }
 
 // ---------- Yolculuk paneli ----------
@@ -234,18 +219,6 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
 
   return (
     <div className="flex flex-col gap-4">
-      {!tested && (
-        <Card className="border-accent/50 p-4" aria-label="Test çağrısı">
-          <h2 className="flex items-center gap-2 font-display text-[15px] font-semibold">
-            <ClipboardCheck className="size-5 shrink-0 text-accent" /> Finansal özgürlük testini henüz yapmadınız
-          </h2>
-          <p className="mt-1 text-[13px] text-muted">5 kısa adımda rotanızı kişiselleştirin.</p>
-          <Button className="mt-3 w-full sm:w-auto" variant="primary" icon={<ClipboardCheck className="size-4" />} onClick={onRetake}>
-            Testi başlat
-          </Button>
-        </Card>
-      )}
-
       <Hero j={j} profile={profile} fmt={fmt} base={base} left={left} tested={tested} onBase={(b) => void changeBase(b)} onRetake={onRetake} saving={ind.monthlySavingKurus} />
 
       {(!profile.targetAge || !profile.spending) && tested && (

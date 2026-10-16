@@ -260,6 +260,7 @@ const settingsSchema = z.object({
             .object({ emergencyKurus: kurus, fxKurus: kurus, goldKurus: kurus, fundsKurus: kurus, cryptoKurus: kurus, pensionKurus: kurus, monthlyInvestKurus: kurus })
             .optional(),
           spendKurus: kurus.optional(),
+          form: z.record(z.string(), z.unknown()).optional(),
           at: z.string(),
         })
         .optional(),

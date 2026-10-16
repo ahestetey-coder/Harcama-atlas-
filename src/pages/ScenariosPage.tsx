@@ -10,6 +10,7 @@ import { todayIso } from '../domain/dates'
 import { buildJourney, durationLabel, formatInBase, reachDateLabel, SCENARIOS, simulatePlan, type JourneyFacts, type JourneyProfile, type ScenarioInput, type ScenarioKey, type Simulation } from '../domain/journey'
 import { formatKurus, formatKurusCompact, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { cn } from '../lib/cn'
+import { routeProfile } from '../domain/routeSetup'
 import { useJourneyFacts } from '../state/budget'
 import { useSettings } from '../state/data'
 import { useBaseRates } from '../state/livePrices'
@@ -44,18 +45,19 @@ function ScenariosContent() {
   const settings = useSettings()
   const facts = useJourneyFacts()
   if (!settings || !facts) return null
-  if (!settings.journey)
+  const profile = routeProfile(settings.journey)
+  if (!profile)
     return (
       <Card className="p-6 text-center">
         <Mountain className="mx-auto size-8 text-accent" />
         <h2 className="mt-2 font-display text-lg font-semibold">Önce yolculuğunuzu oluşturun</h2>
-        <p className="mx-auto mt-1 max-w-md text-sm text-muted">Senaryolar yolculuk testi bilgilerinizle başlar.</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted">Senaryolar Finansal Yolculuğum'da kurduğun rotayla başlar.</p>
         <Link to="/yolculuk" className="mt-4 inline-block">
-          <Button variant="primary">Teste git</Button>
+          <Button variant="primary">Rotamı belirle</Button>
         </Link>
       </Card>
     )
-  return <Scenarios profile={settings.journey} facts={facts} />
+  return <Scenarios profile={profile} facts={facts} />
 }
 
 const KEYS: ScenarioKey[] = ['cautious', 'mid', 'optimistic']

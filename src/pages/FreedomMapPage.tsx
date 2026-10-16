@@ -923,7 +923,7 @@ function ContinueCard({ code, url, stage }: { code: string; url: string; stage: 
       <ol className="mt-4 flex flex-col gap-3 text-[14px]">
         {[
           ['Kodunla gir', 'Haritan uygulamada seni bekler; testi baştan çözmezsin.'],
-          ['5 dakikada gerçek rakamlarını gir', 'Tahminler, Finansal özgürlük testinde gerçek rakamlarınla yer değiştirir.'],
+          ['5 dakikada gerçek rakamlarını gir', 'Tahminler, rota kurulumunda gerçek rakamlarınla yer değiştirir.'],
           ['Koçun ilk planını çıkarsın', 'Harcamalarını izler, rotadan sapınca haber verir.'],
         ].map(([t, s], i) => (
           <li key={t} className="grid grid-cols-[28px_1fr] gap-3">

@@ -16,6 +16,7 @@ import { useLiveState } from './livePrices'
 import { useAssets, useRecurring, useSettings } from './data'
 import { usePersonalTransactions } from './personal'
 import { quickResult, reachRange, type QuickResult } from '../domain/quickTest'
+import { routeProfile } from '../domain/routeSetup'
 
 export const DEFAULT_COACH: CoachSettings = { strategy: 'avalanche', debtsInExpenses: false, dismissed: [], aiConsent: false }
 export const DEFAULT_SHARE: CoachShare = { income: true, expenses: true, debts: true, goals: true, budget: true }
@@ -121,7 +122,8 @@ export function useCoach(): CoachState | null {
   return useMemo(() => {
     if (!settings || !facts || !debts || !recurring) return null
     const cs = settings.coach ?? DEFAULT_COACH
-    const profile = settings.journey ?? null
+    // Rota yalnızca yeni rota kurulumundan; eski testten kalan profil koçu beslemez
+    const profile = routeProfile(settings.journey)
     const plan = profile ? buildCoachPlan({ profile, facts, debts, debtsInExpenses: cs.debtsInExpenses, strategy: cs.strategy, emergencyMonths: emergencyMonthsFor(profile) }) : null
     const journey = profile ? buildJourney(profile, facts, { USD: usd ?? (profile.base === 'USD' ? profile.baseRateTl : null), XAU: gold ?? (profile.base === 'XAU' ? profile.baseRateTl : null) }, { strategy: cs.strategy }) : null
     const route = journey ? { level: journey.level, total: journey.stages.length, current: journey.current } : undefined

@@ -7,10 +7,10 @@ import { toUserMessage } from '../data/repository'
 import { DEFAULT_LIFE_AGE } from '../domain/assumptions'
 import { todayIso } from '../domain/dates'
 import { monthlyEquivalent } from '../domain/income'
-import { buildFreedomPlan, buildJourney, SPEND_GROUPS, type BaseRates, type IncomeStability, type JourneyFacts, type JourneyProfile, type RiskStance, type SpendBreakdown, type SpendGroup } from '../domain/journey'
-import { formatKurusCompact, formatKurusPlain, parseUserAmount } from '../domain/money'
+import { buildFreedomPlan, buildJourney, SPEND_GROUP_LABEL, SPEND_GROUPS, type BaseRates, type IncomeStability, type JourneyFacts, type JourneyProfile, type RiskStance, type SpendBreakdown, type SpendGroup } from '../domain/journey'
+import { formatKurus, formatKurusCompact, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { estimate, estimateCapital, quickResult, reachRange, seedProfile, targetSplit, type WebTestLink } from '../domain/quickTest'
-import { applySetup, SETUP_DEBT_LABEL, type RouteSetupData, type SetupDebt, type SetupDebtType } from '../domain/routeSetup'
+import { applySetup, clearRouteDraft, loadRouteDraft, saveRouteDraft, SETUP_DEBT_LABEL, type RouteSetupData, type SetupDebt, type SetupDebtType } from '../domain/routeSetup'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
 import { useRepo, useSettings } from '../state/data'
@@ -35,8 +35,6 @@ const STEPS = [
   { key: 'son', title: 'Son birkaç soru', lead: 'Rotanın temposunu ve risk dengesini ayarlamak için.' },
 ] as const
 
-const FIXED: SpendGroup[] = ['housing', 'bills', 'transport']
-const VARIABLE: SpendGroup[] = ['food', 'fun', 'other']
 const K = 100
 const year0 = new Date().getFullYear()
 const yearAt = (m: number | null) => (m === null ? null : year0 + Math.ceil(m / 12))
@@ -50,6 +48,24 @@ const soft = (s: string) => {
 }
 const num = (s: string) => Number(s.replace(',', '.'))
 
+interface ExpenseDraft {
+  id: string
+  group: SpendGroup
+  amount: string
+}
+const newId = () => Math.random().toString(36).slice(2, 9)
+
+/** Kayıtlı form değerini yalnızca türü varsayılanla aynıysa alır (eski ya da bozuk taslak formu bozmaz). */
+function mergeForm<T extends Record<string, unknown>>(base: T, saved: Record<string, unknown> | undefined): T {
+  if (!saved) return base
+  const out = { ...base }
+  for (const k of Object.keys(base) as Array<keyof T>) {
+    const v = saved[k as string]
+    if (v !== undefined && Array.isArray(v) === Array.isArray(base[k]) && typeof v === typeof base[k]) out[k] = v as T[keyof T]
+  }
+  return out
+}
+
 interface DebtDraft {
   type: SetupDebtType
   balance: string
@@ -57,16 +73,10 @@ interface DebtDraft {
   rate: string
 }
 
-/** Bir tutarı, mevcut paylarına göre gruplara böler (pay yoksa eşit). */
-function spread(totalKurus: number, groups: SpendGroup[], base: SpendBreakdown): Partial<SpendBreakdown> {
-  const sum = groups.reduce((s, g) => s + base[g], 0)
-  const out: Partial<SpendBreakdown> = {}
-  let left = totalKurus
-  groups.forEach((g, i) => {
-    const v = i === groups.length - 1 ? left : Math.round((totalKurus * (sum > 0 ? base[g] / sum : 1 / groups.length)) / K) * K
-    out[g] = Math.max(0, v)
-    left -= out[g]!
-  })
+/** Gider satırlarını kategorilere göre toplar. */
+function spendOf(rows: ExpenseDraft[]): SpendBreakdown {
+  const out = Object.fromEntries(SPEND_GROUPS.map((g) => [g, 0])) as SpendBreakdown
+  for (const r of rows) out[r.group] += soft(r.amount)
   return out
 }
 
@@ -102,16 +112,18 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     return out.salary + out.extra + out.passive > 0 ? out : null
   }, [settings?.recurringIncomes])
 
+  // Yarıda kalan kurulum kaldığı yerden; "Testi yenile" son kurulumun rakamlarıyla açılır
+  const [draft0] = useState(() => loadRouteDraft(link.code))
+  const prevForm = settings?.journey?.setup?.form
   const [f, setF] = useState(() => {
     const cap = estimateCapital(a)
-    return {
+    const base = {
       income: appIncome ? plainK(appIncome.salary) : plainTl(est.incomeTl),
       extra: appIncome?.extra ? plainK(appIncome.extra) : '',
       passive: appIncome?.passive ? plainK(appIncome.passive) : '',
       stability: 'regular' as IncomeStability,
       dependents: '0',
-      fixed: plainK(FIXED.reduce((s, g) => s + baseSpend[g], 0)),
-      variable: plainK(VARIABLE.reduce((s, g) => s + baseSpend[g], 0)),
+      expenses: SPEND_GROUPS.filter((g) => baseSpend[g] > 0).map<ExpenseDraft>((g) => ({ id: newId(), group: g, amount: plainK(baseSpend[g]) })),
       // Testteki borç cevabı yalnızca tahmindir; kişi gerçek borcunu girmeden rotaya borç eklenmez
       debts: [] as DebtDraft[],
       emergency: plainTl(cap.mevduat),
@@ -127,16 +139,16 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       drop: a.dusus,
       exp: (a.yatirim === 'her_ay' ? 'var' : a.yatirim === 'arasira' ? 'az' : 'yok') as 'yok' | 'az' | 'var',
     }
+    return mergeForm(base, draft0?.form ?? prevForm)
   })
   type Key = keyof typeof f
-  const [status, setStatus] = useState<Partial<Record<Key, Status>>>(() => ({
+  const [status, setStatus] = useState<Partial<Record<Key, Status>>>(() => draft0 ? (draft0.status as Partial<Record<Key, Status>>) : prevForm ? {} : ({
     income: appIncome ? 'app' : 'web',
     extra: appIncome ? 'app' : 'web',
     passive: appIncome ? 'app' : 'web',
     stability: 'web',
     dependents: 'web',
-    fixed: appSpend ? 'app' : 'web',
-    variable: appSpend ? 'app' : 'web',
+    expenses: appSpend ? 'app' : 'web',
     debts: appDebts.length ? 'app' : 'web',
     emergency: appAssets ? 'app' : 'web',
     invest: appAssets ? 'app' : 'web',
@@ -149,19 +161,22 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     setF((p) => ({ ...p, [k]: v }))
     setStatus((s) => (s[k] === 'ok' ? s : { ...s, [k]: 'ok' }))
   }
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(() => Math.min(STEPS.length - 1, Math.max(0, draft0?.step ?? 0)))
   const [dir, setDir] = useState(1)
   const [view, setView] = useState<View>('setup')
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState<{ profile: JourneyProfile; facts: JourneyFacts } | null>(null)
 
+  // Her değişiklik cihaza taslak olarak yazılır; başka sayfaya gidip dönünce kurulum buradan sürer
+  useEffect(() => {
+    if (view === 'setup') saveRouteDraft({ code: link.code, step, form: f, status: status as Record<string, string> })
+  }, [f, status, step, view, link.code])
+
   // ---- Taslak profil ve canlı hesap ----
   const draft = useMemo(() => {
-    const fixedK = soft(f.fixed)
-    const varK = soft(f.variable)
-    const spending = { ...spread(fixedK, FIXED, baseSpend), ...spread(varK, VARIABLE, baseSpend) } as SpendBreakdown
-    const spendK = fixedK + varK
+    const spending = spendOf(f.expenses)
+    const spendK = SPEND_GROUPS.reduce((s, g) => s + spending[g], 0)
     const split = targetSplit(soft(f.dream), spendK + recurringFixed)
     const ageN = Number(f.age) || undefined
     const years = Math.min(60, Math.max(1, Number(f.years) || 15))
@@ -176,6 +191,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
         ? undefined
         : { emergencyKurus: soft(f.emergency), fxKurus: soft(f.fx), goldKurus: soft(f.gold), fundsKurus: soft(f.funds), cryptoKurus: soft(f.crypto), pensionKurus: soft(f.pension), monthlyInvestKurus: soft(f.invest) },
       spendKurus: facts.averageExpenseKurus === null ? spendK + recurringFixed : undefined,
+      form: f,
       at: todayIso(),
     }
     const profile: JourneyProfile = {
@@ -203,7 +219,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       setup,
     }
     return { profile, facts: applySetup(facts, setup) }
-  }, [f, facts, baseSpend, recurringFixed, appDebts.length, appAssets, seed.goal])
+  }, [f, facts, recurringFixed, appDebts.length, appAssets, seed.goal])
   const live = useMemo(() => buildJourney(draft.profile, draft.facts, rates, { strategy, runs: 0 }), [draft, rates, strategy])
   const liveYear = yearAt(live.indicators.route.mid)
   const webRange = reachRange(web)
@@ -211,7 +227,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   const check = (i: number): string | null => {
     if (i === 0 && soft(f.income) <= 0) return 'Aylık net gelirini yaz.'
     if (i === 0 && !(Number(f.dependents) >= 0 && Number(f.dependents) <= 20)) return 'Bakmakla yükümlü olduğun kişi sayısını 0–20 arası yaz.'
-    if (i === 1 && soft(f.fixed) + soft(f.variable) <= 0) return 'Aylık giderini yaz.'
+    if (i === 1 && f.expenses.reduce((s, r) => s + soft(r.amount), 0) <= 0) return 'En az bir gider ekle ve tutarını yaz.'
     if (i === 2) for (const d of f.debts) if (d.rate.trim() && !(num(d.rate) >= 0 && num(d.rate) <= 20)) return 'Aylık faiz %0 ile %20 arasında olmalı.'
     if (i === 4) {
       if (soft(f.dream) <= 0) return 'Aylık pasif gelir hedefini yaz.'
@@ -223,7 +239,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     return null
   }
   const confirmStep = () => {
-    const keys: Record<number, Key[]> = { 0: ['income', 'extra', 'passive', 'stability', 'dependents'], 1: ['fixed', 'variable'], 2: ['debts'], 3: ['emergency', 'invest'], 4: ['years'], 5: ['exp'] }
+    const keys: Record<number, Key[]> = { 0: ['income', 'extra', 'passive', 'stability', 'dependents'], 1: ['expenses'], 2: ['debts'], 3: ['emergency', 'invest'], 4: ['years'], 5: ['exp'] }
     setStatus((s) => {
       const n = { ...s }
       for (const k of keys[step] ?? []) if (n[k] === 'web') n[k] = 'ok'
@@ -242,7 +258,10 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   }
   const back = () => {
     setError(undefined)
-    if (step === 0) return onCancel()
+    if (step === 0) {
+      clearRouteDraft()
+      return onCancel()
+    }
     setDir(-1)
     setStep(step - 1)
   }
@@ -261,12 +280,13 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       targetMonthlyExpenseKurus: full.targetMonthlyKurus,
       withdrawalRatePct: full.withdrawal.recommendedPct,
       confirmedAt: new Date().toISOString(),
-      tests: [todayIso()],
+      tests: [...(settings?.journey?.setup ? (settings.journey.tests ?? []) : []), todayIso()],
     }
     setView('calc')
     setBusy(true)
     try {
       await repo.saveSettings({ journey: profile, webTest: { ...link, refinedAt: new Date().toISOString() } })
+      clearRouteDraft()
       setSaved({ profile, facts: draft.facts })
       toast('Rotan kuruldu.')
       setTimeout(() => setView('final'), reduced ? 0 : 1200)
@@ -352,8 +372,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
             )}
             {s.key === 'gider' && (
               <>
-                {money('fixed', 'Sabit giderler', 'Kira, aidat, faturalar, ulaşım')}
-                {money('variable', 'Değişken giderler', 'Market, yemek, eğlence, alışveriş')}
+                <ExpensesEditor rows={f.expenses} badge={badge('expenses')} onChange={(r) => set('expenses', r)} />
                 {recurringFixed > 0 && <p className="text-[12.5px] text-muted">Düzenli ödemelerin ({formatKurusCompact(recurringFixed)}/ay) uygulamadan ayrıca sayılır; buraya ekleme.</p>}
                 <p className="flex items-center gap-2 text-[12.5px] text-muted">
                   <CalendarClock className="size-4 shrink-0 text-accent" /> Harcamalarını girdikçe bu rakamlar uygulamadaki kayıtlarından güncellenir.
@@ -486,12 +505,12 @@ function Label({ htmlFor, label, badge }: { htmlFor?: string; label: string; bad
   )
 }
 
-function MoneyField({ id, label, hint, badge, value, onChange }: { id: string; label: string; hint?: string; badge?: ReactNode; value: string; onChange: (v: string) => void }) {
+function MoneyField({ id, label, hint, badge, value, onChange, autoFocus }: { id: string; label: string; hint?: string; badge?: ReactNode; value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <Label htmlFor={id} label={label} badge={badge} />
       <span className="relative block">
-        <Input id={id} inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder="0" className="num pr-10" />
+        <Input id={id} inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder="0" className="num pr-10" autoFocus={autoFocus} />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12.5px] text-subtle">TL</span>
       </span>
       {hint && <span className="text-[12px] text-muted">{hint}</span>}
@@ -513,6 +532,52 @@ function ChipField({ label, badge, children }: { label: string; badge?: ReactNod
     <div className="flex flex-col gap-1.5">
       <Label label={label} badge={badge} />
       {children}
+    </div>
+  )
+}
+
+/** Giderler: "+" ile kategori seçilir, tutar yazılır; satırlar toplanır. Aynı kategori birden çok kez eklenebilir. */
+function ExpensesEditor({ rows, badge, onChange }: { rows: ExpenseDraft[]; badge: ReactNode; onChange: (r: ExpenseDraft[]) => void }) {
+  const [picking, setPicking] = useState(false)
+  const [fresh, setFresh] = useState<string | null>(null)
+  const total = rows.reduce((s, r) => s + soft(r.amount), 0)
+  const add = (group: SpendGroup) => {
+    const id = newId()
+    setFresh(id)
+    setPicking(false)
+    onChange([...rows, { id, group, amount: '' }])
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <Label label="Aylık giderlerin" badge={badge} />
+      <ul className="flex flex-col gap-2" aria-label="Giderler">
+        {rows.map((r) => (
+          <li key={r.id} className="grid grid-cols-[1fr_auto] items-end gap-2 rounded-xl border border-line bg-surface-2 p-3">
+            <MoneyField id={`rs-e-${r.id}`} label={SPEND_GROUP_LABEL[r.group]} value={r.amount} autoFocus={r.id === fresh} onChange={(v) => onChange(rows.map((x) => (x.id === r.id ? { ...x, amount: v } : x)))} />
+            <Button variant="ghost" size="sm" className="text-danger" aria-label={`${SPEND_GROUP_LABEL[r.group]} giderini sil`} icon={<Trash2 className="size-4" />} onClick={() => onChange(rows.filter((x) => x.id !== r.id))} />
+          </li>
+        ))}
+      </ul>
+      {picking ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line-strong p-3">
+          <span className="text-[12.5px] font-medium text-muted">Hangi gider?</span>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Gider kategorisi">
+            {SPEND_GROUPS.map((g) => (
+              <button key={g} type="button" onClick={() => add(g)} className="rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink hover:border-accent hover:text-accent">
+                {SPEND_GROUP_LABEL[g]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => setPicking(true)}>
+          Gider ekle
+        </Button>
+      )}
+      <div className="flex items-center justify-between rounded-xl bg-accent-soft px-3.5 py-2.5 text-[13.5px]" aria-live="polite">
+        <span className="font-medium text-ink">Toplam aylık gider</span>
+        <span className="num font-display text-lg font-bold text-ink">{formatKurus(total)}</span>
+      </div>
     </div>
   )
 }
