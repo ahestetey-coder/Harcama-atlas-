@@ -3,7 +3,8 @@ import { flexibleCategoryAverages, type AutoBudget, type BudgetMode } from '../d
 import { budgetStatus, DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus } from '../domain/budget'
 import { budgetFacts, READ_LOCKED_DATA, type FactsGates } from '../domain/budgetFacts'
 import { buildBucketBudget, fixedSpendSplit, toAutoBudget } from '../domain/bucketBudget'
-import { todayIso } from '../domain/dates'
+import { periodOf, todayIso } from '../domain/dates'
+import { buildMoneyFlow, fixedShares, flowSpent, personalShares, type MoneyFlowResult } from '../domain/moneyFlow'
 import { addMonthsClamped, fixedPayments, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
 import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, portfolio } from '../domain/assets'
 import { estimatedMinPayment } from '../domain/coach'
@@ -11,7 +12,7 @@ import { averageMonthlyExpense, SPEND_GROUPS, spendGroupOf, type JourneyFacts, t
 import type { CoachDebt } from '../domain/coach'
 import { applySetup } from '../domain/routeSetup'
 import { usePersonalCycle } from './cycle'
-import { useAssets, useCategories, useGoals, useRecurring, useSettings } from './data'
+import { useAssets, useCategories, useCategoryMap, useGoals, useRecurring, useSettings } from './data'
 import { useAllRecurring, usePersonalTransactions } from './personal'
 import { usePlan } from './plan'
 
@@ -98,6 +99,30 @@ export function useBudgetStatus(month: string, enabled = true): BudgetStatus | n
     const fixed = fixedPayments(personal.counted, items, plans, month, startDay, today)
     return budgetStatus(personal.counted, month, startDay, today, setup.monthlyKurus, setup.plan, fixed)
   }, [enabled, personal, setup, recurring, month, startDay])
+}
+
+/**
+ * Aylık paranın yolu: gelirin dört kovaya hedef dağılımı ve dönemde harcanan. Plus'ta hedefler
+ * motorun kişisel kovalarından, Ücretsizde sabit 50/30/20'den. incomeKurus verilmezse motorun geliri.
+ */
+export function useMoneyFlow(opts: { month?: string; incomeKurus?: number } = {}): MoneyFlowResult | null {
+  const personal = usePersonalTransactions()
+  const startDay = usePersonalCycle()
+  const categories = useCategoryMap()
+  const recurring = useAllRecurring()
+  const auto = useAutoBudget()
+  const { has } = usePlan()
+  const { month, incomeKurus } = opts
+  return useMemo(() => {
+    if (!personal || auto === undefined) return null
+    const income = incomeKurus ?? auto?.incomeKurus ?? 0
+    if (income <= 0) return null
+    const keys = new Set((recurring ?? []).filter((r) => r.kind === 'installment').map((r) => r.matchKey ?? '').filter(Boolean))
+    const spent = flowSpent(personal.counted, month ?? periodOf(todayIso(), startDay), startDay, categories, keys)
+    const mine = has('advancedBudget') && auto ? personalShares(auto) : null
+    const hasDebt = spent.debt > 0 || (auto?.debtKurus ?? 0) > 0
+    return buildMoneyFlow(income, mine ?? fixedShares(hasDebt), spent, !!mine)
+  }, [personal, auto, recurring, categories, has, month, incomeKurus, startDay])
 }
 
 /** Hatırlatma zamanı gelmiş ödemeler (önümüzdeki iki hafta içinde). */

@@ -55,6 +55,14 @@ test('Ücretsiz: maaş ve sabit giderlerle dört kovalı bütçe kurulur, harcam
   await expect(page.getByText('Harcama bütçeniz 47.000,00 ₺ oldu.')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Bütçe belirleme' }).getByLabel('Dönemlik harcama bütçesi (TL)')).toHaveValue('47.000,00')
   await expect(card.getByRole('button', { name: 'Bu bütçeyi kullan' })).toHaveCount(0)
+
+  // 5) Özet: aylık paranın yolu Ücretsizde sabit oranlarla, harcanan / hedef
+  await page.goto('./#/')
+  const flow = page.getByRole('region', { name: 'Aylık paranın yolu' })
+  await expect(flow).toContainText('sabit oranlar (50/30/20)')
+  await expect(flow).toContainText('İhtiyaçlar %50')
+  await expect(flow).toContainText('/ 30.000 ₺')
+  await expect(flow).toContainText('/ 12.000 ₺')
 })
 
 test('Ayarlar: ay döngüsü maaş gününe bağlanır ve çözülür; tek seferlik gelir bir kez sayılır', async ({ page }) => {

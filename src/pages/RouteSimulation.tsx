@@ -1,4 +1,4 @@
-import { ArrowRight, CircleAlert, Flag, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowRight, Flag, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -6,10 +6,12 @@ import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, ReferenceLine, 
 import { Slider } from '../components/Slider'
 import { AnimatedNumber } from '../components/ui/AnimatedMoney'
 import { Badge, Card, Segmented } from '../components/ui/primitives'
-import { DEFAULT_INFLATION_PCT, DTI_LIMIT, NEEDS_SHARE, nominalPct, SAVING_GROWTH_PCT, SAVING_RATE_TARGET, WANTS_SHARE } from '../domain/assumptions'
+import { DEFAULT_INFLATION_PCT, nominalPct, SAVING_GROWTH_PCT } from '../domain/assumptions'
 import { buildFreedomPlan, buildJourney, SCENARIOS, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult, type ScenarioKey, type StageId } from '../domain/journey'
 import { formatKurus, formatKurusCompact } from '../domain/money'
 import { cn } from '../lib/cn'
+import { FlowCells } from '../components/MoneyFlowCard'
+import { useMoneyFlow } from '../state/budget'
 import { useReducedMotion } from '../lib/hooks'
 
 /**
@@ -241,23 +243,10 @@ function Key({ color, label, dashed, dotted }: { color: string; label: string; d
  * Gelirin dört kovaya dağılımı (gerçek rakamlar) ve bilimsel sınırlar: ihtiyaçlar %50, istekler en fazla
  * %30, birikim en az %20 (50/30/20), borç ödemesi en fazla %36. Altında rotanın sıradaki üç hamlesi.
  */
-export function MoneyFlow({ profile, facts, j }: { profile: JourneyProfile; facts: JourneyFacts; j: JourneyResult }) {
-  const reduced = useReducedMotion()
+export function MoneyFlow({ profile, j }: { profile: JourneyProfile; facts?: JourneyFacts; j: JourneyResult }) {
   const income = profile.monthlyIncomeKurus + (profile.passiveIncomeKurus ?? 0)
-  const debtPay = Math.max(0, facts.monthlyDebtPaymentKurus ?? 0)
-  const spend = Math.max(0, j.plan.spendKurus)
-  const needs = Math.min(spend, Math.max(0, j.plan.essentialKurus - debtPay))
-  const wants = Math.max(0, spend - needs)
-  const saving = income - spend - debtPay
-  if (income <= 0) return null
-  const pct = (k: number) => k / income
-  const parts = [
-    { key: 'needs', label: 'İhtiyaçlar', value: needs, color: C.path, limit: NEEDS_SHARE, rule: `≈ %${NEEDS_SHARE * 100}`, ok: pct(needs) <= NEEDS_SHARE + 0.05 },
-    { key: 'wants', label: 'İstekler', value: wants, color: C.fi, limit: WANTS_SHARE, rule: `en çok %${WANTS_SHARE * 100}`, ok: pct(wants) <= WANTS_SHARE },
-    { key: 'debt', label: 'Borç ve taksit', value: debtPay, color: C.fat, limit: DTI_LIMIT, rule: `en çok %${DTI_LIMIT * 100}`, ok: pct(debtPay) <= DTI_LIMIT },
-    { key: 'saving', label: 'Birikim', value: Math.max(0, saving), color: C.lean, limit: SAVING_RATE_TARGET, rule: `en az %${SAVING_RATE_TARGET * 100}`, ok: pct(saving) >= SAVING_RATE_TARGET },
-  ]
-  const total = Math.max(income, needs + wants + debtPay)
+  const flow = useMoneyFlow({ incomeKurus: income })
+  if (income <= 0 || !flow) return null
   const next = j.stages.filter((s) => !s.done).slice(0, 3)
   return (
     <Card className="p-4 sm:p-5" aria-label="Aylık paranın yolu">
@@ -265,40 +254,9 @@ export function MoneyFlow({ profile, facts, j }: { profile: JourneyProfile; fact
         <TrendingUp className="size-4 text-accent" /> Aylık paranın yolu
       </h3>
       <p className="mt-0.5 text-[12.5px] text-muted">
-        {formatKurus(income)} gelirin bugün nereye gidiyor; yanında bilimsel oranlar.
+        {formatKurus(income)} gelirin bilimsel olarak nasıl dağılmalı; altında bu ay harcanan.
       </p>
-      <div className="mt-3 flex h-4 gap-0.5 overflow-hidden rounded-full bg-surface-2" role="img" aria-label={parts.map((p) => `${p.label} %${Math.round(pct(p.value) * 100)}`).join(', ')}>
-        {parts.map((p, i) =>
-          p.value > 0 ? (
-            <motion.span
-              key={p.key}
-              className="h-full first:rounded-l-full last:rounded-r-full"
-              style={{ background: p.color }}
-              initial={reduced ? false : { width: 0 }}
-              animate={{ width: `${(p.value / total) * 100}%` }}
-              transition={{ duration: 0.8, delay: reduced ? 0 : 0.1 * i, ease: [0.2, 0.8, 0.2, 1] }}
-            />
-          ) : null,
-        )}
-      </div>
-      {saving < 0 && (
-        <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium text-danger">
-          <CircleAlert className="size-4" /> Ayda {formatKurus(-saving)} açık veriyorsun.
-        </p>
-      )}
-      <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {parts.map((p) => (
-          <li key={p.key} className="rounded-xl border border-line p-2.5">
-            <div className="flex items-center gap-1.5 text-[12px] text-muted">
-              <span className="size-2 rounded-full" style={{ background: p.color }} aria-hidden /> {p.label}
-            </div>
-            <div className="num mt-0.5 text-[16px] font-semibold text-ink">%{Math.round(pct(p.key === 'saving' ? saving : p.value) * 100)}</div>
-            <div className={cn('text-[11.5px] font-medium', p.ok ? 'text-accent' : 'text-warning')}>
-              {p.ok ? '✓' : '!'} {p.rule}
-            </div>
-          </li>
-        ))}
-      </ul>
+      <FlowCells flow={flow} />
       {next.length > 0 && (
         <div className="mt-4 border-t border-line pt-3">
           <h4 className="text-[13px] font-semibold text-ink">Sıradaki hamlelerin</h4>

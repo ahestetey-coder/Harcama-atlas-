@@ -343,7 +343,7 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   const sim = page.getByRole('region', { name: 'Özgürlük simülasyonu' })
   await expect(sim).toContainText('Bağımsızlık')
   await expect(sim.getByRole('list', { name: 'Rota takvimi' })).toContainText('Denge')
-  await expect(page.getByRole('region', { name: 'Aylık paranın yolu' })).toContainText('en az %20')
+  await expect(page.getByRole('region', { name: 'Aylık paranın yolu' })).toContainText('Harcanan')
   await expect(goal.getByRole('region', { name: 'Gelecekteki hedef' })).toContainText('TL (nominal)')
   await expect(goal.getByRole('list', { name: 'Tek başına yeterli değerler' })).toContainText('Hedef yaşı 62 yapmak tek başına yeterli')
   // Kaldıraç: hedef yaş sonucu değiştirir ama kaydedilmez
