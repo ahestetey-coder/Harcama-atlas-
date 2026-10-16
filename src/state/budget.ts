@@ -9,6 +9,7 @@ import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, portfoli
 import { estimatedMinPayment } from '../domain/coach'
 import { averageMonthlyExpense, SPEND_GROUPS, spendGroupOf, type JourneyFacts, type RecurringLoad, type SpendBreakdown } from '../domain/journey'
 import type { CoachDebt } from '../domain/coach'
+import { applySetup } from '../domain/routeSetup'
 import { usePersonalCycle } from './cycle'
 import { useAssets, useCategories, useGoals, useRecurring, useSettings } from './data'
 import { useAllRecurring, usePersonalTransactions } from './personal'
@@ -128,13 +129,16 @@ export function useInstallmentDebt(): number {
 const LIQUID = new Set(['deposit', 'cash', 'fx', 'gold', 'fund'])
 
 /** Plus+ yolculuk için uygulamadaki veriler: ortalama gider, düzenli ödemeler, varlıklar, borçlar. */
-export function useJourneyFacts(): JourneyFacts | null {
+/** withSetup false: rota kurulumunun ilk rakamları eklenmeden, yalnızca uygulamadaki kayıtlar. */
+export function useJourneyFacts({ withSetup = true }: { withSetup?: boolean } = {}): JourneyFacts | null {
   const personal = usePersonalTransactions()
   const startDay = usePersonalCycle()
   const recurring = useRecurring()
   const assets = useAssets()
   const categories = useCategories()
   const installmentDebt = useInstallmentDebt()
+  const saved = useSettings()?.journey?.setup
+  const setup = withSetup ? saved : undefined
   return useMemo(() => {
     if (!personal || !recurring || !assets) return null
     const today = todayIso()
@@ -192,7 +196,7 @@ export function useJourneyFacts(): JourneyFacts | null {
       spendingByGroup = Object.fromEntries(SPEND_GROUPS.map((g) => [g, 0])) as SpendBreakdown
       for (const c of avgs) spendingByGroup[spendGroupOf(c.categoryId, catName.get(c.categoryId) ?? '')] += c.averageKurus
     }
-    return {
+    const facts: JourneyFacts = {
       debtList,
       recurringList,
       spendingByGroup,
@@ -209,5 +213,7 @@ export function useJourneyFacts(): JourneyFacts | null {
       recentMonthlyContributionKurus: Math.round(recent / 3),
       hasAssets: assets.some((a) => a.kind !== 'debt' && !a.archived),
     }
-  }, [personal, recurring, assets, categories, installmentDebt, startDay])
+    // Rota kurulumundaki ilk rakamlar, uygulamada karşılığı olmayan alanları doldurur
+    return applySetup(facts, setup)
+  }, [personal, recurring, assets, categories, installmentDebt, startDay, setup])
 }

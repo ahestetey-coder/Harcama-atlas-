@@ -79,7 +79,14 @@ const year0 = new Date().getFullYear()
 const yearAt = (months: number) => year0 + Math.ceil(months / 12)
 const tl = (n: number) => `${Math.round(n).toLocaleString('tr-TR')} TL`
 
-export default function FreedomMapPage() {
+/** Uygulama içinde çözülen test: iletişim adımı yok, sonuç cihaza kaydedilir ve sonraki adım uygulamaya göre değişir. */
+export interface InAppTest {
+  name?: string
+  onSave: (answers: QuickAnswers) => Promise<void>
+  renderNext: (result: QuickResult) => ReactNode
+}
+
+export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
   const reduced = useReducedMotion()
   const [screen, setScreen] = useState<Screen>('intro')
   const [idx, setIdx] = useState(0)
@@ -89,10 +96,10 @@ export default function FreedomMapPage() {
   const topRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    document.title = `Finansal Harita Testi · ${APP_CONFIG.name}`
+    if (!inApp) document.title = `Finansal Harita Testi · ${APP_CONFIG.name}`
     topRef.current?.scrollIntoView({ block: 'start' })
     window.scrollTo(0, 0)
-  }, [screen, idx])
+  }, [screen, idx, inApp])
 
   const answers = useMemo<QuickAnswers | null>(() => (draft.dusus ? ({ v: QUICK_TEST_VERSION, ...draft } as QuickAnswers) : null), [draft])
   const result = useMemo(() => (answers && (screen === 'gate' || screen === 'result') ? quickResult(answers) : null), [answers, screen])
@@ -132,15 +139,19 @@ export default function FreedomMapPage() {
   }
 
   return (
-    <div className="relative min-h-dvh" ref={topRef}>
-      <AuroraBackground />
-      <div className="relative mx-auto flex max-w-2xl flex-col gap-6 px-4 pb-16 pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-8">
-        <header className="flex items-center justify-between gap-3">
-          <a href="#/" aria-label={`${APP_CONFIG.name} ana sayfa`}>
-            <Logo />
-          </a>
-          {screen === 'quiz' && <span className="num text-[12.5px] font-medium text-muted">Adım {idx + 1}/{QUICK_QUESTIONS.length}</span>}
-        </header>
+    <div className={cn('relative', !inApp && 'min-h-dvh')} ref={topRef}>
+      {!inApp && <AuroraBackground />}
+      <div className={cn('relative mx-auto flex max-w-2xl flex-col gap-6', !inApp && 'px-4 pb-16 pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-8')}>
+        {inApp ? (
+          screen === 'quiz' && <span className="num -mb-3 text-[12.5px] font-medium text-muted">Adım {idx + 1}/{QUICK_QUESTIONS.length}</span>
+        ) : (
+          <header className="flex items-center justify-between gap-3">
+            <a href="#/" aria-label={`${APP_CONFIG.name} ana sayfa`}>
+              <Logo />
+            </a>
+            {screen === 'quiz' && <span className="num text-[12.5px] font-medium text-muted">Adım {idx + 1}/{QUICK_QUESTIONS.length}</span>}
+          </header>
+        )}
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
             key={screen === 'quiz' ? `q${idx}` : screen}
@@ -154,7 +165,19 @@ export default function FreedomMapPage() {
             {screen === 'quiz' && <Question q={QUICK_QUESTIONS[idx]} idx={idx} draft={draft} setDraft={setDraft} onNext={next} onBack={back} />}
             {screen === 'summit' && <SummitBreak hayal={draft.hayal} onNext={() => setScreen('quiz')} />}
             {screen === 'half' && <HalfBreak draft={draft} onNext={() => setScreen('quiz')} />}
-            {screen === 'calc' && <Calculating onDone={() => setScreen('gate')} />}
+            {screen === 'calc' && (
+              <Calculating
+                onDone={() => {
+                  if (!inApp || !answers) return setScreen('gate')
+                  // Uygulamada iletişim adımı yok: cevaplar cihazdaki ayarlara yazılır, sonuç hemen açılır
+                  inApp
+                    .onSave(answers)
+                    .then(() => setLead({ name: inApp.name ?? '', code: '', saved: 'local' }))
+                    .catch(() => setLead({ name: inApp.name ?? '', code: '', saved: 'fail' }))
+                    .finally(() => setScreen('result'))
+                }}
+              />
+            )}
             {screen === 'gate' && result && answers && (
               <Gate
                 result={result}
@@ -182,7 +205,7 @@ export default function FreedomMapPage() {
                 }}
               />
             )}
-            {screen === 'result' && result && answers && lead && <Result result={result} name={lead.name} code={lead.code} saved={lead.saved} onRestart={restart} />}
+            {screen === 'result' && result && answers && lead && <Result result={result} name={lead.name} code={lead.code} saved={lead.saved} onRestart={restart} next={inApp?.renderNext(result)} />}
           </motion.main>
         </AnimatePresence>
       </div>
@@ -634,15 +657,15 @@ function Gate({ result, onSubmit }: { result: QuickResult; onSubmit: (name: stri
 
 // ---------- Sonuç ----------
 
-function Result({ result: r, name, code, saved, onRestart }: { result: QuickResult; name: string; code: string; saved: 'ok' | 'fail' | 'local'; onRestart: () => void }) {
+function Result({ result: r, name, code, saved, onRestart, next }: { result: QuickResult; name: string; code: string; saved: 'ok' | 'fail' | 'local'; onRestart: () => void; next?: ReactNode }) {
   const j = r.journey
-  const first = name.split(' ')[0]
+  const first = name.trim().split(' ')[0]
   const range = reachRange(r)
   const continueUrl = `${APP_CONFIG.webUrl}#/yolculuk?kod=${code}`
   return (
     <>
       <div className="flex flex-col gap-2">
-        <p className="text-[13px] font-medium uppercase tracking-[0.12em] text-muted">{first}, haritan açıldı · finansal arketipin</p>
+        <p className="text-[13px] font-medium uppercase tracking-[0.12em] text-muted">{first ? `${first}, haritan` : 'Haritan'} açıldı · finansal arketipin</p>
         <h1 className="font-display text-[2.4rem] font-extrabold leading-none tracking-tight text-ink sm:text-5xl">{r.archetype.name}</h1>
         <p className="text-[15px] text-muted">{r.archetype.text}</p>
         <Badge tone="accent" className="self-start">
@@ -692,7 +715,7 @@ function Result({ result: r, name, code, saved, onRestart }: { result: QuickResu
               <div className="flex flex-col gap-1.5 pt-1">
                 <span className="skeleton block h-2.5" style={{ width: n === 2 ? '82%' : '64%' }} aria-hidden />
                 <span className="flex items-center gap-1.5 text-[11.5px] font-medium uppercase tracking-wide text-subtle">
-                  <Lock className="size-3" /> Gerçek rakamlarınla uygulamada açılır
+                  <Lock className="size-3" /> {next ? 'Rota kurulumunda gerçek rakamlarınla açılır' : 'Gerçek rakamlarınla uygulamada açılır'}
                 </span>
               </div>
             </li>
@@ -714,9 +737,9 @@ function Result({ result: r, name, code, saved, onRestart }: { result: QuickResu
         </Card>
       )}
 
-      <ContinueCard code={code} url={continueUrl} stage={j.current?.title ?? null} />
+      {next ?? <ContinueCard code={code} url={continueUrl} stage={j.current?.title ?? null} />}
 
-      {saved === 'fail' && <p className="text-[13px] text-warning">Sonucun sunucuya kaydedilemedi. Uygulamada devam kodunla bağlayabilirsin.</p>}
+      {saved === 'fail' && <p className="text-[13px] text-warning">{next ? 'Sonucun kaydedilemedi; testi yeniden çözmeyi dene.' : 'Sonucun sunucuya kaydedilemedi. Uygulamada devam kodunla bağlayabilirsin.'}</p>}
       <p className="text-[12px] leading-relaxed text-subtle">
         Sonuç verdiğin aralıklara ve {APP_CONFIG.name}'nın Özgürlük Rotası ölçütlerine dayanan bir tahmindir; tutarlar bugünün parasıyladır. Yatırım tavsiyesi değildir.
       </p>

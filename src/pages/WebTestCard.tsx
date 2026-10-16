@@ -21,7 +21,7 @@ export function WebResultCard({ link, onRefine, locked }: { link: WebTestLink; o
     <Card className="relative overflow-hidden p-5 sm:p-6" aria-label="Web testindeki haritan">
       <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-accent/10 blur-3xl" aria-hidden />
       <div className="relative flex flex-wrap items-center gap-2">
-        <Badge tone="info">Web testinden · tahmini</Badge>
+        <Badge tone="info">{link.source === 'app' ? 'Finansal Harita testinden' : 'Web testinden'} · tahmini</Badge>
         <span className="text-[12px] text-subtle">{new Date(link.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} · {link.code}</span>
       </div>
       <div className="relative mt-3">
@@ -36,7 +36,7 @@ export function WebResultCard({ link, onRefine, locked }: { link: WebTestLink; o
         <div className="min-w-0 flex-1">
           <div className="text-[13px] text-muted">Özgürlük yılın</div>
           <div className="num bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text font-display text-4xl font-extrabold tracking-tight text-transparent">{range ?? 'Henüz görünmüyor'}</div>
-          <p className="mt-1 text-[13px] text-muted">Aralık geniş, çünkü rakamlar web testindeki aralıklardan tahmin edildi.</p>
+          <p className="mt-1 text-[13px] text-muted">Aralık geniş, çünkü rakamlar testteki aralıklardan tahmin edildi.</p>
         </div>
       </div>
       <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[13px]">
@@ -63,16 +63,16 @@ export function WebResultCard({ link, onRefine, locked }: { link: WebTestLink; o
         {locked ? (
           <>
             <Link to="/paketler" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 px-5 text-[15px] font-semibold text-white shadow-[0_8px_20px_-10px_rgb(5_150_105/0.8)] hover:brightness-110">
-              <Sparkles className="size-4" /> Plus ile rotamı netleştir
+              <Sparkles className="size-4" /> Plus ile rotamı kur
             </Link>
-            <p className="text-center text-[12.5px] text-subtle">Rota netleştirme Plus ve Plus+ paketlerinde. 8 aşamalı Yolculuk ve koç Plus+'ta.</p>
+            <p className="text-center text-[12.5px] text-subtle">Rota kurulumu Plus ve Plus+ paketlerinde. 8 aşamalı Yolculuk ve koç Plus+'ta.</p>
           </>
         ) : (
           <>
             <Button variant="primary" size="lg" onClick={onRefine} icon={<ArrowRight className="size-4" />} className="flex-row-reverse">
-              Rotamı netleştir · 5 dk
+              Rotamı kur · 5 dk
             </Button>
-            <p className="text-center text-[12.5px] text-subtle">Web cevapların teste hazır gelir; sen yalnızca gerçek rakamlarını düzeltirsin.</p>
+            <p className="text-center text-[12.5px] text-subtle">Cevapların 6 adımlık kuruluma hazır gelir; sen yalnızca gerçek rakamlarını düzeltirsin.</p>
           </>
         )}
       </div>

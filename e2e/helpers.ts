@@ -60,7 +60,11 @@ export async function filterCategory(page: Page, label: string | null) {
 
 /** Finansal özgürlük testini (8 adım) tamamlar: zorunlu gider kira/konut grubuna yazılır; diğer yanıtlar varsayılandır. */
 export async function takeFreedomTest(page: Page, o: { income: string; essential: string; age?: string; targetAge?: string }) {
+  // İlk kez: önce Finansal Harita testi önerilir; ayrıntılı teste doğrudan geçilir
+  const direct = page.getByRole('button', { name: 'Doğrudan ayrıntılı teste geç' })
   const t = page.getByRole('region', { name: 'Finansal özgürlük testi' })
+  await expect(direct.or(t)).toBeVisible()
+  if (await direct.isVisible()) await direct.click()
   const next = () => t.getByRole('button', { name: 'İleri' }).click()
   await t.getByLabel('Yaşınız').fill(o.age ?? '32')
   if (o.targetAge) await t.getByLabel('Hangi yaşta çalışmayı bırakmak istersiniz?').fill(o.targetAge)

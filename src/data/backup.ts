@@ -243,6 +243,26 @@ const settingsSchema = z.object({
       partTimeIncomeKurus: kurus.optional(),
       withdrawalCustom: z.boolean().optional(),
       inflationPct: z.number().min(0).max(200).optional(),
+      setup: z
+        .object({
+          debts: z
+            .array(
+              z.object({
+                type: z.enum(['card', 'overdraft', 'loan', 'auto', 'mortgage', 'personal', 'other']),
+                balanceKurus: kurus,
+                paymentKurus: kurus,
+                monthlyRatePct: z.number().min(0).max(20),
+              }),
+            )
+            .max(20)
+            .optional(),
+          capital: z
+            .object({ emergencyKurus: kurus, fxKurus: kurus, goldKurus: kurus, fundsKurus: kurus, cryptoKurus: kurus, pensionKurus: kurus, monthlyInvestKurus: kurus })
+            .optional(),
+          spendKurus: kurus.optional(),
+          at: z.string(),
+        })
+        .optional(),
     })
     .optional(),
   webTest: z
@@ -253,6 +273,7 @@ const settingsSchema = z.object({
       createdAt: z.string(),
       linkedAt: z.string(),
       refinedAt: z.string().optional(),
+      source: z.enum(['web', 'app']).optional(),
     })
     .optional(),
   coach: z

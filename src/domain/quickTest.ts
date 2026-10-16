@@ -233,6 +233,21 @@ export function estimate(a: QuickAnswers): QuickEstimate {
   }
 }
 
+/** Toplam birikimin yerlere tahmini dağılımı (TL): acil yastık mevduatta, kalanı seçilen yerlere eşit. */
+export function estimateCapital(a: QuickAnswers): Record<AssetPlace, number> {
+  const e = estimate(a)
+  const total = SAVINGS_TL[a.birikim]
+  const cushion = Math.min(total, CUSHION_MONTHS[a.acil] * (e.spendTl + e.debtPaymentTl))
+  const out: Record<AssetPlace, number> = { mevduat: cushion, doviz: 0, altin: 0, hisseFon: 0, kripto: 0, bes: 0 }
+  const places = a.nerede.filter((p) => p !== 'mevduat')
+  const rest = total - cushion
+  if (rest > 0) {
+    if (places.length) for (const p of places) out[p] += rest / places.length
+    else out.mevduat += rest
+  }
+  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, r100(v)])) as Record<AssetPlace, number>
+}
+
 function spendGroups(spendTl: number): SpendBreakdown {
   return Object.fromEntries(SPEND_GROUPS.map((g) => [g, Math.round(spendTl * SPEND_SHARE[g]) * K])) as SpendBreakdown
 }
@@ -417,4 +432,6 @@ export interface WebTestLink {
   linkedAt: string
   /** Kişi "Rotamı netleştir" ile testi tamamladı mı (tarih). */
   refinedAt?: string
+  /** Test nerede çözüldü: web'de (e-postayla) ya da uygulamada. Eski kayıtlarda yok (web). */
+  source?: 'web' | 'app'
 }

@@ -1,3 +1,4 @@
+import type { RouteSetupData } from './routeSetup'
 import {
   DEFAULT_INFLATION_PCT,
   DEFAULT_LIFE_AGE,
@@ -113,6 +114,8 @@ export interface JourneyProfile {
   withdrawalCustom?: boolean
   /** TL nominal hedef için yıllık enflasyon varsayımı (%). */
   inflationPct?: number
+  /** Rota kurulumunda girilen ilk borç/birikim rakamları (uygulamada kayıt yokken kullanılır). */
+  setup?: RouteSetupData
 }
 
 export type SpendGroup = 'housing' | 'food' | 'transport' | 'bills' | 'fun' | 'other'

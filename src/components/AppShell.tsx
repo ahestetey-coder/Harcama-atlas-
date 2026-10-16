@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpen, Bot, ChartColumn, CreditCard, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BookOpen, Bot, ChartColumn, CreditCard, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Map as MapIcon, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useId, useLayoutEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -39,6 +39,7 @@ const ITEMS = {
   debts: { to: '/borclar', label: 'Borçlar ve ödemeler', short: 'Borçlar', icon: CreditCard, tone: 'from-rose-500 to-red-600' },
   coach: { to: '/koc', label: 'Koçum', short: 'Koç', icon: Bot, tone: 'from-cyan-500 to-emerald-500' },
   journey: { to: '/yolculuk', label: 'Finansal yolculuğum', short: 'Yolculuğum', icon: Mountain, tone: 'from-orange-500 to-red-600' },
+  mapTest: { to: '/finansal-harita', label: 'Finansal Harita testi', short: 'Harita testi', icon: MapIcon, tone: 'from-amber-500 to-orange-600' },
   scenarios: { to: '/senaryolar', label: 'Gelecek senaryoları', short: 'Senaryolar', icon: TrendingUp, tone: 'from-fuchsia-500 to-purple-600' },
   learning: { to: '/ogren', label: 'Finansal bilgi', short: 'Bilgi', icon: BookOpen, tone: 'from-yellow-500 to-amber-600' },
   members: { to: '/uyeler', label: 'Üyeler ve paylaşım', short: 'Üyeler', icon: Users, tone: 'from-fuchsia-500 to-pink-600' },
@@ -53,7 +54,7 @@ const ITEMS = {
 const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   { title: 'Günlük', items: [ITEMS.home, ITEMS.txs, ITEMS.categories] },
   { title: 'Planlama', items: [ITEMS.budget, ITEMS.debts, ITEMS.goals, ITEMS.reports] },
-  { title: 'Yatırım ve gelecek', items: [ITEMS.journey, ITEMS.assets, ITEMS.coach, ITEMS.scenarios, ITEMS.learning] },
+  { title: 'Yatırım ve gelecek', items: [ITEMS.mapTest, ITEMS.journey, ITEMS.assets, ITEMS.coach, ITEMS.scenarios, ITEMS.learning] },
   { title: 'Hesap ve veri', items: [ITEMS.members, ITEMS.history, ITEMS.backup, ITEMS.settings, ITEMS.plans] },
 ]
 /** Mobil alt menüdeki sekmeler ("+" düğmesinin solu ve sağı). */
