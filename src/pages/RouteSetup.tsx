@@ -6,6 +6,7 @@ import { Badge, Button, Card, Input, Segmented, Select, Spinner } from '../compo
 import { toUserMessage } from '../data/repository'
 import { DEFAULT_LIFE_AGE } from '../domain/assumptions'
 import { todayIso } from '../domain/dates'
+import { monthlyEquivalent } from '../domain/income'
 import { buildFreedomPlan, buildJourney, SPEND_GROUPS, type BaseRates, type IncomeStability, type JourneyFacts, type JourneyProfile, type RiskStance, type SpendBreakdown, type SpendGroup } from '../domain/journey'
 import { formatKurusCompact, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { estimate, estimateCapital, quickResult, reachRange, seedProfile, targetSplit, type WebTestLink } from '../domain/quickTest'
@@ -15,6 +16,7 @@ import { useReducedMotion } from '../lib/hooks'
 import { useRepo, useSettings } from '../state/data'
 import { usePlan } from '../state/plan'
 import { useUi } from '../state/ui'
+import { MoneyFlow } from './RouteSimulation'
 
 /**
  * Rota kurulumu: Finansal Harita testinin tahmini rakamları 6 adımda gerçek rakamlarla değiştirilir.
@@ -87,17 +89,31 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   const appAssets = facts.hasAssets
   const recurringFixed = (facts.recurringList ?? []).filter((r) => !r.installment && r.remainingMonths === null).reduce((s, r) => s + r.monthlyKurus, 0)
 
+  // Uygulamada tanımlı düzenli gelirler (maaş, kira, ek gelir) tahminin yerine geçer
+  const appIncome = useMemo(() => {
+    const out = { salary: 0, extra: 0, passive: 0 }
+    for (const i of settings?.recurringIncomes ?? []) {
+      if (!i.active) continue
+      const m = monthlyEquivalent(i.amountKurus, i.cadence)
+      if (i.kind === 'salary') out.salary += m
+      else if (i.kind === 'rent') out.passive += m
+      else out.extra += m
+    }
+    return out.salary + out.extra + out.passive > 0 ? out : null
+  }, [settings?.recurringIncomes])
+
   const [f, setF] = useState(() => {
     const cap = estimateCapital(a)
     return {
-      income: plainTl(est.incomeTl),
-      extra: '',
-      passive: '',
+      income: appIncome ? plainK(appIncome.salary) : plainTl(est.incomeTl),
+      extra: appIncome?.extra ? plainK(appIncome.extra) : '',
+      passive: appIncome?.passive ? plainK(appIncome.passive) : '',
       stability: 'regular' as IncomeStability,
       dependents: '0',
       fixed: plainK(FIXED.reduce((s, g) => s + baseSpend[g], 0)),
       variable: plainK(VARIABLE.reduce((s, g) => s + baseSpend[g], 0)),
-      debts: est.debts.map((d) => ({ type: (d.type === 'card' ? 'card' : 'loan') as SetupDebtType, balance: plainTl(d.balanceTl), pay: plainTl(d.paymentTl), rate: String(d.monthlyRatePct).replace('.', ',') })) as DebtDraft[],
+      // Testteki borç cevabı yalnızca tahmindir; kişi gerçek borcunu girmeden rotaya borç eklenmez
+      debts: [] as DebtDraft[],
       emergency: plainTl(cap.mevduat),
       fx: plainTl(cap.doviz),
       gold: plainTl(cap.altin),
@@ -114,9 +130,9 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   })
   type Key = keyof typeof f
   const [status, setStatus] = useState<Partial<Record<Key, Status>>>(() => ({
-    income: 'web',
-    extra: 'web',
-    passive: 'web',
+    income: appIncome ? 'app' : 'web',
+    extra: appIncome ? 'app' : 'web',
+    passive: appIncome ? 'app' : 'web',
     stability: 'web',
     dependents: 'web',
     fixed: appSpend ? 'app' : 'web',
@@ -363,7 +379,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                   </li>
                 </ul>
               ) : (
-                <DebtsEditor debts={f.debts} badge={badge('debts')} onChange={(d) => set('debts', d)} />
+                <DebtsEditor debts={f.debts} badge={badge('debts')} onChange={(d) => set('debts', d)} hint={est.debts.length > 0 && !f.debts.length} />
               ))}
             {s.key === 'birikim' &&
               (appAssets ? (
@@ -501,11 +517,12 @@ function ChipField({ label, badge, children }: { label: string; badge?: ReactNod
   )
 }
 
-function DebtsEditor({ debts, badge, onChange }: { debts: DebtDraft[]; badge: ReactNode; onChange: (d: DebtDraft[]) => void }) {
+function DebtsEditor({ debts, badge, onChange, hint }: { debts: DebtDraft[]; badge: ReactNode; onChange: (d: DebtDraft[]) => void; hint?: boolean }) {
   const upd = (i: number, p: Partial<DebtDraft>) => onChange(debts.map((d, j) => (j === i ? { ...d, ...p } : d)))
   return (
     <div className="flex flex-col gap-3">
       <Label label={debts.length ? `${debts.length} borç` : 'Borç yok'} badge={badge} />
+      {hint && <p className="rounded-xl bg-warning-soft px-3 py-2 text-[13px] text-ink">Testte taksitlerin olduğunu söyledin. Kalan borcunu ve taksitini eklersen kapatma sırası ve borçsuzluk tarihin çıkar; eklemezsen rota borçsuz hesaplanır.</p>}
       {debts.map((d, i) => (
         <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface-2 p-3">
           <label className="col-span-2 flex flex-col gap-1 text-[12px] font-medium text-muted">
@@ -571,10 +588,6 @@ function Final({
     ['Gereken birikim', formatKurusCompact(webGoal), formatKurusCompact(j.indicators.goalKurus)],
     ['Seviye', `${webLevel}/${total}`, `${j.level}/${total}${cur ? ` · ${cur.title}` : ''}`],
   ]
-  const moves = j.stages
-    .filter((s) => !s.done)
-    .slice(0, 3)
-    .map((s) => s.next)
   const first = name?.trim().split(' ')[0]
   const msg = `${first ? `Merhaba ${first}. ` : ''}Haritan artık gerçek rakamlarınla çizildi. ${year ? `Bu tempoyla özgürlük yılın ${year}. ` : ''}${cur ? `Şu an ${cur.title} durağındasın; ilk hedefimiz: ${cur.goal.charAt(0).toLocaleLowerCase('tr-TR')}${cur.goal.slice(1)}.` : 'Rotan tamam; birikimini koru ve güvenli çekim planı yap.'}`
   return (
@@ -603,19 +616,7 @@ function Final({
           {msg}
         </div>
       </div>
-      {moves.length > 0 && (
-        <div className="rounded-2xl border border-line p-4">
-          <div className="font-semibold text-ink">İlk {moves.length} hamlen</div>
-          <ol className="mt-3 flex flex-col gap-2.5">
-            {moves.map((t, i) => (
-              <li key={i} className="grid grid-cols-[26px_1fr] gap-2.5 text-[13.5px] text-ink">
-                <span className="num grid size-6 place-items-center rounded-full bg-amber-500 text-[11.5px] font-bold text-white">{i + 1}</span>
-                {t}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
+      <MoneyFlow profile={saved.profile} facts={saved.facts} j={j} />
       <div className="flex flex-col gap-2">
         <Button variant="primary" size="lg" onClick={onDone} icon={<ArrowRight className="size-4" />} className="flex-row-reverse">
           {canJourney ? 'Finansal özgürlük sayfama git' : 'Rotamı gör'}

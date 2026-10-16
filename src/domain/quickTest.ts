@@ -6,8 +6,9 @@
  * sonucu ile uygulamadaki rota aynı kurallarla hesaplanır. Uygulamada kişi "Rotamı netleştir"
  * dediğinde aynı cevaplar Finansal özgürlük testine ön doldurma olarak verilir (seedProfile).
  */
+import { SAVING_GROWTH_PCT } from './assumptions'
 import type { CoachDebt } from './coach'
-import { buildJourney, SCENARIOS, simulatePlan, SPEND_GROUPS, type JourneyFacts, type JourneyGoal, type JourneyProfile, type JourneyResult, type SpendBreakdown, type StageId } from './journey'
+import { buildFreedomPlan, buildJourney, SPEND_GROUPS, type FreedomPlan, type JourneyFacts, type JourneyGoal, type JourneyProfile, type JourneyResult, type SpendBreakdown, type StageId } from './journey'
 
 export const QUICK_TEST_VERSION = 1
 
@@ -345,6 +346,8 @@ export interface QuickInsight {
 
 export interface QuickResult {
   journey: JourneyResult
+  /** Hesabın tahmini girdileri (senaryo denemesi aynı motorla yeniden hesaplar). */
+  inputs: { profile: JourneyProfile; facts: JourneyFacts }
   /** Arka arkaya tamamlanan aşama sayısı (0–8) ve sıradaki aşama. */
   level: number
   archetype: { name: string; text: string }
@@ -355,25 +358,42 @@ export interface QuickResult {
   reach: { fastMonths: number | null; midMonths: number | null; slowMonths: number | null }
   insights: QuickInsight[]
   firstMove: string
+  /** Orta senaryoda varışta birikimin ne kadarı getiriden gelir (0..1); varılamıyorsa null. */
+  growth: { returnShare: number; years: number } | null
+}
+
+/** Orta senaryoyla varışa kadar yatırılan toplam (başlangıç + aylık birikim, yıllık artışla) ve getirinin payı. */
+function growthShare(j: JourneyResult): QuickResult['growth'] {
+  const m = j.indicators.route.mid
+  const goal = j.indicators.goalKurus
+  if (m === null || m <= 0 || goal <= 0) return null
+  const g = 1 + SAVING_GROWTH_PCT / 100
+  let paid = Math.max(0, j.indicators.progressKurus)
+  for (let i = 1; i <= m; i++) paid += Math.max(0, j.plan.monthlySavingKurus) * Math.pow(g, Math.floor((i - 1) / 12))
+  return { returnShare: Math.max(0, Math.min(1, 1 - paid / goal)), years: Math.ceil(m / 12) }
 }
 
 const INSIGHT: Partial<Record<StageId, [QuickInsight['tone'], string]>> = {
   balance: ['danger', 'Ay sonunda açık veriyorsun. Rota bu açığı kapatmakla başlıyor.'],
   starter: ['warning', 'Beklenmedik bir masraf seni borca itebilir; ilk kalkanın henüz yok.'],
-  debt: ['danger', 'Yüksek faizli borç ya da taksit yükü birikimini eritiyor.'],
+  debt: ['danger', 'Taksitler zorluyor; yüksek faizli borç birikimini eritiyor.'],
   emergency: ['warning', 'Acil durum yastığın var ama henüz tam değil.'],
   saving: ['warning', "Gelirinin %20'sini düzenli biriktirmek rotanı ciddi hızlandırır."],
 }
 
 export function quickResult(a: QuickAnswers): QuickResult {
-  const j = buildJourney(seedProfile(a), seedFacts(a), {}, { runs: 0 })
+  const inputs = { profile: seedProfile(a), facts: seedFacts(a) }
+  const j = buildJourney(inputs.profile, inputs.facts, {}, { runs: 0 })
   const level = j.level
   const place = [...PLACES].reverse().find((p) => level >= p.min) ?? PLACES[0]
   const insights: QuickInsight[] = []
   for (const s of j.stages) {
     if (s.done || insights.length >= 3) continue
-    const i = INSIGHT[s.id]
-    if (i) insights.push({ stage: s.id, tone: i[0], text: i[1] })
+    const i: QuickInsight['tone'] | undefined = INSIGHT[s.id]?.[0]
+    if (!i) continue
+    // Rahat ödenen kredi taksiti uyarı değil bilgi: kapandıkça birikime döner
+    if (s.id === 'debt' && a.borc === 'kredi_rahat') insights.push({ stage: s.id, tone: 'warning', text: 'Kredi taksitlerin birikime ayırabileceğin parayı azaltıyor; kapandıkça rotan hızlanır.' })
+    else insights.push({ stage: s.id, tone: i, text: INSIGHT[s.id]![1] })
   }
   const e = estimate(a)
   if (insights.length < 3 && e.incomeTl > 0 && (e.incomeTl - e.spendTl - e.debtPaymentTl) / e.incomeTl >= 0.2) insights.push({ stage: 'positive', tone: 'accent', text: 'Güçlü bir tasarruf oranın var; rotanın motoru bu.' })
@@ -381,13 +401,19 @@ export function quickResult(a: QuickAnswers): QuickResult {
   const r = j.indicators.route
   return {
     journey: j,
+    inputs,
     level,
     archetype: ARCHETYPE[a.dusus],
     place: { name: place.name, text: place.text },
     goalKurus: j.indicators.goalKurus,
     reach: { fastMonths: r.optimistic, midMonths: r.mid, slowMonths: r.cautious },
     insights,
-    firstMove: j.current?.next ?? 'Rotan tamam: birikimini koru ve güvenli çekim planı yap.',
+    // Borç rakamları testte tahmin edildi: kesin tutar yerine gerçek borcu girmeye çağırır
+    firstMove:
+      j.current?.id === 'debt'
+        ? 'Testte taksitlerin olduğunu söyledin. Rota kurulumunda borçlarını girince hangisini önce kapatacağın ve borçsuzluk tarihin çıkar.'
+        : (j.current?.next ?? 'Rotan tamam: birikimini koru ve güvenli çekim planı yap.'),
+    growth: growthShare(j),
   }
 }
 
@@ -404,13 +430,14 @@ export function reachRange(r: Pick<QuickResult, 'reach'>, year = new Date().getF
   return at(f) === at(end) ? String(at(f)) : `${at(f)}–${at(end)}`
 }
 
-/** "Ayda X TL daha ayırırsam?" senaryosu: Senaryolar sayfasıyla aynı hesap (orta senaryo). */
+/**
+ * "Ayda X TL daha ayırırsam?" senaryosu: rota motorunun aynı nakit akışıyla (borç bitişleri, birikim
+ * artışı, orta getiri). Noktalar yıl sonu net birikimdir.
+ */
 export function quickScenario(res: QuickResult, extraTl: number, years = 40) {
-  const ind = res.journey.indicators
-  const input = { startKurus: ind.progressKurus, monthlySavingKurus: ind.monthlySavingKurus, years, inflationPct: 0, incomeLossMonths: 0, incomeLossMonthlySpendKurus: 0, bigExpenseKurus: 0, bigExpenseYear: 1 }
-  const base = simulatePlan({ ...input, extraSavingKurus: 0 }, SCENARIOS.mid.realReturnPct, ind.goalKurus)
-  const plus = simulatePlan({ ...input, extraSavingKurus: Math.max(0, extraTl) * K }, SCENARIOS.mid.realReturnPct, ind.goalKurus)
-  return { base, plus }
+  const plus = extraTl > 0 ? buildFreedomPlan(res.inputs.profile, res.inputs.facts, { runs: 0, extraMonthlyKurus: extraTl * K }) : res.journey.plan
+  const sim = (p: FreedomPlan) => ({ reachMonths: p.route.mid, points: p.paths.mid.slice(0, years + 1).map((v, year) => ({ year, realKurus: v, nominalKurus: v })) })
+  return { base: sim(res.journey.plan), plus: sim(plus) }
 }
 
 /** Devam kodu: ATL- + 6 karakter (karışan harfler yok). */

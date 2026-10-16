@@ -50,7 +50,7 @@ test('web testi: girişsiz çözülür, sonuç uygulamanın rota motoruyla hesap
   await solveWebTest(page)
   await expect(page.getByRole('heading', { name: 'Dengeli Yolcu' })).toBeVisible()
   await expect(page.getByText(/Osman, haritan açıldı/)).toBeVisible()
-  await expect(page.getByText('Özgürlük yılın')).toBeVisible()
+  await expect(page.getByText('Özgürlük yılın', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: /Rotanın 8 durağı/ })).toBeVisible()
   // Simülatör: ek birikim varış yılını öne çeker
   await expect(page.getByRole('heading', { name: 'Geleceğini şimdi değiştir' })).toBeVisible()
@@ -125,6 +125,11 @@ test('web testinden uygulamaya: Plus+ netleştirince 8 aşamalı rota açılır'
   await setPlan(page, 'Plus+')
   await setupRoute(page, 'Finansal özgürlük sayfama git')
   await expect(page.getByRole('region', { name: 'Rota', exact: true })).toBeVisible()
+  // Gerçek rakamlarla simülasyon ve aylık paranın yolu
+  const sim = page.getByRole('region', { name: 'Özgürlük simülasyonu' })
+  await expect(sim).toContainText('Finansal bağımsızlığa varış')
+  await expect(sim.getByRole('list', { name: 'Rota takvimi' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Aylık paranın yolu' })).toContainText('Birikim')
 })
 
 test('uygulama içi Finansal Harita testi: ücretsizde çözülür, sonuç paket önerir; Plus rotasını kurar', async ({ page }) => {
@@ -135,13 +140,16 @@ test('uygulama içi Finansal Harita testi: ücretsizde çözülür, sonuç paket
   // Uygulamada iletişim adımı yok, sonuç hemen açılır ve paket önerir
   await expect(page.getByRole('heading', { name: 'Dengeli Yolcu' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Rotanı gerçek rakamlarınla kur' })).toBeVisible()
-  await page.getByRole('button', { name: 'Paketleri gör' }).click()
+  // Sonucun hemen altında Plus yönlendirmesi; altta kilitli önizleme ve paketler
+  await expect(page.getByRole('button', { name: 'Plus ile kesinleştir' })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Plus ile açılanlar' })).toBeVisible()
+  await page.getByRole('button', { name: /Paketleri gör/ }).click()
   await expect(page).toHaveURL(/#\/paketler/)
 
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
   await page.goto('./#/finansal-harita')
   await answerQuestions(page)
-  await page.getByRole('button', { name: /Rotamı kur/ }).click()
+  await page.getByRole('button', { name: /Rotamı kur · 5 dk/ }).click()
   await expect(page).toHaveURL(/#\/yolculuk$/)
   await setupRoute(page, 'Rotamı gör', false)
   await expect(page.getByRole('region', { name: 'Netleşen rotan' })).toContainText('Gerçek rakamlarınla')
