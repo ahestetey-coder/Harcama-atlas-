@@ -26,12 +26,12 @@ export function flowNote(r: FlowRow): string {
   return r.ok ? `✓ ${tl(r.targetKurus - r.spentKurus)} kaldı` : `! ${tl(r.spentKurus - r.targetKurus)} aştı`
 }
 
-function Bar({ r, delay, thin }: { r: FlowRow; delay: number; thin?: boolean }) {
+function Bar({ r, delay }: { r: FlowRow; delay: number }) {
   const reduced = useReducedMotion()
   const over = !r.ok
   const ratio = r.targetKurus > 0 ? Math.max(0, r.spentKurus) / r.targetKurus : r.spentKurus > 0 ? 1 : 0
   return (
-    <div className={cn('overflow-hidden rounded-full bg-surface-2', thin ? 'h-1.5' : 'h-2')}>
+    <div className={'h-2 overflow-hidden rounded-full bg-surface-2'}>
       <motion.div
         className={cn('h-full rounded-full', over && 'bg-danger')}
         style={over ? undefined : { background: FLOW_META[r.key].color }}
@@ -87,7 +87,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
   )
 }
 
-/** Özet sayfası için sade kart: dört satır, harcanan / hedef ve ince çubuk. */
+/** Özet sayfası kartı: Finansal Yolculuğum'daki hücrelerle aynı tasarım. */
 export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; className?: string }) {
   return (
     <Card className={cn('p-5', className)} aria-label="Aylık paranın yolu">
@@ -102,24 +102,7 @@ export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; c
       <p className="num mt-0.5 text-[12.5px] text-muted">
         {tl(flow.incomeKurus)} gelir · 50/30/20 kuralı
       </p>
-      <ul className="mt-3 flex flex-col gap-2.5">
-        {flow.rows.map((r, i) => (
-          <li key={r.key}>
-            <div className="flex items-baseline justify-between gap-2 text-[13px]">
-              <span className="flex min-w-0 items-center gap-1.5 text-muted">
-                <span className="size-2 shrink-0 rounded-full" style={{ background: FLOW_META[r.key].color }} aria-hidden />
-                {FLOW_META[r.key].label} <span className="text-subtle">{pct(r.share)}</span>
-              </span>
-              <span className={cn('num font-medium', r.ok ? 'text-ink' : 'text-danger')}>
-                {tl(r.spentKurus)} <span className="text-subtle">/ {tl(r.targetKurus)}</span>
-              </span>
-            </div>
-            <div className="mt-1">
-              <Bar r={r} delay={0.08 * i} thin />
-            </div>
-          </li>
-        ))}
-      </ul>
+      <FlowCells flow={flow} />
     </Card>
   )
 }

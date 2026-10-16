@@ -8,7 +8,8 @@ import { personalCycleDay, primarySalary } from '../domain/income'
 import { formatKurus } from '../domain/money'
 import type { Settings } from '../domain/types'
 import { cn } from '../lib/cn'
-import { useBudgetSetup } from '../state/budget'
+import { useBudgetSetup, useMoneyFlow } from '../state/budget'
+import { FlowCells } from './MoneyFlowCard'
 import { useRepo, useSettings } from '../state/data'
 import { usePlan } from '../state/plan'
 import { useUi } from '../state/ui'
@@ -62,7 +63,7 @@ export function ruleRows(b: BucketBudget): Array<{ key: string; label: string; c
       const planned = k.fixed.kurus + k.needs.kurus
       const over = planned - targetKurus
       const parts = `zorunlu sabitler ${formatKurus(k.fixed.kurus)} + ihtiyaçlar ${formatKurus(k.needs.kurus)}`
-      return { ...r, targetKurus, ok: over <= 0, note: over > 0 ? `Sizde ${formatKurus(planned)} (${parts}) · ${formatKurus(over)} fazla` : `Sizde ${formatKurus(planned)} (${parts})` }
+      return { ...r, targetKurus, ok: over <= 0, note: over > 0 ? `Planlanan ${formatKurus(planned)} (${parts}), hedefi ${formatKurus(over)} aşıyor.` : `Planlanan ${formatKurus(planned)} (${parts}).` }
     }
     if (r.key === 'wants') return { ...r, targetKurus, ok: k.wants.kurus <= targetKurus, note: `Bütçede ${formatKurus(k.wants.kurus)}` }
     const short = targetKurus - k.saving.kurus
@@ -145,6 +146,7 @@ export function bucketChip(b: BucketBudget, s: Pick<Settings, 'cycleSource' | 'c
  */
 export function BucketCard() {
   const setup = useBudgetSetup()
+  const flow = useMoneyFlow()
   const settings = useSettings()
   const repo = useRepo()
   const { has } = usePlan()
@@ -198,6 +200,7 @@ export function BucketCard() {
   const { minMonths, maxMonths, essentialKurus } = b.emergency
   const c = b.checks
   const stage = stageText(b)
+  const needsRow = ruleRows(b).find((r) => r.key === 'needs')
 
   return (
     <Card className="mb-4 p-5" aria-label="Bütçe dağılımı">
@@ -226,31 +229,13 @@ export function BucketCard() {
 
       <p className={cn('mt-3 font-semibold', b.shortfallKurus > 0 ? 'text-danger' : 'text-ink')}>{bucketHeadline(b)}</p>
 
-      <div role="img" aria-label={ruleAriaLabel()} className="mt-3 flex h-3 gap-0.5 overflow-hidden rounded-full bg-surface-2">
-        {RULE_ROWS.map((r) => (
-          <div key={r.key} className={cn('h-full', r.color)} style={{ width: `${r.share * 100}%` }} />
-        ))}
-      </div>
-
-      <dl className="mt-3 text-[13px]">
-        {ruleRows(b).map((r) => (
-          <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 border-b border-line/60 py-1.5 last:border-b-0">
-            <dt className="flex min-w-0 items-center gap-2 text-muted">
-              <span className={cn('size-2.5 shrink-0 rounded-full', r.color)} aria-hidden />
-              {r.label}
-            </dt>
-            <dd className="num text-ink">
-              {formatKurus(r.targetKurus)} <span className="text-subtle">· {pctText(r.share)}</span>
-            </dd>
-            <dd className={cn('num col-span-2 mt-0.5 pl-[18px] text-[12.5px]', r.ok ? 'text-subtle' : 'font-medium text-danger')}>{r.note}</dd>
-            {r.key === 'saving' && (destination || b.oneOffKurus > 0) && (
-              <dd className="col-span-2 mt-0.5 pl-[18px] text-[12.5px] text-subtle">
-                {[destination && `→ ${destination}`, b.oneOffKurus > 0 && `+${formatKurus(b.oneOffKurus)} ek gelir`].filter(Boolean).join(' · ')}
-              </dd>
-            )}
-          </div>
-        ))}
-      </dl>
+      {flow && <FlowCells flow={flow} />}
+      {needsRow && !needsRow.ok && <p className="num mt-2 text-[12.5px] font-medium text-danger">Zorunlu giderler ve ihtiyaçlar: {needsRow.note}</p>}
+      {(destination || b.oneOffKurus > 0) && (
+        <p className="mt-1.5 text-[12.5px] text-subtle">
+          Birikim {[destination && `→ ${destination}`, b.oneOffKurus > 0 && `+${formatKurus(b.oneOffKurus)} ek gelir`].filter(Boolean).join(' · ')}
+        </p>
+      )}
 
       {alert && (
         <Alert tone={alert.tone} className="mt-3">
