@@ -40,6 +40,7 @@ import { useAssets, useRepo, useSettings } from '../state/data'
 import { FreedomResult } from './FreedomResult'
 import { FreedomTest } from './FreedomTest'
 import { RouteSetup } from './RouteSetup'
+import { MoneyFlow, MoneyFlowFor, RouteSimulation } from './RouteSimulation'
 import { LinkWebTestCard, RefinedSummary, WebResultCard } from './WebTestCard'
 import { LevelRing } from '../components/LevelRing'
 import { usePlan } from '../state/plan'
@@ -170,6 +171,9 @@ function JourneyContent({ limited = false }: { limited?: boolean }) {
     return (
       <>
         <RefinedSummary profile={profile} facts={facts} rates={rates} onRetake={() => setTesting(true)} />
+        <div className="mt-4">
+          <MoneyFlowFor profile={profile} facts={facts} rates={rates} />
+        </div>
         <PlanGate feature="journey" title="Tam rota ve koç Plus+'ta" points={['8 aşamanın her biri için hedef, kalan koşullar ve sonraki adım', 'Gelecek senaryoları ve TL, USD ya da gram altın bazında plan', 'Rotana göre seni takip eden finans koçu']}>
           {null}
         </PlanGate>
@@ -262,6 +266,9 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
           Yeni sorular eklendi; testi yenileyebilirsiniz.
         </Alert>
       )}
+
+      <RouteSimulation profile={profile} facts={facts} rates={rates} j={j} strategy={strategy} />
+      <MoneyFlow profile={profile} facts={facts} j={j} />
 
       <FreedomResult profile={profile} facts={facts} rates={rates} plan={j.plan} strategy={strategy} today={today} />
 

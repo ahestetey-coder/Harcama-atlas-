@@ -35,7 +35,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { ExtraSavingLines, type ExtraSavingRow } from '../components/charts/Charts'
 import { Logo } from '../components/AppShell'
 import { Slider } from '../components/Slider'
-import { AnimatedKurus } from '../components/ui/AnimatedMoney'
+import { AnimatedKurus, AnimatedNumber } from '../components/ui/AnimatedMoney'
 import { Badge, Button, Card, Checkbox, Field, Input, Spinner } from '../components/ui/primitives'
 import { leadsAvailable, rememberLeadCode, rememberLocalLead, submitLead } from '../cloud/freedomLead'
 import { APP_CONFIG } from '../config/app'
@@ -86,6 +86,8 @@ export interface InAppTest {
   name?: string
   onSave: (answers: QuickAnswers) => Promise<void>
   renderNext: (result: QuickResult) => ReactNode
+  /** Sonucun üstünde, kaydırmadan görünen kısa yönlendirme (paket ya da rota kurulumu). */
+  renderTeaser?: (result: QuickResult) => ReactNode
 }
 
 export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
@@ -209,7 +211,7 @@ export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
                 }}
               />
             )}
-            {screen === 'result' && result && answers && lead && <Result result={result} name={lead.name} code={lead.code} saved={lead.saved} onRestart={restart} next={inApp?.renderNext(result)} />}
+            {screen === 'result' && result && answers && lead && <Result result={result} name={lead.name} code={lead.code} saved={lead.saved} onRestart={restart} next={inApp?.renderNext(result)} teaser={inApp?.renderTeaser?.(result)} />}
           </motion.main>
         </AnimatePresence>
       </div>
@@ -661,7 +663,7 @@ function Gate({ result, onSubmit }: { result: QuickResult; onSubmit: (name: stri
 
 // ---------- Sonuç ----------
 
-function Result({ result: r, name, code, saved, onRestart, next }: { result: QuickResult; name: string; code: string; saved: 'ok' | 'fail' | 'local'; onRestart: () => void; next?: ReactNode }) {
+function Result({ result: r, name, code, saved, onRestart, next, teaser }: { result: QuickResult; name: string; code: string; saved: 'ok' | 'fail' | 'local'; onRestart: () => void; next?: ReactNode; teaser?: ReactNode }) {
   const j = r.journey
   const first = name.trim().split(' ')[0]
   const range = reachRange(r)
@@ -684,7 +686,7 @@ function Result({ result: r, name, code, saved, onRestart, next }: { result: Qui
           <LevelRing position={j.position} total={j.stages.length} level={j.level} />
           <div className="min-w-0 flex-1">
             <div className="text-[13px] text-muted">Özgürlük yılın</div>
-            <div className="num bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text font-display text-4xl font-extrabold tracking-tight text-transparent">{mid !== null ? yearAt(mid) : (range ?? 'Henüz görünmüyor')}</div>
+            <div className="num bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text font-display text-4xl font-extrabold tracking-tight text-transparent">{mid !== null ? <AnimatedNumber value={yearAt(mid)} from={year0} /> : (range ?? 'Henüz görünmüyor')}</div>
             <p className="mt-1 text-[13px] text-muted">
               {range
                 ? `Bugünkü tempoyla, orta senaryoda. Olası aralık ${range}.`
@@ -708,6 +710,15 @@ function Result({ result: r, name, code, saved, onRestart, next }: { result: Qui
           </div>
         </div>
       </Card>
+
+      {teaser ?? (
+        <UnlockStrip
+          title="Bu yıl bir tahmin. Gerçeğini gör."
+          text="Uygulamada gerçek rakamlarınla kesin özgürlük yılın, borçsuzluk tarihin ve aylık planın çıkar."
+          cta="Uygulamada netleştir"
+          onClick={() => document.getElementById('devam')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        />
+      )}
 
       <RouteArt progress={(j.position / j.stages.length) * 0.9 + 0.03} label={`Rotada ${j.level}. seviyedesin`} />
       <p className="-mt-3 text-[13px] text-muted">{r.place.text}</p>
@@ -896,7 +907,7 @@ function ContinueCard({ code, url, stage }: { code: string; url: string; stage: 
     }
   }
   return (
-    <div className="hero-gradient relative overflow-hidden rounded-[1.25rem] p-5 text-white shadow-card sm:p-6">
+    <div id="devam" className="hero-gradient relative scroll-mt-4 overflow-hidden rounded-[1.25rem] p-5 text-white shadow-card sm:p-6">
       <div className="text-[12px] font-medium uppercase tracking-[0.14em] text-white/70">Sıradaki adım</div>
       <h2 className="mt-1 font-display text-2xl font-bold sm:text-3xl">Geleceğini uygulamada hazırla</h2>
       <p className="mt-2 text-[14px] leading-relaxed text-white/80">
@@ -931,10 +942,10 @@ function ContinueCard({ code, url, stage }: { code: string; url: string; stage: 
               </span>
             </a>
           ) : (
-            <span key={s.id} className="inline-flex h-12 items-center gap-2.5 rounded-xl border border-dashed border-white/40 px-4 leading-tight text-white/70" aria-disabled>
+            <span key={s.id} className="inline-flex h-12 items-center gap-2.5 rounded-xl border border-white/30 bg-white/10 px-4 leading-tight text-white" aria-disabled>
               {s.id === 'ios' ? <Smartphone className="size-5" /> : <Play className="size-5" />}
               <span>
-                <span className="block text-[11px]">{s.sub}</span>
+                <span className="block text-[11px] text-white/75">{s.sub}</span>
                 <span className="block text-[14px] font-semibold">{s.soon}</span>
               </span>
             </span>
@@ -966,5 +977,37 @@ function ContinueCard({ code, url, stage }: { code: string; url: string; stage: 
         <p className="mt-2">Uygulamada Yolculuk sayfasındaki "Web testimi bağla" alanına yaz.</p>
       </details>
     </div>
+  )
+}
+
+/** Sonucun hemen altında, kaydırmadan görünen yönlendirme şeridi. */
+export function UnlockStrip({ title, text, cta, onClick, badge }: { title: string; text: string; cta: string; onClick: () => void; badge?: ReactNode }) {
+  const reduced = useReducedMotion()
+  return (
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: reduced ? 0 : 0.6, duration: 0.4, ease: EASE }}
+      className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent p-4"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-[0_8px_18px_-10px_rgb(234_88_12/0.9)]">
+          <Lock className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 font-semibold text-ink">
+            {title} {badge}
+          </div>
+          <p className="text-[13px] text-muted">{text}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClick}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 px-4 text-[14.5px] font-semibold text-white shadow-[0_10px_22px_-12px_rgb(234_88_12/0.9)] hover:brightness-110 sm:w-auto"
+        >
+          {cta} <ArrowRight className="size-4" />
+        </button>
+      </div>
+    </motion.div>
   )
 }

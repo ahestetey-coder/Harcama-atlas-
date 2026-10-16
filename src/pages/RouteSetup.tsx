@@ -6,6 +6,7 @@ import { Badge, Button, Card, Input, Segmented, Select, Spinner } from '../compo
 import { toUserMessage } from '../data/repository'
 import { DEFAULT_LIFE_AGE } from '../domain/assumptions'
 import { todayIso } from '../domain/dates'
+import { monthlyEquivalent } from '../domain/income'
 import { buildFreedomPlan, buildJourney, SPEND_GROUPS, type BaseRates, type IncomeStability, type JourneyFacts, type JourneyProfile, type RiskStance, type SpendBreakdown, type SpendGroup } from '../domain/journey'
 import { formatKurusCompact, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { estimate, estimateCapital, quickResult, reachRange, seedProfile, targetSplit, type WebTestLink } from '../domain/quickTest'
@@ -15,6 +16,7 @@ import { useReducedMotion } from '../lib/hooks'
 import { useRepo, useSettings } from '../state/data'
 import { usePlan } from '../state/plan'
 import { useUi } from '../state/ui'
+import { MoneyFlow } from './RouteSimulation'
 
 /**
  * Rota kurulumu: Finansal Harita testinin tahmini rakamları 6 adımda gerçek rakamlarla değiştirilir.
@@ -87,12 +89,25 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   const appAssets = facts.hasAssets
   const recurringFixed = (facts.recurringList ?? []).filter((r) => !r.installment && r.remainingMonths === null).reduce((s, r) => s + r.monthlyKurus, 0)
 
+  // Uygulamada tanımlı düzenli gelirler (maaş, kira, ek gelir) tahminin yerine geçer
+  const appIncome = useMemo(() => {
+    const out = { salary: 0, extra: 0, passive: 0 }
+    for (const i of settings?.recurringIncomes ?? []) {
+      if (!i.active) continue
+      const m = monthlyEquivalent(i.amountKurus, i.cadence)
+      if (i.kind === 'salary') out.salary += m
+      else if (i.kind === 'rent') out.passive += m
+      else out.extra += m
+    }
+    return out.salary + out.extra + out.passive > 0 ? out : null
+  }, [settings?.recurringIncomes])
+
   const [f, setF] = useState(() => {
     const cap = estimateCapital(a)
     return {
-      income: plainTl(est.incomeTl),
-      extra: '',
-      passive: '',
+      income: appIncome ? plainK(appIncome.salary) : plainTl(est.incomeTl),
+      extra: appIncome?.extra ? plainK(appIncome.extra) : '',
+      passive: appIncome?.passive ? plainK(appIncome.passive) : '',
       stability: 'regular' as IncomeStability,
       dependents: '0',
       fixed: plainK(FIXED.reduce((s, g) => s + baseSpend[g], 0)),
@@ -115,9 +130,9 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   })
   type Key = keyof typeof f
   const [status, setStatus] = useState<Partial<Record<Key, Status>>>(() => ({
-    income: 'web',
-    extra: 'web',
-    passive: 'web',
+    income: appIncome ? 'app' : 'web',
+    extra: appIncome ? 'app' : 'web',
+    passive: appIncome ? 'app' : 'web',
     stability: 'web',
     dependents: 'web',
     fixed: appSpend ? 'app' : 'web',
@@ -573,10 +588,6 @@ function Final({
     ['Gereken birikim', formatKurusCompact(webGoal), formatKurusCompact(j.indicators.goalKurus)],
     ['Seviye', `${webLevel}/${total}`, `${j.level}/${total}${cur ? ` · ${cur.title}` : ''}`],
   ]
-  const moves = j.stages
-    .filter((s) => !s.done)
-    .slice(0, 3)
-    .map((s) => s.next)
   const first = name?.trim().split(' ')[0]
   const msg = `${first ? `Merhaba ${first}. ` : ''}Haritan artık gerçek rakamlarınla çizildi. ${year ? `Bu tempoyla özgürlük yılın ${year}. ` : ''}${cur ? `Şu an ${cur.title} durağındasın; ilk hedefimiz: ${cur.goal.charAt(0).toLocaleLowerCase('tr-TR')}${cur.goal.slice(1)}.` : 'Rotan tamam; birikimini koru ve güvenli çekim planı yap.'}`
   return (
@@ -605,19 +616,7 @@ function Final({
           {msg}
         </div>
       </div>
-      {moves.length > 0 && (
-        <div className="rounded-2xl border border-line p-4">
-          <div className="font-semibold text-ink">İlk {moves.length} hamlen</div>
-          <ol className="mt-3 flex flex-col gap-2.5">
-            {moves.map((t, i) => (
-              <li key={i} className="grid grid-cols-[26px_1fr] gap-2.5 text-[13.5px] text-ink">
-                <span className="num grid size-6 place-items-center rounded-full bg-amber-500 text-[11.5px] font-bold text-white">{i + 1}</span>
-                {t}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
+      <MoneyFlow profile={saved.profile} facts={saved.facts} j={j} />
       <div className="flex flex-col gap-2">
         <Button variant="primary" size="lg" onClick={onDone} icon={<ArrowRight className="size-4" />} className="flex-row-reverse">
           {canJourney ? 'Finansal özgürlük sayfama git' : 'Rotamı gör'}

@@ -362,7 +362,11 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await expect(goal.getByRole('region', { name: 'Başarı olasılığı' })).toContainText('Varsayıma dayalı benzetimdir')
   await expect(goal.getByRole('region', { name: 'Borçsuz olma tarihi' })).toContainText('Borç yok')
   await expect(goal.getByRole('region', { name: 'Coast FI eşiği' })).toBeVisible()
-  await expect(goal.getByRole('img', { name: /Yaşa göre net birikim projeksiyonu/ })).toBeVisible()
+  // Projeksiyon artık Özgürlük simülasyonunda: eşikler ve rota takvimi
+  const sim = page.getByRole('region', { name: 'Özgürlük simülasyonu' })
+  await expect(sim).toContainText('Bağımsızlık')
+  await expect(sim.getByRole('list', { name: 'Rota takvimi' })).toContainText('Denge')
+  await expect(page.getByRole('region', { name: 'Aylık paranın yolu' })).toContainText('en az %20')
   await expect(goal.getByRole('region', { name: 'Gelecekteki hedef' })).toContainText('TL (nominal)')
   await expect(goal.getByRole('list', { name: 'Tek başına yeterli değerler' })).toContainText('hedefin önündesiniz')
   // Kaldıraç: ek birikim sonucu değiştirir ama kaydedilmez

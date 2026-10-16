@@ -1,5 +1,4 @@
 import { BookOpen, CalendarCheck, Gauge, Hourglass, PiggyBank, Target } from 'lucide-react'
-import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Slider } from '../components/Slider'
@@ -9,7 +8,6 @@ import { MONTH_NAMES } from '../domain/dates'
 import { buildFreedomPlan, formatInBase, reachDateLabel, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type PlanBase } from '../domain/journey'
 import { formatKurus } from '../domain/money'
 import { cn } from '../lib/cn'
-import { useReducedMotion } from '../lib/hooks'
 
 const shortTl = (k: number) => {
   const v = k / 100
@@ -43,7 +41,9 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
   }, [changed, plan, profile, facts, rates, strategy, extra, tAge, pct])
   const v = lever
 
-  const late = v.reachAge === null || v.reachAge > v.targetAge
+  // Simülasyon ve rota ile aynı: orta senaryoyla varış yaşı
+  const midAge = v.route.mid === null ? null : v.age + Math.ceil(v.route.mid / 12)
+  const late = midAge === null || midAge > v.targetAge
   const debtDate = v.debtFreeMonth === null ? 'Kapanmıyor' : v.debtFreeMonth === 0 ? 'Borç yok' : reachDateLabel(v.debtFreeMonth, today)
   const nextEnds = [...v.debtEnds.filter((d) => d.month !== null).map((d) => ({ name: d.name, month: d.month!, freed: d.freedKurus })), ...v.recurringEnds.map((r) => ({ name: r.name, month: r.month, freed: r.freedKurus }))].sort((a, b) => a.month - b.month)
   const levels = [
@@ -64,7 +64,7 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
         </More>
         <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3" role="group" aria-label="Canlı özet">
           <Mini label="Hedef birikim" value={shortTl(v.fiKurus) + ' ₺'} />
-          <Mini label="Bugünkü hızla" value={v.reachAge === null ? 'Ulaşılamıyor' : `${Math.ceil(v.reachAge)} yaşında`} tone={late ? 'warn' : 'good'} />
+          <Mini label="Bugünkü hızla" value={midAge === null ? 'Ulaşılamıyor' : `${midAge} yaşında`} tone={late ? 'warn' : 'good'} />
           <Mini label="Tasarruf oranı" value={`%${Math.round(v.savingRate * 100)}`} />
         </div>
         <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Seviyeler">
@@ -106,12 +106,6 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
         </Kpi>
       </div>
 
-      <Card className="p-4 sm:p-5">
-        <h3 className="font-display text-base font-semibold">Birikim projeksiyonu</h3>
-        <p className="mt-0.5 text-[12.5px] text-muted">Bugünün parasıyla, tahmini.</p>
-        <Projection plan={v} />
-      </Card>
-
       <Card className="p-4 sm:p-5" aria-label="Kaldıraçlar">
         <h3 className="font-display text-base font-semibold">Kaldıraçlarla oynayın</h3>
         <p className="mt-0.5 text-[12.5px] text-muted">Değişiklikler kaydedilmez.</p>
@@ -138,7 +132,7 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
           )}
           {changed && (
             <li>
-              Bu ayarlarla: gereken {formatKurus(v.requiredMonthlyKurus)}/ay, başarı %{Math.round(v.successRate * 100)}, {v.reachAge === null ? 'hedefe ulaşılamıyor' : `hedefe ${Math.ceil(v.reachAge)} yaşında ulaşılır`}.
+              Bu ayarlarla: gereken {formatKurus(v.requiredMonthlyKurus)}/ay, başarı %{Math.round(v.successRate * 100)}, {midAge === null ? 'hedefe ulaşılamıyor' : `hedefe ${midAge} yaşında ulaşılır`}.
             </li>
           )}
         </ul>
@@ -200,140 +194,6 @@ function Future({ label, value, note }: { label: string; value: string; note: st
       <dt className="text-[12px] text-muted">{label}</dt>
       <dd className="num text-[16px] font-semibold text-ink">{value}</dd>
       <dd className="mt-0.5 text-[11.5px] text-subtle">{note}</dd>
-    </div>
-  )
-}
-
-/** %10–%90 bantlı projeksiyon: ortanca çizgi, hedef çizgisi, hedef yaş ve borç bitiş noktaları. */
-function Projection({ plan }: { plan: FreedomPlan }) {
-  const reduced = useReducedMotion()
-  const [hover, setHover] = useState<number | null>(null)
-  const b = plan.bands
-  if (b.length < 2) return null
-  const W = 640
-  const H = 260
-  const L = 52
-  const R = 14
-  const T = 14
-  const B = 30
-  const iw = W - L - R
-  const ih = H - T - B
-  const top0 = Math.max(plan.fiKurus * 1.3, ...b.map((x) => x.p50)) * 1.05 || 1
-  const raw = top0 / 4
-  const pow = Math.pow(10, Math.floor(Math.log10(raw)))
-  const f = raw / pow
-  const stepV = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * pow
-  const ymax = Math.ceil(top0 / stepV) * stepV
-  const n = b.length - 1
-  const x = (i: number) => L + (iw * i) / n
-  const yv = (v: number) => T + ih * (1 - Math.max(0, Math.min(v, ymax)) / ymax)
-  const ticks: number[] = []
-  for (let v = 0; v <= ymax + 1; v += stepV) ticks.push(v)
-  const up = b.map((p, i) => `${x(i)},${yv(p.p90)}`).join(' ')
-  const lo = b.map((p, i) => `${x(i)},${yv(p.p10)}`).reverse().join(' ')
-  const med = b.map((p, i) => `${x(i)},${yv(p.p50)}`).join(' ')
-  const ti = Math.max(0, Math.min(n, plan.targetAge - plan.age))
-  const debtAge = plan.debtFreeMonth && plan.debtFreeMonth > 0 ? plan.age + plan.debtFreeMonth / 12 : null
-  const di = debtAge !== null && debtAge - plan.age <= n ? debtAge - plan.age : null
-  const firstAge = Math.ceil(plan.age / 10) * 10
-  const ages: number[] = []
-  for (let a = firstAge; a <= plan.lifeAge; a += 10) ages.push(a)
-  const h = hover === null ? null : b[hover]
-  return (
-    <div className="relative mt-3">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="h-auto w-full"
-        role="img"
-        aria-label={`Yaşa göre net birikim projeksiyonu: ${plan.targetAge} yaşında ortanca ${shortTl(b[ti].p50)} ₺, hedef ${shortTl(plan.fiKurus)} ₺`}
-        onPointerMove={(e) => {
-          const r = e.currentTarget.getBoundingClientRect()
-          const px = ((e.clientX - r.left) / r.width) * W
-          setHover(Math.max(0, Math.min(n, Math.round(((px - L) / iw) * n))))
-        }}
-        onPointerLeave={() => setHover(null)}
-      >
-        {ticks.map((v) => (
-          <g key={v}>
-            <line x1={L} x2={W - R} y1={yv(v)} y2={yv(v)} stroke="var(--border)" strokeWidth={1} />
-            <text x={L - 8} y={yv(v) + 4} textAnchor="end" fontSize={11} fill="var(--muted)">
-              {v === 0 ? '0' : shortTl(v)}
-            </text>
-          </g>
-        ))}
-        {ages.map((a) => (
-          <text key={a} x={x(a - plan.age)} y={H - 10} textAnchor="middle" fontSize={11} fill="var(--muted)">
-            {a}
-          </text>
-        ))}
-        <polygon points={`${up} ${lo}`} fill="var(--accent)" fillOpacity={0.16} />
-        <line x1={L} x2={W - R} y1={yv(plan.fiKurus)} y2={yv(plan.fiKurus)} stroke="var(--warning)" strokeWidth={1.5} strokeDasharray="5 4" />
-        <line x1={x(ti)} x2={x(ti)} y1={T} y2={T + ih} stroke="var(--muted)" strokeWidth={1} strokeDasharray="2 3" />
-        <text x={x(ti) + 5} y={T + 12} fontSize={11} fill="var(--muted)">
-          Hedef yaş {plan.targetAge}
-        </text>
-        {di !== null && (
-          <g>
-            <line x1={x(di)} x2={x(di)} y1={T + 18} y2={T + ih} stroke="var(--teal)" strokeWidth={1} strokeDasharray="2 3" />
-            <text x={x(di) + 5} y={T + 30} fontSize={11} fill="var(--teal)">
-              Borçsuz
-            </text>
-          </g>
-        )}
-        <motion.polyline points={med} fill="none" stroke="var(--accent)" strokeWidth={2.5} strokeLinejoin="round" initial={reduced ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1 }} />
-        <circle cx={x(ti)} cy={yv(b[ti].p50)} r={4.5} fill="var(--accent)" stroke="var(--surface)" strokeWidth={2} />
-        {h && hover !== null && (
-          <g pointerEvents="none">
-            <line x1={x(hover)} x2={x(hover)} y1={T} y2={T + ih} stroke="var(--border-strong)" strokeWidth={1} />
-            <circle cx={x(hover)} cy={yv(h.p50)} r={4} fill="var(--accent)" stroke="var(--surface)" strokeWidth={2} />
-          </g>
-        )}
-      </svg>
-      {h && hover !== null && (
-        <div className="pointer-events-none absolute top-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12px] shadow" style={{ left: `${Math.min(70, Math.max(2, (x(hover) / W) * 100 - 10))}%` }}>
-          <div className="font-semibold text-ink">{h.age} yaş</div>
-          <div className="num text-muted">Ortanca {shortTl(h.p50)} ₺</div>
-          <div className="num text-subtle">
-            %10–%90: {shortTl(h.p10)} – {shortTl(h.p90)} ₺
-          </div>
-        </div>
-      )}
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block h-[3px] w-4 rounded bg-[var(--accent)]" /> Ortanca senaryo
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block h-2 w-4 rounded bg-[var(--accent)] opacity-20" /> %10–%90 aralığı
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block h-0 w-4 border-t-2 border-dashed border-[var(--warning)]" /> Hedef birikim
-        </span>
-      </div>
-      <details className="mt-2 text-[12.5px] text-muted">
-        <summary className="cursor-pointer font-medium text-ink">Tablo olarak göster</summary>
-        <table className="num mt-2 w-full text-left text-[12px]">
-          <thead>
-            <tr className="text-subtle">
-              <th className="py-1 font-medium">Yaş</th>
-              <th className="py-1 font-medium">%10</th>
-              <th className="py-1 font-medium">Ortanca</th>
-              <th className="py-1 font-medium">%90</th>
-            </tr>
-          </thead>
-          <tbody>
-            {b
-              .filter((_, i) => i % 5 === 0 || i === ti)
-              .map((p) => (
-                <tr key={p.age} className="border-t border-line">
-                  <td className="py-1">{p.age}</td>
-                  <td className="py-1">{shortTl(p.p10)} ₺</td>
-                  <td className="py-1">{shortTl(p.p50)} ₺</td>
-                  <td className="py-1">{shortTl(p.p90)} ₺</td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </details>
     </div>
   )
 }

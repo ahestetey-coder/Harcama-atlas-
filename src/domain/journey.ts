@@ -821,8 +821,8 @@ export interface FreedomPlan {
   reachMonths: number | null
   /** Üç getiri senaryosuyla varış ayı (aynı nakit akışı); ulaşılamıyorsa null. */
   route: { optimistic: number | null; mid: number | null; cautious: number | null }
-  /** Orta senaryoda yıl sonu net birikim (0. yıl = bugün, PATH_YEARS yıla kadar). */
-  midPath: number[]
+  /** Üç senaryoda yıl sonu net birikim (0. yıl = bugün, PATH_YEARS yıla kadar). */
+  paths: { cautious: number[]; mid: number[]; optimistic: number[] }
   reachAge: number | null
   coastKurus: number
   coastPassed: boolean
@@ -1026,8 +1026,8 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
     }
     return hit
   }
-  const midPath: number[] = []
-  const route = { optimistic: reachAt(SCENARIO_RETURN_PCT.optimistic), mid: reachAt(SCENARIO_RETURN_PCT.mid, midPath), cautious: reachAt(SCENARIO_RETURN_PCT.cautious) }
+  const scenarioPaths = { cautious: [] as number[], mid: [] as number[], optimistic: [] as number[] }
+  const route = { optimistic: reachAt(SCENARIO_RETURN_PCT.optimistic, scenarioPaths.optimistic), mid: reachAt(SCENARIO_RETURN_PCT.mid, scenarioPaths.mid), cautious: reachAt(SCENARIO_RETURN_PCT.cautious, scenarioPaths.cautious) }
   const fvN = fvAt(n)
   const annuity = rm > 0 ? (Math.pow(1 + rm, n) - 1) / rm : n
   const extra = n > 0 ? Math.max(0, Math.ceil((fi - fvN) / annuity)) : Math.max(0, fi - netKurus)
@@ -1111,7 +1111,7 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
     gapKurus: extra,
     reachMonths: reach,
     route,
-    midPath,
+    paths: scenarioPaths,
     reachAge: reach === null ? null : age + reach / 12,
     coastKurus: Math.round(fi / Math.pow(1 + R, yearsToTarget)),
     coastPassed: netKurus >= fi / Math.pow(1 + R, yearsToTarget),

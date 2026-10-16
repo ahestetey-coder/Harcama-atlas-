@@ -23,3 +23,23 @@ export function AnimatedKurus({ value, className }: { value: number; className?:
   }, [value, reduced])
   return <span className={cn('num', className)}>{formatKurus(reduced ? value : shown)}</span>
 }
+
+/** Sayı sayacı: yıl, yüzde gibi değerler değiştikçe akarak yeni değere gelir. */
+export function AnimatedNumber({ value, format = (v) => String(v), className, from: start }: { value: number; format?: (v: number) => string; className?: string; from?: number }) {
+  const reduced = useReducedMotion()
+  const [shown, setShown] = useState(start ?? value)
+  const from = useRef(start ?? value)
+  useEffect(() => {
+    if (reduced) return
+    const controls = animate(from.current, value, {
+      duration: 1.1,
+      ease: [0.2, 0.8, 0.2, 1],
+      onUpdate: (v) => {
+        from.current = v
+        setShown(Math.round(v))
+      },
+    })
+    return () => controls.stop()
+  }, [value, reduced])
+  return <span className={cn('num', className)}>{format(reduced ? value : shown)}</span>
+}

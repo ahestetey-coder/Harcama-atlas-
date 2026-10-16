@@ -436,7 +436,7 @@ export function reachRange(r: Pick<QuickResult, 'reach'>, year = new Date().getF
  */
 export function quickScenario(res: QuickResult, extraTl: number, years = 40) {
   const plus = extraTl > 0 ? buildFreedomPlan(res.inputs.profile, res.inputs.facts, { runs: 0, extraMonthlyKurus: extraTl * K }) : res.journey.plan
-  const sim = (p: FreedomPlan) => ({ reachMonths: p.route.mid, points: p.midPath.slice(0, years + 1).map((v, year) => ({ year, realKurus: v, nominalKurus: v })) })
+  const sim = (p: FreedomPlan) => ({ reachMonths: p.route.mid, points: p.paths.mid.slice(0, years + 1).map((v, year) => ({ year, realKurus: v, nominalKurus: v })) })
   return { base: sim(res.journey.plan), plus: sim(plus) }
 }
 
