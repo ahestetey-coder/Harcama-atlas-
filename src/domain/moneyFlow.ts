@@ -1,4 +1,3 @@
-import type { AutoBudget } from './autoBudget'
 import { categoryBucketOf } from './bucketBudget'
 import { NEEDS_SHARE, SAVING_RATE_TARGET, WANTS_SHARE } from './assumptions'
 import { periodOf } from './dates'
@@ -6,53 +5,37 @@ import { merchantKey } from './normalize'
 import { isSpending, type Category, type MonthKey, type Transaction } from './types'
 
 /**
- * Aylık paranın yolu: gelirin dört kovaya bilimsel hedef dağılımı (ihtiyaçlar, istekler, borç ve
- * taksit, birikim) ve dönemde her kovaya harcanan tutar. Hedefler dört kovalı bütçe
- * motorundan (Bütçe sayfasındaki dağılımla aynı, her pakette); gelir motora girmemişse sabit 50/30/20. Saf fonksiyonlar.
+ * Aylık paranın yolu: gelirin 50/30/20 hedefleri (zorunlu giderler ve ihtiyaçlar, istekler, birikim)
+ * ve dönemde her kovaya harcanan tutar. Saf fonksiyonlar.
  */
 
-export type FlowKey = 'needs' | 'wants' | 'debt' | 'saving'
-export const FLOW_KEYS: FlowKey[] = ['needs', 'wants', 'debt', 'saving']
-
-/** Ücretsiz paketin sabit oranları: 50/30/20; borç ödemesi varsa ihtiyaçların %15'i borca ayrılır. */
-export const FIXED_DEBT_SHARE = 0.15
+export type FlowKey = 'fixed' | 'needs' | 'wants' | 'debt' | 'saving'
+export const FLOW_KEYS: FlowKey[] = ['fixed', 'needs', 'wants', 'debt', 'saving']
 
 /** Gelirin payları (0..1), toplamı 1. */
 export type FlowShares = Record<FlowKey, number>
 
-export function fixedShares(hasDebt: boolean): FlowShares {
-  const debt = hasDebt ? FIXED_DEBT_SHARE : 0
-  return { needs: NEEDS_SHARE - debt, wants: WANTS_SHARE, debt, saving: SAVING_RATE_TARGET }
-}
-
-/** Motorun kişisel kovaları → dört kova payı; zorunlu sabitlerin borç dışı kısmı ihtiyaçlara girer. */
-export function personalShares(a: AutoBudget): FlowShares | null {
-  const b = a.buckets
-  if (!b || b.incomeKurus <= 0) return null
-  const income = b.incomeKurus
-  // Kart/KMH ödemesi harcama bütçesi dışında ama borç kovasındadır
-  const debt = Math.max(0, a.debtKurus + b.outsideKurus)
-  const wants = Math.max(0, b.buckets.wants.kurus)
-  const saving = Math.max(0, b.buckets.saving.kurus)
-  const needs = Math.max(0, income - debt - wants - saving)
-  const sum = needs + wants + debt + saving
-  return { needs: needs / sum, wants: wants / sum, debt: debt / sum, saving: saving / sum }
-}
+/**
+ * 50/30/20 kuralı, esnetilmez: zorunlu giderler ve ihtiyaçlar (kira, fatura, borç ve taksit dahil)
+ * %50, istekler %30, birikim ve borç kapatma %20. Bütçe sayfası ve Özet aynı hedefleri gösterir.
+ */
+export const RULE_SHARES: FlowShares = { fixed: 0, needs: NEEDS_SHARE, wants: WANTS_SHARE, debt: 0, saving: SAVING_RATE_TARGET }
 
 /** Taksit ve kredi ödemesi mi: ekstre taksiti, borç planından yansıyan satır ya da taksit kaydıyla eşleşen gider. */
 export function isDebtPayment(t: Transaction, installmentKeys: ReadonlySet<string>): boolean {
   return !!t.installment || t.source === 'planned' || t.id.startsWith('plan:') || (installmentKeys.size > 0 && installmentKeys.has(merchantKey(t.description)))
 }
 
-/** Dönemde kovalara harcanan (iadeler düşülür); birikim harcanmaz, gelirden kalan olarak hesaplanır. */
+/** Dönemde kovalara harcanan (iadeler düşülür); kira, banka ücreti ve düzenli fatura/abonelik zorunlu sabittir. Birikim gelirden kalandır. */
 export function flowSpent(
   txs: Transaction[],
   month: MonthKey,
   startDay: number,
   categories: ReadonlyMap<string, Pick<Category, 'name'>>,
   installmentKeys: ReadonlySet<string>,
+  fixedKeys: ReadonlySet<string> = new Set(),
 ): Record<Exclude<FlowKey, 'saving'>, number> {
-  const out = { needs: 0, wants: 0, debt: 0 }
+  const out = { fixed: 0, needs: 0, wants: 0, debt: 0 }
   for (const t of txs) {
     if (!isSpending(t) || periodOf(t.date, startDay) !== month) continue
     const n = t.type === 'expense' ? Math.abs(t.amountKurus) : -Math.abs(t.amountKurus)
@@ -61,10 +44,11 @@ export function flowSpent(
       continue
     }
     const bucket = t.categoryId ? categoryBucketOf(t.categoryId, categories.get(t.categoryId)?.name ?? '') : 'want'
-    if (bucket === 'want') out.wants += n
+    if (bucket === 'fixed' || bucket === 'fee' || (fixedKeys.size > 0 && fixedKeys.has(merchantKey(t.description)))) out.fixed += n
+    else if (bucket === 'want') out.wants += n
     else out.needs += n
   }
-  return { needs: Math.max(0, out.needs), wants: Math.max(0, out.wants), debt: Math.max(0, out.debt) }
+  return { fixed: Math.max(0, out.fixed), needs: Math.max(0, out.needs), wants: Math.max(0, out.wants), debt: Math.max(0, out.debt) }
 }
 
 export interface FlowRow {
@@ -78,16 +62,26 @@ export interface FlowRow {
 
 export interface MoneyFlowResult {
   incomeKurus: number
-  personal: boolean
   rows: FlowRow[]
 }
 
-export function buildMoneyFlow(incomeKurus: number, shares: FlowShares, spent: Record<Exclude<FlowKey, 'saving'>, number>, personal: boolean): MoneyFlowResult {
-  const left = incomeKurus - spent.needs - spent.wants - spent.debt
-  const rows = FLOW_KEYS.map((key) => {
+export function buildMoneyFlow(incomeKurus: number, shares: FlowShares, raw: Record<Exclude<FlowKey, 'saving'>, number>): MoneyFlowResult {
+  // Payı olmayan kova gösterilmez; harcaması bir üst kovaya girer (borç → zorunlu sabitler → ihtiyaçlar)
+  const spent = { ...raw }
+  if (shares.debt <= 0) {
+    if (shares.fixed > 0) spent.fixed += spent.debt
+    else spent.needs += spent.debt
+    spent.debt = 0
+  }
+  if (shares.fixed <= 0) {
+    spent.needs += spent.fixed
+    spent.fixed = 0
+  }
+  const left = incomeKurus - spent.fixed - spent.needs - spent.wants - spent.debt
+  const rows = FLOW_KEYS.filter((k) => k === 'saving' || k === 'needs' || shares[k] > 0).map((key) => {
     const targetKurus = Math.round(incomeKurus * shares[key])
     const spentKurus = key === 'saving' ? left : spent[key]
     return { key, share: shares[key], targetKurus, spentKurus, ok: key === 'saving' ? spentKurus >= targetKurus : spentKurus <= targetKurus }
   })
-  return { incomeKurus, personal, rows }
+  return { incomeKurus, rows }
 }

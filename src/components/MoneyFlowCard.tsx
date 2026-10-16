@@ -6,12 +6,13 @@ import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
 import { Card } from './ui/primitives'
 
-/** Doğrulanmış kategorik renkler (Özgürlük simülasyonuyla aynı). */
+/** Bütçe sayfasındaki dağılımla aynı sıra ve renk tonları. */
 export const FLOW_META: Record<FlowKey, { label: string; color: string }> = {
-  needs: { label: 'İhtiyaçlar', color: '#0284c7' },
-  wants: { label: 'İstekler', color: '#8b5cf6' },
-  debt: { label: 'Borç ve taksit', color: '#d97706' },
-  saving: { label: 'Birikim', color: '#059669' },
+  fixed: { label: 'Zorunlu sabitler', color: '#64748b' },
+  needs: { label: 'Zorunlu giderler ve ihtiyaçlar', color: '#0284c7' },
+  wants: { label: 'İstekler', color: '#d97706' },
+  debt: { label: 'Borç ve taksit', color: '#8b5cf6' },
+  saving: { label: 'Birikim ve borç kapatma', color: '#059669' },
 }
 
 /** Tam lira: 1765000 → "17.650 ₺" */
@@ -61,7 +62,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
           ) : null,
         )}
       </div>
-      <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {flow.rows.map((r, i) => (
           <li key={r.key} className="rounded-xl border border-line p-2.5">
             <div className="flex items-center justify-between gap-1 text-[12px] text-muted">
@@ -81,11 +82,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11.5px] text-subtle">
-        {flow.personal
-          ? 'Hedefler gelirine, sabit giderlerine ve borçlarına göre kişisel; birikim, gelirden bu ay kalan.'
-          : 'Sabit oranlar: 50/30/20 (borç ödemen varsa ihtiyaçların %15’i borca). Kişisel oranlar Plus’ta.'}
-      </p>
+      <p className="mt-2 text-[11.5px] text-subtle">50/30/20 kuralı: kira, fatura, borç ve taksit dahil zorunlu giderler en fazla %50, istekler %30, birikim en az %20. Birikim, gelirden bu ay kalan.</p>
     </>
   )
 }
@@ -103,7 +100,7 @@ export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; c
         </Link>
       </div>
       <p className="num mt-0.5 text-[12.5px] text-muted">
-        {tl(flow.incomeKurus)} gelir · {flow.personal ? 'Bütçe\u2019deki bilimsel oranlar' : 'sabit oranlar (50/30/20)'}
+        {tl(flow.incomeKurus)} gelir · 50/30/20 kuralı
       </p>
       <ul className="mt-3 flex flex-col gap-2.5">
         {flow.rows.map((r, i) => (
