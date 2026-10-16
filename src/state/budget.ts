@@ -102,8 +102,8 @@ export function useBudgetStatus(month: string, enabled = true): BudgetStatus | n
 }
 
 /**
- * Aylık paranın yolu: gelirin dört kovaya hedef dağılımı ve dönemde harcanan. Plus'ta hedefler
- * motorun kişisel kovalarından, Ücretsizde sabit 50/30/20'den. incomeKurus verilmezse motorun geliri.
+ * Aylık paranın yolu: gelirin dört kovaya hedef dağılımı ve dönemde harcanan. Hedefler her pakette
+ * Bütçe sayfasındaki dört kovalı motordan; motor kurulamazsa sabit 50/30/20. incomeKurus verilmezse motorun geliri.
  */
 export function useMoneyFlow(opts: { month?: string; incomeKurus?: number } = {}): MoneyFlowResult | null {
   const personal = usePersonalTransactions()
@@ -111,18 +111,17 @@ export function useMoneyFlow(opts: { month?: string; incomeKurus?: number } = {}
   const categories = useCategoryMap()
   const recurring = useAllRecurring()
   const auto = useAutoBudget()
-  const { has } = usePlan()
-  const { month, incomeKurus } = opts
+    const { month, incomeKurus } = opts
   return useMemo(() => {
     if (!personal || auto === undefined) return null
     const income = incomeKurus ?? auto?.incomeKurus ?? 0
     if (income <= 0) return null
     const keys = new Set((recurring ?? []).filter((r) => r.kind === 'installment').map((r) => r.matchKey ?? '').filter(Boolean))
     const spent = flowSpent(personal.counted, month ?? periodOf(todayIso(), startDay), startDay, categories, keys)
-    const mine = has('advancedBudget') && auto ? personalShares(auto) : null
+    const mine = auto ? personalShares(auto) : null
     const hasDebt = spent.debt > 0 || (auto?.debtKurus ?? 0) > 0
     return buildMoneyFlow(income, mine ?? fixedShares(hasDebt), spent, !!mine)
-  }, [personal, auto, recurring, categories, has, month, incomeKurus, startDay])
+  }, [personal, auto, recurring, categories, month, incomeKurus, startDay])
 }
 
 /** Hatırlatma zamanı gelmiş ödemeler (önümüzdeki iki hafta içinde). */
