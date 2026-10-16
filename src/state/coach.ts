@@ -299,6 +299,7 @@ export function freedomSummary(p: FreedomPlan, strategy: CoachSettings['strategy
     aylikFark: tl(p.gapKurus),
     tasarrufOraniYuzde: Math.round(p.savingRate * 100),
     hedefSermaye: { lean: tl(p.leanKurus), fi: tl(p.fiKurus), fat: tl(p.fatKurus) },
+    garantiliAylikGelirTl: tl(p.guaranteedMonthlyKurus),
     araAdimlar: freedomSteps(p).map((x) => ({ ad: x.title, hedefTl: tl(x.targetKurus), aylikKarsiladigiGiderTl: tl(x.coverMonthlyKurus), ulasildi: x.done })),
     araAdimNotu: 'Büyük hedefi önce sıradaki ulaşılmamış ara adımla anlat; büyük toplamı ikinci planda tut.',
     bugunkuHizlaUlasmaYasi: p.reachAge === null ? null : Math.ceil(p.reachAge),
