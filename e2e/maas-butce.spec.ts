@@ -64,7 +64,7 @@ test('Ücretsiz: maaş ve sabit giderlerle dört kovalı bütçe kurulur, harcam
   await expect(flow.getByRole('img', { name: /^Zorunlu giderler ve ihtiyaçlar %50, İstekler %30, Borç kapatma %\d+, Birikim %\d+$/ })).toBeVisible()
   await expect(flow).toContainText('Harcanan 0 ₺ / 30.000 ₺')
   await expect(flow).toContainText('Harcanan 0 ₺ / 18.000 ₺')
-  await expect(flow).toContainText('Kalan 60.000 ₺ / 12.000 ₺')
+  await expect(flow).toContainText('Kalan 42.000 ₺ / 12.000 ₺')
   await expect(page.getByRole('region', { name: 'Kısayollar' })).toHaveCount(0)
 })
 

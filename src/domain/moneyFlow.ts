@@ -68,7 +68,7 @@ export interface FlowRow {
   key: FlowKey
   share: number
   targetKurus: number
-  /** Birikimde gelirden kalan, borç kapatmada kalandan ek ödemeye ayrılabilen tutar. */
+  /** Birikimde gelirden (istek payı ayrıldıktan sonra) kalan, borç kapatmada kalandan ek ödemeye ayrılabilen tutar. */
   spentKurus: number
   ok: boolean
 }
@@ -82,7 +82,9 @@ export function buildMoneyFlow(incomeKurus: number, shares: FlowShares, raw: Rec
   // 50/30/20'de kredi ve taksitlerin aylık ödemesi zorunlu gider (%50) sayılır; borç kapatma (%20'nin
   // parçası) bunların üstüne ek ödemedir ve birikim gibi gelirden kalandan ayrılır.
   const spent = { ...raw, needs: raw.needs + raw.debt + (shares.fixed > 0 ? 0 : raw.fixed), fixed: shares.fixed > 0 ? raw.fixed : 0, debt: 0 }
-  const left = incomeKurus - spent.fixed - spent.needs - spent.wants
+  // Dönem bitmeden isteklerin harcanmamış payı birikim sayılmaz: istekler hedefi kadar ayrılır
+  const wantsReserved = Math.max(spent.wants, Math.round(incomeKurus * shares.wants))
+  const left = incomeKurus - spent.fixed - spent.needs - wantsReserved
   const debtTarget = Math.round(incomeKurus * shares.debt)
   const debtCovered = Math.min(debtTarget, Math.max(0, left))
   const rows = FLOW_KEYS.filter((k) => k !== 'fixed' || shares.fixed > 0).map((key) => {
