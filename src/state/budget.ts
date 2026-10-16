@@ -4,7 +4,7 @@ import { budgetStatus, DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus }
 import { budgetFacts, READ_LOCKED_DATA, type FactsGates } from '../domain/budgetFacts'
 import { buildBucketBudget, fixedSpendSplit, toAutoBudget } from '../domain/bucketBudget'
 import { periodOf, todayIso } from '../domain/dates'
-import { buildMoneyFlow, flowSpent, ruleShares, type MoneyFlowResult } from '../domain/moneyFlow'
+import { buildMoneyFlow, flowSaved, flowSpent, type MoneyFlowResult } from '../domain/moneyFlow'
 import { addMonthsClamped, fixedPayments, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
 import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, portfolio } from '../domain/assets'
 import { estimatedMinPayment } from '../domain/coach'
@@ -102,27 +102,23 @@ export function useBudgetStatus(month: string, enabled = true): BudgetStatus | n
 }
 
 /**
- * Aylık paranın yolu: 50/30/20 hedefleri ve dönemde harcanan (her pakette aynı). incomeKurus verilmezse
- * Bütçe sayfasındaki gelir.
+ * Aylık paranın yolu: 50/30/20 hedefleri, dönemde harcanan ve Yatırımlarım'a ayrılan (her pakette aynı).
+ * incomeKurus verilmezse Bütçe sayfasındaki gelir.
  */
 export function useMoneyFlow(opts: { month?: string; incomeKurus?: number } = {}): MoneyFlowResult | null {
   const personal = usePersonalTransactions()
   const startDay = usePersonalCycle()
   const categories = useCategoryMap()
-  const recurring = useAllRecurring()
+  const assets = useAssets()
   const auto = useAutoBudget()
-    const { month, incomeKurus } = opts
+  const { month, incomeKurus } = opts
   return useMemo(() => {
     if (!personal || auto === undefined) return null
     const income = incomeKurus ?? auto?.incomeKurus ?? 0
     if (income <= 0) return null
-    const keys = new Set((recurring ?? []).filter((r) => r.kind === 'installment').map((r) => r.matchKey ?? '').filter(Boolean))
-    const fixedKeys = new Set((recurring ?? []).filter((r) => r.kind !== 'installment' && r.active).map((r) => r.matchKey ?? '').filter(Boolean))
-    const spent = flowSpent(personal.counted, month ?? periodOf(todayIso(), startDay), startDay, categories, keys, fixedKeys)
-    const b = auto?.buckets
-    const part = b && b.buckets.saving.kurus > 0 ? b.destinations.debtKurus / b.buckets.saving.kurus : null
-    return buildMoneyFlow(income, ruleShares(part, spent.debt > 0 || (auto?.debtKurus ?? 0) > 0), spent)
-  }, [personal, auto, recurring, categories, month, incomeKurus, startDay])
+    const m = month ?? periodOf(todayIso(), startDay)
+    return buildMoneyFlow(income, flowSpent(personal.counted, m, startDay, categories), flowSaved(assets ?? [], m, startDay))
+  }, [personal, auto, assets, categories, month, incomeKurus, startDay])
 }
 
 /** Hatırlatma zamanı gelmiş ödemeler (önümüzdeki iki hafta içinde). */

@@ -1,4 +1,5 @@
-import { ChevronRight, TrendingUp } from 'lucide-react'
+import { ChevronRight, CreditCard, PiggyBank, Plus, TrendingUp } from 'lucide-react'
+import { useState } from 'react'
 import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import type { FlowKey, FlowRow, MoneyFlowResult } from '../domain/moneyFlow'
@@ -6,13 +7,11 @@ import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
 import { Card } from './ui/primitives'
 
-/** Bütçe sayfasındaki dağılımla aynı sıra ve renk tonları. */
+/** 50/30/20 kovaları; renkler açık ve koyu temada doğrulanmış paletten. */
 export const FLOW_META: Record<FlowKey, { label: string; color: string }> = {
-  fixed: { label: 'Zorunlu sabitler', color: '#64748b' },
-  needs: { label: 'Zorunlu giderler ve ihtiyaçlar', color: '#0284c7' },
+  needs: { label: 'Zorunlu gider ve ihtiyaçlar', color: '#0284c7' },
   wants: { label: 'İstekler', color: '#d97706' },
-  debt: { label: 'Borç kapatma', color: '#8b5cf6' },
-  saving: { label: 'Birikim', color: '#059669' },
+  saving: { label: 'Borç kapama ve birikim', color: '#059669' },
 }
 
 /** Tam lira: 1765000 → "17.650 ₺" */
@@ -21,9 +20,7 @@ const pct = (x: number) => `%${Math.round(x * 100)}`
 
 /** Hücrenin durum satırı: hedefin içinde mi, ne kadar aşıldı ya da birikim ne kadar eksik. */
 export function flowNote(r: FlowRow): string {
-  if (r.key === 'debt') return r.targetKurus === 0 ? '✓ borç yok' : r.ok ? '✓ ek ödemeye ayrılabilir' : `! ${tl(r.targetKurus - r.spentKurus)} eksik`
-  if (r.key === 'saving') return r.ok ? '✓ hedefte' : r.spentKurus < 0 ? `! ${tl(-r.spentKurus)} açık` : `! ${tl(r.targetKurus - r.spentKurus)} eksik`
-  if (r.targetKurus === 0) return r.spentKurus > 0 ? `! ${tl(r.spentKurus)}` : '✓ yok'
+  if (r.key === 'saving') return r.spentKurus >= r.targetKurus ? '✓ hedefte' : `${tl(r.targetKurus - r.spentKurus)} kaldı`
   return r.ok ? `✓ ${tl(r.targetKurus - r.spentKurus)} kaldı` : `! ${tl(r.spentKurus - r.targetKurus)} aştı`
 }
 
@@ -44,7 +41,7 @@ function Bar({ r, delay }: { r: FlowRow; delay: number }) {
   )
 }
 
-/** Hedef dağılım çubuğu ve dört hücre: bilimsel pay, hedef tutar, harcanan / hedef. */
+/** Hedef dağılım çubuğu ve üç hücre: pay, hedef tutar, harcanan (ya da ayrılan) / hedef; boş başlar, kayıt eklendikçe dolar. */
 export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
   const reduced = useReducedMotion()
   return (
@@ -63,7 +60,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
           ) : null,
         )}
       </div>
-      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {flow.rows.map((r, i) => (
           <li key={r.key} className="rounded-xl border border-line p-2.5">
             <div className="flex items-center justify-between gap-1 text-[12px] text-muted">
@@ -74,31 +71,55 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
             </div>
             <div className="num mt-1 text-[15px] font-semibold leading-tight text-ink">{tl(r.targetKurus)}</div>
             <div className="num mt-1 text-[11.5px] text-muted">
-              {r.key === 'saving' ? 'Kalan' : r.key === 'debt' ? 'Ayrılabilen' : 'Harcanan'} {tl(r.spentKurus)} / {tl(r.targetKurus)}
+              {r.key === 'saving' ? 'Ayrılan' : 'Harcanan'} {tl(r.spentKurus)} / {tl(r.targetKurus)}
             </div>
             <div className="mt-1.5">
               <Bar r={r} delay={0.1 * i} />
             </div>
-            <div className={cn('mt-1 text-[11.5px] font-medium', r.ok ? 'text-accent' : 'text-danger')}>{flowNote(r)}</div>
+            <div className={cn('mt-1 text-[11.5px] font-medium', !r.ok ? 'text-danger' : r.key === 'saving' && r.spentKurus < r.targetKurus ? 'text-muted' : 'text-accent')}>{flowNote(r)}</div>
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11.5px] text-subtle">50/30/20 kuralı: kira, fatura, kredi ve taksit ödemeleri dahil zorunlu giderler en fazla %50, istekler %30. Kalan %20 birikim ve borç kapatmaya: borç kapatma taksitlerin üstüne ek ödemedir. İkisi, zorunlu giderler ve istek payı düşüldükten sonra kalandan ayrılır; zorunlu giderler %50'yi aşarsa fark birikimden eksilir.</p>
+      <p className="mt-2 text-[11.5px] text-subtle">
+        Zorunlu: kira, fatura, market, ulaşım, sağlık, eğitim, kredi ve taksit ödemeleri. İstekler: restoran ve kafe, giyim, eğlence, abonelikler ve diğer. Borç kapama ve birikim: Yatırımlarım'a eklenenler ve borçlarından düşülen ödemeler.
+      </p>
     </>
   )
 }
 
 /** Özet sayfası kartı: Finansal Yolculuğum'daki hücrelerle aynı tasarım. */
 export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; className?: string }) {
+  const [open, setOpen] = useState(false)
   return (
     <Card className={cn('p-5', className)} aria-label="Aylık paranın yolu">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
           <TrendingUp className="size-4 text-accent" /> Aylık paranın yolu
         </h2>
-        <Link to="/butce" className="inline-flex items-center text-[13px] font-medium text-accent hover:underline">
-          Bütçe <ChevronRight className="size-4" />
-        </Link>
+        <div className="relative flex items-center gap-1">
+          <Link to="/butce" className="inline-flex items-center text-[13px] font-medium text-accent hover:underline">
+            Bütçe <ChevronRight className="size-4" />
+          </Link>
+          <button
+            type="button"
+            aria-label="Borç kapama ve birikim ekle"
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+            className="pressable grid size-8 place-items-center rounded-full bg-accent text-white shadow-card"
+          >
+            <Plus className="size-4" />
+          </button>
+          {open && (
+            <div role="menu" className="absolute right-0 top-10 z-10 w-48 overflow-hidden rounded-xl border border-line bg-surface p-1 shadow-float">
+              <Link role="menuitem" to="/yatirimlar?yeni=1" className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13.5px] text-ink hover:bg-surface-2">
+                <PiggyBank className="size-4 text-accent" /> Birikim ekle
+              </Link>
+              <Link role="menuitem" to="/borclar" className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13.5px] text-ink hover:bg-surface-2">
+                <CreditCard className="size-4 text-accent" /> Borç ödemesi ekle
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
       <p className="num mt-0.5 text-[12.5px] text-muted">
         {tl(flow.incomeKurus)} gelir · 50/30/20 kuralı

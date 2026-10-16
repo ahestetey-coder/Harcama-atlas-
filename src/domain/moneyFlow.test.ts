@@ -1,56 +1,52 @@
 import { describe, expect, it } from 'vitest'
-import { buildMoneyFlow, flowSpent, RULE_SHARES, ruleShares } from './moneyFlow'
+import type { Asset } from './assets'
+import { buildMoneyFlow, flowSaved, flowSpent } from './moneyFlow'
 import type { Transaction } from './types'
 
 const tx = (p: Partial<Transaction>): Transaction =>
   ({ id: p.id ?? Math.random().toString(), date: '2026-10-05', amountKurus: 0, type: 'expense', description: 'x', normalizedDescription: 'x', categoryId: null, source: 'manual', createdAt: '', updatedAt: '', ...p }) as Transaction
+const asset = (kind: string, trades: Asset['trades']): Asset => ({ id: kind, name: kind, kind, trades }) as unknown as Asset
 
 describe('moneyFlow', () => {
-  it('harcamayı kovalara ayırır; taksit borca, iade düşer, gelir ve başka dönem girmez', () => {
-    const cats = new Map([['cat-market', { name: 'Market' }], ['cat-restoran', { name: 'Restoran' }]])
+  it('giderleri zorunlu ve istek olarak ayırır; taksit ve plan satırı zorunlu, iade düşer, gelir ve başka dönem girmez', () => {
+    const cats = new Map([['cat-market', { name: 'Market' }], ['cat-restoran', { name: 'Restoran' }], ['cat-kira', { name: 'Kira' }]])
     const txs = [
       tx({ amountKurus: 1_765_000, categoryId: 'cat-market' }),
+      tx({ amountKurus: 2_000_000, categoryId: 'cat-kira' }),
       tx({ amountKurus: 500_000, categoryId: 'cat-restoran' }),
       tx({ amountKurus: 100_000, categoryId: 'cat-restoran', type: 'refund' }),
       tx({ amountKurus: 300_000, categoryId: 'cat-restoran', installment: { current: 2, total: 6 } }),
-      tx({ id: 'plan:debt:a:3', amountKurus: 200_000, source: 'planned' }),
+      tx({ id: 'plan:debt:a:3', amountKurus: 4_800_000, source: 'planned' }),
       tx({ amountKurus: 9_999_900, type: 'income' }),
       tx({ amountKurus: 700_000, categoryId: 'cat-market', date: '2026-09-05' }),
     ]
-    expect(flowSpent(txs, '2026-10', 1, cats, new Set())).toEqual({ fixed: 0, needs: 1_765_000, wants: 400_000, debt: 500_000 })
+    expect(flowSpent(txs, '2026-10', 1, cats)).toEqual({ needs: 1_765_000 + 2_000_000 + 300_000 + 4_800_000, wants: 400_000 })
   })
 
-  it('hedef tutarları gelirden; birikim gelirden kalan', () => {
-    const f = buildMoneyFlow(10_000_000, RULE_SHARES, { fixed: 300_000, needs: 1_465_000, wants: 4_000_000, debt: 200_000 })
-    const [needs, wants, debt, saving] = f.rows
-    expect(debt.spentKurus).toBe(0)
-    expect(f.rows.map((r) => r.key)).toEqual(['needs', 'wants', 'debt', 'saving'])
-    expect(needs.targetKurus).toBe(5_000_000)
-    expect(needs.spentKurus).toBe(1_965_000)
-    expect(needs.ok).toBe(true)
-    expect(wants.ok).toBe(false)
-    expect(saving.spentKurus).toBe(4_035_000)
-    expect(saving.ok).toBe(true)
+  it('birikim: dönemde yatırım alışı − satışı ve borçtan düşülen ödeme', () => {
+    const assets = [
+      asset('gold', [
+        { id: '1', date: '2026-10-03', side: 'buy', quantity: 2, unitPriceKurus: 400_000 },
+        { id: '2', date: '2026-10-08', side: 'sell', quantity: 1, unitPriceKurus: 300_000 },
+        { id: '3', date: '2026-09-03', side: 'buy', quantity: 10, unitPriceKurus: 400_000 },
+      ]),
+      asset('debt', [
+        { id: '4', date: '2026-10-10', side: 'sell', quantity: 1, unitPriceKurus: 1_000_000 },
+        { id: '5', date: '2026-10-01', side: 'buy', quantity: 1, unitPriceKurus: 5_000_000 },
+      ]),
+    ]
+    expect(flowSaved(assets, '2026-10', 1)).toBe(500_000 + 1_000_000)
   })
 
-  it('%20 birikim ve borç kapatmaya ayrılır, toplam %20 kalır', () => {
-    expect(ruleShares(null, false)).toMatchObject({ needs: 0.5, wants: 0.3, debt: 0, saving: 0.2 })
-    expect(ruleShares(null, true)).toMatchObject({ debt: 0.1, saving: 0.1 })
-    const s = ruleShares(0.75, true)
-    expect(s.debt + s.saving).toBeCloseTo(0.2)
-    expect(s.debt).toBeCloseTo(0.15)
-  })
-
-  it('taksit zorunlu giderde; istek payından sonra kalan önce borç kapatmaya, sonra birikime', () => {
-    const f = buildMoneyFlow(10_000_000, ruleShares(null, true), { fixed: 0, needs: 2_000_000, wants: 1_000_000, debt: 4_800_000 })
-    const [needs, , debt, saving] = f.rows
-    expect(needs.spentKurus).toBe(6_800_000)
-    expect(needs.ok).toBe(false)
-    expect(debt.targetKurus).toBe(1_000_000)
-    // İstek payı (3.000.000) ayrılır; kalan 200.000 önce borç kapatmaya
-    expect(debt.spentKurus).toBe(200_000)
-    expect(debt.ok).toBe(false)
-    expect(saving.spentKurus).toBe(0)
-    expect(saving.ok).toBe(false)
+  it('50/30/20 hedefleri boş başlar; aşım kırmızı, birikim eksikken uyarı değil', () => {
+    const empty = buildMoneyFlow(10_000_000, { needs: 0, wants: 0 }, 0)
+    expect(empty.rows.map((r) => [r.key, r.targetKurus, r.spentKurus, r.ok])).toEqual([
+      ['needs', 5_000_000, 0, true],
+      ['wants', 3_000_000, 0, true],
+      ['saving', 2_000_000, 0, true],
+    ])
+    const f = buildMoneyFlow(10_000_000, { needs: 6_000_000, wants: 1_000_000 }, 500_000)
+    expect(f.rows[0].ok).toBe(false)
+    expect(f.rows[2].spentKurus).toBe(500_000)
   })
 })
