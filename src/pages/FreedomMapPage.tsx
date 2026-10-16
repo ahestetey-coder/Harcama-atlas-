@@ -39,6 +39,8 @@ import { AnimatedKurus } from '../components/ui/AnimatedMoney'
 import { Badge, Button, Card, Checkbox, Field, Input, Spinner } from '../components/ui/primitives'
 import { leadsAvailable, rememberLeadCode, rememberLocalLead, submitLead } from '../cloud/freedomLead'
 import { APP_CONFIG } from '../config/app'
+import { SAVING_GROWTH_PCT } from '../domain/assumptions'
+import { SCENARIOS } from '../domain/journey'
 import { formatKurusCompact } from '../domain/money'
 import { newLeadCode, QUICK_QUESTIONS, QUICK_TEST_VERSION, quickResult, quickScenario, reachRange, type QuickAnswers, type QuickQuestion, type QuickResult } from '../domain/quickTest'
 import { cn } from '../lib/cn'
@@ -94,12 +96,14 @@ export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
   const [seen, setSeen] = useState({ summit: false, half: false })
   const [lead, setLead] = useState<{ name: string; code: string; saved: 'ok' | 'fail' | 'local' } | null>(null)
   const topRef = useRef<HTMLDivElement>(null)
+  const web = !inApp
 
   useEffect(() => {
-    if (!inApp) document.title = `Finansal Harita Testi · ${APP_CONFIG.name}`
+    if (web) document.title = `Finansal Harita Testi · ${APP_CONFIG.name}`
     topRef.current?.scrollIntoView({ block: 'start' })
     window.scrollTo(0, 0)
-  }, [screen, idx, inApp])
+    // Yalnızca ekran ya da soru değişince başa döner; sayfa yeniden çizildiğinde (ör. eşitleme) kaydırma korunur
+  }, [screen, idx, web])
 
   const answers = useMemo<QuickAnswers | null>(() => (draft.dusus ? ({ v: QUICK_TEST_VERSION, ...draft } as QuickAnswers) : null), [draft])
   const result = useMemo(() => (answers && (screen === 'gate' || screen === 'result') ? quickResult(answers) : null), [answers, screen])
@@ -661,6 +665,7 @@ function Result({ result: r, name, code, saved, onRestart, next }: { result: Qui
   const j = r.journey
   const first = name.trim().split(' ')[0]
   const range = reachRange(r)
+  const mid = r.reach.midMonths
   const continueUrl = `${APP_CONFIG.webUrl}#/yolculuk?kod=${code}`
   return (
     <>
@@ -679,10 +684,19 @@ function Result({ result: r, name, code, saved, onRestart, next }: { result: Qui
           <LevelRing position={j.position} total={j.stages.length} level={j.level} />
           <div className="min-w-0 flex-1">
             <div className="text-[13px] text-muted">Özgürlük yılın</div>
-            <div className="num bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text font-display text-4xl font-extrabold tracking-tight text-transparent">{range ?? 'Henüz görünmüyor'}</div>
-            <p className="mt-1 text-[13px] text-muted">{range ? 'Bugünkü tempoyla; iyimser ve temkinli getiri varsayımları arası.' : 'Önce aylık dengenin kurulması gerekiyor.'}</p>
+            <div className="num bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text font-display text-4xl font-extrabold tracking-tight text-transparent">{mid !== null ? yearAt(mid) : (range ?? 'Henüz görünmüyor')}</div>
+            <p className="mt-1 text-[13px] text-muted">
+              {range
+                ? `Bugünkü tempoyla, orta senaryoda. Olası aralık ${range}.`
+                : 'Önce aylık dengenin kurulması gerekiyor.'}
+            </p>
           </div>
         </div>
+        {r.growth && r.growth.returnShare >= 0.05 && (
+          <p className="relative mt-4 rounded-xl bg-accent-soft px-3.5 py-2.5 text-[13.5px] text-ink">
+            <span className="font-semibold">Paran da senin için çalışıyor:</span> zirvedeki birikiminin yaklaşık %{Math.round(r.growth.returnShare * 100)}'i yatırdığın paradan değil, {r.growth.years} yıl boyunca biriken getiriden gelir.
+          </p>
+        )}
         <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[13px]">
           <div>
             <div className="text-muted">Hedef birikim</div>
@@ -794,7 +808,9 @@ function Simulator({ result }: { result: QuickResult }) {
         {gain}
       </div>
       <ExtraSavingLines rows={rows} plusLabel={`Ayda +${tl(extra)} ile`} caption="Birikimin yıllara göre tahmini seyri, bugünün parasıyla" />
-      <p className="text-[12px] text-subtle">Orta getiri varsayımıyla (enflasyonun üstünde yıllık %2) ve bugünün parasıyla hesaplanır.</p>
+      <p className="text-[12px] text-subtle">
+        Bileşik büyümeyle hesaplanır: birikim her yıl enflasyonun üstünde %{SCENARIOS.mid.realReturnPct.toLocaleString('tr-TR')} getiriyle büyür, aylık birikimin de yılda %{SAVING_GROWTH_PCT} artar. Tutarlar bugünün parasıyladır.
+      </p>
     </Card>
   )
 }

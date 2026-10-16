@@ -97,7 +97,8 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       dependents: '0',
       fixed: plainK(FIXED.reduce((s, g) => s + baseSpend[g], 0)),
       variable: plainK(VARIABLE.reduce((s, g) => s + baseSpend[g], 0)),
-      debts: est.debts.map((d) => ({ type: (d.type === 'card' ? 'card' : 'loan') as SetupDebtType, balance: plainTl(d.balanceTl), pay: plainTl(d.paymentTl), rate: String(d.monthlyRatePct).replace('.', ',') })) as DebtDraft[],
+      // Testteki borç cevabı yalnızca tahmindir; kişi gerçek borcunu girmeden rotaya borç eklenmez
+      debts: [] as DebtDraft[],
       emergency: plainTl(cap.mevduat),
       fx: plainTl(cap.doviz),
       gold: plainTl(cap.altin),
@@ -363,7 +364,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                   </li>
                 </ul>
               ) : (
-                <DebtsEditor debts={f.debts} badge={badge('debts')} onChange={(d) => set('debts', d)} />
+                <DebtsEditor debts={f.debts} badge={badge('debts')} onChange={(d) => set('debts', d)} hint={est.debts.length > 0 && !f.debts.length} />
               ))}
             {s.key === 'birikim' &&
               (appAssets ? (
@@ -501,11 +502,12 @@ function ChipField({ label, badge, children }: { label: string; badge?: ReactNod
   )
 }
 
-function DebtsEditor({ debts, badge, onChange }: { debts: DebtDraft[]; badge: ReactNode; onChange: (d: DebtDraft[]) => void }) {
+function DebtsEditor({ debts, badge, onChange, hint }: { debts: DebtDraft[]; badge: ReactNode; onChange: (d: DebtDraft[]) => void; hint?: boolean }) {
   const upd = (i: number, p: Partial<DebtDraft>) => onChange(debts.map((d, j) => (j === i ? { ...d, ...p } : d)))
   return (
     <div className="flex flex-col gap-3">
       <Label label={debts.length ? `${debts.length} borç` : 'Borç yok'} badge={badge} />
+      {hint && <p className="rounded-xl bg-warning-soft px-3 py-2 text-[13px] text-ink">Testte taksitlerin olduğunu söyledin. Kalan borcunu ve taksitini eklersen kapatma sırası ve borçsuzluk tarihin çıkar; eklemezsen rota borçsuz hesaplanır.</p>}
       {debts.map((d, i) => (
         <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface-2 p-3">
           <label className="col-span-2 flex flex-col gap-1 text-[12px] font-medium text-muted">

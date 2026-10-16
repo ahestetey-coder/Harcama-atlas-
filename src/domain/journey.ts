@@ -11,7 +11,9 @@ import {
   MC_SEED,
   recommendedWithdrawalPct,
   RISK_PROFILES,
+  SAVING_GROWTH_PCT,
   SAVING_RATE_TARGET,
+  SCENARIO_RETURN_PCT,
   STARTER_MONTHS,
   type RiskLevel,
   type RiskProfile,
@@ -612,11 +614,7 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
     },
   ]
   const goal = plan.fiKurus
-  const route = {
-    optimistic: monthsToTarget(net, saving, goal, SCENARIOS.optimistic.realReturnPct),
-    mid: monthsToTarget(net, saving, goal, SCENARIOS.mid.realReturnPct),
-    cautious: monthsToTarget(net, saving, goal, SCENARIOS.cautious.realReturnPct),
-  }
+  const route = plan.route
   return {
     stages,
     checks,
@@ -645,9 +643,9 @@ export type ScenarioKey = 'cautious' | 'mid' | 'optimistic'
 
 /** Reel (enflasyondan arındırılmış) yıllık getiri varsayımları. */
 export const SCENARIOS: Record<ScenarioKey, { label: string; realReturnPct: number }> = {
-  cautious: { label: 'Temkinli', realReturnPct: 0 },
-  mid: { label: 'Orta', realReturnPct: 2 },
-  optimistic: { label: 'Olumlu', realReturnPct: 4 },
+  cautious: { label: 'Temkinli', realReturnPct: SCENARIO_RETURN_PCT.cautious },
+  mid: { label: 'Orta', realReturnPct: SCENARIO_RETURN_PCT.mid },
+  optimistic: { label: 'Olumlu', realReturnPct: SCENARIO_RETURN_PCT.optimistic },
 }
 
 const monthlyRate = (annualPct: number) => Math.pow(1 + annualPct / 100, 1 / 12) - 1
@@ -681,6 +679,8 @@ export interface ScenarioInput {
   /** Büyük harcama: tutar (bugünün parasıyla) ve kaçıncı yılın başında. */
   bigExpenseKurus: number
   bigExpenseYear: number
+  /** Aylık birikimin yıllık reel artışı (%); verilmezse SAVING_GROWTH_PCT. */
+  savingGrowthPct?: number
 }
 
 export interface ScenarioPoint {
@@ -711,12 +711,14 @@ export function simulatePlan(input: ScenarioInput, realAnnualPct: number, goalKu
   const horizon = Math.max(1, Math.round(input.years)) * 12
   const bigMonth = input.bigExpenseKurus > 0 ? Math.max(1, Math.round(input.bigExpenseYear) * 12 - 11) : 0
   const steady = input.monthlySavingKurus + input.extraSavingKurus
+  const growth = 1 + (input.savingGrowthPct ?? SAVING_GROWTH_PCT) / 100
   let reach: number | null = input.startKurus >= goalKurus ? 0 : null
   let v = input.startKurus
   for (let m = 1; m <= Math.max(horizon, MAX_MONTHS); m++) {
     if (m === bigMonth) v -= input.bigExpenseKurus
     v = v * (1 + (v > 0 ? r : 0))
-    v += m <= input.incomeLossMonths ? -input.incomeLossMonthlySpendKurus : steady
+    // Birikim her yıl reel olarak artar (artıdaysa); gelir kaybı aylarında gider birikimden çıkar
+    v += m <= input.incomeLossMonths ? -input.incomeLossMonthlySpendKurus : steady > 0 ? steady * Math.pow(growth, Math.floor((m - 1) / 12)) : steady
     if (reach === null && v >= goalKurus) reach = m
     if (m <= horizon && m % 12 === 0) {
       const y = m / 12
@@ -817,6 +819,10 @@ export interface FreedomPlan {
   gapKurus: number
   /** Bugünkü hızla (borç ve taksit bitişleri dahil) hedefe ulaşma ayı; 100 yılda ulaşılmıyorsa null. */
   reachMonths: number | null
+  /** Üç getiri senaryosuyla varış ayı (aynı nakit akışı); ulaşılamıyorsa null. */
+  route: { optimistic: number | null; mid: number | null; cautious: number | null }
+  /** Orta senaryoda yıl sonu net birikim (0. yıl = bugün, PATH_YEARS yıla kadar). */
+  midPath: number[]
   reachAge: number | null
   coastKurus: number
   coastPassed: boolean
@@ -903,6 +909,9 @@ export interface FreedomOptions {
   extraMonthlyKurus?: number
 }
 
+/** Orta senaryo yolunun uzunluğu (yıl). */
+export const PATH_YEARS = 60
+
 const pctile = (sorted: Float64Array, q: number) => sorted[Math.floor(q * (sorted.length - 1))]
 
 /**
@@ -979,7 +988,9 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
   const flow = (m: number) => {
     const interest = payoff ? (payoff.interest[m - 1] ?? 0) : 0
     const freedBills = finiteBills.filter((r) => r.remainingMonths! < m).reduce((s, r) => s + r.monthlyKurus, 0)
-    return available + installments - interest + freedBills + (opts.extraMonthlyKurus ?? 0)
+    const inflow = available + installments + freedBills + (opts.extraMonthlyKurus ?? 0)
+    // Gelir ve birikim yıllar içinde reel olarak artar (SAVING_GROWTH_PCT); faiz artmaz
+    return (inflow > 0 ? inflow * Math.pow(1 + SAVING_GROWTH_PCT / 100, Math.floor((m - 1) / 12)) : inflow) - interest
   }
   /** Getiri yalnızca artıdaki birikime işler. */
   const step = (v: number, m: number, extra = 0, r = rm) => v * (1 + (v > 0 ? r : 0)) + flow(m) + extra
@@ -1001,6 +1012,22 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
       }
     }
   }
+  /** Verilen reel getiriyle hedefe varış ayı (borç bitişleri ve birikim artışı dahil). */
+  const reachAt = (pct: number, path?: number[]): number | null => {
+    const r = monthlyRate(pct)
+    let v = netKurus
+    let hit: number | null = netKurus >= fi ? 0 : null
+    path?.push(Math.round(v))
+    for (let m = 1; m <= 1200; m++) {
+      v = step(v, m, 0, r)
+      if (path && m % 12 === 0 && m <= PATH_YEARS * 12) path.push(Math.round(v))
+      if (hit === null && v >= fi) hit = m
+      if (hit !== null && (!path || m >= PATH_YEARS * 12)) break
+    }
+    return hit
+  }
+  const midPath: number[] = []
+  const route = { optimistic: reachAt(SCENARIO_RETURN_PCT.optimistic), mid: reachAt(SCENARIO_RETURN_PCT.mid, midPath), cautious: reachAt(SCENARIO_RETURN_PCT.cautious) }
   const fvN = fvAt(n)
   const annuity = rm > 0 ? (Math.pow(1 + rm, n) - 1) / rm : n
   const extra = n > 0 ? Math.max(0, Math.ceil((fi - fvN) / annuity)) : Math.max(0, fi - netKurus)
@@ -1083,6 +1110,8 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
     requiredMonthlyKurus: required,
     gapKurus: extra,
     reachMonths: reach,
+    route,
+    midPath,
     reachAge: reach === null ? null : age + reach / 12,
     coastKurus: Math.round(fi / Math.pow(1 + R, yearsToTarget)),
     coastPassed: netKurus >= fi / Math.pow(1 + R, yearsToTarget),

@@ -149,7 +149,8 @@ describe('senaryolar', () => {
   const base = { startKurus: 100000, monthlySavingKurus: 10000, years: 2, inflationPct: 20, extraSavingKurus: 0, incomeLossMonths: 0, incomeLossMonthlySpendKurus: 0, bigExpenseKurus: 0, bigExpenseYear: 1 }
   it('getiri olmadan birikimleri toplar; nominal değer enflasyonla büyür', () => {
     const p = projectScenario(base, 0)
-    expect(p.map((x) => x.realKurus)).toEqual([100000, 220000, 340000])
+    // 2. yıl aylık birikim reel %1 artar: 12 × 10.100
+    expect(p.map((x) => x.realKurus)).toEqual([100000, 220000, 341200])
     expect(p[1].nominalKurus).toBe(264000)
   })
   it('gelir kaybı ve büyük harcama birikimi azaltır', () => {
@@ -194,14 +195,17 @@ describe('Özgürlük Rotası v2: hedef motoru', () => {
   })
 
   it('gereken aylık birikim formülü: eklenen fark hedef yaşta hedefe ulaştırır', () => {
-    const p = buildFreedomPlan(v2(), f2(), { runs: 0 })
+    const p = buildFreedomPlan(v2({ targetAge: 45 }), f2(), { runs: 0 })
     expect(p.monthlySavingKurus).toBe(5000000)
     const n = p.yearsToTarget * 12
     const rm = Math.pow(1 + p.realReturnPct / 100, 1 / 12) - 1
-    const fv = (5000000 * (Math.pow(1 + rm, n) - 1)) / rm
+    // Aylık birikim her yıl reel %1 artar
+    let fv = 0
+    for (let m = 1; m <= n; m++) fv = fv * (1 + rm) + 5000000 * Math.pow(1.01, Math.floor((m - 1) / 12))
+    expect(p.gapKurus).toBeGreaterThan(0)
     expect(p.gapKurus).toBe(Math.max(0, Math.ceil((p.fiKurus - fv) / ((Math.pow(1 + rm, n) - 1) / rm))))
     expect(p.requiredMonthlyKurus).toBe(p.monthlySavingKurus + p.gapKurus)
-    const more = buildFreedomPlan(v2(), f2(), { runs: 0, extraMonthlyKurus: p.gapKurus })
+    const more = buildFreedomPlan(v2({ targetAge: 45 }), f2(), { runs: 0, extraMonthlyKurus: p.gapKurus })
     expect(more.reachMonths!).toBeLessThanOrEqual(n)
     expect(p.levers.extraMonthlyKurus).toBe(p.gapKurus)
     // Kaldıraç: bu birikimle yetişilen hedef yaşta hedefe ulaşılır

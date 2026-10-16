@@ -46,7 +46,7 @@ function NextStep({ result }: { result: QuickResult }) {
         Haritan şimdilik aralıklarla çizildi. Rota kurulumunda 6 adımda gerçek rakamlarını girersin; aralık yerine tek bir özgürlük yılı çıkar{stage ? ` ve ${stage} durağından itibaren` : ','} Finansal özgürlük sayfan bu rakamlarla kurulur.
       </p>
       {canSetup ? (
-        <Button size="lg" className="mt-5 flex-row-reverse bg-white text-[#0b1323] hover:bg-white/90" icon={<ArrowRight className="size-4" />} onClick={() => navigate('/yolculuk?kur=1')}>
+        <Button size="lg" className="mt-5 flex-row-reverse border-transparent! bg-white! text-[#0b1323]! hover:bg-white/90!" icon={<ArrowRight className="size-4" />} onClick={() => navigate('/yolculuk?kur=1')}>
           Rotamı kur · 5 dk
         </Button>
       ) : (
@@ -61,7 +61,7 @@ function NextStep({ result }: { result: QuickResult }) {
               <span>8 duraklı tam rota, gelecek senaryoları, özgürlük yaşı ve seni takip eden koç</span>
             </li>
           </ul>
-          <Button size="lg" className="mt-5 bg-white text-[#0b1323] hover:bg-white/90" icon={<Sparkles className="size-4" />} onClick={() => navigate('/paketler')}>
+          <Button size="lg" className="mt-5 border-transparent! bg-white! text-[#0b1323]! hover:bg-white/90!" icon={<Sparkles className="size-4" />} onClick={() => navigate('/paketler')}>
             Paketleri gör
           </Button>
           <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-white/70">

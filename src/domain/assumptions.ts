@@ -155,6 +155,16 @@ function mix(level: RiskLevel, label: string, equity: number): RiskProfile {
 /** Hisse/tahvil oranına göre ağırlıklı ortalama getiri ve oynaklık. */
 export const RISK_PROFILES: RiskProfile[] = [mix(0, 'Temkinli', 0.3), mix(1, 'Dengeli', 0.5), mix(2, 'Büyüme', 0.7), mix(3, 'Atak', 0.9)]
 
+const half = (x: number) => Math.round(x * 2) / 2
+/** Varış senaryoları: Temkinli, Dengeli ve Atak profillerin beklenen reel getirisi (yarım puana yuvarlı). */
+export const SCENARIO_RETURN_PCT = { cautious: half(RISK_PROFILES[0].realReturnPct), mid: half(RISK_PROFILES[1].realReturnPct), optimistic: half(RISK_PROFILES[3].realReturnPct) }
+
+/**
+ * Aylık birikimin yıllık reel artışı (%): gelir uzun dönemde enflasyonun biraz üstünde artar, birikim de
+ * onunla büyür. OECD ülkelerinde uzun dönem ortalama reel ücret artışı yıllık %1 civarındadır.
+ */
+export const SAVING_GROWTH_PCT = 1
+
 // ---------- Monte Carlo ----------
 
 export const MC_RUNS = 1000
@@ -270,6 +280,13 @@ export const ASSUMPTIONS: Assumption[] = [
     source: `Dimson, Marsh ve Staunton, küresel uzun dönem getiri verileri (Global Investment Returns Yearbook): hisse reel ~%${EQUITY_REAL_PCT.toLocaleString('tr-TR')}, tahvil reel ~%${BOND_REAL_PCT.toLocaleString('tr-TR')}.`,
     reason:
       'Profilin hisse/tahvil oranına göre ağırlıklı ortalama. Bütün tutarlar bugünün parasıyladır: plan birimi TL ise reel hesap TÜİK TÜFE ile enflasyondan arındırılmış TL varsayar; USD ya da altın planında hedef o birimde sabittir.',
+  },
+  {
+    id: 'compound',
+    title: 'Bileşik büyüme ve varış yılı',
+    value: `Birikim her ay beklenen reel getiriyle büyür (getiri getiriye eklenir). Aylık birikim de her yıl reel %${SAVING_GROWTH_PCT} artar. Varış yılı aralığı: temkinli %${SCENARIO_RETURN_PCT.cautious.toLocaleString('tr-TR')}, orta %${SCENARIO_RETURN_PCT.mid.toLocaleString('tr-TR')}, olumlu %${SCENARIO_RETURN_PCT.optimistic.toLocaleString('tr-TR')} reel getiri.`,
+    source: 'Getiriler: yukarıdaki risk profilleri (Dimson, Marsh ve Staunton). Birikim artışı: OECD ülkelerinde uzun dönem ortalama reel ücret artışı yıllık ~%1.',
+    reason: 'Uzun vadede birikimin büyük kısmı yatırılan paradan değil getiriden gelir; gelir de yıllar içinde artar. İkisini saymamak varış yılını gereğinden uzağa atar.',
   },
   {
     id: 'risk',
