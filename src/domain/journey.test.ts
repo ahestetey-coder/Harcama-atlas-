@@ -53,7 +53,8 @@ describe('finansal özgürlük yolculuğu', () => {
     expect(j.plan.withdrawal).toEqual({ recommendedPct: 3.25, usedPct: 3.25, custom: false })
     expect(j.indicators.securityCapitalKurus).toBe(Math.round((2800000 * 12) / 0.0325))
     expect(j.indicators.securityMonths).toBe(2)
-    expect(j.indicators.progressKurus).toBe(18000000)
+    // Başlangıç yalnızca varlıklar: borç ve taksitler aylık ödemeden düşülür
+    expect(j.indicators.progressKurus).toBe(20000000)
     expect(j.indicators.monthlySavingKurus).toBe(1500000)
     expect(j.position).toBeCloseTo(3 + 2 / 3)
     expect(j.level).toBe(3)
@@ -221,8 +222,10 @@ describe('Özgürlük Rotası v2: hedef motoru', () => {
     expect(end.month).toBe(2)
     expect(withDebt.debtFreeMonth).toBe(2)
     expect(end.freedKurus).toBe(500000)
-    expect(withDebt.monthlySavingKurus).toBe(5000000 - 240000)
-    expect(withDebt.netKurus).toBe(-6000000)
+    // Borç bakiyesi birikimden düşülmez; kapanana kadar aylık pay borca gider, sonra birikime
+    expect(withDebt.monthlySavingKurus).toBe(0)
+    expect(withDebt.netKurus).toBe(0)
+    expect(withDebt.flowAdjustKurus.at(-1)).toBe(5000000)
     expect(withDebt.reachMonths!).toBeGreaterThanOrEqual(noInterest.reachMonths!)
     // Biten taksit ve düzenli ödemeler takvimde görünür
     const r = buildFreedomPlan(v2(), f2({ recurringList: [{ name: 'Telefon taksiti', monthlyKurus: 300000, installment: true, remainingMonths: 6 }, { name: 'Spor salonu', monthlyKurus: 100000, installment: false, remainingMonths: 3 }] }), { runs: 0 })
@@ -284,7 +287,7 @@ describe('Özgürlük Rotası v2: hedef motoru', () => {
     expect(p.targetMonthlyKurus).toBe(4000000)
     expect(p.withdrawal.custom).toBe(false)
     expect(p.monthlySavingKurus).toBe(1500000)
-    expect(p.netKurus).toBe(18000000)
+    expect(p.netKurus).toBe(20000000)
     expect(buildFreedomPlan(profile({ withdrawalRatePct: 3 }), facts(), { runs: 0 }).withdrawal).toMatchObject({ custom: true, usedPct: 3 })
     expect(buildJourney(old, facts()).plan.fiKurus).toBe(p.fiKurus)
   })

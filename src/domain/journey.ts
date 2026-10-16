@@ -681,6 +681,8 @@ export interface ScenarioInput {
   bigExpenseYear: number
   /** Aylık birikimin yıllık reel artışı (%); verilmezse SAVING_GROWTH_PCT. */
   savingGrowthPct?: number
+  /** Biten taksit ve borç ödemeleriyle aylık birikime eklenen (FreedomPlan.flowAdjustKurus). */
+  flowAdjustKurus?: number[]
 }
 
 export interface ScenarioPoint {
@@ -718,7 +720,9 @@ export function simulatePlan(input: ScenarioInput, realAnnualPct: number, goalKu
     if (m === bigMonth) v -= input.bigExpenseKurus
     v = v * (1 + (v > 0 ? r : 0))
     // Birikim her yıl reel olarak artar (artıdaysa); gelir kaybı aylarında gider birikimden çıkar
-    v += m <= input.incomeLossMonths ? -input.incomeLossMonthlySpendKurus : steady > 0 ? steady * Math.pow(growth, Math.floor((m - 1) / 12)) : steady
+    const adj = input.flowAdjustKurus
+    const flow = steady + (adj?.length ? adj[Math.min(m, adj.length) - 1] : 0)
+    v += m <= input.incomeLossMonths ? -input.incomeLossMonthlySpendKurus : flow > 0 ? flow * Math.pow(growth, Math.floor((m - 1) / 12)) : flow
     if (reach === null && v >= goalKurus) reach = m
     if (m <= horizon && m % 12 === 0) {
       const y = m / 12
@@ -727,7 +731,7 @@ export function simulatePlan(input: ScenarioInput, realAnnualPct: number, goalKu
     if (m >= horizon) {
       if (reach !== null) break
       // Şoklar geçti, birikim yok ve getiri büyütmüyorsa hedefe hiç ulaşılmaz
-      if (m >= input.incomeLossMonths && m >= bigMonth && steady <= 0 && (r <= 0 || v <= 0)) break
+      if (m >= input.incomeLossMonths && m >= bigMonth && m >= (input.flowAdjustKurus?.length ?? 0) && steady + (input.flowAdjustKurus?.at(-1) ?? 0) <= 0 && (r <= 0 || v <= 0)) break
     }
   }
   return { points, reachMonths: reach }
@@ -807,8 +811,10 @@ export interface FreedomPlan {
   fiKurus: number
   leanKurus: number
   fatKurus: number
-  /** Net birikim (varlıklar − borçlar − kalan taksitler). */
+  /** Başlangıç birikimi: varlıklar (kredi ve taksitler aylık ödemeyle kapanır, düşülmez). */
   netKurus: number
+  /** Aylık birikime bugüne göre eklenen (index m−1); son değer sonrası için de geçerli. */
+  flowAdjustKurus: number[]
   /** Borç ve birikime ayrılabilen aylık tutar (gelir − tüketim − taksitler). */
   availableKurus: number
   /** Bugünkü aylık birikim: net varlığa eklenen (borç anaparası dahil, faiz hariç). */
@@ -944,9 +950,6 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
   const spend = groups ? sumSpend(groups) + recurringBills : (f.averageExpenseKurus ?? Math.round(p.essentialMonthlyKurus * k))
   const essential = groups ? ESSENTIAL_GROUPS.reduce((s, g) => s + groups[g], 0) + recurringBills + installments + mins : Math.round(p.essentialMonthlyKurus * k)
   const available = groups ? income - spend - installments : income - spend
-  const interestNow = debts.reduce((s, d) => s + Math.round((d.balanceKurus * d.monthlyRatePct) / 100), 0)
-  // Net varlığa eklenen: borç ve taksit anaparası birikim sayılır, faiz sayılmaz
-  const saving = available + installments - interestNow + (opts.extraMonthlyKurus ?? 0)
 
   // Hedef yaşam: bugünkü sürekli harcamanın yüzdesi (ev sahibi olunacaksa konut hariç) + yıllık büyük harcama
   const pct = p.targetSpendPct ?? 100
@@ -974,23 +977,24 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
   const debtEnds: DebtEnd[] = debts.map((d) => ({ id: d.id, name: d.name, month: payoff?.debts.find((x) => x.id === d.id)?.paidOffMonth ?? null, freedKurus: Math.min(d.balanceKurus, d.minPaymentKurus) }))
   const debtFreeMonth = !debts.length ? 0 : (payoff?.months ?? null)
   const recurringEnds: RecurringEnd[] = recurring.filter((r) => r.remainingMonths !== null).map((r) => ({ name: r.name, month: r.remainingMonths!, freedKurus: r.monthlyKurus }))
-  const instRemaining0 = recurring.filter((r) => r.installment && r.remainingMonths !== null).reduce((s, r) => s + r.monthlyKurus * r.remainingMonths!, 0)
-  const net0 = f.assetsKurus - debts.reduce((s, d) => s + d.balanceKurus, 0) - instRemaining0
-  // Eski verilerde borç listesi yoksa kayıtlı net borç kullanılır
-  const netKurus = f.debtList ? net0 : f.assetsKurus - f.debtsKurus
-
-  const finiteBills = recurring.filter((r) => !r.installment && r.remainingMonths !== null)
   /**
-   * m. ayda net varlığa eklenen (getiri hariç). Borç ödemesinin anaparası ve taksitler net varlığı
-   * azaltmaz (borç da azalır); faiz azaltır. Borç kapanınca taksiti birikime, biten düzenli ödeme de
-   * birikime gider: nakit akışında bu, aynı toplamın borç yerine varlığa yazılmasıdır.
+   * Başlangıç birikimi yalnızca varlıklardır: kredi ve taksitler aylık ödemeyle kapandığı için
+   * bakiyeleri birikimden düşülmez; ödemeleri aylık birikimden çıkar.
    */
+  const netKurus = f.assetsKurus
+
+  const debtPay = (m: number) => (payoff ? (payoff.payments[m - 1] ?? 0) : 0)
+  // Bugünkü aylık birikim: borç ödemeleri ve taksitler çıktıktan sonra varlığa giden
+  const saving = available - debtPay(1) + (opts.extraMonthlyKurus ?? 0)
+  const finite = recurring.filter((r) => r.remainingMonths !== null)
+  // m. ayda bugüne göre birikime eklenen: biten taksit ve düzenli ödemeler, kapanan borçların ödemeleri
+  const adjust = (m: number) => finite.filter((r) => r.remainingMonths! < m).reduce((s, r) => s + r.monthlyKurus, 0) + debtPay(1) - debtPay(m)
+  const lastChange = Math.min(1200, Math.max(payoff?.payments.length ?? 0, ...finite.map((r) => r.remainingMonths!)) + 1)
+  const flowAdjust = Array.from({ length: lastChange }, (_, i) => adjust(i + 1))
+  /** m. ayda varlığa eklenen (getiri hariç); birikim yıllar içinde reel olarak artar (SAVING_GROWTH_PCT). */
   const flow = (m: number) => {
-    const interest = payoff ? (payoff.interest[m - 1] ?? 0) : 0
-    const freedBills = finiteBills.filter((r) => r.remainingMonths! < m).reduce((s, r) => s + r.monthlyKurus, 0)
-    const inflow = available + installments + freedBills + (opts.extraMonthlyKurus ?? 0)
-    // Gelir ve birikim yıllar içinde reel olarak artar (SAVING_GROWTH_PCT); faiz artmaz
-    return (inflow > 0 ? inflow * Math.pow(1 + SAVING_GROWTH_PCT / 100, Math.floor((m - 1) / 12)) : inflow) - interest
+    const inflow = saving + adjust(m)
+    return inflow > 0 ? inflow * Math.pow(1 + SAVING_GROWTH_PCT / 100, Math.floor((m - 1) / 12)) : inflow
   }
   /** Getiri yalnızca artıdaki birikime işler. */
   const step = (v: number, m: number, extra = 0, r = rm) => v * (1 + (v > 0 ? r : 0)) + flow(m) + extra
@@ -1104,6 +1108,7 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
     leanKurus: lean,
     fatKurus: fat,
     netKurus,
+    flowAdjustKurus: flowAdjust,
     availableKurus: available,
     monthlySavingKurus: saving,
     savingRate: income > 0 ? saving / income : 0,

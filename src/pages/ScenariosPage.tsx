@@ -89,10 +89,8 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
   // Yolculukla aynı hesap: aynı hedef (plan birimi ve canlı kurla), aynı başlangıç ve aynı aylık birikim
   const j = useMemo(() => buildJourney(profile, facts, rates), [profile, facts, rates])
   const goal = j.indicators.goalKurus
-  // Yolculukla aynı başlangıç: varlıklar − borçlar − kalan taksitler (eksi olabilir; borç da birikimle kapanır)
+  // Yolculukla aynı başlangıç: varlıklar (kredi ve taksitler aylık ödemeden düşülür)
   const start = j.plan.netKurus
-  const assetsNow = facts.assetsKurus
-  const debtsNow = Math.max(0, assetsNow - start)
   const baseSaving = j.indicators.monthlySavingKurus
   const essentialNow = Math.round(profile.essentialMonthlyKurus * j.indicators.indexFactor)
   const base = profile.base ?? 'TRY'
@@ -112,6 +110,7 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
   const input: ScenarioInput = {
     startKurus: start,
     monthlySavingKurus: baseSaving,
+    flowAdjustKurus: j.plan.flowAdjustKurus,
     years: a.years,
     inflationPct: a.inflation,
     extraSavingKurus: a.extra,
@@ -142,7 +141,7 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
             <dt className="text-[12.5px] text-muted">Net birikim</dt>
             <dd className="num font-display text-lg font-semibold">{inBase(start)}</dd>
             <dd className="num mt-0.5 text-[12px] text-muted">
-              Varlıklar {formatKurus(assetsNow)} · Borç ve kalan taksit {formatKurus(debtsNow)}
+              Varlıklarınız. Kredi ve taksitler aylık ödemeden düşülür.
             </dd>
           </div>
           <div>
@@ -154,7 +153,7 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
             <dd className="num font-display text-lg font-semibold">{inBase(goal)}</dd>
           </div>
         </dl>
-        {assetsNow === 0 && (
+        {start === 0 && (
           <p className="mt-3 text-[12.5px] text-muted">
             Kayıtlı birikim yok, rota sıfırdan başlıyor.{' '}
             <Link to="/yatirimlar" className="font-medium text-accent underline">
