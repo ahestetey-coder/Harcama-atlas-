@@ -16,7 +16,7 @@ export const FLOW_KEYS: FlowKey[] = ['fixed', 'needs', 'wants', 'debt', 'saving'
 export type FlowShares = Record<FlowKey, number>
 
 /**
- * 50/30/20 kuralı, esnetilmez: zorunlu giderler ve ihtiyaçlar (kira, fatura) %50, istekler %30,
+ * 50/30/20 kuralı, esnetilmez: zorunlu giderler ve ihtiyaçlar (kira, fatura, kredi ve taksit ödemeleri) %50, istekler %30,
  * birikim ve borç kapatma %20. Bütçe sayfası ve Özet aynı hedefleri gösterir.
  */
 export const RULE_SHARES: FlowShares = { fixed: 0, needs: NEEDS_SHARE, wants: WANTS_SHARE, debt: 0, saving: SAVING_RATE_TARGET }
@@ -68,7 +68,7 @@ export interface FlowRow {
   key: FlowKey
   share: number
   targetKurus: number
-  /** Birikimde gelirden kalan tutar. */
+  /** Birikimde gelirden kalan, borç kapatmada kalandan ek ödemeye ayrılabilen tutar. */
   spentKurus: number
   ok: boolean
 }
@@ -79,17 +79,17 @@ export interface MoneyFlowResult {
 }
 
 export function buildMoneyFlow(incomeKurus: number, shares: FlowShares, raw: Record<Exclude<FlowKey, 'saving'>, number>): MoneyFlowResult {
-  // Zorunlu sabitler ayrı kova değilse ihtiyaçlara girer
-  const spent = { ...raw }
-  if (shares.fixed <= 0) {
-    spent.needs += spent.fixed
-    spent.fixed = 0
-  }
-  const left = incomeKurus - spent.fixed - spent.needs - spent.wants - spent.debt
+  // 50/30/20'de kredi ve taksitlerin aylık ödemesi zorunlu gider (%50) sayılır; borç kapatma (%20'nin
+  // parçası) bunların üstüne ek ödemedir ve birikim gibi gelirden kalandan ayrılır.
+  const spent = { ...raw, needs: raw.needs + raw.debt + (shares.fixed > 0 ? 0 : raw.fixed), fixed: shares.fixed > 0 ? raw.fixed : 0, debt: 0 }
+  const left = incomeKurus - spent.fixed - spent.needs - spent.wants
+  const debtTarget = Math.round(incomeKurus * shares.debt)
+  const debtCovered = Math.min(debtTarget, Math.max(0, left))
   const rows = FLOW_KEYS.filter((k) => k !== 'fixed' || shares.fixed > 0).map((key) => {
-    const targetKurus = Math.round(incomeKurus * shares[key])
-    const spentKurus = key === 'saving' ? left : spent[key]
-    return { key, share: shares[key], targetKurus, spentKurus, ok: key === 'saving' ? spentKurus >= targetKurus : spentKurus <= targetKurus }
+    const targetKurus = key === 'debt' ? debtTarget : Math.round(incomeKurus * shares[key])
+    const spentKurus = key === 'saving' ? left - debtCovered : key === 'debt' ? debtCovered : spent[key]
+    const ok = key === 'saving' || key === 'debt' ? spentKurus >= targetKurus : spentKurus <= targetKurus
+    return { key, share: shares[key], targetKurus, spentKurus, ok }
   })
   return { incomeKurus, rows }
 }

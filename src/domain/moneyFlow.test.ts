@@ -23,10 +23,10 @@ describe('moneyFlow', () => {
   it('hedef tutarları gelirden; birikim gelirden kalan', () => {
     const f = buildMoneyFlow(10_000_000, RULE_SHARES, { fixed: 300_000, needs: 1_465_000, wants: 4_000_000, debt: 200_000 })
     const [needs, wants, debt, saving] = f.rows
-    expect(debt.spentKurus).toBe(200_000)
+    expect(debt.spentKurus).toBe(0)
     expect(f.rows.map((r) => r.key)).toEqual(['needs', 'wants', 'debt', 'saving'])
     expect(needs.targetKurus).toBe(5_000_000)
-    expect(needs.spentKurus).toBe(1_765_000)
+    expect(needs.spentKurus).toBe(1_965_000)
     expect(needs.ok).toBe(true)
     expect(wants.ok).toBe(false)
     expect(saving.spentKurus).toBe(4_035_000)
@@ -39,5 +39,16 @@ describe('moneyFlow', () => {
     const s = ruleShares(0.75, true)
     expect(s.debt + s.saving).toBeCloseTo(0.2)
     expect(s.debt).toBeCloseTo(0.15)
+  })
+
+  it('taksit zorunlu giderde; borç kapatma kalandan ayrılır, birikim ondan sonra', () => {
+    const f = buildMoneyFlow(10_000_000, ruleShares(null, true), { fixed: 0, needs: 2_000_000, wants: 1_000_000, debt: 4_800_000 })
+    const [needs, , debt, saving] = f.rows
+    expect(needs.spentKurus).toBe(6_800_000)
+    expect(needs.ok).toBe(false)
+    expect(debt.targetKurus).toBe(1_000_000)
+    expect(debt.spentKurus).toBe(1_000_000)
+    expect(saving.spentKurus).toBe(1_200_000)
+    expect(saving.ok).toBe(true)
   })
 })
