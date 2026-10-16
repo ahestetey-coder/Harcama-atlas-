@@ -259,7 +259,7 @@ export default function DashboardPage() {
               Gider ekleyin veya ekstrenizi içe aktarın.
             </EmptyState>
           </Card>
-          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-5" />}
+          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-12" />}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
@@ -347,7 +347,7 @@ export default function DashboardPage() {
           </motion.section>
 
           {shared}
-          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:order-first lg:col-span-5" />}
+          {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-12" />}
 
           {/* Kategori dağılımı */}
           <Card className="p-5 lg:col-span-7">
