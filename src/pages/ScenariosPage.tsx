@@ -7,7 +7,7 @@ import { ScenarioLines, type ScenarioRow } from '../components/charts/Charts'
 import { PlanBadge, PlanGate } from '../components/PlanGate'
 import { Button, Card, Field, Input, More, Segmented } from '../components/ui/primitives'
 import { todayIso } from '../domain/dates'
-import { buildJourney, durationLabel, formatInBase, reachDateLabel, SCENARIOS, simulatePlan, type JourneyFacts, type JourneyProfile, type ScenarioInput, type ScenarioKey, type Simulation } from '../domain/journey'
+import { BASE_LABEL, buildJourney, durationLabel, formatInBase, reachDateLabel, SCENARIOS, simulatePlan, type JourneyFacts, type JourneyProfile, type ScenarioInput, type ScenarioKey, type Simulation } from '../domain/journey'
 import { formatKurus, formatKurusCompact, formatKurusPlain, parseUserAmount } from '../domain/money'
 import { cn } from '../lib/cn'
 import { routeProfile } from '../domain/routeSetup'
@@ -89,7 +89,10 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
   // Yolculukla aynı hesap: aynı hedef (plan birimi ve canlı kurla), aynı başlangıç ve aynı aylık birikim
   const j = useMemo(() => buildJourney(profile, facts, rates), [profile, facts, rates])
   const goal = j.indicators.goalKurus
-  const start = j.indicators.progressKurus
+  // Yolculukla aynı başlangıç: varlıklar − borçlar − kalan taksitler (eksi olabilir; borç da birikimle kapanır)
+  const start = j.plan.netKurus
+  const assetsNow = facts.assetsKurus
+  const debtsNow = Math.max(0, assetsNow - start)
   const baseSaving = j.indicators.monthlySavingKurus
   const essentialNow = Math.round(profile.essentialMonthlyKurus * j.indicators.indexFactor)
   const base = profile.base ?? 'TRY'
@@ -137,18 +140,33 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
         <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <dt className="text-[12.5px] text-muted">Net birikim</dt>
-            <dd className="num font-display text-lg font-semibold">{formatKurus(start)}</dd>
+            <dd className="num font-display text-lg font-semibold">{inBase(start)}</dd>
+            <dd className="num mt-0.5 text-[12px] text-muted">
+              Varlıklar {formatKurus(assetsNow)} · Borç ve kalan taksit {formatKurus(debtsNow)}
+            </dd>
           </div>
           <div>
             <dt className="text-[12.5px] text-muted">Aylık birikim</dt>
-            <dd className="num font-display text-lg font-semibold">{formatKurus(baseSaving)}</dd>
+            <dd className="num font-display text-lg font-semibold">{inBase(baseSaving)}</dd>
           </div>
           <div>
             <dt className="text-[12.5px] text-muted">Özgürlük hedefi</dt>
             <dd className="num font-display text-lg font-semibold">{inBase(goal)}</dd>
           </div>
         </dl>
+        {assetsNow === 0 && (
+          <p className="mt-3 text-[12.5px] text-muted">
+            Kayıtlı birikim yok, rota sıfırdan başlıyor.{' '}
+            <Link to="/yatirimlar" className="font-medium text-accent underline">
+              Birikimini Yatırımlarım'a ekle
+            </Link>
+            ; rota ve senaryolar onu başlangıca katar.
+          </p>
+        )}
         <p className="mt-2 text-[12.5px] text-muted">
+          Hesap birimi: <span className="font-medium text-ink">{BASE_LABEL[base]}</span>. Getiriler enflasyon üstü (reel), tutarlar bugünün parasıyla; TL enflasyonu hesabı şişirmez.
+        </p>
+        <p className="mt-1 text-[12.5px] text-muted">
           Yolculuktaki tahmin: <span className="font-medium text-ink">{reachText(journeyMid)}</span>
         </p>
       </Card>
