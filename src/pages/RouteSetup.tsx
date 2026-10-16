@@ -372,8 +372,8 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
             )}
             {s.key === 'gider' && (
               <>
-                <ExpensesEditor rows={f.expenses} badge={badge('expenses')} onChange={(r) => set('expenses', r)} />
-                {recurringFixed > 0 && <p className="text-[12.5px] text-muted">Düzenli ödemelerin ({formatKurusCompact(recurringFixed)}/ay) uygulamadan ayrıca sayılır; buraya ekleme.</p>}
+                <ExpensesEditor rows={f.expenses} badge={badge('expenses')} onChange={(r) => set('expenses', r)} extraKurus={appDebts.reduce((s, d) => s + d.minPaymentKurus, 0) + (facts.recurringList ?? []).reduce((s, r) => s + r.monthlyKurus, 0)} />
+                <AppPayments debts={appDebts} recurring={facts.recurringList ?? []} />
                 <p className="flex items-center gap-2 text-[12.5px] text-muted">
                   <CalendarClock className="size-4 shrink-0 text-accent" /> Harcamalarını girdikçe bu rakamlar uygulamadaki kayıtlarından güncellenir.
                 </p>
@@ -398,7 +398,12 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                   </li>
                 </ul>
               ) : (
-                <DebtsEditor debts={f.debts} badge={badge('debts')} onChange={(d) => set('debts', d)} hint={est.debts.length > 0 && !f.debts.length} />
+                <>
+                  <DebtsEditor debts={f.debts} badge={badge('debts')} onChange={(d) => set('debts', d)} hint={est.debts.length > 0 && !f.debts.length} />
+                  <Link to="/borclar" className="text-[13px] font-medium text-accent hover:underline">
+                    Kredilerini ve kart taksitlerini Borçlar sayfasında eklemek daha sağlıklı; eklenenler buraya otomatik gelir
+                  </Link>
+                </>
               ))}
             {s.key === 'birikim' &&
               (appAssets ? (
@@ -537,10 +542,10 @@ function ChipField({ label, badge, children }: { label: string; badge?: ReactNod
 }
 
 /** Giderler: "+" ile kategori seçilir, tutar yazılır; satırlar toplanır. Aynı kategori birden çok kez eklenebilir. */
-function ExpensesEditor({ rows, badge, onChange }: { rows: ExpenseDraft[]; badge: ReactNode; onChange: (r: ExpenseDraft[]) => void }) {
+function ExpensesEditor({ rows, badge, onChange, extraKurus }: { rows: ExpenseDraft[]; badge: ReactNode; onChange: (r: ExpenseDraft[]) => void; extraKurus: number }) {
   const [picking, setPicking] = useState(false)
   const [fresh, setFresh] = useState<string | null>(null)
-  const total = rows.reduce((s, r) => s + soft(r.amount), 0)
+  const total = rows.reduce((s, r) => s + soft(r.amount), 0) + extraKurus
   const add = (group: SpendGroup) => {
     const id = newId()
     setFresh(id)
@@ -578,6 +583,43 @@ function ExpensesEditor({ rows, badge, onChange }: { rows: ExpenseDraft[]; badge
         <span className="font-medium text-ink">Toplam aylık gider</span>
         <span className="num font-display text-lg font-bold text-ink">{formatKurus(total)}</span>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Krediler, kart taksitleri ve düzenli ödemeler uygulamadaki Borçlar ve ödemeler sayfasından gelir.
+ * Kişi oraya gidip ekler; dönünce kurulum kaldığı yerden sürer ve eklenenler burada otomatik görünür.
+ */
+function AppPayments({ debts, recurring }: { debts: Array<{ id: string; name: string; minPaymentKurus: number }>; recurring: Array<{ name: string; monthlyKurus: number; installment: boolean }> }) {
+  const lines = [...debts.map((d) => ({ key: d.id, name: d.name, kurus: d.minPaymentKurus, tag: 'Borç' })), ...recurring.map((r, i) => ({ key: `r${i}`, name: r.name, kurus: r.monthlyKurus, tag: r.installment ? 'Taksit' : 'Düzenli' }))]
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-line p-3.5" aria-label="Kredi, taksit ve düzenli ödemeler" role="group">
+      <span className="text-[13.5px] font-medium text-ink">Kredi, taksit ve düzenli ödemeler</span>
+      {lines.length ? (
+        <ul className="flex flex-col gap-1.5">
+          {lines.map((l) => (
+            <li key={l.key} className="flex items-center justify-between gap-3 text-[13px]">
+              <span className="flex min-w-0 items-center gap-2">
+                <Badge tone="info">{l.tag}</Badge>
+                <span className="truncate text-ink">{l.name}</span>
+              </span>
+              <span className="num shrink-0 text-muted">{formatKurusCompact(l.kurus)}/ay</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[12.5px] text-muted">Kredilerini, kart taksitlerini ve düzenli ödemelerini Borçlar ve ödemeler sayfasında ekle; burada otomatik görünür.</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Link to="/borclar" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
+          <Plus className="size-4" /> Kredi / kart taksiti ekle
+        </Link>
+        <Link to="/borclar?bolum=odemeler" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
+          <Plus className="size-4" /> Düzenli ödeme ekle
+        </Link>
+      </div>
+      <p className="text-[12px] text-subtle">Ekledikten sonra Finansal Yolculuğum'a dön; kurulum kaldığı yerden sürer.</p>
     </div>
   )
 }
