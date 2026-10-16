@@ -7,7 +7,7 @@ import { Slider } from '../components/Slider'
 import { AnimatedNumber } from '../components/ui/AnimatedMoney'
 import { Badge, Card, Segmented } from '../components/ui/primitives'
 import { DEFAULT_INFLATION_PCT, nominalPct, SAVING_GROWTH_PCT } from '../domain/assumptions'
-import { buildFreedomPlan, buildJourney, SCENARIOS, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult, type ScenarioKey, type StageId } from '../domain/journey'
+import { buildFreedomPlan, buildJourney, freedomSteps, type FreedomStep, SCENARIOS, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type JourneyResult, type ScenarioKey, type StageId } from '../domain/journey'
 import { formatKurus, formatKurusCompact } from '../domain/money'
 import { cn } from '../lib/cn'
 import { FlowCells } from '../components/MoneyFlowCard'
@@ -25,7 +25,7 @@ const C = { lean: '#059669', fi: '#8b5cf6', fat: '#d97706', path: '#0284c7' }
 const YEAR0 = new Date().getFullYear()
 const yearOf = (months: number) => YEAR0 + Math.ceil(months / 12)
 
-type Milestone = { id: StageId; label: string; color: string; month: number | null; done: boolean }
+type Milestone = { id: StageId | FreedomStep['id']; label: string; color: string; month: number | null; done: boolean }
 
 export function RouteSimulation({ profile, facts, rates, j, strategy }: { profile: JourneyProfile; facts: JourneyFacts; rates: BaseRates; j: JourneyResult; strategy: 'avalanche' | 'snowball' }) {
   const reduced = useReducedMotion()
@@ -72,6 +72,10 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
       const s = stageById.get(id)!
       const month = s.done ? 0 : id === 'debt' && plan.debtFreeMonth !== null && plan.debtFreeMonth > 0 ? plan.debtFreeMonth : (s.etaMonths ?? null)
       return { id, label: s.short, color: 'var(--accent)', month, done: s.done }
+    }),
+    ...freedomSteps(plan).map((x) => {
+      const y = cross(x.targetKurus)
+      return { id: x.id, label: x.short, color: C.path, month: x.done ? 0 : y === null ? null : y * 12, done: x.done }
     }),
     ...levels.map((l) => ({ id: l.id, label: l.label, color: l.color, month: l.year === null ? null : l.year * 12, done: plan.netKurus >= l.value })),
   ]

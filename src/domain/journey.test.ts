@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { recommendedWithdrawalPct, RISK_PROFILES } from './assumptions'
-import { averageMonthlyExpense, buildFreedomPlan, buildJourney, riskToleranceOf, durationLabel, emergencyMonthsFor, formatInBase, indexFactor, monthsToTarget, projectScenario, rebase, simulatePlan, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
+import { averageMonthlyExpense, buildFreedomPlan, buildJourney, riskToleranceOf, durationLabel, emergencyMonthsFor, formatInBase, freedomSteps, indexFactor, monthsToTarget, projectScenario, rebase, simulatePlan, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
 import { normalizeText } from './normalize'
 import type { Transaction } from './types'
 
@@ -290,5 +290,27 @@ describe('Özgürlük Rotası v2: hedef motoru', () => {
     expect(p.netKurus).toBe(20000000)
     expect(buildFreedomPlan(profile({ withdrawalRatePct: 3 }), facts(), { runs: 0 }).withdrawal).toMatchObject({ custom: true, usedPct: 3 })
     expect(buildJourney(old, facts()).plan.fiKurus).toBe(p.fiKurus)
+  })
+})
+
+describe('küçük özgürlük adımları', () => {
+  it('Lean FI öncesini artan küçük adımlara böler ve sıradakini güvence aşamasına koyar', () => {
+    const j = buildJourney(profile(), facts({ assetsKurus: 0, debtsKurus: 0, liquidKurus: 0 }))
+    const steps = freedomSteps(j.plan)
+    expect(steps.length).toBeGreaterThanOrEqual(3)
+    expect(steps[0].id).toBe('year1')
+    expect(steps[0].targetKurus).toBe(j.plan.targetMonthlyKurus * 12)
+    for (let i = 1; i < steps.length; i++) expect(steps[i].targetKurus).toBeGreaterThan(steps[i - 1].targetKurus)
+    expect(steps.every((s) => s.targetKurus < j.plan.leanKurus)).toBe(true)
+    expect(j.nextStep?.id).toBe('year1')
+    expect(j.stages.find((s) => s.id === 'security')!.step?.id).toBe('year1')
+  })
+  it('geçilen adımları işaretler, güvence tamamsa adım göstermez', () => {
+    const base = buildJourney(profile(), facts())
+    const rich = buildJourney(profile(), facts({ assetsKurus: base.plan.fiKurus * 0.3, liquidKurus: base.plan.fiKurus * 0.3 }))
+    expect(rich.steps.filter((s) => s.done).map((s) => s.id)).toEqual(expect.arrayContaining(['year1', 'pct10', 'pct25']))
+    expect(rich.nextStep && rich.nextStep.targetKurus).toBeGreaterThan(rich.plan.netKurus)
+    const done = buildJourney(profile(), facts({ assetsKurus: base.plan.fiKurus, liquidKurus: base.plan.fiKurus }))
+    expect(done.nextStep).toBeNull()
   })
 })

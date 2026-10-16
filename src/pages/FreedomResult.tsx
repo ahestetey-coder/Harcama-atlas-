@@ -5,7 +5,7 @@ import { Slider } from '../components/Slider'
 import { Card, More } from '../components/ui/primitives'
 import { FAT_FACTOR, LEAN_FACTOR, MC_RUNS } from '../domain/assumptions'
 import { MONTH_NAMES } from '../domain/dates'
-import { buildFreedomPlan, formatInBase, reachDateLabel, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type PlanBase } from '../domain/journey'
+import { buildFreedomPlan, durationLabel, formatInBase, freedomSteps, reachDateLabel, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type PlanBase } from '../domain/journey'
 import { formatKurus } from '../domain/money'
 import { cn } from '../lib/cn'
 
@@ -46,7 +46,10 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
   const late = midAge === null || midAge > v.targetAge
   const debtDate = v.debtFreeMonth === null ? 'Kapanmıyor' : v.debtFreeMonth === 0 ? 'Borç yok' : reachDateLabel(v.debtFreeMonth, today)
   const nextEnds = [...v.debtEnds.filter((d) => d.month !== null).map((d) => ({ name: d.name, month: d.month!, freed: d.freedKurus })), ...v.recurringEnds.map((r) => ({ name: r.name, month: r.month, freed: r.freedKurus }))].sort((a, b) => a.month - b.month)
+  const steps = freedomSteps(v, inBase)
+  const step = v.netKurus < v.leanKurus ? (steps.find((x) => !x.done) ?? null) : null
   const levels = [
+    ...steps.map((x) => ({ key: x.id, label: x.title, stage: 'Ara adım', value: x.targetKurus })),
     { key: 'lean', label: `Lean FI · sade (%${LEAN_FACTOR * 100})`, stage: 'Finansal güvence', value: v.leanKurus },
     { key: 'fi', label: 'FI · hedefiniz', stage: 'Finansal bağımsızlık', value: v.fiKurus },
     { key: 'fat', label: `Fat FI · rahat (%${FAT_FACTOR * 100})`, stage: 'Finansal özgürlük', value: v.fatKurus },
@@ -55,9 +58,23 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
   return (
     <section className="flex flex-col gap-4" aria-label="Özgürlük hedefi">
       <Card className="p-5">
-        <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">Finansal özgürlük hedefiniz</div>
-        <div className="num mt-1 font-display text-[34px] font-bold leading-none text-ink">{inBase(v.fiKurus)}</div>
-        <p className="mt-1.5 text-[13px] text-muted">Bugünün parasıyla.</p>
+        {step ? (
+          <>
+            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">Sıradaki özgürlük adımınız · {step.title}</div>
+            <div className="num mt-1 font-display text-[34px] font-bold leading-none text-ink">{inBase(step.targetKurus)}</div>
+            <p className="mt-1.5 text-[13px] text-muted">
+              {step.what}. {step.leftText}
+              {step.etaMonths != null && `, bu hızla ~${durationLabel(step.etaMonths)}`}.
+            </p>
+            <p className="mt-1 text-[12.5px] text-subtle">Tam bağımsızlık hedefi {inBase(v.fiKurus)}; oraya bu küçük adımlarla gidilir. Bugünün parasıyla.</p>
+          </>
+        ) : (
+          <>
+            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">Finansal özgürlük hedefiniz</div>
+            <div className="num mt-1 font-display text-[34px] font-bold leading-none text-ink">{inBase(v.fiKurus)}</div>
+            <p className="mt-1.5 text-[13px] text-muted">Bugünün parasıyla.</p>
+          </>
+        )}
         <More>
           Yıllık {formatKurus(v.annualNeedKurus)} çekim ÷ %{v.withdrawal.usedPct.toLocaleString('tr-TR')} çekim oranı ({v.retirementYears} yıllık çekim süresi
           {v.withdrawal.custom ? `; önerilen %${v.withdrawal.recommendedPct.toLocaleString('tr-TR')}` : ', süreye göre önerilen'}).
@@ -67,11 +84,12 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
           <Mini label="Bugünkü hızla" value={midAge === null ? 'Ulaşılamıyor' : `${midAge} yaşında`} tone={late ? 'warn' : 'good'} />
           <Mini label="Tasarruf oranı" value={`%${Math.round(v.savingRate * 100)}`} />
         </div>
-        <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Seviyeler">
+        <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Seviyeler">
           {levels.map((l) => {
             const done = v.netKurus >= l.value
+            const focus = step ? l.key === step.id : l.key === 'fi'
             return (
-              <li key={l.key} className={cn('rounded-xl border p-3', l.key === 'fi' ? 'border-accent' : 'border-line')}>
+              <li key={l.key} className={cn('rounded-xl border p-3', focus ? 'border-accent' : 'border-line')}>
                 <div className="text-[12px] text-muted">{l.label}</div>
                 <div className="num text-[15px] font-semibold text-ink">{inBase(l.value)}</div>
                 <div className={cn('mt-0.5 text-[11.5px]', done ? 'font-medium text-accent' : 'text-subtle')}>
