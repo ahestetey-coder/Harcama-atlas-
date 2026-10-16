@@ -4,7 +4,7 @@ import { budgetStatus, DEFAULT_BUDGET_PLAN, type BudgetPlan, type BudgetStatus }
 import { budgetFacts, READ_LOCKED_DATA, type FactsGates } from '../domain/budgetFacts'
 import { buildBucketBudget, fixedSpendSplit, toAutoBudget } from '../domain/bucketBudget'
 import { periodOf, todayIso } from '../domain/dates'
-import { buildMoneyFlow, fixedShares, flowSpent, personalShares, type MoneyFlowResult } from '../domain/moneyFlow'
+import { buildMoneyFlow, flowSpent, RULE_SHARES, type MoneyFlowResult } from '../domain/moneyFlow'
 import { addMonthsClamped, fixedPayments, installmentPlans, progressOf, upcomingPayments, type DuePayment } from '../domain/recurring'
 import { CONSUMER_DEBT, debtMonthlyPayment, debtTypeOf, holdingSummary, portfolio } from '../domain/assets'
 import { estimatedMinPayment } from '../domain/coach'
@@ -102,8 +102,8 @@ export function useBudgetStatus(month: string, enabled = true): BudgetStatus | n
 }
 
 /**
- * Aylık paranın yolu: gelirin dört kovaya hedef dağılımı ve dönemde harcanan. Hedefler her pakette
- * Bütçe sayfasındaki dört kovalı motordan; motor kurulamazsa sabit 50/30/20. incomeKurus verilmezse motorun geliri.
+ * Aylık paranın yolu: 50/30/20 hedefleri ve dönemde harcanan (her pakette aynı). incomeKurus verilmezse
+ * Bütçe sayfasındaki gelir.
  */
 export function useMoneyFlow(opts: { month?: string; incomeKurus?: number } = {}): MoneyFlowResult | null {
   const personal = usePersonalTransactions()
@@ -117,10 +117,9 @@ export function useMoneyFlow(opts: { month?: string; incomeKurus?: number } = {}
     const income = incomeKurus ?? auto?.incomeKurus ?? 0
     if (income <= 0) return null
     const keys = new Set((recurring ?? []).filter((r) => r.kind === 'installment').map((r) => r.matchKey ?? '').filter(Boolean))
-    const spent = flowSpent(personal.counted, month ?? periodOf(todayIso(), startDay), startDay, categories, keys)
-    const mine = auto ? personalShares(auto) : null
-    const hasDebt = spent.debt > 0 || (auto?.debtKurus ?? 0) > 0
-    return buildMoneyFlow(income, mine ?? fixedShares(hasDebt), spent, !!mine)
+    const fixedKeys = new Set((recurring ?? []).filter((r) => r.kind !== 'installment' && r.active).map((r) => r.matchKey ?? '').filter(Boolean))
+    const spent = flowSpent(personal.counted, month ?? periodOf(todayIso(), startDay), startDay, categories, keys, fixedKeys)
+    return buildMoneyFlow(income, RULE_SHARES, spent)
   }, [personal, auto, recurring, categories, month, incomeKurus, startDay])
 }
 
