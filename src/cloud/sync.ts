@@ -493,3 +493,18 @@ export async function syncAll(repo: AtlasRepository, backend: CloudBackend): Pro
   }
   return report
 }
+
+/**
+ * "Verilerimi sıfırla": kişinin ortak gruplara eklediği harcamaları buluttan siler (diğer üyelerde de
+ * kalkar). Gruplar ve üyelikler kalır. Silinen kayıt sayısını döner.
+ */
+export async function deleteMyCloudTransactions(cloud: CloudBackend): Promise<number> {
+  const me = cloud.userId()
+  if (!me) return 0
+  const ids: string[] = []
+  for (const g of await cloud.listGroups()) {
+    for (const r of await cloud.pull(g.id, null)) if (r.user_id === me && !r.deleted) ids.push(r.id)
+  }
+  for (let i = 0; i < ids.length; i += 500) await cloud.remove(ids.slice(i, i + 500))
+  return ids.length
+}

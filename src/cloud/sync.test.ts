@@ -4,7 +4,7 @@ import { createDb, type AtlasDb } from '../data/db'
 import { AtlasRepository, UserFacingError } from '../data/repository'
 import { buildInviteLink, parseInvite } from './config'
 import { MemoryCloud } from './memoryBackend'
-import { adoptCloudIdentity, joinWithInvite, leaveGroup, markSettlementPayment, setGroupBudget, setGroupCycle, settleGroupPeriod, shareGroup, syncAll, unsettleGroupPeriod } from './sync'
+import { adoptCloudIdentity, deleteMyCloudTransactions, joinWithInvite, leaveGroup, markSettlementPayment, setGroupBudget, setGroupCycle, settleGroupPeriod, shareGroup, syncAll, unsettleGroupPeriod } from './sync'
 
 const OSMAN = '11111111-1111-1111-1111-111111111111'
 const AYSE = '22222222-2222-2222-2222-222222222222'
@@ -46,6 +46,19 @@ async function setup() {
 }
 
 describe('bulut eşitleme', () => {
+  it('verilerimi sıfırla: yalnızca kişinin kendi bulut harcamaları silinir, diğer üyede de kalkar', async () => {
+    const { osman, ayse, oCloud, aCloud } = await setup()
+    await osman.addTransaction({ date: '2026-09-10', amountKurus: 30000, type: 'expense', description: 'Migros', categoryId: 'cat-market', groupId: 'grp-ortak' })
+    await ayse.addTransaction({ date: '2026-09-13', amountKurus: 12000, type: 'expense', description: 'Fatura', categoryId: 'cat-faturalar', groupId: 'grp-ortak' })
+    await syncAll(osman, oCloud)
+    await syncAll(ayse, aCloud)
+    expect(await deleteMyCloudTransactions(oCloud)).toBe(1)
+    expect([...cloud.rows.values()].filter((r) => !r.deleted).map((r) => r.description)).toEqual(['Fatura'])
+    await syncAll(ayse, aCloud)
+    expect((await ayse.db.transactions.toArray()).map((t) => t.description)).toEqual(['Fatura'])
+    expect(cloud.groups.size).toBe(1)
+  })
+
   it('ortak gruptaki harcamalar iki cihaz arasında eşitlenir; kişisel harcamalar buluta gitmez', async () => {
     const { osman, ayse, oCloud, aCloud, joined } = await setup()
     // Ayşe'nin kendi "Ortak" grubu paylaşılan gruba bağlandı
