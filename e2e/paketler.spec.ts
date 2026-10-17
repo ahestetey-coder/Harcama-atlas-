@@ -551,7 +551,7 @@ test('Özet: bütçe aşımı uyarısı tarihin altında kırmızı, dönem seç
   expect(await y(month)).toBeLessThan(await y(page.locator('#net-title')))
 })
 
-test('Rota kurulumu: taksit ve kredi açılır pencereden eklenir, Borçlar ve ödemeler sayfasına da işlenir', async ({ page }) => {
+test('Rota kurulumu: taksit, kredi ve birikim açılır pencereden eklenir, ilgili sayfalara da işlenir', async ({ page }) => {
   await open(page, 'paketler')
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
   await page.goto('./#/yolculuk')
@@ -587,6 +587,21 @@ test('Rota kurulumu: taksit ve kredi açılır pencereden eklenir, Borçlar ve �
   await expect(debt).toBeHidden()
   await expect(t).toContainText('Kredi kartı borcu')
 
+  // Birikim de kurulumdan çıkmadan eklenir ve Yatırımlarım'a işlenir
+  await t.getByRole('button', { name: 'Onayla ve devam' }).click()
+  await expect(t.getByRole('heading', { name: 'Birikimin' })).toBeVisible()
+  await t.getByRole('button', { name: 'Birikimini kayıtlı ekle' }).click()
+  const inv = page.getByRole('dialog', { name: 'Yatırım ekle' })
+  await inv.getByLabel('Ad', { exact: true }).fill('Vadeli mevduat')
+  await inv.getByLabel('Tutar (TL)').fill('50.000')
+  await inv.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(inv).toBeHidden()
+  await expect(t.getByRole('heading', { name: 'Birikimin' })).toBeVisible()
+  await expect(t).toContainText('Birikimin Yatırımlarım sayfasından geldi.')
+  await expect(t.getByRole('button', { name: 'Birikim ekle' })).toBeVisible()
+
+  await page.goto('./#/yatirimlar')
+  await expect(page.getByRole('main')).toContainText('Vadeli mevduat')
   await page.goto('./#/borclar')
   await expect(page.getByRole('main')).toContainText('Kredi kartı borcu')
   await page.goto('./#/borclar?bolum=odemeler')

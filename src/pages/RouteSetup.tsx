@@ -103,6 +103,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   const [editing, setEditing] = useState<Editing>(null)
   const [payDraft, setPayDraft] = useState<Draft | null>(null)
   const addDebt = () => setEditing({ kind: 'debt', debtType: 'card' })
+  const addAsset = () => setEditing({ kind: 'deposit' })
   const editDebt = (id: string) => {
     const asset = assets?.find((a) => a.id === id)
     if (asset) setEditing({ kind: 'debt', asset })
@@ -446,9 +447,9 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                   </div>
                   <div className="col-span-2 flex items-center gap-2">
                     <StatusBadge s="app" />
-                    <Link to="/yatirimlar" className="font-medium text-accent hover:underline">
-                      Yatırımlarım'da düzenle
-                    </Link>
+                    <button type="button" onClick={addAsset} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+                      <Plus className="size-4" /> Birikim ekle
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -462,6 +463,10 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                     <MoneyField id="rs-bes" label="BES" value={f.pension} onChange={(v) => set('pension', v)} />
                   </div>
                   {money('invest', 'Her ay düzenli yatırıma ayırdığın')}
+                  <button type="button" onClick={addAsset} className="inline-flex h-10 items-center gap-1.5 self-start rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
+                    <Plus className="size-4" /> Birikimini kayıtlı ekle
+                  </button>
+                  <p className="-mt-2 text-[12px] text-subtle">Eklediklerin Yatırımlarım sayfasına da işlenir; fiyatları otomatik güncellenir ve buradaki tahminlerin yerini alır.</p>
                 </>
               ))}
             {s.key === 'hedef' && (
