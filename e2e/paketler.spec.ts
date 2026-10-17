@@ -426,6 +426,16 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   await expect(sources).toContainText('Grable')
   await expect(sources).toContainText('Milevsky')
   await expect(page.getByText(/Henüz yayınlanmış rapor yok/)).toBeVisible()
+  // Kişi kendi bağımsızlık hedefini yazar; aşamalar ona göre hesaplanır
+  await page.goto('./#/yolculuk')
+  const own = page.getByRole('region', { name: 'Özgürlük hedefi' })
+  await own.getByRole('button', { name: 'Hedefi kendim belirle' }).click()
+  await own.getByLabel(/Bağımsızlık hedefin/).fill('10.000.000')
+  await own.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(own).toContainText('Kendi hedefin')
+  await expect(own.getByRole('list', { name: 'Seviyeler' })).toContainText('10.000.000,00 ₺')
+  await own.getByRole('button', { name: 'Önerilene dön' }).click()
+  await expect(own).toContainText('Hedefi kendim belirle')
 })
 
 test('Plus+ koç: borç önce kapanır, yatırım tutarı ve yapılandırma hesabı; hazır sorular yanıtlanır', async ({ page }) => {

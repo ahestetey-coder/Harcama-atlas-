@@ -2,12 +2,15 @@ import { BookOpen, CalendarCheck, Check, Gauge, Hourglass, PiggyBank, Target } f
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Slider } from '../components/Slider'
-import { Card, More } from '../components/ui/primitives'
+import { Button, Card, Input, More } from '../components/ui/primitives'
 import { FAT_FACTOR, LEAN_FACTOR, MC_RUNS } from '../domain/assumptions'
 import { MONTH_NAMES } from '../domain/dates'
-import { buildFreedomPlan, durationLabel, formatInBase, freedomSteps, reachDateLabel, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type PlanBase } from '../domain/journey'
+import { buildFreedomPlan, durationLabel, planAmountToKurus, formatInBase, freedomSteps, reachDateLabel, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type PlanBase } from '../domain/journey'
 import { formatKurus } from '../domain/money'
 import { cn } from '../lib/cn'
+import { toUserMessage } from '../data/repository'
+import { useRepo } from '../state/data'
+import { useUi } from '../state/ui'
 
 const shortTl = (k: number) => {
   const v = k / 100
@@ -84,6 +87,7 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
           <Mini label="Bugünkü hızla" value={midAge === null ? 'Ulaşılamıyor' : `${midAge} yaşında`} tone={late ? 'warn' : 'good'} />
           <Mini label="Tasarruf oranı" value={`%${Math.round(v.savingRate * 100)}`} />
         </div>
+        <OwnGoal profile={profile} rates={rates} plan={plan} inBase={inBase} />
         <ol className="mt-4 flex flex-col gap-1.5" aria-label="Seviyeler">
           {levels.map((l, i) => {
             const done = v.netKurus >= l.value
@@ -217,6 +221,63 @@ function Future({ label, value, note }: { label: string; value: string; note: st
       <dt className="text-[12px] text-muted">{label}</dt>
       <dd className="num text-[16px] font-semibold text-ink">{value}</dd>
       <dd className="mt-0.5 text-[11.5px] text-subtle">{note}</dd>
+    </div>
+  )
+}
+
+/** Kişi kendi bağımsızlık hedefini plan biriminde yazar; bütün aşamalar bu tutara göre hesaplanır. */
+function OwnGoal({ profile, rates, plan, inBase }: { profile: JourneyProfile; rates: BaseRates; plan: FreedomPlan; inBase: (k: number) => string }) {
+  const repo = useRepo()
+  const { toast } = useUi()
+  const base: PlanBase = profile.base ?? 'TRY'
+  const unit = base === 'USD' ? '$' : base === 'XAU' ? 'gr altın' : '₺'
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const save = async (customFiKurus: number | undefined) => {
+    await repo
+      .saveSettings({ journey: { ...profile, customFiKurus } })
+      .then(() => setOpen(false))
+      .catch((e: unknown) => toast(toUserMessage(e), { kind: 'error' }))
+  }
+  const submit = () => {
+    const k = planAmountToKurus(Number(text.replace(/[^\d]/g, '')), profile, rates)
+    if (k === null) return toast('Geçerli bir tutar yazın.', { kind: 'error' })
+    void save(k)
+  }
+  if (open)
+    return (
+      <form
+        className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-line p-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+      >
+        <label className="min-w-0 flex-1 text-[12.5px] text-muted">
+          Bağımsızlık hedefin ({unit})
+          <Input autoFocus inputMode="numeric" value={text} onChange={(e) => setText(e.target.value)} placeholder={`Örn. ${inBase(plan.fiKurus)}`} className="mt-1" />
+        </label>
+        <Button size="sm" type="submit">
+          Kaydet
+        </Button>
+        <Button size="sm" variant="soft" type="button" onClick={() => setOpen(false)}>
+          Vazgeç
+        </Button>
+      </form>
+    )
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+      <span className="text-muted">{plan.ownGoal ? `Kendi hedefin · önerilen ${inBase(plan.suggestedFiKurus)}` : 'Hedef senin harcamalarından önerildi'}</span>
+      <span className="flex gap-1">
+        <button type="button" className="rounded-lg px-2 py-1 font-semibold text-accent hover:bg-accent-soft" onClick={() => setOpen(true)}>
+          {plan.ownGoal ? 'Hedefi değiştir' : 'Hedefi kendim belirle'}
+        </button>
+        {plan.ownGoal && (
+          <button type="button" className="rounded-lg px-2 py-1 font-semibold text-muted hover:bg-surface-2" onClick={() => void save(undefined)}>
+            Önerilene dön
+          </button>
+        )}
+      </span>
     </div>
   )
 }
