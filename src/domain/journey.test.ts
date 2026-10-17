@@ -297,7 +297,7 @@ describe('küçük özgürlük adımları', () => {
   it('Lean FI öncesini artan küçük adımlara böler ve sıradakini güvence aşamasına koyar', () => {
     const j = buildJourney(profile(), facts({ assetsKurus: 0, debtsKurus: 0, liquidKurus: 0 }))
     const steps = freedomSteps(j.plan)
-    expect(steps.length).toBeGreaterThanOrEqual(3)
+    expect(steps.map((s) => s.id).every((id) => id === 'year1' || id === 'coast')).toBe(true)
     expect(steps[0].id).toBe('year1')
     expect(steps[0].targetKurus).toBe(j.plan.targetMonthlyKurus * 12)
     for (let i = 1; i < steps.length; i++) expect(steps[i].targetKurus).toBeGreaterThan(steps[i - 1].targetKurus)
@@ -308,7 +308,7 @@ describe('küçük özgürlük adımları', () => {
   it('geçilen adımları işaretler, güvence tamamsa adım göstermez', () => {
     const base = buildJourney(profile(), facts())
     const rich = buildJourney(profile(), facts({ assetsKurus: base.plan.fiKurus * 0.3, liquidKurus: base.plan.fiKurus * 0.3 }))
-    expect(rich.steps.filter((s) => s.done).map((s) => s.id)).toEqual(expect.arrayContaining(['year1', 'pct10', 'pct25']))
+    expect(rich.steps.filter((s) => s.done).map((s) => s.id)).toEqual(expect.arrayContaining(['year1']))
     expect(rich.nextStep && rich.nextStep.targetKurus).toBeGreaterThan(rich.plan.netKurus)
     const done = buildJourney(profile(), facts({ assetsKurus: base.plan.fiKurus, liquidKurus: base.plan.fiKurus }))
     expect(done.nextStep).toBeNull()

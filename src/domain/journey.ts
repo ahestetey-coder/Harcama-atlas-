@@ -280,7 +280,7 @@ export interface Stage {
 
 /** Büyük sermaye hedefinden önceki küçük, ulaşılabilir özgürlük adımları (bugünün parasıyla). */
 export interface FreedomStep {
-  id: 'year1' | 'pct10' | 'pct25' | 'coast' | 'half'
+  id: 'year1' | 'coast'
   title: string
   /** Rota takvimindeki kısa ad. */
   short: string
@@ -299,7 +299,7 @@ export interface FreedomStep {
 }
 
 /**
- * Finansal güvenceden (Lean FI) önceki ara adımlar: 1 yıllık gider, hedefin %10'u, %25'i, Coast FI ve yarısı.
+ * Finansal güvenceden (Lean FI) önceki ara adımlar: 1 yıllık gider ve Coast FI.
  * Tutarlar kullanıcının hedef giderinden ve çekim oranından gelir; büyük hedefi küçük basamaklara böler.
  */
 export function freedomSteps(plan: Pick<FreedomPlan, 'fiKurus' | 'leanKurus' | 'coastKurus' | 'netKurus' | 'monthlySavingKurus' | 'realReturnPct' | 'targetMonthlyKurus' | 'withdrawal'>, fmt: (kurus: number) => string = tl): FreedomStep[] {
@@ -309,10 +309,7 @@ export function freedomSteps(plan: Pick<FreedomPlan, 'fiKurus' | 'leanKurus' | '
   const cover = (k: number) => Math.round((k * swr) / 12)
   const raw: Array<Pick<FreedomStep, 'id' | 'title' | 'short' | 'what' | 'targetKurus'>> = [
     { id: 'year1', title: 'Bir yıllık özgürlük', short: '1 yıl', what: 'Bir yıl hiç çalışmasanız da hedeflediğiniz yaşamı sürdürebilirsiniz', targetKurus: plan.targetMonthlyKurus * 12 },
-    { id: 'pct10', title: '%10 özgürlük', short: '%10', what: '', targetKurus: Math.round(fi * 0.1) },
-    { id: 'pct25', title: 'Çeyrek özgürlük', short: '%25', what: '', targetKurus: Math.round(fi * 0.25) },
     { id: 'coast', title: 'Coast FI', short: 'Coast', what: 'Bundan sonra hiç eklemeseniz de birikim getirisiyle hedef yaşınızda tamamlanır', targetKurus: plan.coastKurus },
-    { id: 'half', title: 'Yarı özgürlük', short: '%50', what: '', targetKurus: Math.round(fi * 0.5) },
   ]
   const net = Math.max(0, plan.netKurus)
   const steps: FreedomStep[] = []
