@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { addExpense, open, takeFreedomTest } from './helpers'
+import { addExpense, answerQuestions, open, takeFreedomTest } from './helpers'
 
 test('Plus bütçe: ücretsizde kilitli; önizlemede kategori limiti, uyarı ve tahmin çalışır', async ({ page }) => {
   await open(page, 'butce')
@@ -549,4 +549,46 @@ test('Özet: bütçe aşımı uyarısı tarihin altında kırmızı, dönem seç
   const month = page.getByRole('button', { name: 'Önceki ay' })
   expect(await y(warn)).toBeLessThan(await y(month))
   expect(await y(month)).toBeLessThan(await y(page.locator('#net-title')))
+})
+
+test('Rota kurulumu: taksit ve kredi açılır pencereden eklenir, Borçlar ve ödemeler sayfasına da işlenir', async ({ page }) => {
+  await open(page, 'paketler')
+  await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
+  await page.goto('./#/yolculuk')
+  await page.getByRole('link', { name: 'Özgürlük rotamı çıkar' }).click()
+  await answerQuestions(page)
+  await page.getByRole('button', { name: /Rotamı kur · 5 dk/ }).click()
+  const t = page.getByRole('region', { name: 'Rota kurulumu' })
+  await t.getByLabel('Aylık net ana gelir').fill('50.000')
+  await t.getByRole('button', { name: 'Onayla ve devam' }).click()
+  await expect(t.getByRole('heading', { name: 'Giderlerin' })).toBeVisible()
+
+  await t.getByRole('button', { name: 'Taksit / düzenli ödeme ekle' }).click()
+  const dlg = page.getByRole('dialog', { name: 'Taksit ekle' })
+  await dlg.getByLabel('Ad').fill('Telefon taksiti')
+  await dlg.getByLabel('Aylık taksit tutarı (TL)').fill('1.500')
+  await dlg.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(dlg).toBeHidden()
+  // Kurulumdan çıkmadan eklendi ve hemen listede
+  await expect(t.getByRole('heading', { name: 'Giderlerin' })).toBeVisible()
+  await expect(t.getByRole('group', { name: 'Kredi, taksit ve düzenli ödemeler' })).toContainText('Telefon taksiti')
+  await t.getByRole('button', { name: 'Gider ekle' }).click()
+  await t.getByRole('group', { name: 'Gider kategorisi' }).getByRole('button', { name: 'Kira / konut' }).click()
+  await t.getByLabel('Kira / konut', { exact: true }).fill('20.000')
+
+  await t.getByRole('button', { name: 'Onayla ve devam' }).click()
+  await expect(t.getByRole('heading', { name: 'Borçların' })).toBeVisible()
+  await t.getByRole('button', { name: /kayıtlı borç olarak ekle/ }).click()
+  const debt = page.getByRole('dialog')
+  await debt.getByLabel('Ad', { exact: true }).fill('Kredi kartı borcu')
+  await debt.getByLabel('Borç tutarı (TL)').fill('30.000')
+  await debt.getByLabel('Asgari ödeme (TL)').fill('3.000')
+  await debt.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(debt).toBeHidden()
+  await expect(t).toContainText('Kredi kartı borcu')
+
+  await page.goto('./#/borclar')
+  await expect(page.getByRole('main')).toContainText('Kredi kartı borcu')
+  await page.goto('./#/borclar?bolum=odemeler')
+  await expect(page.getByRole('main')).toContainText('Telefon taksiti')
 })

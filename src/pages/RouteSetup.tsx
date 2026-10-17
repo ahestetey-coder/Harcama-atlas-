@@ -13,9 +13,11 @@ import { estimate, estimateCapital, quickResult, reachRange, seedProfile, target
 import { applySetup, clearRouteDraft, loadRouteDraft, saveRouteDraft, SETUP_DEBT_LABEL, type RouteSetupData, type SetupDebt, type SetupDebtType } from '../domain/routeSetup'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
-import { useRepo, useSettings } from '../state/data'
+import { useAssets, useRepo, useSettings } from '../state/data'
 import { usePlan } from '../state/plan'
 import { useUi } from '../state/ui'
+import { AssetEditor, type Editing } from './AssetsPage'
+import { RecurringEditor, type Draft } from './PaymentsSection'
 import { MoneyFlow } from './RouteSimulation'
 
 /**
@@ -96,6 +98,15 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
 
   const appSpend = facts.spendingByGroup && SPEND_GROUPS.some((g) => facts.spendingByGroup![g] > 0) ? facts.spendingByGroup : null
   const appDebts = facts.debtList ?? []
+  const assets = useAssets()
+  // Kredi/taksit/düzenli ödeme kurulumdan çıkmadan açılır pencerede eklenir; kayıt Borçlar ve ödemeler sayfasına düşer
+  const [editing, setEditing] = useState<Editing>(null)
+  const [payDraft, setPayDraft] = useState<Draft | null>(null)
+  const addDebt = () => setEditing({ kind: 'debt', debtType: 'card' })
+  const editDebt = (id: string) => {
+    const asset = assets?.find((a) => a.id === id)
+    if (asset) setEditing({ kind: 'debt', asset })
+  }
   const appAssets = facts.hasAssets
   const recurringFixed = (facts.recurringList ?? []).filter((r) => !r.installment && r.remainingMonths === null).reduce((s, r) => s + r.monthlyKurus, 0)
 
@@ -388,7 +399,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
             {s.key === 'gider' && (
               <>
                 <ExpensesEditor rows={f.expenses} badge={badge('expenses')} onChange={(r) => set('expenses', r)} extraKurus={appDebts.reduce((s, d) => s + d.minPaymentKurus, 0) + (facts.recurringList ?? []).reduce((s, r) => s + r.monthlyKurus, 0)} />
-                <AppPayments debts={appDebts} recurring={facts.recurringList ?? []} />
+                <AppPayments debts={appDebts} recurring={facts.recurringList ?? []} onAddDebt={addDebt} onAddPayment={() => setPayDraft({ kind: 'installment' })} />
                 <p className="flex items-center gap-2 text-[12.5px] text-muted">
                   <CalendarClock className="size-4 shrink-0 text-accent" /> Harcamalarını girdikçe bu rakamlar uygulamadaki kayıtlarından güncellenir.
                 </p>
@@ -399,25 +410,27 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                 <ul className="flex flex-col gap-2">
                   {appDebts.map((d) => (
                     <li key={d.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-3.5 py-2.5 text-[13.5px]">
-                      <span className="min-w-0 truncate font-medium text-ink">{d.name}</span>
+                      <button type="button" onClick={() => editDebt(d.id)} className="min-w-0 truncate text-left font-medium text-ink hover:text-accent hover:underline">
+                        {d.name}
+                      </button>
                       <span className="num shrink-0 text-muted">
                         {formatKurusCompact(d.balanceKurus)} · {formatKurusCompact(d.minPaymentKurus)}/ay
                       </span>
                     </li>
                   ))}
-                  <li className="flex items-center gap-2">
+                  <li className="flex flex-wrap items-center gap-2">
                     <StatusBadge s="app" />
-                    <Link to="/borclar" className="text-[13px] font-medium text-accent hover:underline">
-                      Borçlar sayfasında düzenle
-                    </Link>
+                    <button type="button" onClick={addDebt} className="inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline">
+                      <Plus className="size-4" /> Borç ekle
+                    </button>
                   </li>
                 </ul>
               ) : (
                 <>
                   <DebtsEditor debts={f.debts} badge={badge('debts')} onChange={(d) => set('debts', d)} hint={est.debts.length > 0 && !f.debts.length} />
-                  <Link to="/borclar" className="text-[13px] font-medium text-accent hover:underline">
-                    Kredilerini ve kart taksitlerini Borçlar sayfasında eklemek daha sağlıklı; eklenenler buraya otomatik gelir
-                  </Link>
+                  <button type="button" onClick={addDebt} className="text-left text-[13px] font-medium text-accent hover:underline">
+                    Kredini ya da kart borcunu kayıtlı borç olarak ekle; Borçlar ve ödemeler sayfasına da işlenir
+                  </button>
                 </>
               ))}
             {s.key === 'birikim' &&
@@ -529,6 +542,8 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
           {step === STEPS.length - 1 ? 'Rotamı hesapla' : 'Onayla ve devam'}
         </Button>
       </div>
+      <AssetEditor editing={editing} onClose={() => setEditing(null)} />
+      <RecurringEditor draft={payDraft} onClose={() => setPayDraft(null)} />
     </Card>
   )
 }
@@ -630,7 +645,7 @@ function ExpensesEditor({ rows, badge, onChange, extraKurus }: { rows: ExpenseDr
  * Krediler, kart taksitleri ve düzenli ödemeler uygulamadaki Borçlar ve ödemeler sayfasından gelir.
  * Kişi oraya gidip ekler; dönünce kurulum kaldığı yerden sürer ve eklenenler burada otomatik görünür.
  */
-function AppPayments({ debts, recurring }: { debts: Array<{ id: string; name: string; minPaymentKurus: number }>; recurring: Array<{ name: string; monthlyKurus: number; installment: boolean }> }) {
+function AppPayments({ debts, recurring, onAddDebt, onAddPayment }: { debts: Array<{ id: string; name: string; minPaymentKurus: number }>; recurring: Array<{ name: string; monthlyKurus: number; installment: boolean }>; onAddDebt: () => void; onAddPayment: () => void }) {
   const lines = [...debts.map((d) => ({ key: d.id, name: d.name, kurus: d.minPaymentKurus, tag: 'Borç' })), ...recurring.map((r, i) => ({ key: `r${i}`, name: r.name, kurus: r.monthlyKurus, tag: r.installment ? 'Taksit' : 'Düzenli' }))]
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-line p-3.5" aria-label="Kredi, taksit ve düzenli ödemeler" role="group">
@@ -648,17 +663,16 @@ function AppPayments({ debts, recurring }: { debts: Array<{ id: string; name: st
           ))}
         </ul>
       ) : (
-        <p className="text-[12.5px] text-muted">Kredilerini, kart taksitlerini ve düzenli ödemelerini Borçlar ve ödemeler sayfasında ekle; burada otomatik görünür.</p>
+        <p className="text-[12.5px] text-muted">Kredilerini, kart taksitlerini ve düzenli ödemelerini buradan ekle; Borçlar ve ödemeler sayfasına da işlenir.</p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Link to="/borclar" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
-          <Plus className="size-4" /> Kredi / kart taksiti ekle
-        </Link>
-        <Link to="/borclar?bolum=odemeler" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
-          <Plus className="size-4" /> Düzenli ödeme ekle
-        </Link>
+        <button type="button" onClick={onAddDebt} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
+          <Plus className="size-4" /> Kredi / kart borcu ekle
+        </button>
+        <button type="button" onClick={onAddPayment} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
+          <Plus className="size-4" /> Taksit / düzenli ödeme ekle
+        </button>
       </div>
-      <p className="text-[12px] text-subtle">Ekledikten sonra Finansal Yolculuğum'a dön; kurulum kaldığı yerden sürer.</p>
     </div>
   )
 }
