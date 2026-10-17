@@ -31,12 +31,15 @@ export function flowSpent(txs: Transaction[], month: MonthKey, startDay: number,
   return { needs: Math.max(0, needs), wants: Math.max(0, wants) }
 }
 
-/** Dönemde Yatırımlarım'a eklenen (alış − satış) ve borç kayıtlarından düşülen tutar. */
+/**
+ * Dönemde Yatırımlarım'a eklenen (alış − satış) ve borç kayıtlarından düşülen tutar.
+ * Kaydın ilk işlemi mevcut birikimin ya da borcun açılış bakiyesidir; bu ayın birikimi sayılmaz.
+ */
 export function flowSaved(assets: Asset[], month: MonthKey, startDay: number): number {
   let saved = 0
   for (const a of assets) {
-    for (const t of a.trades) {
-      if (periodOf(t.date, startDay) !== month) continue
+    for (const [i, t] of a.trades.entries()) {
+      if (i === 0 || periodOf(t.date, startDay) !== month) continue
       const value = Math.round(t.quantity * t.unitPriceKurus)
       // Borçta satış = bakiye azaldı (ödeme); yatırımda alış = birikim
       if (a.kind === 'debt') saved += t.side === 'sell' ? value : 0
