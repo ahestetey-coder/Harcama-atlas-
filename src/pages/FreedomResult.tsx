@@ -1,4 +1,4 @@
-import { BookOpen, CalendarCheck, Gauge, Hourglass, PiggyBank, Target } from 'lucide-react'
+import { BookOpen, CalendarCheck, Check, Gauge, Hourglass, PiggyBank, Target } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Slider } from '../components/Slider'
@@ -80,26 +80,31 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
           {v.withdrawal.custom ? `; önerilen %${v.withdrawal.recommendedPct.toLocaleString('tr-TR')}` : ', süreye göre önerilen'}).
         </More>
         <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3" role="group" aria-label="Canlı özet">
-          <Mini label="Hedef birikim" value={shortTl(v.fiKurus) + ' ₺'} />
+          <Mini label="Hedef birikim" value={base === 'TRY' ? shortTl(v.fiKurus) + ' ₺' : inBase(v.fiKurus)} />
           <Mini label="Bugünkü hızla" value={midAge === null ? 'Ulaşılamıyor' : `${midAge} yaşında`} tone={late ? 'warn' : 'good'} />
           <Mini label="Tasarruf oranı" value={`%${Math.round(v.savingRate * 100)}`} />
         </div>
-        <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Seviyeler">
-          {levels.map((l) => {
+        <ol className="mt-4 flex flex-col gap-1.5" aria-label="Seviyeler">
+          {levels.map((l, i) => {
             const done = v.netKurus >= l.value
             const focus = step ? l.key === step.id : l.key === 'fi'
             return (
-              <li key={l.key} className={cn('rounded-xl border p-3', focus ? 'border-accent' : 'border-line')}>
-                <div className="text-[12px] text-muted">{l.label}</div>
-                <div className="num text-[15px] font-semibold text-ink">{inBase(l.value)}</div>
-                <div className={cn('mt-0.5 text-[11.5px]', done ? 'font-medium text-accent' : 'text-subtle')}>
-                  {l.stage}
-                  {done ? ' · ulaşıldı' : ''}
+              <li key={l.key} className={cn('flex items-center gap-3 rounded-xl border px-3 py-2.5', focus ? 'border-accent bg-accent-soft/40' : 'border-line')}>
+                <span className={cn('grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-bold', done ? 'bg-accent text-white' : focus ? 'border-2 border-accent text-accent' : 'border border-line text-muted')} aria-hidden>
+                  {done ? <Check className="size-4" strokeWidth={3} /> : i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13.5px] font-medium text-ink">{l.label}</div>
+                  <div className={cn('text-[11.5px]', done ? 'font-medium text-accent' : 'text-subtle')}>
+                    {l.stage}
+                    {done ? ' · ulaşıldı' : focus ? ' · sıradaki' : ''}
+                  </div>
                 </div>
+                <div className="num shrink-0 text-[15px] font-semibold text-ink">{inBase(l.value)}</div>
               </li>
             )
           })}
-        </ul>
+        </ol>
       </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
