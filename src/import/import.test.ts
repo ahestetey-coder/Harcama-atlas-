@@ -307,3 +307,71 @@ describe('taranmış ekstre düzenleri', () => {
     expect(out.rows[0].description).toBe('ÖRNEK MARKET KADIKÖY')
   })
 })
+
+describe('nokta ondalıklı ekstre (sarılmış açıklama ve taksit)', () => {
+  // Uydurma veri: "1,234.56" biçimi, iki satıra sarılmış açıklama/taksit, "+" ile yazılan alacaklar
+  let i = 0
+  const L = (y: number, cells: Array<[number, number, string]>) => ({ ...lineXY(1, i++, cells), y })
+  const doc: ParsedDocument = {
+    kind: 'pdf',
+    usedOcr: false,
+    pages: [],
+    rawText: '',
+    lines: [
+      L(10, [[60, 140, 'Hesap Kesim Tarihi'], [280, 340, '15/10/2026']]),
+      L(20, [[60, 140, 'Son Ödeme Tarihi'], [280, 340, '26/10/2026']]),
+      L(40, [[70, 110, 'İşlem Tarihi'], [180, 240, 'Açıklama'], [380, 450, 'TUTAR(TL)'], [465, 545, 'BORÇ(TL) /'], [560, 625, 'ParafPara']]),
+      L(60, [[73, 134, '04/08/2026'], [175, 300, 'ÖRNEK OTEL MUĞLA'], [408, 454, '1,093.34'], [462, 549, '0.00/3-03.Taksit'], [601, 624, '0.00']]),
+      L(77, [[73, 134, '16/09/2026'], [175, 300, 'Örnek Restoran İndirimi'], [406, 454, '+ 117.85'], [601, 624, '0.00']]),
+      L(94, [[73, 134, '16/09/2026'], [175, 300, 'ÖRNEK YEMEK ANKARA'], [408, 454, '2,357.07'], [594, 624, '23.57']]),
+      L(111, [[175, 300, 'ÖRNEK MARKET MAĞAZA A']]),
+      L(118, [[73, 134, '21/09/2026'], [408, 454, '1,371.60'], [594, 624, '13.72']]),
+      L(125, [[175, 220, 'ANKARA']]),
+      L(142, [[73, 134, '22/09/2026'], [175, 300, 'ÖRNEK MAĞAZA İSTANBUL'], [418, 454, '590.70'], [594, 624, '5.90']]),
+      L(149, [[73, 134, '27/09/2026'], [175, 300, 'ÖRNEK MAĞAZA İSTANBUL'], [404, 454, '+ 1,029.00'], [601, 624, '0.00']]),
+      L(166, [[491, 549, '6532.56/9-']]),
+      L(173, [[73, 134, '21/08/2026'], [175, 300, 'ÖRNEK SANAL POS'], [418, 454, '933.22'], [601, 624, '0.00']]),
+      L(180, [[501, 549, '02.Taksit']]),
+      L(197, [[175, 300, 'Hesaptan Ödeme - Teşekkür Ederiz']]),
+      L(204, [[73, 134, '25/09/2026'], [404, 454, '+ 4,708.19'], [601, 624, '0.00']]),
+    ],
+  }
+  const out = parseStatement(doc)
+  const by = (d: string) => out.rows.find((r) => r.description.includes(d))!
+  it('virgül binlik, nokta ondalık tutarları okur', () => {
+    expect(by('OTEL').amountKurus).toBe(109334)
+    expect(by('YEMEK').amountKurus).toBe(235707)
+    expect(out.rows).toHaveLength(8)
+  })
+  it('iki satıra sarılmış açıklamayı birleştirir', () => {
+    expect(out.rows.find((r) => r.amountKurus === 137160)!.description).toBe('ÖRNEK MARKET MAĞAZA A ANKARA')
+    expect(out.rows.find((r) => r.amountKurus === 470819)!.type).toBe('transfer')
+  })
+  it('sarılmış taksit hücresini ve "+" alacakları tanır', () => {
+    expect(by('OTEL').installment).toMatchObject({ current: 3, total: 3 })
+    expect(by('SANAL POS').installment).toMatchObject({ current: 2, total: 9 })
+    expect(by('İndirimi').type).toBe('refund')
+    expect(out.rows.filter((r) => r.description === 'ÖRNEK MAĞAZA İSTANBUL').map((r) => r.type)).toEqual(['expense', 'refund'])
+  })
+  it('son ödeme tarihini bulur, "bir sonraki" tarihi atlar', () => {
+    expect(out.dueDate).toBe('2026-10-26')
+    const next: ParsedDocument = { ...doc, lines: [lineXY(1, 0, [[60, 200, 'Bir Sonraki Son Ödeme Tarihi:'], [280, 340, '25.11.2026']]), lineXY(1, 1, [[60, 200, 'Son Ödeme Tarihi:'], [280, 340, '26.10.2026']])] }
+    expect(parseStatement(next).dueDate).toBe('2026-10-26')
+  })
+  it('"8/8 taksidi" ve hesaptan aktarım', () => {
+    const d2: ParsedDocument = {
+      kind: 'pdf',
+      usedOcr: false,
+      pages: [],
+      rawText: '',
+      lines: [
+        lineXY(1, 0, [[60, 100, 'İŞLEM TARİHİ'], [160, 220, 'AÇIKLAMA'], [500, 530, 'TUTAR'], [560, 640, 'TAKSİT BİLGİSİ']]),
+        lineXY(1, 1, [[60, 110, '16/09/2026'], [120, 300, 'ÖRNEK SİGORTA ISTANBUL TR'], [480, 530, '2.401,78'], [560, 680, '8/8 taksidi (19.214,38)']]),
+        lineXY(1, 2, [[60, 110, '25/09/2026'], [120, 300, '1234-5678 HESAPTAN AKTARIM'], [480, 530, '-6.316,35']]),
+      ],
+    }
+    const o = parseStatement(d2)
+    expect(o.rows[0].installment).toMatchObject({ current: 8, total: 8 })
+    expect(o.rows[1].type).toBe('transfer')
+  })
+})

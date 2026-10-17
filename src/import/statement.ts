@@ -21,7 +21,7 @@ export interface StatementParser {
 
 /** Para tutarı gibi görünen parça: 1.234,56 / 1,234.56 / 150,00- / -99,90 / 25,00 USD / -₺124,22 */
 const AMOUNT_TOKEN =
-  /^[-+(]?\s*(?:₺|\$|€|£)?\s*(?:\d{1,3}(?:[.\s']\d{3})+|\d+)(?:[.,]\d{1,2})?\s*(?:TL|TRY|USD|EUR|GBP|₺|\$|€|£)?\s*[-+)]?\s*(?:TL|TRY|USD|EUR|GBP)?$/i
+  /^[-+(]?\s*(?:₺|\$|€|£)?\s*(?:\d{1,3}(?:[.,\s']\d{3})+|\d+)(?:[.,]\d{1,2})?\s*(?:TL|TRY|USD|EUR|GBP|₺|\$|€|£)?\s*[-+)]?\s*(?:TL|TRY|USD|EUR|GBP)?$/i
 const AMOUNT_IN_TEXT =
   /(?:^|\s)([-+]?\s?(?:₺|\$|€|£)?\s?(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}\s?(?:TL|TRY|USD|EUR|GBP|₺|\$|€)?\s?[-+]?)(?=\s|$)/gi
 const TIME_RE = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g
@@ -203,6 +203,19 @@ export const genericParser: StatementParser = {
     const headerFor = (line: DocLine) => headers.find((h) => h.page === line.page) ?? headers[0]
 
     const infos: LineInfo[] = []
+    /** Tarih/tutar taşımayan, hemen üstteki ve alttaki satırlar (sarılmış açıklama/taksit). */
+    const wrappedNeighbors = (info: LineInfo): LineInfo[] => {
+      const i = infos.indexOf(info)
+      if (i < 0) return []
+      const out: LineInfo[] = []
+      for (const j of [i - 1, i + 1]) {
+        const n = infos[j]
+        if (!n || n.line.page !== info.line.page || n.dateMatch || n.shortDate || n.dayMonth || n.amountCells.length) continue
+        if (Math.abs(n.line.y - info.line.y) > 10 || isSummaryLine(n.text)) continue
+        out.push(n)
+      }
+      return out
+    }
     for (const line of doc.lines) {
       const cells = (line.origin === 'ocr' ? mergeCloseCells(line.cells) : line.cells).map((c) => ({ ...c, text: normCellText(c.text) }))
       const text = cleanDescription(normCellText(line.text))
@@ -256,6 +269,8 @@ export const genericParser: StatementParser = {
       else if (!isPaymentLine(info.text) && !isRefundLine(info.text)) pos++
     }
     const expenseNegative = neg >= 1 && ((explicitPlus > 0 && pos === 0) || (neg >= 2 && neg > pos))
+    // Harcamalar işaretsiz, alacaklar "+ 117,85" gibi açık artıyla yazılmışsa artı tutar alacaktır.
+    const plusMeansCredit = !expenseNegative && explicitPlus > 0 && pos > explicitPlus
     if (expenseNegative)
       notes.push('Bu belgede harcamalar eksi (−) işaretli yazılmış; artı tutarlar iade, indirim veya ödeme olarak yorumlandı. Satırları kontrol edin.')
 
@@ -277,6 +292,15 @@ export const genericParser: StatementParser = {
         if (i === 0 && dateRaw) t = t.replace(dateRaw, '').trim()
         if (t && !DATE_TOKEN_RE.test(t)) descParts.push(t)
       })
+      const wraps = wrappedNeighbors(info)
+      if (!descParts.length) {
+        // Açıklama iki satıra sarılmış ve tarih satırı arada kalmış: üst ve alt satırdaki açıklama parçaları
+        const descX = header?.descX
+        for (const w of wraps) {
+          const c = w.cells[0]
+          if (descX === undefined ? c.x < (amountCell?.x ?? Infinity) - 40 : Math.abs(c.x - descX) < 40) descParts.push(c.text.trim())
+        }
+      }
       const description = splitGluedCity(cleanDescription(descParts.join(' ').replace(TIME_RE, ' ')))
 
       const rowNotes: string[] = []
@@ -292,21 +316,27 @@ export const genericParser: StatementParser = {
       let installmentCell: DocCell | undefined
       if (!installment) {
         for (const c of afterDesc) {
-          const inst = /TAKS[İI]T/i.test(c.text) || /^\d{1,2}\s*\/\s*\d{1,2}$/.test(c.text.trim()) ? detectInstallment(c.text) : null
+          const inst = /TAKS[İI][TD]/i.test(c.text) || /^\d{1,2}\s*\/\s*\d{1,2}$/.test(c.text.trim()) ? detectInstallment(c.text) : null
           if (inst) {
             installment = inst
-            if (/TAKS[İI]T/i.test(c.text)) installmentCell = c
+            if (/TAKS[İI][TD]/i.test(c.text)) installmentCell = c
             break
           }
         }
       }
       if (!installment && header?.installmentX !== undefined) installment = installmentFromCells(cells, header.installmentX)
+      if (!installment && amountCell) {
+        // "6532.56/9-" üstte, "02.Taksit" altta: tutarın sağındaki taksit hücresi iki satıra sarılmış olabilir.
+        const parts = wraps.flatMap((w) => w.cells.filter((c) => c.x >= amountCell.x2).map((c) => c.text.trim()))
+        const inst = parts.length ? detectInstallment(parts.join('').replace(/^[\d.,]+\s*\//, '')) : null
+        if (inst) installment = inst
+      }
 
       if (amountCell) {
         const p = amountFromCell(amountCell, hint)
         if (p.ok) {
           amountKurus = Math.abs(p.kurus)
-          signedForType = expenseNegative ? -p.kurus : p.kurus
+          signedForType = expenseNegative ? -p.kurus : plusMeansCredit && /^\s*\+/.test(amountCell.text) ? -amountKurus : p.kurus
           if (p.note) rowNotes.push(p.note)
         } else if (p.reason === 'ambiguous') {
           candidates = p.candidates?.map(Math.abs)
@@ -496,5 +526,21 @@ export const PARSERS: StatementParser[] = [genericParser]
 
 export function parseStatement(doc: ParsedDocument): ParseOutput {
   const parser = PARSERS.find((p) => p.detect(doc)) ?? genericParser
-  return parser.parse(doc)
+  const out = parser.parse(doc)
+  return out.dueDate ? out : { ...out, dueDate: findDueDate(doc) }
+}
+
+/** "Son Ödeme Tarihi : 26/10/2026" satırındaki tarih. "Bir Sonraki Son Ödeme Tarihi" atlanır. */
+export function findDueDate(doc: ParsedDocument): string | undefined {
+  for (const l of doc.lines) {
+    const f = foldTr(l.text)
+    const at = f.indexOf('SON ODEME TARIHI')
+    if (at < 0 || /SONRAKI\s*$/.test(f.slice(0, at).trim())) continue
+    // Aynı satırda başka alanlar da olabilir: etiketten sonraki ilk tarih alınır.
+    const m = /(\d{1,2})[./-](\d{1,2})[./-](\d{4})/.exec(l.text.slice(at))
+    if (!m) continue
+    const dp = parseDate(m[0])
+    if (dp.ok) return dp.date
+  }
+  return undefined
 }

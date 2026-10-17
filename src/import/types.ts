@@ -42,6 +42,8 @@ export interface DraftRow {
   id: string
   include: boolean
   date: string | null
+  /** "Son ödeme tarihine ekle" açıkken satırın belgedeki kendi tarihi (kapatınca geri döner). */
+  ownDate?: string | null
   dateRaw: string
   description: string
   /** Pozitif kuruş; belirsiz/okunamayan tutarda null. */
@@ -89,6 +91,8 @@ export interface ParseOutput {
   unparsed: DocLine[]
   totals: StatementTotal[]
   periodText?: string
+  /** Ekstredeki "Son ödeme tarihi" (YYYY-MM-DD); "Bir sonraki son ödeme" sayılmaz. */
+  dueDate?: string
   /** Belge geneline ait açıklamalar (ör. işaret düzeni). */
   notes?: string[]
   parserId: string

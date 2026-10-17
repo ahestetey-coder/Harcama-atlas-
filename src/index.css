@@ -147,6 +147,15 @@
   input[type='date']::-webkit-calendar-picker-indicator {
     opacity: 0.6;
   }
+  /* iOS Safari tarih kutusuna içerikten geniş bir en verir; dar ızgarada sayfa yana kayıyordu. */
+  input[type='date'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+  input[type='date']::-webkit-date-and-time-value {
+    text-align: left;
+  }
   [data-theme='dark'] input[type='date']::-webkit-calendar-picker-indicator {
     filter: invert(1);
   }

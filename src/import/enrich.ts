@@ -145,6 +145,7 @@ export function buildCommit(opts: {
     foreign: r.foreign,
     accountAlias: opts.accountAlias?.trim() || undefined,
     paymentMethod: opts.paymentMethod,
+    note: r.ownDate && r.ownDate !== r.date ? `İşlem tarihi: ${r.ownDate.split('-').reverse().join('.')}` : undefined,
     createdAt: now,
     updatedAt: now,
   }))
