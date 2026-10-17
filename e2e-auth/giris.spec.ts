@@ -444,6 +444,33 @@ test('Ayarlar: hesabımı sil, hesabı ve bu cihazdaki kayıtları siler', async
   await expect(page.getByText('Silinecek kayıt').filter({ visible: true })).toHaveCount(0)
 })
 
+test('Ayarlar: verilerimi sıfırla, kayıtları siler ama hesap kalır', async ({ page }) => {
+  const calls = await mockSupabase(page)
+  await page.goto('./')
+  await signIn(page, 'osman@ornek.com')
+  await page.getByRole('button', { name: 'Gider ekle' }).first().click()
+  const dialog = page.getByRole('dialog', { name: 'Gider ekle' })
+  await dialog.getByLabel('Tutar (TL)').fill('99')
+  await dialog.getByLabel('Açıklama / iş yeri').fill('Sıfırlanacak kayıt')
+  await dialog.getByLabel('Kategori').selectOption({ label: 'Market' })
+  await dialog.getByRole('button', { name: 'Kaydet', exact: true }).click()
+  await expect(dialog).toBeHidden()
+
+  await page.goto('./#/ayarlar')
+  await page.getByRole('button', { name: 'Verilerimi sıfırla' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Verileriniz sıfırlansın mı?' })
+  const go = confirm.getByRole('button', { name: 'Verilerimi sıfırla' })
+  await expect(go).toBeDisabled()
+  await confirm.getByLabel('Onay').fill('sıfırla')
+  await go.click()
+  await expect(page.getByRole('navigation', { name: 'Ana menü' })).toBeVisible()
+  expect(calls).not.toContain('POST /rest/v1/rpc/ha_delete_my_account')
+  await page.goto('./#/islemler')
+  await expect(page.getByText('Sıfırlanacak kayıt').filter({ visible: true })).toHaveCount(0)
+  await page.goto('./#/ayarlar')
+  await expect(page.getByRole('button', { name: 'Hesabımı sil' })).toBeVisible()
+})
+
 test('Plus+ koç ve araştırma: rapor kaynaklı görünür, hafıza düzenlenir, kapatılan bilgi gönderilmez; yönetici taslağı denetler', async ({ page }) => {
   const calls = await mockSupabase(page, { admin: true })
   await page.goto('./')

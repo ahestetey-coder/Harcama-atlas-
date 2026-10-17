@@ -1,6 +1,7 @@
 import { CloudOff, Download, FlaskConical, Monitor, Moon, Repeat, RotateCcw, ScanText, Sun, Target } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AccountCard } from '../components/AccountCard'
+import { DangerZoneCard } from '../components/DangerZoneCard'
 import { RecurringIncomeCard } from '../components/RecurringIncomeCard'
 import { Link } from 'react-router-dom'
 import { PLAN_LABEL } from '../domain/plans'
@@ -235,6 +236,8 @@ export default function SettingsPage() {
             Gizlilik politikasının tamamı
           </a>
         </Card>
+
+        <DangerZoneCard />
       </div>
       <ConfirmDialog
         open={resetOpen}

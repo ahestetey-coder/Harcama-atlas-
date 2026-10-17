@@ -205,3 +205,8 @@ export async function clearLocalAccountData(userId: string): Promise<void> {
   await getRealRepo(realDbNameFor(userId)).clearAll()
   if (readPref('dbOwner') === userId) writePref('dbOwner', null)
 }
+
+/** "Verilerimi sıfırla": bu cihazdaki gerçek kayıtları siler, başlangıç kategorileri ve ayarlarıyla açar. */
+export async function resetLocalData(userId: string | undefined): Promise<void> {
+  await getRealRepo(realDbNameFor(userId)).clearAll()
+}
