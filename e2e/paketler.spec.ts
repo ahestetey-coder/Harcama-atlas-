@@ -335,7 +335,7 @@ test('Plus+ yolculuk, senaryolar ve bilgi: anket doğrulanır, aşamalar ve gös
   const goal = page.getByRole('region', { name: 'Özgürlük hedefi' })
   await expect(goal).toContainText('22.153.846,15 ₺')
   await expect(goal.getByRole('list', { name: 'Seviyeler' })).toContainText('Lean FI')
-  await expect(goal.getByRole('region', { name: /yaşında bağımsız olmak için aylık birikim/ })).toContainText('Şu an ayda 30.000,00 ₺')
+  await expect(goal.getByRole('region', { name: /yaşında bağımsız olmak için/ })).toContainText('Şu an 30.000 ₺/ay')
   await expect(goal.getByRole('region', { name: 'Başarı olasılığı' })).toContainText('Varsayıma dayalı benzetimdir')
   await expect(goal.getByRole('region', { name: 'Borçsuz olma tarihi' })).toContainText('Borç yok')
   await expect(goal.getByRole('region', { name: 'Coast FI eşiği' })).toBeVisible()

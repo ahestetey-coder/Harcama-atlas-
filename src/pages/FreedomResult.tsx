@@ -103,11 +103,9 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
       </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Kpi icon={<PiggyBank className="size-4" />} label={`${v.targetAge} yaşında bağımsız olmak için aylık birikim`} tone={v.gapKurus > 0 ? 'warn' : 'good'} value={`${formatKurus(v.requiredMonthlyKurus)}/ay`}>
-          Şu an ayda {formatKurus(v.monthlySavingKurus)} ayırıyorsun
-          {v.gapKurus > 0 ? `; bu hızla da varırsın, yalnızca ${midAge === null ? 'daha geç' : `${midAge} yaşında`}.` : '; hedef yaşına yetiyor.'}
-          {step && step.etaMonths != null && ` Sıradaki adım ${step.title}: bu hızla ~${durationLabel(step.etaMonths)}.`}
-          {v.guaranteedMonthlyKurus === 0 && ' Emekli maaşını rota testine yazarsan hedef küçülür.'}
+        <Kpi icon={<PiggyBank className="size-4" />} label={`${v.targetAge} yaşında bağımsız olmak için`} tone={v.gapKurus > 0 ? 'warn' : 'good'} value={`${Math.round(v.requiredMonthlyKurus / 100).toLocaleString('tr-TR')} ₺/ay`}>
+          Şu an {Math.round(v.monthlySavingKurus / 100).toLocaleString('tr-TR')} ₺/ay
+          {v.gapKurus > 0 ? (midAge === null ? ' · bu hızla ulaşılamıyor' : ` · bu hızla ${midAge} yaşında`) : ' · yetiyor'}
         </Kpi>
         <Kpi icon={<Hourglass className="size-4" />} label="Coast FI eşiği" tone={v.coastPassed ? 'good' : undefined} value={inBase(v.coastKurus)}>
           {v.coastPassed ? 'Geçtiniz; eklemeseniz de yetiyor.' : `Net birikiminiz ${inBase(v.netKurus)}.`}
