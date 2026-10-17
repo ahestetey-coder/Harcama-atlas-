@@ -551,7 +551,7 @@ test('Özet: bütçe aşımı uyarısı tarihin altında kırmızı, dönem seç
   expect(await y(month)).toBeLessThan(await y(page.locator('#net-title')))
 })
 
-test('Rota kurulumu: taksit, kredi ve birikim açılır pencereden eklenir, ilgili sayfalara da işlenir', async ({ page }) => {
+test("Rota kurulumu: taksit, kredi ve birikim açılır pencereden eklenir; birikim isteğe göre Yatırımlarım'dan işlenir", async ({ page }) => {
   await open(page, 'paketler')
   await page.getByRole('radiogroup', { name: 'Önizleme paketi' }).getByRole('radio', { name: 'Plus', exact: true }).click()
   await page.goto('./#/yolculuk')
@@ -587,20 +587,22 @@ test('Rota kurulumu: taksit, kredi ve birikim açılır pencereden eklenir, ilgi
   await expect(debt).toBeHidden()
   await expect(t).toContainText('Kredi kartı borcu')
 
-  // Birikim de kurulumdan çıkmadan eklenir ve Yatırımlarım'a işlenir
+  // Birikim tahminle girilir; Yatırımlarım'a eklenen kayıtla "bu verilerle işle" denince oradan gelir
   await t.getByRole('button', { name: 'Onayla ve devam' }).click()
   await expect(t.getByRole('heading', { name: 'Birikimin' })).toBeVisible()
-  // Elle yazılan tahmini kutular yok; birikim yalnızca açılır pencereden eklenir
-  await expect(t.getByLabel('Döviz', { exact: true })).toHaveCount(0)
-  await t.getByRole('button', { name: 'Birikim ekle' }).click()
+  await expect(t.getByLabel('Döviz', { exact: true })).toBeVisible()
+  await t.getByRole('button', { name: "Yatırımlarım'a birikim ekle" }).click()
   const inv = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await inv.getByLabel('Ad', { exact: true }).fill('Vadeli mevduat')
   await inv.getByLabel('Tutar (TL)').fill('50.000')
   await inv.getByRole('button', { name: 'Kaydet' }).click()
   await expect(inv).toBeHidden()
-  await expect(t.getByRole('heading', { name: 'Birikimin' })).toBeVisible()
+  await expect(t.getByLabel('Döviz', { exact: true })).toBeVisible()
+  await t.getByRole('button', { name: 'Rotamı bu birikim verilerimle işle' }).click()
   await expect(t).toContainText('Birikimin Yatırımlarım sayfasından geldi.')
-  await expect(t.getByRole('list', { name: 'Kayıtlı birikimler' })).toContainText('Vadeli mevduat')
+  await expect(t.getByLabel('Döviz', { exact: true })).toHaveCount(0)
+  await t.getByRole('button', { name: 'Tahmini rakamlarla devam et' }).click()
+  await expect(t.getByLabel('Döviz', { exact: true })).toBeVisible()
 
   await page.goto('./#/yatirimlar')
   await expect(page.getByRole('main')).toContainText('Vadeli mevduat')

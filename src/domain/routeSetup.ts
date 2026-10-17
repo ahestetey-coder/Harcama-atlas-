@@ -39,6 +39,8 @@ export interface SetupCapital {
 export interface RouteSetupData {
   debts?: SetupDebt[]
   capital?: SetupCapital
+  /** true: kişi tahmini birikimle ilerledi; Yatırımlarım'da kayıt olsa da tahmin kullanılır. */
+  capitalEstimate?: boolean
   /** Aylık harcama (düzenli ödemeler hariç); uygulamada harcama kaydı yokken kullanılır. */
   spendKurus?: number
   /** Kurulum formunun son hâli: "Testi yenile" bu rakamlarla dolu açılır. */
@@ -65,7 +67,8 @@ export function setupDebtList(debts: SetupDebt[]): CoachDebt[] {
 
 /**
  * Uygulamada karşılığı olmayan alanları kurulum rakamlarıyla doldurur. Borçlarım'da borç varsa
- * borçlar, Yatırımlarım'da varlık varsa birikim, harcama kaydı varsa harcama uygulamadan gelir.
+ * borçlar, Yatırımlarım'da varlık varsa birikim (kişi tahminle ilerlemeyi seçmediyse), harcama kaydı varsa
+ * harcama uygulamadan gelir.
  */
 export function applySetup(facts: JourneyFacts, setup: RouteSetupData | undefined): JourneyFacts {
   if (!setup) return facts
@@ -77,7 +80,7 @@ export function applySetup(facts: JourneyFacts, setup: RouteSetupData | undefine
     const pay = list.reduce((s, d) => s + d.minPaymentKurus, 0)
     f = { ...f, debtList: list, debtsKurus: f.debtsKurus + total, consumerDebtKurus: (f.consumerDebtKurus ?? 0) + consumer, monthlyDebtPaymentKurus: (f.monthlyDebtPaymentKurus ?? 0) + pay }
   }
-  if (setup.capital && !facts.hasAssets) {
+  if (setup.capital && (!facts.hasAssets || setup.capitalEstimate)) {
     const c = setup.capital
     const total = capitalTotal(c)
     f = { ...f, liquidKurus: capitalLiquid(c), assetsKurus: total, contributedKurus: total, marketGainKurus: 0, recentMonthlyContributionKurus: c.monthlyInvestKurus, hasAssets: total > 0 }
