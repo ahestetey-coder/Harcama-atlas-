@@ -298,8 +298,8 @@ export function ReviewStep({
         </div>
       </div>
 
-      {/* Kaydet çubuğu */}
-      <div className="glass sticky bottom-20 z-20 flex flex-wrap items-center gap-3 rounded-2xl border border-line-strong px-4 py-3 shadow-float lg:bottom-4">
+      {/* Kaydet alanı: listenin sonunda, ekranı kapatmaz */}
+      <div className="glass flex flex-wrap items-center gap-3 rounded-2xl border border-line-strong px-4 py-3">
         <p className="min-w-0 flex-1 text-[13px] text-muted">
           <span className="font-semibold text-ink">{counts.valid} işlem</span> kaydedilecek.
           {counts.problem + counts.duplicate > 0 && <> {counts.problem + counts.duplicate} satır düzeltilmeden kaydedilmez.</>}
