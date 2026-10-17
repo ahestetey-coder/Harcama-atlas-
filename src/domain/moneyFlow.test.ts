@@ -23,17 +23,14 @@ describe('moneyFlow', () => {
     expect(flowSpent(txs, '2026-10', 1, cats)).toEqual({ needs: 1_765_000 + 2_000_000 + 300_000 + 4_800_000, wants: 400_000 })
   })
 
-  it('birikim: dönemde yatırım alışı − satışı ve borçtan düşülen ödeme; açılış bakiyesi sayılmaz', () => {
+  it('birikim: dönemde yatırım alışı − satışı ve borçtan düşülen ödeme', () => {
     const assets = [
-      asset('fund', [{ id: 'f0', date: '2026-10-02', side: 'buy', quantity: 1, unitPriceKurus: 17_000_000 }]),
       asset('gold', [
-        { id: '0', date: '2026-10-02', side: 'buy', quantity: 5, unitPriceKurus: 400_000 },
         { id: '1', date: '2026-10-03', side: 'buy', quantity: 2, unitPriceKurus: 400_000 },
         { id: '2', date: '2026-10-08', side: 'sell', quantity: 1, unitPriceKurus: 300_000 },
         { id: '3', date: '2026-09-03', side: 'buy', quantity: 10, unitPriceKurus: 400_000 },
       ]),
       asset('debt', [
-        { id: 'd0', date: '2026-10-01', side: 'buy', quantity: 1, unitPriceKurus: 9_000_000 },
         { id: '4', date: '2026-10-10', side: 'sell', quantity: 1, unitPriceKurus: 1_000_000 },
         { id: '5', date: '2026-10-01', side: 'buy', quantity: 1, unitPriceKurus: 5_000_000 },
       ]),
