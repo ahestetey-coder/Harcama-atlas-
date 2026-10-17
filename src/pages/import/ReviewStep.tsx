@@ -478,6 +478,11 @@ const RowCard = memo(function RowCard({
               {r.ownDate && r.ownDate !== r.date && <span className="num text-[12px] text-subtle">İşlem tarihi {formatDate(r.ownDate)}</span>}
             </div>
           )}
+          {groups.length > 0 && r.type !== 'income' && (
+            <div className="mt-1.5">
+              <GroupPicker groups={groups} value={r.groupId ?? ''} onChange={(v) => onChange(r.id, { groupId: v || null })} label={`${r.description || 'Satır'} grubu`} size="sm" />
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-center">
           {onRemove && (
@@ -570,7 +575,6 @@ const RowCard = memo(function RowCard({
                 ))}
               </Select>
             </label>
-            {groups.length > 0 && <GroupPicker groups={groups} value={r.groupId ?? ''} onChange={(v) => onChange(r.id, { groupId: v || null })} label={`${r.description || 'Satır'} grubu`} size="sm" />}
           </div>
           {r.installment?.purchaseTotalKurus ? <p className="num text-[12.5px] text-muted">Taksitli alışveriş toplamı {formatKurus(r.installment.purchaseTotalKurus)}; gidere yalnızca bu ayın taksiti eklenir.</p> : null}
           {notes.length > 0 && (
