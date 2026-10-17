@@ -125,6 +125,8 @@ export async function takeFreedomTest(page: Page, o: { income: string; essential
   await t.getByLabel('Yaşın').fill(o.age ?? '32')
   await t.getByLabel('Kaç yılda varmak istersin?').fill(o.years ?? '23')
   await next()
+  await next()
+  await expect(t.getByRole('heading', { name: 'Özgürlük hedefin' })).toBeVisible()
   await t.getByRole('button', { name: 'Rotamı hesapla' }).click()
   const fin = page.getByRole('region', { name: 'Netleşen haritan' })
   await fin.getByRole('button', { name: /Finansal özgürlük sayfama git|Rotamı gör/ }).click()

@@ -33,6 +33,7 @@ const STEPS = [
   { key: 'birikim', title: 'Birikimin', lead: 'Toplam birikimini varlık türlerine böldük. Bugünkü TL karşılıklarını düzelt.' },
   { key: 'hedef', title: 'Hedefin', lead: 'Hayalindeki pasif geliri testte seçtin. Yaşın ve süreyle tamamla.' },
   { key: 'son', title: 'Son birkaç soru', lead: 'Rotanın temposunu ve risk dengesini ayarlamak için.' },
+  { key: 'ozgurluk', title: 'Özgürlük hedefin', lead: 'Hedefi verdiğin bilgilerden biz hesaplayalım ya da kendin yaz.' },
 ] as const
 
 const K = 100
@@ -137,6 +138,8 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       invest: plainTl(est.investTl),
       dream: plainTl(a.hayal),
       retire: '',
+      goalMode: 'auto' as 'auto' | 'own',
+      ownUsd: '',
       age: '',
       years: '15',
       drop: a.dusus,
@@ -176,6 +179,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     if (view === 'setup') saveRouteDraft({ code: link.code, step, form: f, status: status as Record<string, string> })
   }, [f, status, step, view, link.code])
 
+  const usdRate = rates.USD ?? null
   // ---- Taslak profil ve canlı hesap ----
   const draft = useMemo(() => {
     const spending = spendOf(f.expenses)
@@ -212,7 +216,10 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       dependents: Number(f.dependents) || 0,
       passiveIncomeKurus: soft(f.passive) || undefined,
       pensionIncomeKurus: soft(f.retire) || undefined,
-      base: 'TRY',
+      // Kendi hedefini dolarla yazan kişinin planı dolar bazında kurulur; bütün tutarlar $ ile gösterilir
+      ...(f.goalMode === 'own' && usdRate && soft(f.ownUsd) > 0
+        ? { base: 'USD' as const, baseRateTl: usdRate, customFiKurus: Math.round(soft(f.ownUsd) * usdRate) }
+        : { base: 'TRY' as const }),
       targetAge: ageN ? ageN + years : undefined,
       lifeAge: DEFAULT_LIFE_AGE,
       spending,
@@ -223,7 +230,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       setup,
     }
     return { profile, facts: applySetup(facts, setup) }
-  }, [f, facts, recurringFixed, appDebts.length, appAssets, seed.goal])
+  }, [f, facts, recurringFixed, appDebts.length, appAssets, seed.goal, usdRate])
   const live = useMemo(() => buildJourney(draft.profile, draft.facts, rates, { strategy, runs: 0 }), [draft, rates, strategy])
   const liveYear = yearAt(live.indicators.route.mid)
   const webRange = reachRange(web)
@@ -239,6 +246,10 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       if (!Number.isInteger(age) || age < 15 || age > 90) return 'Yaşını 15 ile 90 arasında yaz.'
       const y = Number(f.years)
       if (!Number.isInteger(y) || y < 1 || age + y > 100) return 'Süre en az 1 yıl olmalı ve hedef yaşın 100\'ü geçmemeli.'
+    }
+    if (i === 6 && f.goalMode === 'own') {
+      if (!usdRate) return 'Dolar kuru henüz alınamadı; biraz sonra tekrar dene ya da otomatik hedefi seç.'
+      if (soft(f.ownUsd) <= 0) return 'Hedef tutarını dolar olarak yaz.'
     }
     return null
   }
@@ -323,7 +334,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   )
   return (
     <Card className="overflow-hidden p-5" aria-label="Rota kurulumu">
-      <ol className="grid grid-cols-6 gap-1" aria-label="Kurulum adımları">
+      <ol className="grid grid-cols-7 gap-1" aria-label="Kurulum adımları">
         {STEPS.map((x, i) => (
           <li key={x.key} aria-current={i === step ? 'step' : undefined} aria-label={x.title}>
             <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
@@ -450,6 +461,29 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                 {money('retire', 'Beklenen aylık emekli maaşı', 'Hedefe vardığında alacağın SGK ya da BES, bugünün parasıyla. Bu tutar birikimden çekilmez, hedef küçülür. Bilmiyorsan boş bırak.')}
               </>
             )}
+            {s.key === 'ozgurluk' && (
+              <>
+                <ChipField label="Hedefini nasıl belirleyelim?">
+                  <Segmented
+                    label="Hedef türü"
+                    value={f.goalMode}
+                    onChange={(v) => set('goalMode', v)}
+                    options={[
+                      { value: 'auto', label: 'Otomatik' },
+                      { value: 'own', label: 'Kendim yazacağım' },
+                    ]}
+                  />
+                </ChipField>
+                {f.goalMode === 'auto' ? (
+                  <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[13.5px] text-ink">
+                    Verdiğin bilgilere göre bağımsızlık hedefin{' '}
+                    <span className="num font-semibold">{usdRate ? `${Math.round(live.plan.suggestedFiKurus / 100 / usdRate).toLocaleString('tr-TR')} $` : formatKurusCompact(live.plan.suggestedFiKurus)}</span>.
+                  </p>
+                ) : (
+                  <MoneyField id="rs-ownUsd" unit="$" label="Bağımsızlık hedefin" hint="Bu tutara göre ara adımlar, Lean FI (%70) ve Fat FI (%150) hesaplanır; sayfa dolar bazında hazırlanır." value={f.ownUsd} onChange={(v) => set('ownUsd', v)} autoFocus />
+                )}
+              </>
+            )}
             {s.key === 'son' && (
               <>
                 <ChipField label="Yatırımın bir ayda %20 düşse ne yaparsın?" badge={badge('drop')}>
@@ -515,13 +549,13 @@ function Label({ htmlFor, label, badge }: { htmlFor?: string; label: string; bad
   )
 }
 
-function MoneyField({ id, label, hint, badge, value, onChange, autoFocus }: { id: string; label: string; hint?: string; badge?: ReactNode; value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
+function MoneyField({ id, label, hint, badge, value, onChange, autoFocus, unit = 'TL' }: { id: string; label: string; hint?: string; badge?: ReactNode; value: string; onChange: (v: string) => void; autoFocus?: boolean; unit?: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <Label htmlFor={id} label={label} badge={badge} />
       <span className="relative block">
         <Input id={id} inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder="0" className="num pr-10" autoFocus={autoFocus} />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12.5px] text-subtle">TL</span>
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12.5px] text-subtle">{unit}</span>
       </span>
       {hint && <span className="text-[12px] text-muted">{hint}</span>}
     </div>
