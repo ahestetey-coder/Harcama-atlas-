@@ -590,7 +590,9 @@ test('Rota kurulumu: taksit, kredi ve birikim açılır pencereden eklenir, ilgi
   // Birikim de kurulumdan çıkmadan eklenir ve Yatırımlarım'a işlenir
   await t.getByRole('button', { name: 'Onayla ve devam' }).click()
   await expect(t.getByRole('heading', { name: 'Birikimin' })).toBeVisible()
-  await t.getByRole('button', { name: 'Birikimini kayıtlı ekle' }).click()
+  // Elle yazılan tahmini kutular yok; birikim yalnızca açılır pencereden eklenir
+  await expect(t.getByLabel('Döviz', { exact: true })).toHaveCount(0)
+  await t.getByRole('button', { name: 'Birikim ekle' }).click()
   const inv = page.getByRole('dialog', { name: 'Yatırım ekle' })
   await inv.getByLabel('Ad', { exact: true }).fill('Vadeli mevduat')
   await inv.getByLabel('Tutar (TL)').fill('50.000')
@@ -598,7 +600,7 @@ test('Rota kurulumu: taksit, kredi ve birikim açılır pencereden eklenir, ilgi
   await expect(inv).toBeHidden()
   await expect(t.getByRole('heading', { name: 'Birikimin' })).toBeVisible()
   await expect(t).toContainText('Birikimin Yatırımlarım sayfasından geldi.')
-  await expect(t.getByRole('button', { name: 'Birikim ekle' })).toBeVisible()
+  await expect(t.getByRole('list', { name: 'Kayıtlı birikimler' })).toContainText('Vadeli mevduat')
 
   await page.goto('./#/yatirimlar')
   await expect(page.getByRole('main')).toContainText('Vadeli mevduat')
