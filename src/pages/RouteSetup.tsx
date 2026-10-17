@@ -32,7 +32,7 @@ const STEPS = [
   { key: 'gelir', title: 'Gelirin', lead: 'Testte gelir aralığı seçmiştin. Şimdi tam rakamı yaz.' },
   { key: 'gider', title: 'Giderlerin', lead: 'Ortalama bir ayı düşün. + ile gider türünü seç, tutarını yaz.' },
   { key: 'borc', title: 'Borçların', lead: 'Cevabına göre tahmini borç ekledik. Gerçek borçlarınla değiştir.' },
-  { key: 'birikim', title: 'Birikimin', lead: 'Birikimlerini tek tek ekle; Yatırımlarım sayfasına da işlenir.' },
+  { key: 'birikim', title: 'Birikimin', lead: 'Toplam birikimini varlık türlerine böldük. Bugünkü TL karşılıklarını düzelt.' },
   { key: 'hedef', title: 'Hedefin', lead: 'Hayalindeki pasif geliri testte seçtin. Yaşın ve süreyle tamamla.' },
   { key: 'son', title: 'Son birkaç soru', lead: 'Rotanın temposunu ve risk dengesini ayarlamak için.' },
   { key: 'ozgurluk', title: 'Özgürlük hedefin', lead: 'Hedefi verdiğin bilgilerden biz hesaplayalım ya da kendin yaz.' },
@@ -104,7 +104,6 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   const [payDraft, setPayDraft] = useState<Draft | null>(null)
   const addDebt = () => setEditing({ kind: 'debt', debtType: 'card' })
   const addAsset = () => setEditing({ kind: 'deposit' })
-  const savings = (assets ?? []).filter((a) => a.kind !== 'debt')
   const editDebt = (id: string) => {
     const asset = assets?.find((a) => a.id === id)
     if (asset) setEditing({ kind: 'debt', asset })
@@ -149,6 +148,8 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       crypto: plainTl(cap.kripto),
       pension: plainTl(cap.bes),
       invest: plainTl(est.investTl),
+      // Birikim tahminle girilir; kişi "bu verilerle işle" derse Yatırımlarım kayıtları kullanılır
+      capSrc: 'estimate' as 'estimate' | 'app',
       dream: plainTl(a.hayal),
       retire: '',
       goalMode: 'auto' as 'auto' | 'own',
@@ -161,6 +162,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     return mergeForm(base, draft0?.form ?? prevForm)
   })
   type Key = keyof typeof f
+  const useAppCap = appAssets && f.capSrc === 'app'
   const [status, setStatus] = useState<Partial<Record<Key, Status>>>(() => draft0 ? (draft0.status as Partial<Record<Key, Status>>) : prevForm ? {} : ({
     income: appIncome ? 'app' : 'web',
     extra: appIncome ? 'app' : 'web',
@@ -169,8 +171,8 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     dependents: 'web',
     expenses: appSpend ? 'app' : 'web',
     debts: appDebts.length ? 'app' : 'web',
-    emergency: appAssets ? 'app' : 'web',
-    invest: appAssets ? 'app' : 'web',
+    emergency: 'web',
+    invest: 'web',
     dream: 'test',
     years: 'web',
     drop: 'test',
@@ -207,10 +209,10 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     const risk: RiskStance = f.drop === 'sat' ? 'cautious' : f.drop === 'al' ? 'bold' : 'balanced'
     const setup: RouteSetupData = {
       debts: appDebts.length ? undefined : f.debts.map<SetupDebt>((d) => ({ type: d.type, balanceKurus: soft(d.balance), paymentKurus: soft(d.pay), monthlyRatePct: Math.min(20, Math.max(0, num(d.rate) || 0)) })).filter((d) => d.balanceKurus > 0),
-      capital: appAssets
+      capital: useAppCap
         ? undefined
-        : // Birikim yalnızca Yatırımlarım kayıtlarından gelir; kayıt yokken sadece aylık yatırım tutarı kullanılır
-          { emergencyKurus: 0, fxKurus: 0, goldKurus: 0, fundsKurus: 0, cryptoKurus: 0, pensionKurus: 0, monthlyInvestKurus: soft(f.invest) },
+        : { emergencyKurus: soft(f.emergency), fxKurus: soft(f.fx), goldKurus: soft(f.gold), fundsKurus: soft(f.funds), cryptoKurus: soft(f.crypto), pensionKurus: soft(f.pension), monthlyInvestKurus: soft(f.invest) },
+      capitalEstimate: useAppCap ? undefined : true,
       spendKurus: facts.averageExpenseKurus === null ? spendK + recurringFixed : undefined,
       form: f,
       at: todayIso(),
@@ -244,7 +246,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       setup,
     }
     return { profile, facts: applySetup(facts, setup) }
-  }, [f, facts, recurringFixed, appDebts.length, appAssets, seed.goal, usdRate])
+  }, [f, facts, recurringFixed, appDebts.length, useAppCap, seed.goal, usdRate])
   const live = useMemo(() => buildJourney(draft.profile, draft.facts, rates, { strategy, runs: 0 }), [draft, rates, strategy])
   const liveYear = yearAt(live.indicators.route.mid)
   const webRange = reachRange(web)
@@ -374,7 +376,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
               Adım {step + 1} / {STEPS.length}
             </p>
             <h2 className="mt-1 font-display text-2xl font-bold text-ink">{s.title}</h2>
-            <p className="mt-1 text-[13.5px] text-muted">{s.key === 'borc' && appDebts.length ? 'Borçların uygulamadaki Borçlar sayfasından geldi.' : s.key === 'birikim' && appAssets ? 'Birikimin Yatırımlarım sayfasından geldi.' : s.key === 'gider' && appSpend ? 'Giderin son aylardaki harcama kayıtlarından hesaplandı.' : s.lead}</p>
+            <p className="mt-1 text-[13.5px] text-muted">{s.key === 'borc' && appDebts.length ? 'Borçların uygulamadaki Borçlar sayfasından geldi.' : s.key === 'birikim' && useAppCap ? 'Birikimin Yatırımlarım sayfasından geldi.' : s.key === 'gider' && appSpend ? 'Giderin son aylardaki harcama kayıtlarından hesaplandı.' : s.lead}</p>
           </div>
           <div className="mt-4 flex flex-col gap-4">
             {s.key === 'gelir' && (
@@ -438,37 +440,48 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
               ))}
             {s.key === 'birikim' && (
               <>
-                <div className="flex flex-col gap-3 rounded-xl border border-line p-3.5" role="group" aria-label="Birikimlerin">
-                  {appAssets ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-3 text-[13px]">
-                        <div>
-                          <div className="text-muted">Toplam birikim</div>
-                          <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(facts.assetsKurus)}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted">Hızlı kullanılabilir</div>
-                          <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(facts.liquidKurus)}</div>
-                        </div>
+                {appAssets && (
+                  <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-3.5" role="group" aria-label="Yatırımlarım'daki birikimin">
+                    <div className="grid grid-cols-2 gap-3 text-[13px]">
+                      <div>
+                        <div className="text-muted">Yatırımlarım'da toplam</div>
+                        <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(facts.assetsKurus)}</div>
                       </div>
-                      <ul className="flex flex-wrap gap-1.5" aria-label="Kayıtlı birikimler">
-                        {savings.map((a) => (
-                          <li key={a.id}>
-                            <button type="button" onClick={() => setEditing({ kind: a.kind, asset: a })} className="rounded-full border border-line bg-surface-2 px-3 py-1 text-[12.5px] font-medium text-ink hover:border-accent">
-                              {a.name}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <p className="text-[12.5px] text-muted">Mevduat, döviz, altın, hisse, fon, kripto ya da BES birikimini ekle. Eklediklerin Yatırımlarım sayfasına da işlenir ve fiyatları otomatik güncellenir.</p>
-                  )}
-                  <button type="button" onClick={addAsset} className="inline-flex h-10 items-center gap-1.5 self-start rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
-                    <Plus className="size-4" /> Birikim ekle
-                  </button>
-                </div>
-                {!appAssets && money('invest', 'Her ay düzenli yatırıma ayırdığın')}
+                      <div>
+                        <div className="text-muted">Hızlı kullanılabilir</div>
+                        <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(facts.liquidKurus)}</div>
+                      </div>
+                    </div>
+                    {useAppCap ? (
+                      <div className="flex flex-wrap items-center gap-2 text-[13px]">
+                        <StatusBadge s="app" />
+                        <button type="button" onClick={() => set('capSrc', 'estimate')} className="font-medium text-accent hover:underline">
+                          Tahmini rakamlarla devam et
+                        </button>
+                      </div>
+                    ) : (
+                      <Button variant="primary" onClick={() => set('capSrc', 'app')} className="self-start">
+                        Rotamı bu birikim verilerimle işle
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {!useAppCap && (
+                  <>
+                    {money('emergency', 'Acil durum fonu', 'Hemen ulaşabildiğin nakit ve mevduat')}
+                    <div className="grid grid-cols-2 gap-3">
+                      <MoneyField id="rs-fx" label="Döviz" value={f.fx} onChange={(v) => set('fx', v)} />
+                      <MoneyField id="rs-gold" label="Altın" value={f.gold} onChange={(v) => set('gold', v)} />
+                      <MoneyField id="rs-funds" label="Hisse ve fon" value={f.funds} onChange={(v) => set('funds', v)} />
+                      <MoneyField id="rs-crypto" label="Kripto" value={f.crypto} onChange={(v) => set('crypto', v)} />
+                      <MoneyField id="rs-bes" label="BES" value={f.pension} onChange={(v) => set('pension', v)} />
+                    </div>
+                    {money('invest', 'Her ay düzenli yatırıma ayırdığın')}
+                  </>
+                )}
+                <button type="button" onClick={addAsset} className="inline-flex items-center gap-1 self-start text-[13px] font-medium text-accent hover:underline">
+                  <Plus className="size-4" /> Yatırımlarım'a birikim ekle
+                </button>
               </>
             )}
             {s.key === 'hedef' && (

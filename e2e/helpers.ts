@@ -116,6 +116,9 @@ export async function takeFreedomTest(page: Page, o: { income: string; essential
   await expect(t.getByRole('heading', { name: 'Borçların' })).toBeVisible()
   await next()
   await expect(t.getByRole('heading', { name: 'Birikimin' })).toBeVisible()
+  // Yatırımlarım'da kayıt varsa rota o kayıtlarla işlenir
+  const useApp = t.getByRole('button', { name: 'Rotamı bu birikim verilerimle işle' })
+  if (await useApp.count()) await useApp.click()
   for (const l of ['Acil durum fonu', 'Döviz', 'Altın', 'Hisse ve fon', 'Kripto', 'BES', 'Her ay düzenli yatırıma ayırdığın']) {
     const f = t.getByLabel(l, { exact: true })
     if (await f.count()) await f.fill('')
