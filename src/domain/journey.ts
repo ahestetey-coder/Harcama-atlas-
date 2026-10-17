@@ -110,6 +110,8 @@ export interface JourneyProfile {
   riskAnswers?: number[]
   /** Beklenen SGK/BES aylığı (bugünün parasıyla). */
   pensionIncomeKurus?: number
+  /** Kişinin kendi yazdığı finansal bağımsızlık hedefi (TL kuruş, plan biriminin sabitlendiği günün kuruyla). Yoksa sistem hesaplar. */
+  customFiKurus?: number
   /** Hedef yaştan sonra yarı zamanlı / serbest iş geliri. */
   partTimeIncomeKurus?: number
   /** Çekim oranını kullanıcı mı belirledi (yoksa süreye göre önerilen kullanılır). */
@@ -414,6 +416,14 @@ export function indexFactor(p: Pick<JourneyProfile, 'base' | 'baseRateTl'>, rate
   return now / p.baseRateTl
 }
 
+/** Plan biriminde yazılan tutarı (ör. 500.000 $) profilde saklanan TL kuruşa çevirir; kur yoksa null. */
+export function planAmountToKurus(amount: number, p: Pick<JourneyProfile, 'base' | 'baseRateTl'>, rates: BaseRates): number | null {
+  const base = p.base ?? 'TRY'
+  const rate = base === 'TRY' ? 1 : (p.baseRateTl ?? rateOf(base, rates))
+  if (!rate || !(amount > 0)) return null
+  return Math.round(amount * rate * 100)
+}
+
 /** Plan birimini değiştirir: hedefler bugünkü TL karşılıklarıyla yeni birime sabitlenir. */
 export function rebase(p: JourneyProfile, base: PlanBase, rates: BaseRates): JourneyProfile | null {
   const rate = rateOf(base, rates)
@@ -423,6 +433,7 @@ export function rebase(p: JourneyProfile, base: PlanBase, rates: BaseRates): Jou
     ...p,
     targetMonthlyExpenseKurus: Math.round(p.targetMonthlyExpenseKurus * k),
     essentialMonthlyKurus: Math.round(p.essentialMonthlyKurus * k),
+    customFiKurus: p.customFiKurus ? Math.round(p.customFiKurus * k) : undefined,
     base,
     baseRateTl: base === 'TRY' ? undefined : rate,
   }
@@ -868,6 +879,10 @@ export interface FreedomPlan {
   yearsToTarget: number
   retirementYears: number
   withdrawal: { recommendedPct: number; usedPct: number; custom: boolean }
+  /** Hedef kişinin kendi yazdığı tutar mı? */
+  ownGoal: boolean
+  /** Sistemin önerdiği bağımsızlık hedefi (kişi kendi hedefini yazsa da). */
+  suggestedFiKurus: number
   risk: RiskAssessment
   /** Bugünkü aylık tüketim (düzenli ödemeler dahil, taksit ve borç ödemeleri hariç). */
   spendKurus: number
@@ -1026,12 +1041,15 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
   const housing = groups ? groups.housing + recurring.filter((r) => r.housing && !r.installment).reduce((s, r) => s + r.monthlyKurus, 0) : 0
   const lifeBase = groups ? Math.max(0, sumSpend(groups) + recurring.filter((r) => !r.installment && r.remainingMonths === null).reduce((s, r) => s + r.monthlyKurus, 0) - (p.ownHomePlan ? housing : 0)) : Math.round(p.targetMonthlyExpenseKurus * k)
   const big = Math.round(((p.annualBigSpendKurus ?? 0) * k) / 12)
-  const targetMonthly = groups ? Math.round((lifeBase * pct) / 100) + big : lifeBase + big
   const guaranteed = (p.pensionIncomeKurus ?? 0) + (p.passiveIncomeKurus ?? 0) + (p.partTimeIncomeKurus ?? 0)
+  const autoMonthly = groups ? Math.round((lifeBase * pct) / 100) + big : lifeBase + big
+  // Kendi hedefini yazan kişi: hedef yaşam o sermayenin güvenli çekimle karşıladığı aylık tutardır; bütün aşamalar buna göre ölçeklenir
+  const ownFi = p.customFiKurus && p.customFiKurus > 0 ? Math.round(p.customFiKurus * k) : null
+  const targetMonthly = ownFi !== null ? (ownFi * swr) / 12 + guaranteed : autoMonthly
   const capital = (monthly: number, rate = swr) => Math.round((Math.max(0, monthly - guaranteed) * 12) / rate)
   const fi = capital(targetMonthly)
-  const lean = capital(Math.round(targetMonthly * LEAN_FACTOR))
-  const fat = capital(Math.round(targetMonthly * FAT_FACTOR))
+  const lean = capital(targetMonthly * LEAN_FACTOR)
+  const fat = capital(targetMonthly * FAT_FACTOR)
 
   // Risk: tolerans ve kapasitenin düşük olanı
   const tolerance = riskToleranceOf(p)
@@ -1168,6 +1186,8 @@ export function buildFreedomPlan(p: JourneyProfile, f: JourneyFacts, opts: Freed
     yearsToTarget,
     retirementYears,
     withdrawal: { recommendedPct: recommended, usedPct: swrPct, custom },
+    ownGoal: ownFi !== null,
+    suggestedFiKurus: capital(autoMonthly),
     risk: { tolerance, capacity: cap.level, capacityFactors: cap.factors, final, profile },
     spendKurus: spend,
     essentialKurus: essential,

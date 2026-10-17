@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { recommendedWithdrawalPct, RISK_PROFILES } from './assumptions'
-import { averageMonthlyExpense, buildFreedomPlan, buildJourney, riskToleranceOf, durationLabel, emergencyMonthsFor, formatInBase, freedomSteps, indexFactor, monthsToTarget, projectScenario, rebase, simulatePlan, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
+import { averageMonthlyExpense, buildFreedomPlan, buildJourney, riskToleranceOf, durationLabel, emergencyMonthsFor, formatInBase, freedomSteps, planAmountToKurus, indexFactor, monthsToTarget, projectScenario, rebase, simulatePlan, targetCapital, testsLeft, type JourneyFacts, type JourneyProfile } from './journey'
 import { normalizeText } from './normalize'
 import type { Transaction } from './types'
 
@@ -312,5 +312,23 @@ describe('küçük özgürlük adımları', () => {
     expect(rich.nextStep && rich.nextStep.targetKurus).toBeGreaterThan(rich.plan.netKurus)
     const done = buildJourney(profile(), facts({ assetsKurus: base.plan.fiKurus, liquidKurus: base.plan.fiKurus }))
     expect(done.nextStep).toBeNull()
+  })
+})
+
+describe('kendi hedefi', () => {
+  it('yazılan hedef bağımsızlık sermayesi olur, diğer aşamalar ona göre ölçeklenir', () => {
+    const auto = buildFreedomPlan(profile(), facts())
+    const own = buildFreedomPlan(profile({ customFiKurus: Math.round(auto.fiKurus / 2) }), facts())
+    expect(own.ownGoal).toBe(true)
+    expect(Math.abs(own.fiKurus - auto.fiKurus / 2)).toBeLessThan(auto.fiKurus * 0.001)
+    expect(own.suggestedFiKurus).toBe(auto.fiKurus)
+    expect(own.leanKurus).toBeLessThan(own.fiKurus)
+    expect(own.fatKurus).toBeGreaterThan(own.fiKurus)
+    expect(own.leanKurus).toBeLessThan(auto.leanKurus)
+  })
+  it('plan biriminde yazılan tutarı TL kuruşa çevirir', () => {
+    expect(planAmountToKurus(1000, { base: 'TRY' }, {})).toBe(100000)
+    expect(planAmountToKurus(1000, { base: 'USD', baseRateTl: 40 }, {})).toBe(4000000)
+    expect(planAmountToKurus(0, { base: 'TRY' }, {})).toBeNull()
   })
 })
