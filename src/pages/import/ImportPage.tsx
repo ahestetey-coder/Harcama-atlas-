@@ -105,7 +105,7 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
   return (
     <div>
       {!embedded && <PageHeader title="İçe aktar" subtitle="Dosya seçin, inceleyin, onaylayın." />}
-      <ol className="mb-5 flex items-center gap-1.5 overflow-x-auto pb-1 text-[12.5px] sm:gap-3" aria-label="Adımlar">
+      <ol className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1 text-[12.5px] sm:gap-3" aria-label="Adımlar">
         {STEPS.map((s, i) => (
           <li key={s} className="flex shrink-0 items-center gap-1.5 sm:gap-3" aria-current={i === stepIndex ? 'step' : undefined}>
             <span
@@ -116,7 +116,7 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
             >
               {i < stepIndex ? '✓' : i + 1}
             </span>
-            <span className={cn('font-medium', i === stepIndex ? 'text-ink' : 'text-subtle')}>{s}</span>
+            <span className={cn('font-medium', i === stepIndex ? 'text-ink' : 'hidden text-subtle sm:inline')}>{s}</span>
             {i < STEPS.length - 1 && <span className="h-px w-4 bg-line-strong sm:w-8" aria-hidden />}
           </li>
         ))}
@@ -307,76 +307,66 @@ function SelectStep({
     void handle(e.dataTransfer.files)
   }
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
-      <div>
-        <label
-          onDragOver={(e) => {
-            e.preventDefault()
-            setDrag(true)
-          }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={onDrop}
-          className={cn(
-            'group relative flex min-h-[280px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed px-6 py-10 text-center transition-all duration-200',
-            drag ? 'scale-[1.01] border-accent bg-accent-soft' : 'border-line-strong bg-surface hover:border-accent/60 hover:bg-surface-2/60',
-          )}
-        >
-          <input ref={inputRef} type="file" accept={ACCEPT} className="sr-only" onChange={(e) => void handle(e.target.files)} aria-label="İçe aktarılacak dosyayı seçin" />
-          <div className="mb-4 grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_14px_30px_-12px_rgb(5_150_105/0.9)] transition-transform duration-200 group-hover:-translate-y-0.5">
-            {busy ? <Loader2 className="size-7 animate-spin" /> : <FileUp className="size-7" />}
-          </div>
-          <p className="font-display text-lg font-semibold text-ink">Dosyayı sürükleyip bırakın</p>
-          <p className="mt-1 text-sm text-muted">veya seçmek için dokunun</p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2 text-[12px]">
-            {['PDF ekstre', 'CSV', 'Excel (.xlsx)', 'PNG / JPEG ekran görüntüsü'].map((t) => (
-              <span key={t} className="rounded-full border border-line bg-surface px-2.5 py-1 text-muted">
-                {t}
-              </span>
-            ))}
-          </div>
-        </label>
-        {error && (
-          <Alert tone="danger" icon={<TriangleAlert />} className="mt-3">
-            {error}
-          </Alert>
+    <div className="mx-auto flex max-w-xl flex-col gap-3">
+      <label
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDrag(true)
+        }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={onDrop}
+        className={cn(
+          'group flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed px-5 py-8 text-center transition-colors duration-200',
+          drag ? 'border-accent bg-accent-soft' : 'border-line-strong bg-surface hover:border-accent/60',
         )}
-      </div>
-      <div className="flex flex-col gap-4">
-        <Card className="p-5">
-          <h2 className="text-sm font-semibold">Aktarılan işlemlere eklenecek bilgi</h2>
-          <div className="mt-3 flex flex-col gap-3">
-            <Field label="Kart/hesap takma adı" htmlFor="imp-alias" optional hint="Kart numarası girmeyin.">
-              <Input id="imp-alias" value={alias} maxLength={40} onChange={(e) => setAlias(e.target.value.replace(/\d{12,}/g, ''))} placeholder="Ör. Maaş kartı" />
-            </Field>
-            <Field label="Ödeme aracı" htmlFor="imp-pay" optional>
-              <Select id="imp-pay" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod | '')}>
-                <option value="">Belirtilmedi</option>
-                {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((p) => (
-                  <option key={p} value={p}>
-                    {PAYMENT_LABEL[p]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-        </Card>
-        <Card className="p-5 text-[13px] text-muted">
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
-            <ShieldCheck className="size-4 text-accent" /> Sınırlar ve gizlilik
-          </h2>
-          <p>Dosyalar yalnızca bu cihazda okunur, saklanmaz.</p>
-          <More label="Sınırlar">
+      >
+        <input ref={inputRef} type="file" accept={ACCEPT} className="sr-only" onChange={(e) => void handle(e.target.files)} aria-label="İçe aktarılacak dosyayı seçin" />
+        <div className="mb-3 grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent">{busy ? <Loader2 className="size-6 animate-spin" /> : <FileUp className="size-6" />}</div>
+        <p className="font-display text-base font-semibold text-ink">Ekstre veya ekran görüntüsü seçin</p>
+        <p className="mt-1 text-[13px] text-muted">PDF, CSV, Excel, PNG, JPEG</p>
+      </label>
+      {error && (
+        <Alert tone="danger" icon={<TriangleAlert />}>
+          {error}
+        </Alert>
+      )}
+      <details className="group rounded-2xl border border-line bg-surface px-3 py-2 open:pb-3">
+        <summary className="cursor-pointer select-none list-none py-1 text-[13px] font-medium text-muted marker:hidden hover:text-ink">
+          <span className="inline-block transition-transform group-open:rotate-90">›</span> Kart adı ve ödeme aracı{payment ? ` · ${PAYMENT_LABEL[payment]}` : ''}
+        </summary>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Kart/hesap takma adı" htmlFor="imp-alias" optional hint="Kart numarası girmeyin.">
+            <Input id="imp-alias" value={alias} maxLength={40} onChange={(e) => setAlias(e.target.value.replace(/\d{12,}/g, ''))} placeholder="Ör. Maaş kartı" />
+          </Field>
+          <Field label="Ödeme aracı" htmlFor="imp-pay" optional>
+            <Select id="imp-pay" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod | '')}>
+              <option value="">Belirtilmedi</option>
+              {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((p) => (
+                <option key={p} value={p}>
+                  {PAYMENT_LABEL[p]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+      </details>
+      <div className="flex items-start gap-2 px-1 text-[12.5px] text-subtle">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" />
+        <div className="min-w-0">
+          Dosya yalnızca bu cihazda okunur, saklanmaz.
+          <More label="Sınırlar" className="mt-0.5">
             <ul className="space-y-1">
               <li>PDF: en çok {IMPORT_LIMITS.maxPdfBytes / 1048576} MB, {IMPORT_LIMITS.maxPdfPages} sayfa (OCR en çok {IMPORT_LIMITS.maxOcrPdfPages} sayfa).</li>
               <li>CSV / Excel: en çok {IMPORT_LIMITS.maxSheetBytes / 1048576} MB, {IMPORT_LIMITS.maxRows.toLocaleString('tr-TR')} satır.</li>
               <li>Görsel: en çok {IMPORT_LIMITS.maxImageBytes / 1048576} MB.</li>
-              <li>Genel okuyucu kullanılır; her satırı inceleyin.</li>
+              <li>
+                <a href="./ornek-dosyalar/" className="font-medium text-accent hover:underline" target="_blank" rel="noopener">
+                  Sentetik örnek dosyalar
+                </a>
+              </li>
             </ul>
           </More>
-          <a href="./ornek-dosyalar/" className="mt-3 inline-block font-medium text-accent hover:underline" target="_blank" rel="noopener">
-            Sentetik örnek dosyalar
-          </a>
-        </Card>
+        </div>
       </div>
     </div>
   )

@@ -28,6 +28,7 @@ export interface ReviewData {
   lines: DocLine[]
   pages: PageInfo[]
   periodText?: string
+  dueDate?: string
   parserLabel: string
   parserVerified: boolean
   notes: string[]

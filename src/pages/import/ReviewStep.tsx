@@ -1,9 +1,8 @@
-import { AlertTriangle, CircleCheck, Copy, FileText, Info, Plus, SkipForward, Split, Trash2 } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AlertTriangle, CalendarClock, ChevronDown, CircleCheck, Copy, FileText, Info, Plus, SkipForward, Split, Trash2 } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { CategoryIcon, GroupPicker } from '../../components/common'
 import { ConfirmDialog, Modal } from '../../components/ui/Modal'
-import { Alert, Badge, Button, Card, Checkbox, Input, Select } from '../../components/ui/primitives'
+import { Alert, Badge, Button, Card, Checkbox, Input, More, Select, Switch } from '../../components/ui/primitives'
 import { OTHER_CATEGORY_ID } from '../../data/seed'
 import { formatDate, todayIso } from '../../domain/dates'
 import { formatKurus, formatKurusPlain, parseAmount } from '../../domain/money'
@@ -139,13 +138,20 @@ export function ReviewStep({
   const extractedNet = counts.expenseKurus - counts.refundKurus
   const sourceKey = (r: DraftRow) => (r.source.page !== undefined || r.source.line !== undefined ? `${r.source.page ?? 0}:${r.source.line ?? 0}` : null)
 
+  // "Son ödeme tarihine ekle": tüm satırlar ekstrenin son ödeme tarihine taşınır, kapatınca kendi tarihlerine döner.
+  const dueOn = rows.some((r) => r.ownDate !== undefined)
+  const moveToDate = (date: string) => onRowsChange(rows.map((r) => ({ ...r, ownDate: r.ownDate !== undefined ? r.ownDate : r.date, date })))
+  const restoreDates = () => onRowsChange(rows.map((r) => (r.ownDate !== undefined ? { ...r, date: r.ownDate, ownDate: undefined } : r)))
+  const hasDoc = review.lines.length > 0
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* Durum sekmeleri */}
-      <Card className="p-3 sm:p-4">
-        <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Satır durumu">
+    <div className="flex flex-col gap-3">
+      {/* Durum sekmeleri ve kısa özet */}
+      <Card className="p-3">
+        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5" role="tablist" aria-label="Satır durumu">
           {(['all', 'valid', 'problem', 'duplicate', 'excluded'] as Tab[]).map((t) => {
             const n = t === 'all' ? counts.total : counts[t]
+            if (t !== 'all' && t !== 'valid' && n === 0 && tab !== t) return null
             const meta = t === 'all' ? { label: 'Tümü', tone: 'neutral' as const } : STATUS_META[t]
             return (
               <button
@@ -157,7 +163,7 @@ export function ReviewStep({
                   setPage(0)
                 }}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-[13px] font-medium transition-colors',
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[13px] font-medium transition-colors',
                   tab === t ? 'border-line-strong bg-surface text-ink shadow-card' : 'border-transparent text-muted hover:bg-surface-2',
                 )}
               >
@@ -176,59 +182,59 @@ export function ReviewStep({
               </button>
             )
           })}
-          <div className="ml-auto flex flex-wrap gap-2">
-            {(review.lines.length > 0 || review.sheet) && (
-              <Button size="sm" icon={<FileText className="size-4" />} onClick={() => setSourceOpen(true)} className="xl:hidden">
-                Kaynak metin
-              </Button>
-            )}
-            <Button size="sm" icon={<Plus className="size-4" />} onClick={() => addRow()}>
-              Satır ekle
-            </Button>
-          </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-[13px] sm:grid-cols-4">
-          <Stat label="Kaydedilecek gider" value={formatKurus(counts.expenseKurus)} />
-          <Stat label="Kaydedilecek iade" value={formatKurus(counts.refundKurus)} />
-          <Stat label="Net etki" value={formatKurus(extractedNet)} />
-          <Stat label="Transfer (gidere dahil değil)" value={formatKurus(counts.transferKurus)} />
-        </div>
-        {activeGroups.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-            <span className="text-[13px] font-medium text-muted">Tüm satırların grubu:</span>
-            <GroupPicker groups={activeGroups} value={commonGroup ?? '__mixed'} onChange={setAllGroups} label="Tüm satırların grubu" size="sm" />
-            {commonGroup === null && <span className="text-[12px] text-subtle">(satırlarda farklı gruplar var)</span>}
-          </div>
-        )}
+        <p className="num mt-2.5 border-t border-line pt-2.5 text-[13px] text-muted">
+          Gider <b className="font-semibold text-ink">{formatKurus(counts.expenseKurus)}</b>
+          {counts.refundKurus > 0 && <> · İade <b className="font-semibold text-ink">{formatKurus(counts.refundKurus)}</b></>}
+          {counts.transferKurus > 0 && <> · Kart ödemesi {formatKurus(counts.transferKurus)} (gidere girmez)</>}
+        </p>
       </Card>
 
-      {/* Bilgi ve uyarılar */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Alert tone={review.parserVerified ? 'info' : 'warning'} icon={<Info />} title={review.parserLabel}>
-          {review.parserVerified
-            ? 'Satırlar sütun eşleştirmenize göre oluşturuldu.'
-            : 'Bu okuyucu gerçek banka ekstresiyle doğrulanmadı; her satırı kontrol edin.'}
-          {review.periodText && <span className="mt-1 block">Ekstre bilgisi: {review.periodText}.</span>}
-        </Alert>
-        {review.usedOcr && (
-          <Alert tone="info" icon={<Info />} title="OCR okuma kalitesi">
-            Ortalama kelime güveni: %{review.ocrConfidence ?? '—'}.
+      {hasDoc && <DueDateCard on={dueOn} current={dueOn ? (rows.find((r) => r.ownDate !== undefined)?.date ?? null) : null} dueDate={review.dueDate} onApply={moveToDate} onOff={restoreDates} />}
+
+      {activeGroups.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <span className="text-[13px] font-medium text-muted">Tüm satırların grubu:</span>
+          <GroupPicker groups={activeGroups} value={commonGroup ?? '__mixed'} onChange={setAllGroups} label="Tüm satırların grubu" size="sm" />
+          {commonGroup === null && <span className="text-[12px] text-subtle">(satırlarda farklı gruplar var)</span>}
+        </div>
+      )}
+
+      {/* Uyarılar: kısa; ayrıntı "Ayrıntılar" altında */}
+      {review.totals.map((t, i) => {
+        const diff = extractedNet - t.amountKurus
+        return (
+          <Alert key={i} tone={diff === 0 ? 'accent' : 'warning'} icon={diff === 0 ? <CircleCheck /> : <AlertTriangle />} title="Kaynak toplamıyla kontrol">
+            {diff === 0 ? 'Belgedeki toplamla eşleşiyor.' : `Belgedeki toplamdan ${formatKurus(Math.abs(diff))} farklı: sorunlu veya hariç satırlara bakın.`}
           </Alert>
+        )
+      })}
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-1 px-1 text-[12.5px] text-subtle">
+        <span className="inline-flex items-center gap-1">
+          <Info className="size-3.5" aria-hidden />
+          {review.parserVerified ? 'Sütun eşleştirmenize göre okundu.' : 'Okuyucu bu bankayla doğrulanmadı; satırlara göz atın.'}
+        </span>
+        {review.usedOcr && <span className="num">OCR okuma kalitesi: %{review.ocrConfidence ?? '—'}</span>}
+        {(review.periodText || review.notes.length > 0) && (
+          <More label="Ayrıntılar" className="mt-0">
+            <ul className="space-y-1">
+              {review.periodText && <li>Ekstre bilgisi: {review.periodText}.</li>}
+              {review.notes.map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          </More>
         )}
-        {review.totals.map((t, i) => {
-          const diff = extractedNet - t.amountKurus
-          return (
-            <Alert key={i} tone={diff === 0 ? 'accent' : 'warning'} icon={diff === 0 ? <CircleCheck /> : <AlertTriangle />} title="Kaynak toplamıyla kontrol">
-              Belgedeki “{t.label || 'işlem toplamı'}”: {formatKurus(t.amountKurus)}. Kaydedilecek gider − iade: {formatKurus(extractedNet)}.{' '}
-              {diff === 0 ? 'Tutarlar eşleşiyor.' : `Fark ${formatKurus(Math.abs(diff))}: sorunlu, hariç veya taksit/döviz satırlarına bakın.`}
-            </Alert>
-          )
-        })}
-        {review.notes.map((n) => (
-          <Alert key={n} tone="info" icon={<Info />}>
-            {n}
-          </Alert>
-        ))}
+        <div className="ml-auto flex gap-1.5">
+          {(review.lines.length > 0 || review.sheet) && (
+            <Button size="sm" variant="ghost" icon={<FileText className="size-4" />} onClick={() => setSourceOpen(true)} className="xl:hidden">
+              Kaynak
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => addRow()}>
+            Satır ekle
+          </Button>
+        </div>
       </div>
 
       {(missingCat > 0 || undecided > 0) && (
@@ -247,13 +253,13 @@ export function ReviewStep({
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex min-w-0 flex-col gap-2.5">
+        <div className="flex min-w-0 flex-col gap-2">
           {shown.length === 0 ? (
             <Card className="p-8 text-center text-sm text-muted">
               {rows.length === 0 ? 'Dosyadan işlem çıkarılamadı. Satırları elle ekleyebilirsiniz.' : 'Bu sekmede satır yok.'}
             </Card>
           ) : (
-            <AnimatePresence initial={false}>
+            <>
               {shown.map((r) => (
                 <RowCard
                   key={r.id}
@@ -275,7 +281,7 @@ export function ReviewStep({
                   flash={flashId === r.id}
                 />
               ))}
-            </AnimatePresence>
+            </>
           )}
           {pages > 1 && (
             <div className="flex items-center justify-center gap-2 py-2">
@@ -343,15 +349,6 @@ export function ReviewStep({
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <div className="truncate text-[11.5px] text-subtle">{label}</div>
-      <div className="num truncate font-semibold text-ink">{value}</div>
-    </div>
-  )
-}
-
 const RowCard = memo(function RowCard({
   row: r,
   status,
@@ -399,15 +396,21 @@ const RowCard = memo(function RowCard({
     } else onChange(r.id, { amountKurus: null })
   }
 
+  const [open, setOpen] = useState(false)
+  // Tanınmayan iş yerinde "Diğer" önerisi zaten görünür; aynı uyarı iki kez yazılmaz.
+  const unknownMerchant = r.type === 'expense' && !r.categoryId && r.include
+  const shownProblems = unknownMerchant ? problems.filter((p) => p.field !== 'category') : problems
+  const notes = [
+    ...(r.excludedReason && !r.include ? [`Hariç: ${r.excludedReason}`] : []),
+    ...(r.foreign ? [`Döviz: ${(r.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ${r.foreign.currency}. Yalnızca TL karşılığı kaydedilir.`] : []),
+    ...(r.ruleConflict ? [r.ruleConflict] : r.ruleNote && r.categorySource === 'rule' ? [r.ruleNote] : []),
+    ...r.notes,
+  ]
+
   return (
-    <motion.article
-      layout="position"
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.98 }}
-      transition={{ duration: 0.18 }}
+    <article
       className={cn(
-        'card overflow-hidden p-3.5 transition-[border-color,opacity] duration-200 sm:p-4',
+        'card p-3 transition-[border-color,opacity] duration-200',
         status === 'problem' && 'border-danger/35',
         status === 'duplicate' && 'border-warning/40',
         status === 'excluded' && 'opacity-60',
@@ -415,97 +418,92 @@ const RowCard = memo(function RowCard({
       )}
       aria-label={`${r.description || 'Açıklamasız satır'}, ${meta.label}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Checkbox label={<span className="text-[13px] font-medium">İçe aktar</span>} checked={r.include} onChange={(v) => onChange(r.id, { include: v })} />
-        <Badge tone={meta.tone}>{meta.label}</Badge>
-        {r.installment && (
-          <Badge tone="info" className="num">
-            Taksit {r.installment.current}/{r.installment.total || '?'}
-            {r.installment.purchaseTotalKurus ? ` · toplam ${formatKurus(r.installment.purchaseTotalKurus)} (gidere eklenmez)` : ''}
-          </Badge>
-        )}
-        {r.inFileDuplicate && <Badge tone="neutral">Dosyada aynı satır tekrar ediyor</Badge>}
-        <button type="button" onClick={onShowSource} className="ml-auto inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[12px] text-subtle hover:bg-surface-2 hover:text-ink" title={r.source.text}>
-          <FileText className="size-3.5" />
-          {r.source.kind === 'manual-row' ? 'Elle eklendi' : r.source.kind === 'sheet-row' ? `Satır ${r.source.line}` : `s.${r.source.page} · satır ${r.source.line}`}
-        </button>
-        {onRemove && (
-          <Button size="sm" variant="ghost" icon={<Trash2 className="size-4" />} onClick={onRemove} aria-label="Satırı sil" className="hover:text-danger">
-            Sil
-          </Button>
-        )}
-      </div>
-      <p className="num mt-1.5 truncate rounded-lg bg-surface-2 px-2 py-1 font-mono text-[11.5px] text-subtle" title={r.source.text}>
-        {r.source.text}
-      </p>
-
-      <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-[140px_minmax(0,1fr)_140px] lg:grid-cols-[140px_minmax(0,1fr)_130px_150px_minmax(0,190px)]">
-        <label className="flex flex-col gap-1">
-          <span className="text-[11.5px] font-medium text-subtle">Tarih</span>
-          <Input type="date" value={r.date ?? ''} onChange={(e) => onChange(r.id, { date: e.target.value || null })} aria-invalid={has('date')} className="h-9 px-2 text-[13px]" id={`${idp}-date`} />
-        </label>
-        <label className="col-span-2 flex flex-col gap-1 sm:col-span-1">
-          <span className="text-[11.5px] font-medium text-subtle">Açıklama</span>
-          <Input value={r.description} onChange={(e) => onChange(r.id, { description: e.target.value })} aria-invalid={has('description')} className="h-9 text-[13px]" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-[11.5px] font-medium text-subtle">Tutar (TL)</span>
+      <div className="flex items-start gap-2">
+        <Checkbox label={<span className="sr-only">İçe aktar</span>} checked={r.include} onChange={(v) => onChange(r.id, { include: v })} className="mt-2" />
+        <div className="min-w-0 flex-1">
           <Input
-            inputMode="decimal"
-            value={amountText}
-            onChange={(e) => setAmountText(e.target.value)}
-            onBlur={commitAmount}
-            onKeyDown={(e) => e.key === 'Enter' && commitAmount()}
-            aria-invalid={has('amount') || has('currency')}
-            placeholder={r.foreign ? 'TL karşılığı' : '0,00'}
-            className="num h-9 text-right text-[13px] font-semibold"
+            value={r.description}
+            onChange={(e) => onChange(r.id, { description: e.target.value })}
+            aria-label="Açıklama"
+            aria-invalid={has('description')}
+            placeholder="Açıklama"
+            className="h-9 border-transparent bg-transparent px-1.5 text-[14px] font-medium shadow-none hover:border-line focus:border-line-strong"
           />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-[11.5px] font-medium text-subtle">Tür</span>
-          <Select value={r.type} onChange={(e) => onChange(r.id, { type: e.target.value as TxType })} className="h-9 text-[13px]">
-            {(Object.keys(TX_TYPE_LABEL) as TxType[]).map((t) => (
-              <option key={t} value={t}>
-                {TX_TYPE_LABEL[t]}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="col-span-2 flex flex-col gap-1 sm:col-span-3 lg:col-span-1">
-          <span className="text-[11.5px] font-medium text-subtle">Kategori</span>
-          <div className="flex items-center gap-1.5">
-            <CategoryIcon category={cat} size="sm" />
-            <Select
-              value={r.categoryId ?? ''}
-              onChange={(e) => {
-                const v = e.target.value || null
-                onChange(r.id, { categoryId: v, categorySource: v ? 'manual' : undefined, learnPattern: r.learnPattern ?? suggestLearnPattern(r.description) })
-              }}
-              aria-invalid={has('category')}
-              className="h-9 text-[13px]"
-            >
-              <option value="">{r.type === 'expense' ? 'Kategori seçilmeli' : 'Kategori yok'}</option>
-              {categories
-                .filter((c) => !c.archived)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </Select>
+          <div className="mt-1 grid grid-cols-2 gap-1.5 sm:grid-cols-[140px_120px_minmax(0,1fr)]">
+            <Input type="date" value={r.date ?? ''} onChange={(e) => onChange(r.id, { date: e.target.value || null })} aria-label="Tarih" aria-invalid={has('date')} className="h-9 min-w-0 px-2 text-[13px]" id={`${idp}-date`} />
+            <Input
+              inputMode="decimal"
+              value={amountText}
+              onChange={(e) => setAmountText(e.target.value)}
+              onBlur={commitAmount}
+              onKeyDown={(e) => e.key === 'Enter' && commitAmount()}
+              aria-label="Tutar (TL)"
+              aria-invalid={has('amount') || has('currency')}
+              placeholder={r.foreign ? 'TL karşılığı' : '0,00'}
+              className={cn('num h-9 min-w-0 text-right text-[13px] font-semibold', r.type !== 'expense' && 'text-accent-strong dark:text-accent')}
+            />
+            <div className="col-span-2 flex min-w-0 items-center gap-1.5 sm:col-span-1">
+              <CategoryIcon category={cat} size="sm" />
+              <Select
+                value={r.categoryId ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value || null
+                  onChange(r.id, { categoryId: v, categorySource: v ? 'manual' : undefined, learnPattern: r.learnPattern ?? suggestLearnPattern(r.description) })
+                }}
+                aria-label="Kategori"
+                aria-invalid={has('category')}
+                className="h-9 min-w-0 text-[13px]"
+              >
+                <option value="">{r.type === 'expense' ? 'Kategori seçin' : 'Kategori yok'}</option>
+                {categories
+                  .filter((c) => !c.archived)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </Select>
+            </div>
           </div>
-        </label>
+          {(status !== 'valid' || r.type !== 'expense' || r.installment || r.inFileDuplicate || (r.ownDate && r.ownDate !== r.date)) && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {status !== 'valid' && <Badge tone={meta.tone}>{meta.label}</Badge>}
+              {r.type !== 'expense' && <Badge tone="teal">{TX_TYPE_LABEL[r.type]}</Badge>}
+              {r.installment && (
+                <Badge tone="info" className="num">
+                  Taksit {r.installment.current}/{r.installment.total || '?'}
+                </Badge>
+              )}
+              {r.inFileDuplicate && <Badge tone="neutral">Dosyada tekrar ediyor</Badge>}
+              {r.ownDate && r.ownDate !== r.date && <span className="num text-[12px] text-subtle">İşlem tarihi {formatDate(r.ownDate)}</span>}
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-center">
+          {onRemove && (
+            <button type="button" onClick={onRemove} aria-label="Satırı sil" className="grid size-9 place-items-center rounded-xl text-subtle hover:bg-surface-2 hover:text-danger">
+              <Trash2 className="size-4" />
+            </button>
+          )}
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="Ayrıntılar" className="grid size-9 place-items-center rounded-xl text-subtle hover:bg-surface-2 hover:text-ink">
+            <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
+          </button>
+        </div>
       </div>
 
-      {groups.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="text-[11.5px] font-medium text-subtle">Grup</span>
-          <GroupPicker groups={groups} value={r.groupId ?? ''} onChange={(v) => onChange(r.id, { groupId: v || null })} label={`${r.description || 'Satır'} grubu`} size="sm" />
-        </div>
+      {shownProblems.length > 0 && (
+        <ul className="mt-2 space-y-1 pl-8 text-[12.5px]">
+          {shownProblems.map((p) => (
+            <li key={p.message} className="flex gap-1.5 text-danger">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              {p.message}
+            </li>
+          ))}
+        </ul>
       )}
 
       {r.amountCandidates && r.amountKurus === null && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[12.5px]">
+        <div className="mt-2 flex flex-wrap items-center gap-2 pl-8 text-[12.5px]">
           <span className="text-warning">“{r.amountRaw}” hangisi?</span>
           {r.amountCandidates.map((c) => (
             <Button key={c} size="sm" variant="soft" onClick={() => onChange(r.id, { amountKurus: c, amountCandidates: undefined })}>
@@ -515,8 +513,8 @@ const RowCard = memo(function RowCard({
         </div>
       )}
 
-      {r.type === 'expense' && !r.categoryId && r.include && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[12.5px]">
+      {unknownMerchant && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 pl-8 text-[12.5px]">
           <span className="text-danger">Bu iş yeri tanınmadı; kategori tahmin edilmedi.</span>
           <Button size="sm" variant="soft" onClick={() => onChange(r.id, { categoryId: OTHER_CATEGORY_ID, categorySource: 'confirmed-other' })}>
             “Diğer” olarak onayla
@@ -525,50 +523,18 @@ const RowCard = memo(function RowCard({
       )}
 
       {r.categorySource === 'manual' && r.categoryId && r.description.trim() && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2 pl-8">
           <Checkbox label={<span className="text-[13px]">Bu iş yeri için sonraki işlemlerde de kullan</span>} checked={!!r.learn} onChange={(v) => onChange(r.id, { learn: v, learnPattern: r.learnPattern ?? suggestLearnPattern(r.description) })} />
-          {r.learn && (
-            <Input aria-label="Kural ifadesi" value={r.learnPattern ?? ''} onChange={(e) => onChange(r.id, { learnPattern: e.target.value })} className="h-8 w-48 text-[12.5px]" />
-          )}
+          {r.learn && <Input aria-label="Kural ifadesi" value={r.learnPattern ?? ''} onChange={(e) => onChange(r.id, { learnPattern: e.target.value })} className="h-8 w-48 text-[12.5px]" />}
         </div>
       )}
 
-      {(problems.length > 0 || r.notes.length > 0 || r.ruleNote || r.ruleConflict || r.excludedReason || r.foreign) && (
-        <ul className="mt-2.5 space-y-1 text-[12.5px]">
-          {problems.map((p) => (
-            <li key={p.message} className="flex gap-1.5 text-danger">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-              {p.message}
-            </li>
-          ))}
-          {r.excludedReason && !r.include && <li className="text-muted">Hariç: {r.excludedReason}</li>}
-          {r.foreign && (
-            <li className="num text-muted">
-              Döviz: {(r.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {r.foreign.currency}. Yalnızca TL karşılığı kaydedilir.
-            </li>
-          )}
-          {r.ruleConflict ? <li className="text-warning">{r.ruleConflict}</li> : r.ruleNote && r.categorySource === 'rule' && <li className="text-subtle">{r.ruleNote}</li>}
-          {r.notes.map((n) => (
-            <li key={n} className="text-muted">
-              {n}
-            </li>
-          ))}
-        </ul>
-      )}
-
       {r.duplicateOf?.length ? (
-        <div className="mt-3 rounded-xl border border-warning/35 bg-warning-soft p-3">
+        <div className="mt-2.5 rounded-xl border border-warning/35 bg-warning-soft p-3">
           <p className="flex items-center gap-1.5 text-[13px] font-semibold text-warning">
             <Copy className="size-4" /> Mevcut kayıtla benziyor
           </p>
           <div className="mt-2 grid grid-cols-1 gap-2 text-[12.5px] sm:grid-cols-2">
-            <div className="rounded-lg bg-surface p-2">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-subtle">Bu dosyadaki satır</div>
-              <div className="mt-0.5 font-medium">{r.description}</div>
-              <div className="num text-muted">
-                {r.date ? formatDate(r.date) : '—'} · {r.amountKurus !== null ? formatKurus(r.amountKurus) : '—'}
-              </div>
-            </div>
             {r.duplicateOf.map((id) => {
               const e = existing.get(id)
               return (
@@ -590,9 +556,76 @@ const RowCard = memo(function RowCard({
           </div>
         </div>
       ) : null}
-    </motion.article>
+
+      {open && (
+        <div className="mt-2.5 flex flex-col gap-2.5 border-t border-line pt-2.5 pl-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2">
+              <span className="text-[12px] font-medium text-subtle">Tür</span>
+              <Select value={r.type} onChange={(e) => onChange(r.id, { type: e.target.value as TxType })} className="h-9 w-auto text-[13px]">
+                {(Object.keys(TX_TYPE_LABEL) as TxType[]).map((t) => (
+                  <option key={t} value={t}>
+                    {TX_TYPE_LABEL[t]}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            {groups.length > 0 && <GroupPicker groups={groups} value={r.groupId ?? ''} onChange={(v) => onChange(r.id, { groupId: v || null })} label={`${r.description || 'Satır'} grubu`} size="sm" />}
+          </div>
+          {r.installment?.purchaseTotalKurus ? <p className="num text-[12.5px] text-muted">Taksitli alışveriş toplamı {formatKurus(r.installment.purchaseTotalKurus)}; gidere yalnızca bu ayın taksiti eklenir.</p> : null}
+          {notes.length > 0 && (
+            <ul className="space-y-1 text-[12.5px] text-muted">
+              {notes.map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          )}
+          <button type="button" onClick={onShowSource} className="flex min-w-0 items-center gap-1.5 text-left text-[12px] text-subtle hover:text-ink" title={r.source.text}>
+            <FileText className="size-3.5 shrink-0" />
+            <span className="shrink-0">{r.source.kind === 'manual-row' ? 'Elle eklendi' : r.source.kind === 'sheet-row' ? `Satır ${r.source.line}` : `s.${r.source.page} · satır ${r.source.line}`}</span>
+            {r.source.kind !== 'manual-row' && <span className="num truncate font-mono">{r.source.text}</span>}
+          </button>
+        </div>
+      )}
+    </article>
   )
 })
+
+/** Ekstre işlemlerini tek tarihe (son ödeme tarihi) toplar; ödeme sonraki dönemde yapıldığı için gider o döneme düşer. */
+function DueDateCard({ on, current, dueDate, onApply, onOff }: { on: boolean; current: string | null; dueDate?: string; onApply: (date: string) => void; onOff: () => void }) {
+  const [pick, setPick] = useState(dueDate ?? '')
+  const date = on ? (current ?? '') : pick
+  return (
+    <Card className="p-3">
+      <div className="flex items-center gap-3">
+        <CalendarClock className="size-5 shrink-0 text-accent" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13.5px] font-semibold">Son ödeme tarihine ekle</p>
+          <p className="text-[12px] text-subtle">{on ? 'Tüm işlemler bu tarihte; kendi tarihleri notta kalır.' : dueDate ? `Ekstrede son ödeme: ${formatDate(dueDate)}` : 'Son ödeme tarihi okunamadı; tarihi seçin.'}</p>
+        </div>
+        <Switch
+          checked={on}
+          label="Son ödeme tarihine ekle"
+          disabled={!on && !pick}
+          onChange={(v) => (v ? onApply(pick) : onOff())}
+        />
+      </div>
+      {(on || !dueDate) && (
+        <Input
+          type="date"
+          aria-label="Son ödeme tarihi"
+          value={date}
+          onChange={(e) => {
+            const v = e.target.value
+            setPick(v)
+            if (on && v) onApply(v)
+          }}
+          className="mt-2.5 h-9 min-w-0 px-2 text-[13px] sm:w-48"
+        />
+      )}
+    </Card>
+  )
+}
 
 function SourcePanel({ review, focus, onCreate, embedded }: { review: ReviewData; focus: string | null; onCreate: (l: DocLine) => void; embedded?: boolean }) {
   const [view, setView] = useState<'lines' | 'unparsed' | 'ignored'>('lines')

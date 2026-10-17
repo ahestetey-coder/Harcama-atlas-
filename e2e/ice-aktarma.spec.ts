@@ -140,3 +140,19 @@ test('inceleme satırı silinir ve geri alınır; kayıttan sonra panel aktarıl
   await page.getByRole('button', { name: 'Eylül 2026 kayıtlarını göster' }).click()
   await expect(page.getByRole('button', { name: /Ay seç, seçili: Eylül 2026/ })).toBeVisible()
 })
+
+test('ekstre işlemleri son ödeme tarihine taşınır, kapatınca kendi tarihlerine döner', async ({ page }) => {
+  await uploadImport(page, 'ornek-kredi-karti-ekstresi.pdf')
+  await expect(tab(page, 'Tümü')).toContainText('14', { timeout: 30_000 })
+  const row = page.getByRole('article', { name: /TEKNOSA/ })
+  const own = await row.getByLabel('Tarih').inputValue()
+  const sw = page.getByRole('switch', { name: 'Son ödeme tarihine ekle' })
+  // Ekstredeki son ödeme tarihi okunur; açıkken tarih değiştirilebilir
+  await expect(page.getByText(/Ekstrede son ödeme:/)).toBeVisible()
+  await sw.click()
+  await page.getByLabel('Son ödeme tarihi', { exact: true }).fill('2026-10-26')
+  await expect(row.getByLabel('Tarih')).toHaveValue('2026-10-26')
+  await expect(row.getByText(/İşlem tarihi/)).toBeVisible()
+  await sw.click()
+  await expect(row.getByLabel('Tarih')).toHaveValue(own)
+})
