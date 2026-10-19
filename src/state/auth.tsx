@@ -36,6 +36,9 @@ interface AuthCtx {
 const Ctx = createContext<AuthCtx | null>(null)
 const AFTER_LOGIN_KEY = 'ha:after-login'
 
+/** Mobil uygulamada Google girişi Safari penceresinde yapılır, sonra bu adresle uygulamaya dönülür. */
+const NATIVE_AUTH_REDIRECT = 'com.harcamaatlasi.app://giris'
+
 function restoreAfterLogin() {
   try {
     const hash = sessionStorage.getItem(AFTER_LOGIN_KEY)
@@ -101,7 +104,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'PASSWORD_RECOVERY') setRecovery(true)
         apply(session)
       })
-      unsubscribe = () => data.subscription.unsubscribe()
+      let removeUrlListener = () => {}
+      if (isNativeApp) {
+        void Promise.all([import('@capacitor/app'), import('@capacitor/browser')]).then(async ([{ App }, { Browser }]) => {
+          const handle = await App.addListener('appUrlOpen', ({ url }) => {
+            if (!url.startsWith(NATIVE_AUTH_REDIRECT)) return
+            void Browser.close().catch(() => {})
+            const code = new URL(url).searchParams.get('code')
+            if (code) void b.client.auth.exchangeCodeForSession(code).catch(() => {})
+          })
+          if (alive) removeUrlListener = () => void handle.remove()
+          else void handle.remove()
+        })
+      }
+      unsubscribe = () => {
+        data.subscription.unsubscribe()
+        removeUrlListener()
+      }
       b.client.auth
         .getSession()
         .then(({ data }) => apply(data.session))
@@ -114,9 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             window.history.replaceState(null, '', url.toString())
           }
         })
-      // Google ile giriş Supabase'de açıksa düğme gösterilir. Mobil uygulamada gösterilmez:
-      // Google uygulama içi tarayıcıda girişe izin vermez, App Store da ayrıca Apple ile giriş ister.
-      if (!isNativeApp) fetch(`${config.url}/auth/v1/settings`, { headers: { apikey: config.anonKey } })
+      // Google ile giriş Supabase'de açıksa düğme gösterilir
+      fetch(`${config.url}/auth/v1/settings`, { headers: { apikey: config.anonKey } })
         .then((r) => (r.ok ? r.json() : null))
         .then((s: { external?: { google?: boolean } } | null) => alive && setGoogleEnabled(!!s?.external?.google))
         .catch(() => {})
@@ -163,6 +181,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* yok sayılır */
     }
     // select_account: Google her seferinde hesap seçtirir (ana ekrana eklenen uygulamada tek hesaba kilitlenmesin)
+    if (isNativeApp) {
+      // Google uygulama içi web görünümünde girişe izin vermez; giriş Safari penceresinde açılır.
+      // Dönüşteki kod appUrlOpen dinleyicisinde oturuma çevrilir. Pencere kapanınca söz çözülür.
+      const { data, error } = await need().client.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: NATIVE_AUTH_REDIRECT, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } },
+      })
+      if (error || !data.url) fail(error)
+      const { Browser } = await import('@capacitor/browser')
+      let finished = () => {}
+      const done = new Promise<void>((resolve) => (finished = resolve))
+      const handle = await Browser.addListener('browserFinished', () => finished())
+      try {
+        await Browser.open({ url: data.url, presentationStyle: 'popover' })
+        await done
+      } finally {
+        void handle.remove()
+      }
+      return
+    }
     const { error } = await need()
       .client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: appBaseUrl(), queryParams: { prompt: 'select_account' } } })
     if (error) fail(error)

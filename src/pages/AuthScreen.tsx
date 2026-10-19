@@ -7,8 +7,17 @@ import { UserFacingError } from '../data/repository'
 import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
 import { APP_CONFIG } from '../config/app'
+import { isNativeApp } from '../lib/native'
 
 type Mode = 'signin' | 'signup' | 'reset'
+
+// Mobil uygulama şifre yenilemeyi Safari'de açar: e-postadaki bağlantı yalnızca isteğin gönderildiği tarayıcıda çalışır.
+const RESET_PARAM = 'sifre'
+
+function initialResetEmail(): string | null {
+  const q = new URLSearchParams(window.location.search)
+  return q.get(RESET_PARAM) === 'yenile' ? (q.get('e') ?? '') : null
+}
 
 const EASE = [0.2, 0.8, 0.2, 1] as const
 
@@ -265,9 +274,10 @@ const panel: Variants = {
 /** Giriş, kayıt ve şifre sıfırlama ekranı. */
 export function AuthScreen() {
   const auth = useAuth()
-  const [mode, setMode] = useState<Mode>('signin')
+  const [resetEmail] = useState(initialResetEmail)
+  const [mode, setMode] = useState<Mode>(resetEmail !== null ? 'reset' : 'signin')
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(resetEmail ?? '')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState<'form' | 'google' | null>(null)
   const [error, setError] = useState<string>()
@@ -292,6 +302,12 @@ export function AuthScreen() {
           setMode('signin')
           setInfo(`Hesabınız oluşturuldu. ${email.trim()} adresine gelen bağlantıya tıklayıp hesabınızı doğrulayın, sonra giriş yapın.`)
         }
+      } else if (isNativeApp) {
+        const url = new URL(APP_CONFIG.webUrl)
+        url.searchParams.set(RESET_PARAM, 'yenile')
+        url.searchParams.set('e', email.trim())
+        // Uygulama dışındaki adresler sistem tarayıcısında (Safari) açılır
+        window.location.href = url.toString()
       } else {
         await auth.sendPasswordReset(email)
         setInfo('Şifre yenileme bağlantısı gönderildi. E-postanızdaki bağlantıyı bu cihazda açın.')
@@ -308,6 +324,8 @@ export function AuthScreen() {
     setError(undefined)
     try {
       await auth.signInWithGoogle()
+      // Mobil uygulamada giriş penceresi kapanınca düğme yeniden kullanılabilir olsun
+      if (isNativeApp) setBusy(null)
     } catch (err) {
       setError(errText(err))
       setBusy(null)
@@ -324,14 +342,16 @@ export function AuthScreen() {
               <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" /> Girişe dön
             </button>
             <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Şifrenizi mi unuttunuz?</h1>
-            <p className="mt-1.5 text-sm text-muted">Size bir yenileme bağlantısı gönderelim.</p>
+            <p className="mt-1.5 text-sm text-muted">
+              {isNativeApp ? 'Yenileme tarayıcıda yapılır. Yeni şifrenle sonra uygulamaya giriş yaparsın.' : 'Size bir yenileme bağlantısı gönderelim.'}
+            </p>
             <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
               <Field label="E-posta" htmlFor={`${uid}-email`}>
                 <Input id={`${uid}-email`} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </Field>
               <Messages error={error} info={info} />
               <Button type="submit" variant="primary" size="lg" className="w-full" loading={busy === 'form'} icon={<Mail className="size-4" />}>
-                Bağlantı gönder
+                {isNativeApp ? "Safari'de devam et" : 'Bağlantı gönder'}
               </Button>
             </form>
           </motion.div>
