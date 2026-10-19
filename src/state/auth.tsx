@@ -133,8 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             window.history.replaceState(null, '', url.toString())
           }
         })
-      // Google ile giriş Supabase'de açıksa düğme gösterilir
-      fetch(`${config.url}/auth/v1/settings`, { headers: { apikey: config.anonKey } })
+      // Google ile giriş Supabase'de açıksa düğme gösterilir. Mobil uygulamada bu istek web görünümünden
+      // engellenebildiği için düğme her zaman gösterilir (giriş Safari'de yapılır).
+      if (isNativeApp) setGoogleEnabled(true)
+      else fetch(`${config.url}/auth/v1/settings`, { headers: { apikey: config.anonKey } })
         .then((r) => (r.ok ? r.json() : null))
         .then((s: { external?: { google?: boolean } } | null) => alive && setGoogleEnabled(!!s?.external?.google))
         .catch(() => {})
