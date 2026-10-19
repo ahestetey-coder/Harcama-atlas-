@@ -17,8 +17,9 @@ function systemDark(): boolean {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPref] = useState<ThemePreference>(() => {
+    // Kullanıcı tema seçmediyse koyu tema varsayılır.
     const p = readPref('theme')
-    return p === 'light' || p === 'dark' || p === 'system' ? p : 'system'
+    return p === 'light' || p === 'dark' || p === 'system' ? p : 'dark'
   })
   const [sysDark, setSysDark] = useState(systemDark)
 

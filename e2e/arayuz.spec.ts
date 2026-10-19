@@ -4,14 +4,17 @@ import os from 'node:os'
 import path from 'node:path'
 import { addExpense, open } from './helpers'
 
-test('koyu tema seçilir ve yenilemeden sonra korunur', async ({ page }) => {
+test('ilk açılışta koyu tema gelir, açık tema seçimi korunur', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
   await open(page, 'ayarlar')
-  await page.getByRole('radiogroup', { name: 'Tema' }).getByRole('radio', { name: 'Koyu' }).click()
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
   expect(bg).not.toBe('rgb(255, 255, 255)')
+  await expect(page.getByRole('radiogroup', { name: 'Tema' }).getByRole('radio', { name: 'Koyu' })).toBeChecked()
+  await page.getByRole('radiogroup', { name: 'Tema' }).getByRole('radio', { name: 'Açık' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 })
 
 test('klavye: form modalı odak tuzağı, Esc ile kapanır ve odak geri döner', async ({ page }) => {
