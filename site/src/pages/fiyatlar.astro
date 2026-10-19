@@ -1,0 +1,301 @@
+---
+import Site from '../layouts/Site.astro'
+import PriceCards from '../components/PriceCards.astro'
+import { COMPARISON, PLANS } from '../data/plans'
+
+const billing = [
+  { q: 'Web’den aldığım paket uygulamada açılır mı?', a: 'Evet. Aynı hesapla giriş yaptığın iOS, Android ve web uygulamasında paketin kendiliğinden açılır.' },
+  { q: 'Mağazadan aldığım aboneliği buradan yönetebilir miyim?', a: 'App Store veya Google Play’den aldığın abonelik o mağazadan yönetilir. Hesabım sayfası seni doğru yere yönlendirir.' },
+  { q: '7 günlük deneme nasıl işler?', a: 'Plus+ denemesinde 7 gün boyunca bütün özellikler açıktır. Deneme bitmeden iptal edersen ücret alınmaz.' },
+  { q: 'İptal edersem ne olur?', a: 'Dönem sonuna kadar paketini kullanmaya devam edersin; sonra hesabın Ücretsiz pakete döner, verilerin silinmez.' },
+]
+---
+
+<Site title="Fiyatlar · Harcama Atlası" description="Ücretsiz, Plus ve Plus+ paketlerini karşılaştır. Yıllık ödemede indirim, Plus+ için 7 gün ücretsiz deneme.">
+  <section class="wrap head">
+    <p class="eyebrow reveal">Fiyatlar</p>
+    <h1 class="h-display reveal" style="--d:1">Rotana uygun <span class="accent">paketi</span> seç</h1>
+    <p class="lead reveal" style="--d:2">Harcama takibi her zaman ücretsiz. Gerçek rakamlarla rotanı netleştirmek ve koçla ilerlemek istediğinde yükselt.</p>
+  </section>
+
+  <section class="wrap">
+    <PriceCards />
+    <p class="fine reveal">Fiyatlara KDV dahildir. İstediğin zaman iptal edebilirsin.</p>
+  </section>
+
+  <section class="wrap refine">
+    <div class="refine-card card reveal">
+      <div>
+        <span class="chip chip-route">Plus ile açılır</span>
+        <h2>Rotamı netleştir</h2>
+        <p>
+          Web’deki Finansal Harita testi sana tahmini bir rota çizer. Plus ile uygulamadaki gerçek gelir, gider, borç ve birikim kayıtların hesaba girer:
+          kesin özgürlük yılını, borçsuz kalacağın ayı ve sıradaki durağını görürsün.
+        </p>
+      </div>
+      <ol class="mini-route" aria-label="Netleştirme adımları">
+        <li><b>Test</b><span>Tahmini rota</span></li>
+        <li><b>Gerçek kayıtlar</b><span>Gelir, gider, borç</span></li>
+        <li class="end"><b>Net rota</b><span>Kesin tarih ve durak</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="wrap compare">
+    <h2 class="h-section reveal">Bütün özellikler</h2>
+    <div class="table-wrap reveal">
+      <table>
+        <caption class="sr">Paketlerin özellik karşılaştırması</caption>
+        <thead>
+          <tr>
+            <th scope="col"><span class="sr">Özellik</span></th>
+            {PLANS.map((p) => <th scope="col">{p.name}</th>)}
+          </tr>
+        </thead>
+        {
+          COMPARISON.map((g) => (
+            <tbody>
+              <tr class="group">
+                <th scope="colgroup" colspan="4">
+                  {g.group}
+                </th>
+              </tr>
+              {g.rows.map((r) => (
+                <tr class:list={[{ key: r.key }]}>
+                  <th scope="row">{r.label}</th>
+                  {r.values.map((v) => (
+                    <td>
+                      {v === true ? (
+                        <span class="yes" role="img" aria-label="Var" />
+                      ) : v === false ? (
+                        <span class="no" role="img" aria-label="Yok" />
+                      ) : (
+                        v
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          ))
+        }
+      </table>
+    </div>
+  </section>
+
+  <section class="wrap billing">
+    <h2 class="h-section reveal">Ödeme ve abonelik</h2>
+    <div class="b-grid">
+      {
+        billing.map((b, i) => (
+          <div class="card b-item reveal" style={`--d:${i}`}>
+            <h3>{b.q}</h3>
+            <p>{b.a}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+</Site>
+
+<style>
+  .head {
+    padding-block: 3rem 2.5rem;
+    text-align: center;
+  }
+  .head .eyebrow {
+    justify-content: center;
+  }
+  .head h1 {
+    margin-top: 1rem;
+  }
+  .head .lead {
+    margin: 1.25rem auto 0;
+  }
+  .wrap :global(.prices) {
+    text-align: center;
+  }
+  .wrap :global(.prices .grid) {
+    text-align: left;
+  }
+  .fine {
+    text-align: center;
+    color: var(--ink-2);
+    font-size: 0.9rem;
+    margin-top: 1.5rem;
+  }
+  .refine {
+    padding-block: 4rem 2rem;
+  }
+  .refine-card {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+    padding: 2.75rem;
+    background:
+      radial-gradient(420px 220px at 0% 100%, var(--route-soft), transparent 70%),
+      var(--card);
+  }
+  .refine h2 {
+    font-size: clamp(1.7rem, 3vw, 2.3rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0.8rem 0 0.6rem;
+  }
+  .refine p {
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .mini-route {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    position: relative;
+  }
+  .mini-route::before {
+    content: '';
+    position: absolute;
+    top: 0.65rem;
+    left: 0.65rem;
+    right: 2rem;
+    border-top: 2px dashed var(--route);
+  }
+  .mini-route li {
+    position: relative;
+    display: grid;
+    gap: 0.15rem;
+    padding-top: 2rem;
+    font-size: 0.92rem;
+  }
+  .mini-route li::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 3px solid var(--route);
+  }
+  .mini-route li.end::before {
+    background: var(--route);
+  }
+  .mini-route span {
+    color: var(--ink-2);
+  }
+  .compare {
+    padding-block: 4rem 2rem;
+  }
+  .table-wrap {
+    margin-top: 2rem;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--card);
+  }
+  table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+  }
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    padding: 1.1rem 1rem;
+    font: 800 1.05rem var(--display);
+    text-align: center;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+  }
+  thead th:nth-child(3) {
+    color: var(--route);
+  }
+  tbody th,
+  tbody td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  tbody th[scope='row'] {
+    text-align: left;
+    font-weight: 500;
+    width: 52%;
+  }
+  td {
+    text-align: center;
+  }
+  td:nth-child(3) {
+    background: var(--route-soft);
+  }
+  .group th {
+    text-align: left;
+    padding-top: 1.5rem;
+    font: 700 0.78rem var(--body);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--brand);
+  }
+  tr.key th {
+    font-weight: 700;
+    color: var(--route);
+  }
+  .yes,
+  .no {
+    display: inline-block;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    vertical-align: middle;
+  }
+  .yes {
+    background: var(--brand) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/80% no-repeat;
+  }
+  .no {
+    width: 0.9rem;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--ink-2);
+    opacity: 0.4;
+  }
+  .billing {
+    padding-block: 4rem 0;
+  }
+  .b-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.1rem;
+    margin-top: 2rem;
+  }
+  .b-item {
+    padding: 1.6rem;
+  }
+  .b-item h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1.08rem;
+    font-weight: 700;
+  }
+  .b-item p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+  @media (max-width: 860px) {
+    .refine-card {
+      grid-template-columns: 1fr;
+      padding: 1.75rem 1.25rem;
+      gap: 2rem;
+    }
+    .b-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

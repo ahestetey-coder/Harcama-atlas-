@@ -1,0 +1,1019 @@
+---
+import Site from '../layouts/Site.astro'
+import Phone from '../components/Phone.astro'
+import PriceCards from '../components/PriceCards.astro'
+import { contourPaths } from '../lib/contours'
+
+const rings = [
+  ...contourPaths({ cx: 330, cy: 170, rings: 8, r0: 20, step: 24, seed: 1.3 }),
+  ...contourPaths({ cx: 110, cy: 500, rings: 6, r0: 16, step: 22, seed: 4.1 }),
+]
+const route = 'M50 480 C 100 430, 110 380, 150 360 S 230 330, 250 280 S 290 170, 360 140'
+const stops = [
+  { x: 50, y: 480, label: 'Bugün', sub: 'Konumun' },
+  { x: 150, y: 360, label: 'Acil durum fonu', sub: '3–6 aylık gider' },
+  { x: 250, y: 280, label: 'Borçsuz', sub: 'Faizli borç yok' },
+  { x: 360, y: 140, label: 'Finansal özgürlük', sub: 'Zirve' },
+]
+
+const features = [
+  { img: 'ozet-light', dark: 'ozet-dark', chip: 'Ücretsiz', title: 'Paranın haritası tek ekranda', text: 'Bu ay ne harcadın, bütçende ne kaldı, hangi kategori büyüyor? Özet sayfası hepsini bir bakışta gösterir.' },
+  { img: 'islemler-light', chip: 'Ücretsiz', title: 'Ekstreni yükle, gerisini bırak', text: 'PDF, Excel, CSV ya da ekran görüntüsü. Harcamalar okunur, kategoriler önerilir, tekrar edenler yakalanır.' },
+  { img: 'butce-light', chip: 'Plus', title: 'Gelirine göre akıllı bütçe', text: 'Maaş gününe göre dönem, kategori limitleri ve ay sonu tahmini. Bütçeyi koç kurar, sen onaylarsın.' },
+  { img: 'borclar-light', chip: 'Plus', title: 'Borçlar ve taksitler kontrolde', text: 'Kart taksitleri, krediler ve düzenli ödemeler gelecek aylara yayılmış halde. Hangi ay ne kadar ödeyeceğin belli.' },
+]
+
+const faqs = [
+  { q: 'Finansal Harita testi ücretli mi?', a: 'Hayır. Test ücretsiz, yaklaşık 2 dakika sürer ve 10 sorudan oluşur. Sonucunda finansal arketipini, rotandaki konumunu ve tahmini özgürlük yılını görürsün.' },
+  { q: 'Test sonucum uygulamaya nasıl geçiyor?', a: 'Testte verdiğin e-posta adresiyle uygulamaya giriş yaptığında sonucun hesabına kendiliğinden bağlanır. İstersen sana verilen devam koduyla da aktarabilirsin.' },
+  { q: 'Banka şifremi istiyor musunuz?', a: 'Hayır. Harcama Atlası bankana bağlanmaz. Harcamalarını ekstre dosyasıyla, ekran görüntüsüyle ya da elle eklersin. Ekran görüntüleri cihazında okunur.' },
+  { q: 'Verilerim nerede saklanıyor?', a: 'Verilerin hesabına bağlı olarak saklanır ve aynı hesapla girdiğin her cihazda görünür. Hesabını ve tüm verilerini dilediğin an uygulamadan silebilirsin.' },
+  { q: 'Aboneliğimi nereden alırım, nasıl iptal ederim?', a: 'Plus ve Plus+ paketlerini bu siteden ya da uygulama mağazasından alabilirsin. Hangi kanaldan aldıysan o kanaldan iptal edersin; iptal ettiğinde dönem sonuna kadar kullanmaya devam edersin.' },
+  { q: 'Koç yatırım tavsiyesi veriyor mu?', a: 'Hayır. Koç bütçe, borç kapatma ve birikim planı konusunda yol gösterir; belirli bir hisse, fon ya da coin almanı veya satmanı önermez.' },
+]
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'SoftwareApplication', name: 'Harcama Atlası', applicationCategory: 'FinanceApplication', operatingSystem: 'iOS, Android, Web', offers: { '@type': 'Offer', price: '0', priceCurrency: 'TRY' } },
+    { '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
+  ],
+}
+---
+
+<Site title="Harcama Atlası · Harcamalarını haritala, özgürlüğe giden rotanı çiz" description="Harcamalarını tek ekranda topla, 2 dakikalık Finansal Harita testiyle özgürlük rotanı çıkar. Ücretsiz başla." jsonLd={jsonLd}>
+  <!-- HERO -->
+  <section class="hero wrap">
+    <div class="hero-text">
+      <p class="eyebrow reveal">Kişisel finans atlası</p>
+      <h1 class="h-display reveal" style="--d:1">Harcamalarını haritala, <span class="accent">özgürlüğe giden rotanı</span> çiz.</h1>
+      <p class="lead reveal" style="--d:2">
+        Harcama Atlası paranın nereye gittiğini tek haritada toplar. 2 dakikalık Finansal Harita testiyle ilk rotanı çıkarır, uygulamada her ay nerede
+        olduğunu gösterir.
+      </p>
+      <div class="ctas reveal" style="--d:3">
+        <a class="btn btn-route" href="/test">Finansal Harita testini çöz <span class="arr" aria-hidden="true">→</span></a>
+        <a class="btn btn-ghost" href="#nasil">Nasıl çalışır?</a>
+      </div>
+      <ul class="proof reveal" style="--d:4" aria-label="Öne çıkanlar">
+        <li><strong>10 soru</strong> · 2 dakika</li>
+        <li><strong>TL, dolar</strong> ya da altın</li>
+        <li><strong>iOS, Android</strong> ve web</li>
+      </ul>
+      <div class="stores reveal" style="--d:5" aria-label="Uygulamayı indir">
+        <span class="store"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5a4.3 4.3 0 0 0-3.4-1.8c-1.4-.2-2.8.8-3.5.8-.7 0-1.8-.8-3-.8a4.5 4.5 0 0 0-3.8 2.3c-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3a10 10 0 0 0 1.3-2.6 4 4 0 0 1-2.5-3.7ZM14.1 5.8A4 4 0 0 0 15 2.9a4.1 4.1 0 0 0-2.7 1.4 3.9 3.9 0 0 0-1 2.8 3.4 3.4 0 0 0 2.8-1.3Z"></path></svg><span>App Store<small>yakında</small></span></span>
+        <span class="store"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3.6 2.3 13.4 12l-9.8 9.7a1.5 1.5 0 0 1-.6-1.2V3.5c0-.5.2-.9.6-1.2Zm11 8.5 2.6-2.6 3.2 1.8c1.1.6 1.1 1.7 0 2.3l-3.2 1.9-2.6-2.6L13.4 12l1.2-1.2ZM5 1.6l10.5 6-2.1 2.1L5 1.6Zm8.4 12.8 2.1 2.1L5 22.4l8.4-8Z"></path></svg><span>Google Play<small>yakında</small></span></span>
+      </div>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+      <div class="map card">
+        <svg viewBox="0 0 560 600" class="map-svg">
+          <defs>
+            <pattern id="grid" width="56" height="60" patternUnits="userSpaceOnUse"><path d="M56 0H0V60" fill="none" class="gridline"></path></pattern>
+          </defs>
+          <rect width="560" height="600" fill="url(#grid)"></rect>
+          <g class="contours">{rings.map((d) => <path d={d} />)}</g>
+          <text x="10" y="18" class="coord">41°N</text><text x="10" y="138" class="coord">40°N</text><text x="494" y="590" class="coord">29°E</text>
+          <path d={route} class="route-shadow"></path>
+          <path d={route} class="route" pathLength="1"></path>
+          {
+            stops.map((s, i) => (
+              <g class="stop" data-at={[0, 0.38, 0.6, 0.97][i]} transform={`translate(${s.x} ${s.y})`}>
+                <circle r="11" class="stop-halo" />
+                <circle r="6.5" class="stop-dot" />
+                <text x={i === 3 ? -16 : 16} y="-3" text-anchor={i === 3 ? 'end' : 'start'} class="stop-label">{s.label}</text>
+                <text x={i === 3 ? -16 : 16} y="14" text-anchor={i === 3 ? 'end' : 'start'} class="stop-sub">{s.sub}</text>
+              </g>
+            ))
+          }
+          <g class="compass" transform="translate(500 70)">
+            <circle r="26" class="c-ring"></circle>
+            <path d="M0 -20 L5 0 L0 20 L-5 0 Z" class="c-needle"></path>
+            <text y="-32" text-anchor="middle" class="coord">K</text>
+          </g>
+        </svg>
+      </div>
+      <div class="hero-phone" data-tilt>
+        <Phone light="ozet-light" dark="ozet-dark" alt="" eager />
+      </div>
+    </div>
+  </section>
+
+  <!-- NASIL ÇALIŞIR -->
+  <section id="nasil" class="how wrap">
+    <p class="eyebrow reveal">Nasıl çalışır</p>
+    <h2 class="h-section reveal">Üç adımda <span class="accent">rotan</span> hazır</h2>
+    <ol class="steps">
+      <li class="reveal" style="--d:0">
+        <span class="n">01</span>
+        <h3>Harcamanı haritala</h3>
+        <p>Ekstreni, ekran görüntüsünü ya da harcamanı tek tek ekle. Kategoriler kendiliğinden oluşur.</p>
+      </li>
+      <li class="reveal" style="--d:1">
+        <span class="n">02</span>
+        <h3>Testi çöz</h3>
+        <p>10 kısa soruyla konumunu ve hedefini belirle. Sonuç TL, dolar ya da altın cinsinden.</p>
+      </li>
+      <li class="reveal" style="--d:2">
+        <span class="n">03</span>
+        <h3>Rotanı izle</h3>
+        <p>Her ay hangi durakta olduğunu ve sıradaki hedefe ne kadar kaldığını gör.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- TEST VİTRİNİ -->
+  <section class="band">
+    <div class="wrap test-grid">
+      <div class="test-phone reveal">
+        <Phone light="test-soru-1" alt="Finansal Harita testinin çözülüşü">
+          <video data-autoplay muted loop playsinline preload="none" poster="/screenshots/test-soru-1.webp" aria-label="Finansal Harita testinin çözülüşünü gösteren kısa video">
+            <source src="/video/harita-testi.webm" type="video/webm" />
+            <source src="/video/harita-testi.mp4" type="video/mp4" />
+          </video>
+        </Phone>
+        <div class="float-card card" aria-hidden="true">
+          <span class="chip">Sonuç</span>
+          <strong>Temkinli Kâşif</strong>
+          <span>Özgürlük yılı <b>2035</b></span>
+        </div>
+      </div>
+      <div class="test-text">
+        <p class="eyebrow reveal">Finansal Harita testi</p>
+        <h2 class="h-section reveal">2 dakikada <span class="accent">finansal haritanı</span> çıkar.</h2>
+        <p class="lead reveal">Sorular kısa ve görsel. Sonunda finansal arketipini, rotandaki konumunu ve bugünkü tempoyla özgürlük yılını görürsün.</p>
+        <ul class="ticks reveal">
+          <li>Gelir, birikim, borç ve risk alışkanlığına göre kişisel sonuç</li>
+          <li>Hedefini TL, dolar ya da gram altın cinsinden gör</li>
+          <li>Sonucun, aynı e-postayla girdiğin uygulamada seni bekler</li>
+        </ul>
+        <a class="btn btn-route reveal" href="/test">Testi ücretsiz çöz <span class="arr" aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ÖZELLİKLER -->
+  <section class="features wrap" id="ozellikler">
+    <p class="eyebrow reveal">Özellikler</p>
+    <h2 class="h-section reveal">Paranı anlamak için<br />ihtiyacın olan her şey</h2>
+    <div class="feat-grid">
+      <div class="feat-list">
+        {
+          features.map((f, i) => (
+            <article class="feat" data-i={i}>
+              <div class="feat-phone-m">
+                <Phone light={f.img} dark={f.dark} alt={f.title} />
+              </div>
+              <span class:list={['chip', { 'chip-route': f.chip !== 'Ücretsiz' }]}>{f.chip}</span>
+              <h3>{f.title}</h3>
+              <p>{f.text}</p>
+            </article>
+          ))
+        }
+      </div>
+      <div class="feat-sticky" aria-hidden="true">
+        <div class="feat-stage">
+          {
+            features.map((f, i) => (
+              <div class:list={['feat-shot', { on: i === 0 }]} data-i={i}>
+                <Phone light={f.img} dark={f.dark} alt="" />
+              </div>
+            ))
+          }
+          <ol class="feat-dots">{features.map((_, i) => <li class:list={[{ on: i === 0 }]} data-i={i} />)}</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KOÇ -->
+  <section class="coach wrap">
+    <div class="coach-card card">
+      <div class="coach-text">
+        <span class="chip chip-route reveal">Plus+</span>
+        <h2 class="h-section reveal">Seni tanıyan bir <span class="accent">finans koçu</span></h2>
+        <p class="lead reveal">Koç; gelirini, giderlerini, borçlarını ve test sonucunu bilir. Borç kapatma sırası, ayrılacak birikim ve sıradaki durak için sana özel plan çıkarır.</p>
+        <p class="note reveal">Koç yatırım tavsiyesi vermez; hesapları uygulamanın kendi motoru yapar.</p>
+      </div>
+      <div class="chat" aria-label="Örnek koç sohbeti">
+        <div class="msg me reveal" style="--d:0">Kredi kartı borcumu mu kapatayım, birikime mi başlayayım?</div>
+        <div class="msg bot reveal" style="--d:2">
+          Önce faizli kart borcunu kapatalım. Aylık <b>₺4.500</b> ayırırsan <b>Mart 2027</b>’de borçsuzsun. Sonra aynı tutarla acil durum fonuna geçeriz.
+        </div>
+        <div class="msg bot typing reveal" style="--d:4"><span></span><span></span><span></span></div>
+      </div>
+      <div class="coach-phone reveal" style="--d:1">
+        <Phone light="koc-light" dark="koc-dark" alt="Uygulamadaki Koçum ekranı" />
+      </div>
+    </div>
+  </section>
+
+  <!-- PAKETLER -->
+  <section class="plans wrap" id="paketler">
+    <div class="plans-head">
+      <div>
+        <p class="eyebrow reveal">Paketler</p>
+        <h2 class="h-section reveal">Ücretsiz başla, rotanı <span class="accent">netleştirmek</span> istediğinde yükselt</h2>
+      </div>
+      <a class="btn btn-ghost reveal" href="/fiyatlar">Tüm özellikleri karşılaştır <span class="arr" aria-hidden="true">→</span></a>
+    </div>
+    <PriceCards />
+  </section>
+
+  <!-- SSS -->
+  <section class="faq wrap" id="sss">
+    <p class="eyebrow reveal">Sık sorulanlar</p>
+    <h2 class="h-section reveal">Aklındaki sorular</h2>
+    <div class="faq-list">
+      {
+        faqs.map((f, i) => (
+          <details class="reveal" style={`--d:${i % 3}`}>
+            <summary>
+              {f.q}
+              <span class="plus" aria-hidden="true" />
+            </summary>
+            <p>{f.a}</p>
+          </details>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- SON ÇAĞRI -->
+  <section class="wrap">
+    <div class="final reveal">
+      <svg class="final-route" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M-20 260 C 200 240, 260 120, 460 150 S 760 260, 900 140 S 1100 40, 1220 60" pathLength="1"></path>
+      </svg>
+      <h2 class="h-section">Rotan 2 dakika uzağında.</h2>
+      <p>Ücretsiz Finansal Harita testini çöz, nerede durduğunu ve nereye gidebileceğini gör.</p>
+      <a class="btn btn-route" href="/test">Testi çöz <span class="arr" aria-hidden="true">→</span></a>
+    </div>
+  </section>
+</Site>
+
+<script>
+  function heroInit() {
+    const hero = document.querySelector<HTMLElement>('.hero')
+    if (!hero) return
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const stops = [...hero.querySelectorAll<SVGGElement>('.stop')]
+    const set = (raw: number) => {
+      const p = Math.min(1, Math.max(0, raw))
+      hero.style.setProperty('--draw', String(p))
+      stops.forEach((s) => s.classList.toggle('on', p >= Number(s.dataset.at)))
+    }
+    if (reduce) set(1)
+    else {
+      let base = 0
+      const start = performance.now()
+      const tick = (t: number) => {
+        base = Math.min(0.62, ((t - start) / 1800) * 0.62)
+        set(base + scrollY / (innerHeight * 0.6))
+        if (base < 0.62) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+      addEventListener('scroll', () => set(base + scrollY / (innerHeight * 0.6)), { passive: true })
+
+      // Telefon fareyi hafifçe takip eder
+      const ph = hero.querySelector<HTMLElement>('[data-tilt]')
+      if (ph && matchMedia('(pointer: fine)').matches) {
+        hero.addEventListener('pointermove', (e) => {
+          const r = hero.getBoundingClientRect()
+          const x = (e.clientX - r.left) / r.width - 0.5
+          const y = (e.clientY - r.top) / r.height - 0.5
+          ph.style.setProperty('--rx', `${(-y * 6).toFixed(2)}deg`)
+          ph.style.setProperty('--ry', `${(x * 8).toFixed(2)}deg`)
+        })
+        hero.addEventListener('pointerleave', () => {
+          ph.style.setProperty('--rx', '0deg')
+          ph.style.setProperty('--ry', '0deg')
+        })
+      }
+    }
+
+    // Özellikler: yazı kaydıkça sağdaki telefon değişir
+    const shots = [...document.querySelectorAll<HTMLElement>('.feat-shot')]
+    const dots = [...document.querySelectorAll<HTMLElement>('.feat-dots li')]
+    const feats = [...document.querySelectorAll<HTMLElement>('.feat')]
+    const fio = new IntersectionObserver(
+      (es) =>
+        es.forEach((e) => {
+          if (!e.isIntersecting) return
+          const i = (e.target as HTMLElement).dataset.i
+          feats.forEach((f) => f.classList.toggle('on', f.dataset.i === i))
+          shots.forEach((s) => s.classList.toggle('on', s.dataset.i === i))
+          dots.forEach((d) => d.classList.toggle('on', d.dataset.i === i))
+        }),
+      { rootMargin: '-45% 0px -45% 0px' },
+    )
+    feats.forEach((f) => fio.observe(f))
+  }
+  document.addEventListener('astro:page-load', heroInit)
+</script>
+
+<style>
+  /* HERO */
+  .hero {
+    display: grid;
+    grid-template-columns: 1.02fr 1fr;
+    gap: 3.5rem;
+    align-items: center;
+    padding-top: 2.5rem;
+    padding-bottom: 5rem;
+  }
+  .hero h1 {
+    margin-top: 1.1rem;
+  }
+  .hero .lead {
+    margin: 1.5rem 0 2rem;
+  }
+  .ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+  }
+  .proof {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.6rem;
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0 0;
+    color: var(--ink-2);
+    font-size: 0.95rem;
+  }
+  .proof strong {
+    color: var(--ink);
+  }
+  .stores {
+    display: flex;
+    gap: 0.7rem;
+    margin-top: 1.75rem;
+  }
+  .store {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.95rem;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    font-weight: 700;
+    font-size: 0.92rem;
+    line-height: 1.15;
+  }
+  .store span {
+    display: flex;
+    flex-direction: column;
+  }
+  .store small {
+    font-weight: 500;
+    color: var(--ink-2);
+    font-size: 0.72rem;
+  }
+  .hero-visual {
+    position: relative;
+    padding-bottom: 3rem;
+  }
+  .map {
+    position: relative;
+    aspect-ratio: 560 / 600;
+    overflow: hidden;
+    background: var(--paper-2);
+    width: 88%;
+  }
+  .map-svg {
+    width: 100%;
+    height: 100%;
+  }
+  .gridline {
+    stroke: var(--line);
+  }
+  .contours {
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+  .contours path {
+    fill: none;
+    stroke: var(--contour);
+    stroke-width: 1;
+  }
+  .coord {
+    font: 600 11px var(--body);
+    fill: var(--ink-2);
+    opacity: 0.75;
+  }
+  .route,
+  .route-shadow {
+    fill: none;
+    stroke-linecap: round;
+  }
+  .route-shadow {
+    stroke: var(--route);
+    stroke-width: 2;
+    stroke-dasharray: 2 8;
+    opacity: 0.35;
+  }
+  .route {
+    stroke: var(--route);
+    stroke-width: 3.5;
+    stroke-dasharray: 1;
+    stroke-dashoffset: calc(1 - var(--draw, 0));
+    filter: drop-shadow(0 4px 8px var(--route-soft));
+  }
+  .stop {
+    opacity: 0.3;
+    transition: opacity 0.5s;
+  }
+  .stop:global(.on) {
+    opacity: 1;
+  }
+  .stop-halo {
+    fill: var(--route-soft);
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  .stop:global(.on) .stop-halo {
+    animation: pulse 2.4s ease-out infinite;
+  }
+  @keyframes pulse {
+    from {
+      transform: scale(0.6);
+      opacity: 1;
+    }
+    to {
+      transform: scale(2.2);
+      opacity: 0;
+    }
+  }
+  .stop-dot {
+    fill: var(--paper);
+    stroke: var(--route);
+    stroke-width: 3;
+  }
+  .stop-label {
+    font: 700 14px var(--display);
+    fill: var(--ink);
+    paint-order: stroke;
+    stroke: var(--paper-2);
+    stroke-width: 4px;
+  }
+  .stop-sub {
+    font: 500 12px var(--body);
+    fill: var(--ink-2);
+    paint-order: stroke;
+    stroke: var(--paper-2);
+    stroke-width: 4px;
+  }
+  .c-ring {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 1.5;
+  }
+  .c-needle {
+    fill: var(--route);
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: needle 6s ease-in-out infinite;
+  }
+  @keyframes needle {
+    0%,
+    100% {
+      transform: rotate(-8deg);
+    }
+    50% {
+      transform: rotate(14deg);
+    }
+  }
+  .hero-phone {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 36%;
+    max-width: 240px;
+    perspective: 900px;
+    animation: float 7s ease-in-out infinite;
+    --rot: 3deg;
+    transform: rotate(3deg);
+  }
+  .hero-phone :global(.phone) {
+    transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* NASIL */
+  .how {
+    padding-block: 5rem;
+  }
+  .steps {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+    margin: 3rem 0 0;
+    padding: 0;
+    position: relative;
+  }
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 1.35rem;
+    left: 3rem;
+    right: 3rem;
+    border-top: 2px dashed var(--route);
+    opacity: 0.45;
+  }
+  .steps li {
+    position: relative;
+  }
+  .n {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--route);
+    color: var(--route);
+    font: 800 0.85rem var(--display);
+    position: relative;
+  }
+  .steps h3 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 1.1rem 0 0.4rem;
+  }
+  .steps p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+
+  /* TEST BANDI */
+  .band {
+    background: var(--band);
+    color: var(--band-ink);
+    padding-block: 6rem;
+    overflow: hidden;
+    position: relative;
+  }
+  .band::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(600px 300px at 15% 20%, rgb(255 122 82 / 0.16), transparent 70%),
+      radial-gradient(500px 300px at 90% 90%, rgb(52 211 153 / 0.1), transparent 70%);
+  }
+  .band h2,
+  .band .lead {
+    color: var(--band-ink);
+  }
+  .band .lead {
+    opacity: 0.8;
+  }
+  .band .eyebrow {
+    color: #ffb59c;
+  }
+  .band .accent {
+    color: #ff8a64;
+  }
+  .test-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 4rem;
+    align-items: center;
+  }
+  .test-phone {
+    position: relative;
+    justify-self: center;
+    width: min(300px, 80%);
+  }
+  .test-phone :global(.phone) {
+    max-width: none;
+  }
+  .float-card {
+    position: absolute;
+    right: -3.5rem;
+    top: 18%;
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem 1.2rem;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    animation: float 6s ease-in-out infinite;
+  }
+  .float-card strong {
+    font-family: var(--display);
+    font-size: 1.15rem;
+  }
+  .float-card span:last-child {
+    color: var(--ink-2);
+    font-size: 0.9rem;
+  }
+  .float-card b {
+    color: var(--brand);
+  }
+  .ticks {
+    list-style: none;
+    padding: 0;
+    margin: 1.75rem 0 2.25rem;
+    display: grid;
+    gap: 0.8rem;
+  }
+  .ticks li {
+    position: relative;
+    padding-left: 2rem;
+    opacity: 0.9;
+  }
+  .ticks li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    background: #ff8a64 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/80% no-repeat;
+  }
+
+  /* ÖZELLİKLER */
+  .features {
+    padding-block: 6rem 3rem;
+  }
+  .feat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    margin-top: 2rem;
+  }
+  .feat {
+    min-height: 62vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 30rem;
+    opacity: 0.35;
+    transition: opacity 0.5s;
+  }
+  .feat:global(.on) {
+    opacity: 1;
+  }
+  .feat h3 {
+    font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.12;
+    margin: 0.9rem 0 0.6rem;
+  }
+  .feat p {
+    color: var(--ink-2);
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  .feat .chip {
+    align-self: flex-start;
+  }
+  .feat-phone-m {
+    display: none;
+  }
+  .feat-sticky {
+    position: relative;
+  }
+  .feat-stage {
+    position: sticky;
+    top: calc(50vh - 290px);
+    height: 580px;
+    display: grid;
+    place-items: center;
+  }
+  .feat-stage::before {
+    content: '';
+    position: absolute;
+    width: 440px;
+    height: 440px;
+    border-radius: 50%;
+    border: 1px dashed var(--route);
+    opacity: 0.35;
+  }
+  .feat-shot {
+    grid-area: 1 / 1;
+    width: 270px;
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+    transition:
+      opacity 0.6s,
+      transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .feat-shot:global(.on) {
+    opacity: 1;
+    transform: none;
+  }
+  .feat-dots {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+  }
+  .feat-dots li {
+    width: 8px;
+    height: 8px;
+    border-radius: 99px;
+    background: var(--line);
+    transition: height 0.4s, background 0.4s;
+  }
+  .feat-dots li:global(.on) {
+    height: 28px;
+    background: var(--route);
+  }
+
+  /* KOÇ */
+  .coach {
+    padding-block: 4rem;
+  }
+  .coach-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr 0.75fr;
+    gap: 2.5rem;
+    align-items: center;
+    padding: 3.5rem;
+    overflow: hidden;
+    background:
+      radial-gradient(500px 260px at 100% 0%, var(--brand-soft), transparent 70%),
+      var(--card);
+  }
+  .coach-text .h-section {
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+  }
+  .coach-text .lead {
+    margin: 1rem 0;
+  }
+  .note {
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .chat {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .msg {
+    max-width: 92%;
+    padding: 0.85rem 1.05rem;
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  .me {
+    justify-self: end;
+    background: var(--ink);
+    color: var(--paper);
+    border-bottom-right-radius: 6px;
+  }
+  .bot {
+    background: var(--paper-2);
+    border-bottom-left-radius: 6px;
+  }
+  .bot b {
+    color: var(--brand);
+  }
+  .typing {
+    display: inline-flex;
+    gap: 5px;
+    width: max-content;
+  }
+  .typing span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ink-2);
+    animation: blink 1.2s infinite;
+  }
+  .typing span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  .typing span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0.25;
+    }
+  }
+  .coach-phone {
+    justify-self: center;
+    width: 100%;
+    max-width: 220px;
+  }
+
+  /* PAKETLER */
+  .plans {
+    padding-block: 5rem;
+  }
+  .plans-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .plans-head .h-section {
+    max-width: 40rem;
+  }
+
+  /* SSS */
+  .faq {
+    padding-block: 4rem;
+  }
+  .faq-list {
+    margin-top: 2.25rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem 1.25rem;
+    align-items: start;
+  }
+  details {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--card);
+    transition: border-color 0.3s;
+  }
+  details[open] {
+    border-color: var(--route);
+  }
+  summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.3rem;
+    cursor: pointer;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  .plus {
+    position: relative;
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+  .plus::before,
+  .plus::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 12px;
+    height: 2px;
+    background: var(--route);
+    translate: -50% -50%;
+    transition: rotate 0.3s;
+  }
+  .plus::after {
+    rotate: 90deg;
+  }
+  details[open] .plus::after {
+    rotate: 0deg;
+  }
+  details p {
+    margin: 0;
+    padding: 0 1.3rem 1.2rem;
+    color: var(--ink-2);
+  }
+
+  /* SON ÇAĞRI */
+  .final {
+    position: relative;
+    overflow: hidden;
+    margin-top: 3rem;
+    padding: 5rem 2rem;
+    border-radius: 28px;
+    text-align: center;
+    background: var(--band);
+    color: var(--band-ink);
+  }
+  .final h2 {
+    color: var(--band-ink);
+    position: relative;
+  }
+  .final p {
+    position: relative;
+    opacity: 0.8;
+    margin: 1rem auto 2rem;
+    max-width: 30rem;
+  }
+  .final .btn {
+    position: relative;
+  }
+  .final-route {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .final-route path {
+    fill: none;
+    stroke: #ff8a64;
+    stroke-width: 2;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    opacity: 0.55;
+    vector-effect: non-scaling-stroke;
+    transition: stroke-dashoffset 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+  }
+  .final:global(.in) .final-route path {
+    stroke-dashoffset: 0;
+  }
+
+  /* MOBİL */
+  @media (max-width: 960px) {
+    .hero,
+    .test-grid,
+    .feat-grid {
+      grid-template-columns: 1fr;
+    }
+    .hero {
+      gap: 2.5rem;
+      padding-top: 1.25rem;
+    }
+    .map {
+      width: 82%;
+    }
+    .hero-phone {
+      width: 42%;
+    }
+    .steps {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+    .steps::before {
+      top: 1.3rem;
+      bottom: 1.3rem;
+      left: 1.35rem;
+      right: auto;
+      border-top: 0;
+      border-left: 2px dashed var(--route);
+    }
+    .steps li {
+      padding-left: 4rem;
+    }
+    .n {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+    .steps h3 {
+      margin-top: 0.4rem;
+    }
+    .test-grid {
+      gap: 3rem;
+    }
+    .test-phone {
+      order: 2;
+      width: min(260px, 70%);
+    }
+    .float-card {
+      right: -2.5rem;
+    }
+    .feat-sticky {
+      display: none;
+    }
+    .feat {
+      min-height: 0;
+      opacity: 1;
+      padding-block: 2rem;
+    }
+    .feat-phone-m {
+      display: block;
+      width: min(240px, 70%);
+      margin: 0 auto 1.75rem;
+    }
+    .coach-card {
+      grid-template-columns: 1fr;
+      padding: 2rem 1.25rem;
+    }
+    .coach-phone {
+      max-width: 230px;
+    }
+    .plans-head {
+      flex-direction: column;
+      align-items: start;
+    }
+    .faq-list {
+      grid-template-columns: 1fr;
+    }
+    .final {
+      padding: 4rem 1.25rem;
+    }
+  }
+</style>

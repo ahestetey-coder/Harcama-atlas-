@@ -1,0 +1,289 @@
+@import 'tailwindcss';
+
+/* Harcama Atlası sitesi: "Kâğıt Atlas" yönü. Yazı tipleri uygulamayla aynı (Plus Jakarta Sans + Inter). */
+:root {
+  --paper: #f5f1e8;
+  --paper-2: #ece5d6;
+  --card: #fbf9f4;
+  --ink: #13202f;
+  --ink-2: #485364;
+  --route: #c4401c;
+  --route-soft: rgb(196 64 28 / 0.1);
+  --on-route: #ffffff;
+  --brand: #047857;
+  --brand-soft: rgb(4 120 87 / 0.1);
+  --line: rgb(19 32 47 / 0.12);
+  --contour: rgb(14 77 90 / 0.24);
+  --band: #13202f;
+  --band-ink: #f5f1e8;
+  --shadow: 0 30px 70px -30px rgb(19 32 47 / 0.35);
+  --display: 'Plus Jakarta Sans Variable', 'Inter Variable', system-ui, sans-serif;
+  --body: 'Inter Variable', system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #0d1722;
+    --paper-2: #132131;
+    --card: #111d2b;
+    --ink: #eee8da;
+    --ink-2: #b3bac4;
+    --route: #ff7a52;
+    --route-soft: rgb(255 122 82 / 0.12);
+    --on-route: #1f0c05;
+    --brand: #34d399;
+    --brand-soft: rgb(52 211 153 / 0.12);
+    --line: rgb(238 232 218 / 0.1);
+    --contour: rgb(95 179 192 / 0.22);
+    --band: #08111a;
+    --band-ink: #eee8da;
+    --shadow: 0 30px 70px -30px rgb(0 0 0 / 0.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --paper: #0d1722;
+  --paper-2: #132131;
+  --card: #111d2b;
+  --ink: #eee8da;
+  --ink-2: #b3bac4;
+  --route: #ff7a52;
+  --route-soft: rgb(255 122 82 / 0.12);
+  --on-route: #1f0c05;
+  --brand: #34d399;
+  --brand-soft: rgb(52 211 153 / 0.12);
+  --line: rgb(238 232 218 / 0.1);
+  --contour: rgb(95 179 192 / 0.22);
+  --band: #08111a;
+  --band-ink: #eee8da;
+  --shadow: 0 30px 70px -30px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+::selection {
+  background: var(--route);
+  color: #fff;
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--display);
+  color: var(--ink);
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+a {
+  color: inherit;
+}
+:focus-visible {
+  outline: 3px solid var(--route);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+@media (min-width: 640px) {
+  .wrap {
+    padding-inline: 1.5rem;
+  }
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+.eyebrow::before {
+  content: '';
+  width: 1.4rem;
+  border-top: 2px solid currentColor;
+}
+.h-display {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  font-size: clamp(2.5rem, 6vw, 4.75rem);
+  margin: 0;
+}
+.h-section {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  font-size: clamp(1.9rem, 3.8vw, 3rem);
+  margin: 0.75rem 0 0;
+}
+.lead {
+  color: var(--ink-2);
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+  max-width: 36rem;
+}
+.accent {
+  color: var(--route);
+}
+.mark {
+  background: linear-gradient(transparent 62%, var(--route-soft) 62%);
+}
+
+.btn {
+  --bg: var(--ink);
+  --fg: var(--paper);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.9rem 1.45rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 600 1rem/1.2 var(--body);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.25s;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -14px color-mix(in oklab, var(--bg) 70%, transparent);
+}
+.btn .arr {
+  transition: transform 0.25s;
+}
+.btn:hover .arr {
+  transform: translateX(3px);
+}
+.btn-route {
+  --bg: var(--route);
+  --fg: var(--on-route);
+}
+.btn-ghost {
+  --bg: transparent;
+  --fg: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+.btn-ghost:hover {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.btn-sm {
+  padding: 0.55rem 1.05rem;
+  font-size: 0.92rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.chip-route {
+  background: var(--route-soft);
+  color: var(--route);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+/* Tema ile değişen görseller */
+.only-dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .only-dark {
+    display: block;
+  }
+  :root:not([data-theme='light']) .only-light {
+    display: none;
+  }
+}
+:root[data-theme='dark'] .only-dark {
+  display: block;
+}
+:root[data-theme='dark'] .only-light {
+  display: none;
+}
+
+/* Kaydırınca beliren öğeler (JS yoksa görünür kalır) */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: calc(var(--d, 0) * 90ms);
+}
+.js .reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-24px, 14px, 0);
+  }
+}
+@keyframes float {
+  50% {
+    transform: translateY(-10px) rotate(var(--rot, 0deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.35s;
+}
