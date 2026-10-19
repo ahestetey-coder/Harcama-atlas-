@@ -979,3 +979,41 @@ end $$;
 revoke all on function public.ha_submit_freedom_lead(text, text, text, jsonb, jsonb, boolean), public.ha_claim_freedom_lead(text) from public, anon;
 grant execute on function public.ha_submit_freedom_lead(text, text, text, jsonb, jsonb, boolean) to anon, authenticated;
 grant execute on function public.ha_claim_freedom_lead(text) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------
+-- Kişisel kayıtların hesapla eşitlenmesi (2026-10-19)
+--
+-- Aynı hesapla hangi cihazdan girilirse girilsin bütün kayıtlar (harcamalar, gelirler, kategoriler,
+-- bütçe ve ayarlar, düzenli ödemeler, hedefler, varlıklar, borçlar…) görünsün diye her tablo satırı
+-- burada JSON olarak durur. Herkes yalnızca kendi satırlarını okur ve yazar. Silinen satır
+-- işaretlenir (diğer cihazlar da silsin diye); hesap silinince satırlar da silinir.
+
+create table if not exists public.ha_user_records (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  tbl text not null check (tbl in ('settings', 'categories', 'groups', 'members', 'rules', 'recurring', 'goals', 'assets', 'imports', 'transactions', 'meta')),
+  id text not null check (char_length(id) between 1 and 200),
+  data jsonb check (data is null or pg_column_size(data) <= 262144),
+  deleted boolean not null default false,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, tbl, id)
+);
+
+create index if not exists ha_user_records_sync on public.ha_user_records (user_id, updated_at);
+
+drop trigger if exists ha_user_records_touch on public.ha_user_records;
+create trigger ha_user_records_touch before insert or update on public.ha_user_records
+  for each row execute function public.ha_touch();
+
+alter table public.ha_user_records enable row level security;
+
+drop policy if exists ha_user_records_select on public.ha_user_records;
+create policy ha_user_records_select on public.ha_user_records for select to authenticated using (user_id = auth.uid());
+drop policy if exists ha_user_records_insert on public.ha_user_records;
+create policy ha_user_records_insert on public.ha_user_records for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists ha_user_records_update on public.ha_user_records;
+create policy ha_user_records_update on public.ha_user_records for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists ha_user_records_delete on public.ha_user_records;
+create policy ha_user_records_delete on public.ha_user_records for delete to authenticated using (user_id = auth.uid());
+
+revoke all on public.ha_user_records from anon;
+grant select, insert, update, delete on public.ha_user_records to authenticated;

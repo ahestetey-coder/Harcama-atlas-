@@ -474,8 +474,27 @@ select pg_temp.as_user(:'osman');
 select count(*) = 2 as admin_reads from public.ha_freedom_leads \gset
 \if :admin_reads \else \echo 'HATA: yönetici kayıtları okuyamadı' \q \endif
 reset role;
+-- Kişisel kayıtlar: herkes yalnızca kendi satırlarını görür ve yazar
+select pg_temp.as_user(:'osman');
+insert into public.ha_user_records (tbl, id, data) values ('transactions', 'tx-1', '{"id":"tx-1","amountKurus":100}');
+update public.ha_user_records set data = '{"id":"tx-1","amountKurus":200}' where id = 'tx-1';
+reset role;
+select pg_temp.as_user(:'ayse');
+select count(*) = 0 as rec_hidden from public.ha_user_records \gset
+\if :rec_hidden \else \echo 'HATA: başkasının kişisel kaydı göründü' \q \endif
+update public.ha_user_records set deleted = true where id = 'tx-1';
+select pg_temp.as_user(:'ayse');
+\set ON_ERROR_STOP off
+insert into public.ha_user_records (user_id, tbl, id, data) values (:'osman', 'transactions', 'tx-2', '{}');
+\set ON_ERROR_STOP on
+reset role;
+select count(*) = 1 and bool_and(not deleted) and min((data->>'amountKurus')::int) = 200 as rec_safe from public.ha_user_records \gset
+\if :rec_safe \else \echo 'HATA: kişisel kayıt korunmadı' \q \endif
 -- Hesap silinince sahiplenilen kayıt da silinir
 delete from auth.users where id = '66666666-6666-6666-6666-666666666666';
 select count(*) = 0 as lead_deleted from public.ha_freedom_leads where code = 'ATL-ABC234' \gset
 \if :lead_deleted \else \echo 'HATA: hesapla birlikte silinmedi' \q \endif
+delete from auth.users where id = :'osman';
+select count(*) = 0 as rec_deleted from public.ha_user_records \gset
+\if :rec_deleted \else \echo 'HATA: kişisel kayıtlar hesapla silinmedi' \q \endif
 \echo 'TUM SQL TESTLERI GECTI'

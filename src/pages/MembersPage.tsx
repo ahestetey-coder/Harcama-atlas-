@@ -256,7 +256,7 @@ function GroupsCard() {
           <Users className="size-5 text-accent" /> Gruplar ve üyeler
         </h2>
         <p className="mt-1 text-[13px] text-muted">Paylaşılan gruptaki harcamaları bütün üyeler görür.</p>
-        <More>Herkes yalnızca kendi harcamasını ekler, düzenler ve siler. Diğer kayıtlarınız ve dosyalarınız bu cihazda kalır.</More>
+        <More>Herkes yalnızca kendi harcamasını ekler, düzenler ve siler. Diğer kayıtlarınızı üyeler görmez.</More>
       </div>
       <ul>
         {visible.map((g) => {
