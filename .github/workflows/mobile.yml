@@ -1,6 +1,7 @@
 name: Mobil derleme
 
 # Android APK ve iOS (simülatör) derlemesini doğrular. APK, çalışmanın "Artifacts" bölümünden indirilebilir.
+# iOS için imzasız IPA da üretilir: Sideloadly gibi bir araçla ücretsiz Apple kimliğiyle kabloyla iPhone'a kurulabilir.
 # Mağaza için imzalı sürüm, geliştirici hesapları açıldıktan sonra eklenecek.
 on:
   push:
@@ -59,3 +60,18 @@ jobs:
           -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO build | tail -40; exit ${PIPESTATUS[0]}
         shell: bash
+      - name: iPhone için imzasız IPA
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -40
+          test ${PIPESTATUS[0]} -eq 0
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry HarcamaAtlasi.ipa Payload
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harcama-atlasi-ios-imzasiz-ipa
+          path: HarcamaAtlasi.ipa
+          retention-days: 14
