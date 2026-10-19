@@ -3,6 +3,7 @@ import '@fontsource-variable/plus-jakarta-sans'
 import '@fontsource-variable/inter'
 import '../styles/site.css'
 import { ClientRouter } from 'astro:transitions'
+import Brand from '../components/Brand.astro'
 
 interface Props {
   title: string
@@ -29,6 +30,7 @@ const nav = [
     <meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0d1722" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script is:inline>
       ;(function () {
         const apply = () => {
@@ -51,13 +53,7 @@ const nav = [
     <header class="site-head" transition:persist>
       <div class="wrap bar">
         <a href="/" class="brand" aria-label="Harcama Atlası ana sayfa">
-          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-            <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="1.6"></circle>
-            <path d="M16 3.5 L19.2 16 L16 28.5 L12.8 16 Z" fill="var(--route)"></path>
-            <path d="M16 16 L19.2 16 L16 28.5 Z" fill="currentColor" opacity=".85"></path>
-            <circle cx="16" cy="16" r="1.8" fill="var(--paper)"></circle>
-          </svg>
-          <span>Harcama Atlası</span>
+          <Brand id="logo-ust" size={34} />
         </a>
         <nav class="links" aria-label="Ana menü">
           {nav.map((n) => <a href={n.href} aria-current={path === n.href ? 'page' : undefined}>{n.label}</a>)}
@@ -94,7 +90,7 @@ const nav = [
     <footer class="site-foot">
       <div class="wrap foot-grid">
         <div>
-          <a href="/" class="brand">Harcama Atlası</a>
+          <a href="/" class="brand" aria-label="Harcama Atlası ana sayfa"><Brand id="logo-alt" /></a>
           <p>Harcamalarını haritala, özgürlüğe giden rotanı çiz.</p>
           <p class="small">Harcama Atlası yatırım danışmanlığı yapmaz; gösterilen hesaplar örnek ve tahmindir.</p>
         </div>

@@ -67,16 +67,34 @@ export function Logo({ className }: { className?: string }) {
   const gid = useId().replace(/:/g, '')
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
+      {/* Uygulama ikonuyla aynı: koyu karo üzerinde üç kontur katmanı ve zirvedeki konum noktası. */}
       <svg viewBox="0 0 64 64" className="size-9 shrink-0" aria-hidden>
         <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#10b981" />
-            <stop offset="1" stopColor="#06b6d4" />
+          <radialGradient id={`${gid}b`} cx="0.2" cy="0" r="1.2">
+            <stop offset="0" stopColor="#1d3a55" />
+            <stop offset="0.55" stopColor="#101d2e" />
+            <stop offset="1" stopColor="#0a131f" />
+          </radialGradient>
+          <linearGradient id={`${gid}1`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#1b7a8c" />
+            <stop offset="1" stopColor="#0e4d5a" />
+          </linearGradient>
+          <linearGradient id={`${gid}2`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#2fd39a" />
+            <stop offset="1" stopColor="#059669" />
+          </linearGradient>
+          <linearGradient id={`${gid}3`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ffb347" />
+            <stop offset="1" stopColor="#ff5a36" />
           </linearGradient>
         </defs>
-        <rect width="64" height="64" rx="16" fill="#0b1220" />
-        <circle cx="32" cy="32" r="18" fill="none" stroke={`url(#${gid})`} strokeWidth="5" />
-        <path d="M32 14 A18 18 0 0 1 50 32 L32 32 Z" fill={`url(#${gid})`} />
+        <rect width="64" height="64" rx="16" fill={`url(#${gid}b)`} />
+        <g transform="translate(9.6 12.085) scale(0.7)">
+          <path d="M3 56 C15 42 21 11 32 11 C43 11 49 42 61 56 Z" fill={`url(#${gid}1)`} />
+          <path d="M11 56 C20 45 25 25 32 25 C39 25 44 45 53 56 Z" fill={`url(#${gid}2)`} />
+          <path d="M20 56 C25 49 28 38 32 38 C36 38 39 49 44 56 Z" fill={`url(#${gid}3)`} />
+          <circle cx="32" cy="4.5" r="3.6" fill="#ffffff" />
+        </g>
       </svg>
       <div className="min-w-0 leading-tight">
         <div className="truncate font-display text-[16px] font-bold tracking-tight text-ink">{APP_CONFIG.name}</div>

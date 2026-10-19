@@ -1,0 +1,59 @@
+---
+// Harcama Atlası logosu: üç kontur katmanından oluşan zirve ve zirvedeki konum noktası.
+interface Props {
+  id: string
+  size?: number
+  wordmark?: boolean
+}
+const { id, size = 30, wordmark = true } = Astro.props
+---
+
+<span class="brand-in">
+  <svg viewBox="0 0 64 60" width={size} height={size * 0.94} aria-hidden="true">
+    <defs>
+      <linearGradient id={`${id}-1`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b7a8c"></stop><stop offset="1" stop-color="#0e4d5a"></stop></linearGradient>
+      <linearGradient id={`${id}-2`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fd39a"></stop><stop offset="1" stop-color="#059669"></stop></linearGradient>
+      <linearGradient id={`${id}-3`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb347"></stop><stop offset="1" stop-color="#ff5a36"></stop></linearGradient>
+    </defs>
+    <path d="M3 56 C15 42 21 11 32 11 C43 11 49 42 61 56 Z" fill={`url(#${id}-1)`}></path>
+    <path d="M11 56 C20 45 25 25 32 25 C39 25 44 45 53 56 Z" fill={`url(#${id}-2)`}></path>
+    <path d="M20 56 C25 49 28 38 32 38 C36 38 39 49 44 56 Z" fill={`url(#${id}-3)`}></path>
+    <circle class="peak" cx="32" cy="4.5" r="3.6" fill="currentColor"></circle>
+  </svg>
+  {wordmark && <span class="word">harcama <span class="grad">atlası</span></span>}
+</span>
+
+<style>
+  .brand-in {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  svg {
+    flex: none;
+    overflow: visible;
+  }
+  .word {
+    font-family: var(--display);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1;
+  }
+  .grad {
+    background: linear-gradient(90deg, #ff5a36, #ffb347);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  :global(a:hover) .peak {
+    animation: peak 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes peak {
+    40% {
+      transform: translateY(-4px);
+    }
+  }
+  .peak {
+    transform-box: fill-box;
+  }
+</style>
