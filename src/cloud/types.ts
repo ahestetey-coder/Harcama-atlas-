@@ -60,7 +60,7 @@ export interface CloudTxRow extends CloudTxInput {
  * Eşitlemenin ihtiyaç duyduğu bulut işlemleri. Gerçek uygulama Supabase ile çalışır;
  * testler bellek içi bir uygulama kullanır.
  */
-export interface CloudBackend {
+export interface CloudBackend extends RecordBackend {
   /** Giriş yapmış kullanıcının kimliği. */
   userId(): string | null
   createGroup(name: string, color: string, displayName: string): Promise<CloudGroup>
@@ -88,4 +88,24 @@ export interface CloudBackend {
   remove(ids: string[]): Promise<void>
   /** `since` sonrasında değişen satırlar (silinenler dahil), updated_at sırasıyla. */
   pull(groupId: string, since: string | null): Promise<CloudTxRow[]>
+}
+
+/** Hesaba bağlı kişisel kayıt (supabase/schema.sql: ha_user_records). Her tablo satırı JSON olarak saklanır. */
+export interface CloudRecord {
+  tbl: string
+  id: string
+  data: Record<string, unknown> | null
+  deleted: boolean
+  updated_at: string
+}
+
+/** Kişisel verilerin hesapla eşitlenmesi için bulut işlemleri. Herkes yalnızca kendi satırlarını görür. */
+export interface RecordBackend {
+  userId(): string | null
+  /** Kayıtları yazar; `data: null` olan satır silinmiş olarak işaretlenir. */
+  upsertRecords(rows: { tbl: string; id: string; data: Record<string, unknown> | null }[]): Promise<void>
+  /** `since` sonrasında değişen kendi satırları (silinenler dahil), updated_at sırasıyla. */
+  pullRecords(since: string | null): Promise<CloudRecord[]>
+  /** "Verilerimi sıfırla": bütün kendi satırlarını silinmiş işaretler (diğer cihazlarda da kalkar). */
+  clearRecords(): Promise<void>
 }

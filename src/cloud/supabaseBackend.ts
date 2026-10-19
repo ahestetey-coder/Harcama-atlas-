@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { CloudBackend, CloudPayment, CloudGroup, CloudMember, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
+import type { CloudBackend, CloudPayment, CloudRecord, CloudGroup, CloudMember, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 export class SupabaseBackend implements CloudBackend {
   readonly client: SupabaseClient
@@ -129,5 +129,40 @@ export class SupabaseBackend implements CloudBackend {
       if (!data || data.length < PAGE) break
     }
     return out
+  }
+
+  async upsertRecords(rows: { tbl: string; id: string; data: Record<string, unknown> | null }[]) {
+    const uid = this.uid
+    if (!rows.length || !uid) return
+    const { error } = await this.client
+      .from('ha_user_records')
+      .upsert(rows.map((r) => ({ user_id: uid, tbl: r.tbl, id: r.id, data: r.data, deleted: r.data === null })), { onConflict: 'user_id,tbl,id' })
+    if (error) throw error
+  }
+
+  async pullRecords(since: string | null): Promise<CloudRecord[]> {
+    const out: CloudRecord[] = []
+    const PAGE = 1000
+    for (let from = 0; ; from += PAGE) {
+      let q = this.client
+        .from('ha_user_records')
+        .select('tbl, id, data, deleted, updated_at')
+        .order('updated_at', { ascending: true })
+        .order('tbl', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1)
+      if (since) q = q.gt('updated_at', since)
+      const { data, error } = await q
+      if (error) throw error
+      out.push(...((data ?? []) as CloudRecord[]))
+      if (!data || data.length < PAGE) break
+    }
+    return out
+  }
+
+  async clearRecords() {
+    if (!this.uid) return
+    const { error } = await this.client.from('ha_user_records').update({ data: null, deleted: true }).eq('user_id', this.uid).eq('deleted', false)
+    if (error) throw error
   }
 }

@@ -1,3 +1,4 @@
+import Dexie from 'dexie'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { envCloudConfig, readCloudConfig, writeCloudConfig, type CloudConfig } from '../cloud/config'
@@ -32,7 +33,7 @@ const Ctx = createContext<CloudCtx | null>(null)
 const AUTO_SYNC_MS = 60_000
 
 /**
- * Ortak grupların bulut eşitlemesi. Bulut ayarı yoksa hiçbir ağ isteği yapılmaz.
+ * Hesabın kişisel kayıtlarının ve ortak grupların bulut eşitlemesi. Bulut ayarı yoksa hiçbir ağ isteği yapılmaz.
  * Demo modunda kapalıdır.
  */
 export function CloudProvider({ children }: { children: ReactNode }) {
@@ -49,6 +50,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
   const [lastReport, setLastReport] = useState<SyncReport | null>(null)
   const [lastError, setLastError] = useState<string | null>(null)
   const inFlight = useRef<Promise<SyncReport | null> | null>(null)
+  const lastEnd = useRef(0)
 
   useEffect(() => {
     let alive = true
@@ -131,6 +133,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       } finally {
         setSyncing(false)
         inFlight.current = null
+        lastEnd.current = Date.now()
       }
     })()
     inFlight.current = run
@@ -156,6 +159,23 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(t)
   }, [active, linkedSignature, sync])
 
+  // Bu cihazdaki her değişiklik (eşitlemenin kendi yazdıkları hariç) kısa bir beklemeyle buluta gider.
+  useEffect(() => {
+    if (!active) return
+    const prefix = `idb://${repo.db.name}/`
+    let timer: number | undefined
+    const onChange = (parts: Record<string, unknown>) => {
+      if (inFlight.current || Date.now() - lastEnd.current < 1000) return
+      if (!Object.keys(parts).some((k) => k.startsWith(prefix) && !k.startsWith(`${prefix}meta/`))) return
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => void sync(), 2000)
+    }
+    Dexie.on('storagemutated', onChange)
+    return () => {
+      window.clearTimeout(timer)
+      Dexie.on('storagemutated').unsubscribe(onChange)
+    }
+  }, [active, repo, sync])
   useEffect(() => {
     if (!active) return
     const tick = () => document.visibilityState === 'visible' && void sync()

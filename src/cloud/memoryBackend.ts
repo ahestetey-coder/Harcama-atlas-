@@ -1,4 +1,4 @@
-import type { CloudBackend, CloudGroup, CloudMember, CloudPayment, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
+import type { CloudBackend, CloudGroup, CloudMember, CloudPayment, CloudRecord, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 /**
  * Testler için bellek içi bulut. supabase/schema.sql'deki kuralların aynısını uygular
@@ -12,6 +12,8 @@ export class MemoryCloud {
   settlements: CloudSettlement[] = []
   payments: CloudPayment[] = []
   budgets = new Map<string, number | null>()
+  /** Kişisel kayıtlar: anahtar `kullanıcı|tablo|kimlik`. */
+  records = new Map<string, CloudRecord & { user_id: string }>()
   private clock = Date.parse('2026-10-01T00:00:00Z')
 
   now(): string {
@@ -118,6 +120,20 @@ export class MemoryCloud {
           const r = c.rows.get(id)
           if (r && r.user_id === userId && !r.deleted) c.rows.set(id, { ...r, deleted: true, updated_at: c.now() })
         }
+      },
+      async upsertRecords(rows) {
+        for (const r of rows) {
+          c.records.set(`${userId}|${r.tbl}|${r.id}`, { user_id: userId, tbl: r.tbl, id: r.id, data: r.data === null ? null : structuredClone(r.data), deleted: r.data === null, updated_at: c.now() })
+        }
+      },
+      async pullRecords(since) {
+        return [...c.records.values()]
+          .filter((r) => r.user_id === userId && (!since || r.updated_at > since))
+          .sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+          .map(({ user_id: _u, ...r }) => ({ ...r, data: r.data === null ? null : structuredClone(r.data) }))
+      },
+      async clearRecords() {
+        for (const [k, r] of c.records) if (r.user_id === userId && !r.deleted) c.records.set(k, { ...r, data: null, deleted: true, updated_at: c.now() })
       },
       async pull(groupId, since) {
         must(groupId)

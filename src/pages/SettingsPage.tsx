@@ -225,10 +225,10 @@ export default function SettingsPage() {
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
             <CloudOff className="size-5 text-accent" /> Senkronizasyon ve gizlilik
           </h2>
-          <p className="mt-1 text-sm text-muted">Kayıtlarınız bu cihazda kalır; yalnızca ortak grup harcamaları paylaşılır.</p>
+          <p className="mt-1 text-sm text-muted">Kayıtlarınız hesabınızda saklanır; aynı hesapla girdiğiniz her cihazda görünür. Sizden başka kimse göremez.</p>
           <More label="Gizlilik ayrıntıları">
             <ul className="list-disc space-y-1 pl-5">
-              <li>Başka cihaza taşımak için “Yedekleme ve veri” sayfasından yedek alın.</li>
+              <li>İnternet yokken de çalışır; bağlantı gelince kendiliğinden eşitlenir.</li>
               <li>Reklam veya izleme kullanılmaz. Koçun yapay zekâ sohbeti yalnızca izin verirseniz, özet bilgilerle çalışır.</li>
               <li>PDF, Excel, CSV ve görseller cihazınızda okunur, sunucuya gönderilmez.</li>
               <li>Kart numarası, CVV veya banka parolası istenmez.</li>

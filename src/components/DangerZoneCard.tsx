@@ -1,6 +1,7 @@
 import { RotateCcw, Trash2, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { deleteMyCloudTransactions } from '../cloud/sync'
+import { clearMyCloudRecords } from '../cloud/userSync'
 import { toUserMessage } from '../data/repository'
 import { useAuth } from '../state/auth'
 import { clearLocalAccountData, resetLocalData } from '../state/data'
@@ -30,7 +31,10 @@ export function DangerZoneCard() {
   const reset = async () => {
     setBusy(true)
     try {
-      if (user && auth.backend) await deleteMyCloudTransactions(auth.backend)
+      if (user && auth.backend) {
+        await deleteMyCloudTransactions(auth.backend)
+        await clearMyCloudRecords(auth.backend)
+      }
       await resetLocalData(user?.id)
       // Bellekteki eşitleme ve ekran durumunu da temizlemek için baştan aç
       window.location.hash = '#/'
@@ -83,7 +87,7 @@ export function DangerZoneCard() {
         {kind === 'reset' ? (
           <p>
             Harcamalarınız, gelirleriniz, bütçeniz, varlık ve borçlarınız, hedefleriniz ve test sonuçlarınız silinir; uygulama ilk günkü gibi açılır.
-            {user ? ' Ortak gruplara eklediğiniz harcamalar da buluttan silinir. Hesabınız, paketiniz ve grup üyelikleriniz kalır.' : ''} Geri alınamaz.
+            {user ? ' Kayıtlar buluttan ve hesabınızla girdiğiniz diğer cihazlardan da silinir; ortak gruplara eklediğiniz harcamalar da kalkar. Hesabınız, paketiniz ve grup üyelikleriniz kalır.' : ''} Geri alınamaz.
           </p>
         ) : (
           <>

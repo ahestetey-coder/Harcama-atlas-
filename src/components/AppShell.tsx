@@ -338,7 +338,7 @@ function AccountBox({ className }: { className?: string }) {
         <LogOut className="size-4" /> Çıkış
       </button>
       <Modal open={confirm} onOpenChange={setConfirm} title="Çıkış yapılsın mı?" size="sm">
-        <p className="text-sm text-muted">Kayıtlarınız bu cihazda kalır.</p>
+        <p className="text-sm text-muted">Kayıtlarınız hesabınızda saklı kalır; yeniden girince gelir.</p>
         <div className="mt-5 flex justify-end gap-2 pb-1">
           <Button onClick={() => setConfirm(false)}>Vazgeç</Button>
           <Button variant="primary" icon={<LogOut className="size-4" />} onClick={() => void auth.signOut()}>

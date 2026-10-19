@@ -158,7 +158,7 @@ function HeroPanel() {
       </div>
 
       <ul className="relative mt-8 flex flex-wrap gap-2 text-[12.5px] text-white/75">
-        {['PDF ve fotoğraftan okuma', 'Kişisel ve ortak gruplar', 'Veriler cihazınızda'].map((t, i) => (
+        {['PDF ve fotoğraftan okuma', 'Kişisel ve ortak gruplar', 'Her cihazda aynı veriler'].map((t, i) => (
           <motion.li
             key={t}
             initial={{ opacity: 0, y: 8 }}

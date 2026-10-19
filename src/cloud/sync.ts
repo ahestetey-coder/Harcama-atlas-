@@ -2,6 +2,7 @@ import type { AtlasRepository } from '../data/repository'
 import { UserFacingError } from '../data/repository'
 import { normalizeText } from '../domain/normalize'
 import type { Category, GroupSettlement, Member, SettlementPayment, SpendGroup, Transaction } from '../domain/types'
+import { syncRecords } from './userSync'
 import type { CloudBackend, CloudGroup, CloudPayment, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
 
 /**
@@ -26,6 +27,8 @@ export interface SyncReport {
   removed: number
   received: number
   deletedLocal: number
+  /** Hesabın kişisel kayıtları: alınan / gönderilen. */
+  records?: { received: number; sent: number }
 }
 
 async function meta<T>(repo: AtlasRepository, key: string, fallback: T): Promise<T> {
@@ -299,6 +302,27 @@ export async function syncAll(repo: AtlasRepository, backend: CloudBackend): Pro
   const userId = backend.userId()
   if (!userId) return report
   await adoptCloudIdentity(repo, userId)
+
+  // Kişisel kayıtlar önce eşitlenir: başka cihazda bağlanmış ortak gruplar bu cihaza aynı kimlikle gelir.
+  let recordError: unknown = null
+  try {
+    const r = await syncRecords(repo, backend)
+    report.records = { received: r.received + r.deleted, sent: r.sent }
+  } catch (e) {
+    if (!isMissingTable(e)) recordError = e
+  }
+  const groupReport = await syncGroups(repo, backend, userId, report)
+  if (recordError) throw recordError
+  return groupReport
+}
+
+/** Sunucuda kişisel kayıt tablosu henüz kurulmadıysa eşitleme yalnızca ortak gruplarla sürer. */
+function isMissingTable(e: unknown): boolean {
+  const code = (e as { code?: string } | null)?.code
+  return code === '42P01' || code === 'PGRST205'
+}
+
+async function syncGroups(repo: AtlasRepository, backend: CloudBackend, userId: string, report: SyncReport): Promise<SyncReport> {
   const db = repo.db
 
   const cloudGroups = new Map((await backend.listGroups()).map((g) => [g.id, g]))
