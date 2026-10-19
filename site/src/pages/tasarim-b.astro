@@ -1,0 +1,501 @@
+---
+import '@fontsource-variable/bricolage-grotesque/wdth.css'
+import '@fontsource-variable/plus-jakarta-sans'
+import Base from '../layouts/Base.astro'
+import { contourPaths } from '../lib/contours'
+
+const rings = [
+  ...contourPaths({ cx: 1180, cy: 120, rings: 11, r0: 30, step: 34, seed: 2.2, sx: 1.6 }),
+  ...contourPaths({ cx: 120, cy: 760, rings: 7, r0: 26, step: 30, seed: 5.4, sx: 1.5 }),
+]
+const plans = [
+  { name: 'Ücretsiz', price: '₺0', note: 'Harcama takibi, içe aktarma, Finansal Harita testi' },
+  { name: 'Plus', price: '₺99,99', note: 'Bütçe, borç planı, yatırımlar ve Rotamı netleştir', featured: true },
+  { name: 'Plus+', price: '₺199,99', note: 'Kişisel koç, senaryolar ve tam özgürlük rotası' },
+]
+---
+
+<Base title="Harcama Atlası · Tasarım B: Gece Seyri" description="Paran nereye gidiyor, rotan nereye çıkıyor? Harcama Atlası ile gör.">
+  <div class="b">
+    <svg class="topo" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      {rings.map((d) => <path d={d} />)}
+    </svg>
+    <header class="top">
+      <a href="#" class="brand" aria-label="Harcama Atlası ana sayfa">
+        <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"
+          ><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 3"></circle><path d="M16 5 L20 16 L16 27 L12 16 Z" fill="var(--accent)"></path></svg
+        >
+        <span>Harcama Atlası</span>
+      </a>
+      <nav aria-label="Ana menü"><a href="#nasil">Nasıl çalışır</a><a href="#paketler">Paketler</a><a href="#">Rehberler</a></nav>
+      <a class="btn btn-sm" href="#">Testi çöz</a>
+    </header>
+
+    <main id="icerik">
+      <section class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">Pusulan hazır · rotan seni bekliyor</p>
+          <h1>Paran nereye gidiyor?<br /><span>Rotan nereye çıkıyor?</span></h1>
+          <p class="lead">Harcamalarını haritala, Finansal Harita testiyle konumunu bul ve özgürlüğe giden rotayı her ay izle.</p>
+          <div class="ctas">
+            <a class="btn" href="#">Finansal Harita testini çöz <span aria-hidden="true">→</span></a>
+            <div class="stores" aria-label="Uygulamayı indir">
+              <span class="store">App Store<small>yakında</small></span><span class="store">Google Play<small>yakında</small></span>
+            </div>
+          </div>
+        </div>
+
+        <form class="calc" aria-labelledby="calc-t" onsubmit="return false">
+          <h2 id="calc-t">Hızlı rota hesabı</h2>
+          <label>
+            <span>Aylık harcaman <output id="o-spend"></output></span>
+            <input id="spend" type="range" min="10000" max="150000" step="2500" value="25000" />
+          </label>
+          <label>
+            <span>Aylık birikimin <output id="o-save"></output></span>
+            <input id="save" type="range" min="1000" max="80000" step="1000" value="20000" />
+          </label>
+          <label class="age">
+            <span>Yaşın</span>
+            <input id="age" type="number" min="18" max="70" value="32" inputmode="numeric" />
+          </label>
+          <svg viewBox="0 0 320 120" class="chart" role="img" aria-labelledby="calc-r">
+            <line x1="0" x2="320" y1="18" y2="18" class="target"></line>
+            <text x="0" y="12" class="tlabel">Hedef</text>
+            <path id="curve" class="curve"></path>
+            <circle id="dot" r="5" class="dot"></circle>
+          </svg>
+          <p id="calc-r" class="result" aria-live="polite"></p>
+          <p class="fine">Örnek hesap: yıllık %4 reel getiri ve %3,5 güvenli çekim oranıyla. Kesin sonuç için testi çöz.</p>
+        </form>
+      </section>
+
+      <section id="nasil" class="steps">
+        <h2>Üç kerteriz, tek rota</h2>
+        <ol>
+          <li><span class="deg">000°</span><h3>Harcamanı haritala</h3><p>Ekstreni, ekran görüntüsünü ya da tek tek harcamanı ekle. Kategoriler kendiliğinden oluşur.</p></li>
+          <li><span class="deg">120°</span><h3>Testi çöz</h3><p>Birkaç kısa soruyla konumunu ve hedefini belirle. Sonuç TL, dolar ya da altın cinsinden.</p></li>
+          <li><span class="deg">240°</span><h3>Rotanı izle</h3><p>Her ay hangi durakta olduğunu, sıradaki hedefe ne kadar kaldığını gör.</p></li>
+        </ol>
+      </section>
+
+      <section id="paketler" class="plans">
+        <h2>Paketler</h2>
+        <div class="plan-grid">
+          {
+            plans.map((p) => (
+              <article class:list={['plan', { featured: p.featured }]}>
+                <h3>{p.name}</h3>
+                <p class="price">{p.price}<span>/ay</span></p>
+                <p>{p.note}</p>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+    </main>
+    <p class="draft">Tasarım B önizlemesi · Gece Seyri</p>
+  </div>
+</Base>
+
+<script>
+  const tl = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 })
+  const $ = <T extends Element>(id: string) => document.getElementById(id) as unknown as T
+  const spend = $<HTMLInputElement>('spend')
+  const save = $<HTMLInputElement>('save')
+  const age = $<HTMLInputElement>('age')
+  const r = 0.04 / 12
+  function update() {
+    const s = +spend.value
+    const p = +save.value
+    const a = Math.min(70, Math.max(18, +age.value || 32))
+    const target = (s * 12) / 0.035
+    const months = Math.log(1 + (target * r) / p) / Math.log(1 + r)
+    const years = months / 12
+    $<HTMLOutputElement>('o-spend').textContent = tl.format(s)
+    $<HTMLOutputElement>('o-save').textContent = tl.format(p)
+    const reach = a + years
+    $<HTMLParagraphElement>('calc-r').innerHTML =
+      reach <= 90
+        ? `Bu hızla <strong>${Math.ceil(reach)} yaşında</strong> finansal bağımsızlık. Hedef birikim yaklaşık ${tl.format(Math.round(target / 1e5) * 1e5)}.`
+        : 'Bu hızla hedef çok uzakta. Birikimini biraz artırmayı dene.'
+    // Eğri: yıllar boyunca birikim / hedef
+    const span = Math.max(5, Math.min(60, years))
+    const pts: string[] = []
+    for (let i = 0; i <= 40; i++) {
+      const m = (span * 12 * i) / 40
+      const v = (p * (Math.pow(1 + r, m) - 1)) / r
+      const x = (i / 40) * 310
+      const y = 112 - Math.min(1.05, v / target) * 94
+      pts.push(`${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`)
+    }
+    $<SVGPathElement>('curve').setAttribute('d', pts.join(''))
+    const dot = $<SVGCircleElement>('dot')
+    const dx = Math.min(1, years / span) * 310
+    dot.setAttribute('cx', String(dx))
+    dot.setAttribute('cy', String(years <= span ? 18 : 112 - 94 * ((p * (Math.pow(1 + r, span * 12) - 1)) / r / target)))
+  }
+  ;[spend, save, age].forEach((el) => el.addEventListener('input', update))
+  update()
+</script>
+
+<style>
+  .b {
+    --bg: #0b1d22;
+    --surface: #112a31;
+    --surface-2: #163741;
+    --ink: #e8f1ef;
+    --ink-2: #9fbcb9;
+    --accent: #f2b33d;
+    --accent-ink: #1b1302;
+    --line: rgba(159, 188, 185, 0.16);
+    --contour: rgba(94, 214, 200, 0.16);
+    --display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+    --body: 'Plus Jakarta Sans Variable', system-ui, sans-serif;
+    position: relative;
+    min-height: 100vh;
+    overflow-x: clip;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+  }
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme='dark'])) .b {
+      --bg: #eef3f1;
+      --surface: #ffffff;
+      --surface-2: #e2ebe8;
+      --ink: #0b1d22;
+      --ink-2: #44605e;
+      --accent: #a8650a;
+      --accent-ink: #ffffff;
+      --line: rgba(11, 29, 34, 0.12);
+      --contour: rgba(20, 110, 100, 0.16);
+    }
+  }
+  :global(:root[data-theme='light']) .b {
+    --bg: #eef3f1;
+    --surface: #ffffff;
+    --surface-2: #e2ebe8;
+    --ink: #0b1d22;
+    --ink-2: #44605e;
+    --accent: #a8650a;
+    --accent-ink: #ffffff;
+    --line: rgba(11, 29, 34, 0.12);
+    --contour: rgba(20, 110, 100, 0.16);
+  }
+  .topo {
+    position: absolute;
+    inset: 0 0 auto 0;
+    width: 100%;
+    height: 900px;
+    pointer-events: none;
+  }
+  .topo path {
+    fill: none;
+    stroke: var(--contour);
+    stroke-width: 1;
+  }
+  .top,
+  main,
+  .draft {
+    position: relative;
+  }
+  .top {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--display);
+    font-weight: 700;
+    font-stretch: 115%;
+    font-size: 1.15rem;
+    color: inherit;
+    text-decoration: none;
+  }
+  nav {
+    display: flex;
+    gap: 1.75rem;
+    margin-left: auto;
+  }
+  nav a {
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+  nav a:hover {
+    color: var(--ink);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1.45rem;
+    border-radius: 12px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.2s;
+  }
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+  a:focus-visible,
+  input:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .btn-sm {
+    padding: 0.55rem 1rem;
+    font-size: 0.92rem;
+  }
+  .hero {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 3.5rem;
+    align-items: center;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 4rem 1rem 5rem;
+  }
+  .eyebrow {
+    margin: 0 0 1.25rem;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  h1 {
+    font-family: var(--display);
+    font-stretch: 125%;
+    font-weight: 700;
+    font-size: clamp(2.5rem, 5.6vw, 4.9rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+  h1 span {
+    color: var(--ink-2);
+  }
+  .lead {
+    max-width: 33rem;
+    margin: 1.6rem 0 2.2rem;
+    color: var(--ink-2);
+    font-size: 1.15rem;
+  }
+  .ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    align-items: center;
+  }
+  .stores {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .store {
+    display: inline-flex;
+    flex-direction: column;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    line-height: 1.2;
+  }
+  .store small {
+    font-weight: 400;
+    color: var(--ink-2);
+    font-size: 0.72rem;
+  }
+  .calc {
+    padding: 1.75rem;
+    border-radius: 20px;
+    background: color-mix(in oklab, var(--surface) 92%, transparent);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.6);
+  }
+  .calc h2 {
+    font-size: 1.15rem;
+    margin: 0 0 1.25rem;
+    letter-spacing: 0;
+    font-stretch: 110%;
+  }
+  .calc label {
+    display: block;
+    margin-bottom: 1.1rem;
+    font-size: 0.92rem;
+    color: var(--ink-2);
+  }
+  .calc label span {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+  }
+  output {
+    color: var(--ink);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  input[type='range'] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  .age {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .age span {
+    margin: 0 !important;
+  }
+  .age input {
+    width: 5rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+  }
+  .chart {
+    width: 100%;
+    height: auto;
+    margin: 0.5rem 0 0.75rem;
+    overflow: visible;
+  }
+  .target {
+    stroke: var(--accent);
+    stroke-dasharray: 3 5;
+  }
+  .tlabel {
+    font: 600 10px var(--body);
+    fill: var(--accent);
+  }
+  .curve {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+  .dot {
+    fill: var(--accent);
+  }
+  .result {
+    margin: 0;
+    font-size: 1.02rem;
+  }
+  .result :global(strong) {
+    color: var(--accent);
+  }
+  .fine {
+    margin: 0.6rem 0 0;
+    font-size: 0.78rem;
+    color: var(--ink-2);
+  }
+  .steps,
+  .plans {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 4rem 1rem;
+  }
+  h2 {
+    font-family: var(--display);
+    font-stretch: 120%;
+    font-weight: 700;
+    font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+    letter-spacing: -0.02em;
+    margin: 0 0 2.25rem;
+  }
+  .steps ol {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+  }
+  .steps li,
+  .plan {
+    padding: 1.6rem;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .deg {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+  }
+  h3 {
+    font-family: var(--display);
+    font-stretch: 110%;
+    font-size: 1.3rem;
+    margin: 0.6rem 0 0.4rem;
+  }
+  .steps p,
+  .plan p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+  .plan h3 {
+    margin-top: 0;
+  }
+  .plan.featured {
+    border: 2px solid var(--accent);
+  }
+  .price {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 2.3rem !important;
+    color: var(--ink) !important;
+    margin: 0.2rem 0 0.7rem !important;
+    font-variant-numeric: tabular-nums;
+  }
+  .price span {
+    font-size: 1rem;
+    font-family: var(--body);
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+  .draft {
+    text-align: center;
+    padding: 2rem 1rem 3rem;
+    color: var(--ink-2);
+    font-size: 0.85rem;
+  }
+  @media (max-width: 860px) {
+    nav {
+      display: none;
+    }
+    .top {
+      justify-content: space-between;
+    }
+    .hero {
+      grid-template-columns: 1fr;
+      padding-top: 2rem;
+      gap: 2.5rem;
+    }
+    .steps ol,
+    .plan-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

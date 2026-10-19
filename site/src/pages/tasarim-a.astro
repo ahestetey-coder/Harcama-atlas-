@@ -1,0 +1,537 @@
+---
+import '@fontsource-variable/fraunces/opsz.css'
+import '@fontsource-variable/inter'
+import Base from '../layouts/Base.astro'
+import { contourPaths } from '../lib/contours'
+
+const rings = [
+  ...contourPaths({ cx: 330, cy: 170, rings: 7, r0: 22, step: 24, seed: 1.3 }),
+  ...contourPaths({ cx: 120, cy: 470, rings: 5, r0: 18, step: 22, seed: 4.1 }),
+]
+const route = 'M50 480 C 100 430, 110 380, 150 360 S 230 330, 250 280 S 290 170, 360 140'
+const stops = [
+  { x: 50, y: 480, label: 'Bugün', sub: '₺0 birikim' },
+  { x: 150, y: 360, label: 'Acil durum fonu', sub: '3 ay' },
+  { x: 250, y: 280, label: 'Borçsuz', sub: '2028' },
+  { x: 360, y: 140, label: 'Finansal özgürlük', sub: '51 yaş' },
+]
+const plans = [
+  { name: 'Ücretsiz', price: '₺0', note: 'Harcama takibi, içe aktarma, Finansal Harita testi' },
+  { name: 'Plus', price: '₺99,99', note: 'Bütçe, borç planı, yatırımlar ve Rotamı netleştir', featured: true },
+  { name: 'Plus+', price: '₺199,99', note: 'Kişisel koç, senaryolar ve tam özgürlük rotası' },
+]
+---
+
+<Base title="Harcama Atlası · Tasarım A: Kâğıt Atlas" description="Harcamalarını haritala, finansal özgürlüğe giden rotanı çiz.">
+  <div class="a">
+    <header class="top">
+      <a href="#" class="brand" aria-label="Harcama Atlası ana sayfa">
+        <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"
+          ><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M16 4 L19 16 L16 28 L13 16 Z" fill="var(--route)"></path><circle cx="16" cy="16" r="2" fill="var(--paper)"></circle></svg
+        >
+        <span>Harcama Atlası</span>
+      </a>
+      <nav aria-label="Ana menü">
+        <a href="#nasil">Nasıl çalışır</a><a href="#paketler">Paketler</a><a href="#">Rehberler</a>
+      </nav>
+      <a class="btn btn-sm" href="#">Testi çöz</a>
+    </header>
+
+    <main id="icerik">
+      <section class="hero">
+        <div class="hero-text">
+          <p class="eyebrow"><span>41°00′K 28°58′D</span> Kişisel finans atlası</p>
+          <h1>Harcamalarını haritala, <em>özgürlüğe giden rotanı</em> çiz.</h1>
+          <p class="lead">
+            Harcama Atlası paranın nereye gittiğini tek haritada toplar. Üç dakikalık Finansal Harita testiyle sana ilk rotanı çıkarır,
+            uygulamada her ay nerede olduğunu gösterir.
+          </p>
+          <div class="ctas">
+            <a class="btn" href="#">Finansal Harita testini çöz <span aria-hidden="true">→</span></a>
+            <a class="link" href="#nasil">Nasıl çalışır?</a>
+          </div>
+          <div class="stores" aria-label="Uygulamayı indir">
+            <span class="store">App Store<small>yakında</small></span>
+            <span class="store">Google Play<small>yakında</small></span>
+          </div>
+        </div>
+
+        <div class="map" aria-hidden="true">
+          <svg viewBox="0 0 560 600" class="map-svg">
+            <defs>
+              <pattern id="grid" width="56" height="60" patternUnits="userSpaceOnUse"><path d="M56 0H0V60" fill="none" class="gridline"></path></pattern>
+            </defs>
+            <rect width="560" height="600" fill="url(#grid)"></rect>
+            {rings.map((d) => <path d={d} class="contour" />)}
+            <text x="8" y="14" class="coord">41°N</text><text x="8" y="134" class="coord">40°N</text><text x="500" y="592" class="coord">29°E</text>
+            <path d={route} class="route-shadow"></path>
+            <path d={route} class="route" pathLength="1"></path>
+            {
+              stops.map((s, i) => (
+                <g class={`stop stop-${i}`} transform={`translate(${s.x} ${s.y})`}>
+                  <circle r="7" class="stop-dot" />
+                  <text x="14" y="-4" class="stop-label">{s.label}</text>
+                  <text x="14" y="13" class="stop-sub">{s.sub}</text>
+                </g>
+              ))
+            }
+          </svg>
+          <figure class="phone">
+            <picture>
+              <source srcset="/screenshots/ozet-dark.webp" media="(prefers-color-scheme: dark)" />
+              <img src="/screenshots/ozet-light.webp" alt="" width="560" height="1212" loading="eager" />
+            </picture>
+          </figure>
+        </div>
+      </section>
+
+      <section id="nasil" class="steps">
+        <h2>Üç adımda rotan hazır</h2>
+        <ol>
+          <li><span class="n">01</span><h3>Harcamanı haritala</h3><p>Ekstreni, ekran görüntüsünü ya da tek tek harcamanı ekle. Kategoriler kendiliğinden oluşur.</p></li>
+          <li><span class="n">02</span><h3>Testi çöz</h3><p>Birkaç kısa soruyla nerede durduğunu ve hedefini belirle. Sonuç TL, dolar ya da altın cinsinden.</p></li>
+          <li><span class="n">03</span><h3>Rotanı izle</h3><p>Her ay hangi durakta olduğunu, sıradaki hedefe ne kadar kaldığını gör.</p></li>
+        </ol>
+      </section>
+
+      <section id="paketler" class="plans">
+        <h2>Paketler</h2>
+        <div class="plan-grid">
+          {
+            plans.map((p) => (
+              <article class:list={['plan', { featured: p.featured }]}>
+                <h3>{p.name}</h3>
+                <p class="price">{p.price}<span>/ay</span></p>
+                <p>{p.note}</p>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+    </main>
+    <p class="draft">Tasarım A önizlemesi · Kâğıt Atlas</p>
+  </div>
+</Base>
+
+<script>
+  // Rota: açılışta ilk durağa kadar çizilir, kaydırdıkça hedefe uzanır.
+  const root = document.querySelector<HTMLElement>('.a')
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (root) {
+    const stops = [...root.querySelectorAll<SVGGElement>('.stop')]
+    const marks = [0, 0.38, 0.6, 0.98]
+    const set = (raw: number) => {
+      const p = Math.min(1, Math.max(0, raw))
+      root.style.setProperty('--draw', String(p))
+      stops.forEach((s, i) => s.classList.toggle('on', p >= marks[i]))
+    }
+    if (reduce) set(1)
+    else {
+      let base = 0
+      const start = performance.now()
+      const tick = (t: number) => {
+        base = Math.min(0.62, ((t - start) / 1600) * 0.62)
+        set(base + scrollY / (innerHeight * 0.7))
+        if (base < 0.62) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+      addEventListener('scroll', () => set(base + scrollY / (innerHeight * 0.7)), { passive: true })
+    }
+  }
+</script>
+
+<style>
+  .a {
+    --paper: #f4efe4;
+    --paper-2: #ebe3d3;
+    --ink: #14233a;
+    --ink-2: #4a5568;
+    --petrol: #0e4d5a;
+    --route: #c8431f;
+    --line: rgba(20, 35, 58, 0.13);
+    --contour: rgba(14, 77, 90, 0.28);
+    --display: 'Fraunces Variable', Georgia, serif;
+    --body: 'Inter Variable', system-ui, sans-serif;
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .a {
+      --paper: #0f1a26;
+      --paper-2: #16243a;
+      --ink: #efe8d8;
+      --ink-2: #b4b9c2;
+      --petrol: #5fb3c0;
+      --route: #ff7a52;
+      --line: rgba(239, 232, 216, 0.09);
+      --contour: rgba(95, 179, 192, 0.26);
+    }
+  }
+  :global(:root[data-theme='dark']) .a {
+    --paper: #0f1a26;
+    --paper-2: #16243a;
+    --ink: #efe8d8;
+    --ink-2: #b4b9c2;
+    --petrol: #5fb3c0;
+    --route: #ff7a52;
+    --line: rgba(239, 232, 216, 0.09);
+    --contour: rgba(95, 179, 192, 0.26);
+  }
+  .top {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.25rem;
+    color: inherit;
+    text-decoration: none;
+  }
+  nav {
+    display: flex;
+    gap: 1.75rem;
+    margin-left: auto;
+  }
+  nav a {
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+  nav a:hover {
+    color: var(--ink);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.4rem;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s;
+  }
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+  .btn:focus-visible,
+  a:focus-visible {
+    outline: 3px solid var(--route);
+    outline-offset: 3px;
+  }
+  .btn-sm {
+    padding: 0.55rem 1.1rem;
+    font-size: 0.92rem;
+  }
+  .hero {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 3rem;
+    align-items: center;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 3rem 1rem 5rem;
+  }
+  .eyebrow {
+    display: flex;
+    gap: 0.9rem;
+    align-items: center;
+    margin: 0 0 1.5rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--petrol);
+    font-weight: 600;
+  }
+  .eyebrow span {
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  h1 {
+    font-family: var(--display);
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-size: clamp(2.6rem, 5.4vw, 4.6rem);
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--route);
+  }
+  .lead {
+    max-width: 34rem;
+    margin: 1.5rem 0 2rem;
+    color: var(--ink-2);
+    font-size: 1.15rem;
+  }
+  .ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: center;
+  }
+  .link {
+    color: var(--ink);
+    font-weight: 500;
+    text-underline-offset: 4px;
+  }
+  .stores {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 2.25rem;
+  }
+  .store {
+    display: inline-flex;
+    flex-direction: column;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    line-height: 1.2;
+  }
+  .store small {
+    font-weight: 400;
+    color: var(--ink-2);
+    font-size: 0.75rem;
+  }
+  .map {
+    position: relative;
+    aspect-ratio: 560 / 600;
+    border-radius: 18px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .map-svg {
+    width: 100%;
+    height: 100%;
+  }
+  .gridline {
+    stroke: var(--line);
+    stroke-width: 1;
+  }
+  .contour {
+    fill: none;
+    stroke: var(--contour);
+    stroke-width: 1;
+  }
+  .coord {
+    font: 500 11px var(--body);
+    fill: var(--ink-2);
+    opacity: 0.7;
+  }
+  .route,
+  .route-shadow {
+    fill: none;
+    stroke-linecap: round;
+  }
+  .route-shadow {
+    stroke: var(--route);
+    stroke-width: 2;
+    stroke-dasharray: 2 8;
+    opacity: 0.35;
+  }
+  .route {
+    stroke: var(--route);
+    stroke-width: 3.5;
+    stroke-dasharray: 1;
+    stroke-dashoffset: calc(1 - var(--draw, 0));
+  }
+  .stop-dot {
+    fill: var(--paper);
+    stroke: var(--route);
+    stroke-width: 3;
+  }
+  .stop-label {
+    font: 600 14px var(--body);
+    fill: var(--ink);
+  }
+  .stop-sub {
+    font: 400 12px var(--body);
+    fill: var(--ink-2);
+  }
+  .stop {
+    opacity: 0.35;
+    transition: opacity 0.4s;
+  }
+  .stop.on {
+    opacity: 1;
+  }
+  .phone {
+    position: absolute;
+    right: 5%;
+    bottom: -10%;
+    width: 29%;
+    margin: 0;
+    padding: 6px;
+    border-radius: 28px;
+    background: var(--ink);
+    box-shadow: 0 24px 60px -20px rgba(20, 35, 58, 0.45);
+    transform: rotate(4deg);
+  }
+  .phone img {
+    border-radius: 22px;
+    width: 100%;
+    height: auto;
+  }
+  .steps,
+  .plans {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 4rem 1rem;
+    border-top: 1px solid var(--line);
+  }
+  h2 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(1.9rem, 3.4vw, 2.75rem);
+    letter-spacing: -0.015em;
+    margin: 0 0 2.5rem;
+  }
+  .steps ol {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+  .steps ol::before {
+    content: '';
+    position: absolute;
+    top: 1.05rem;
+    left: 2.5rem;
+    right: 2.5rem;
+    border-top: 2px dashed var(--route);
+    opacity: 0.4;
+  }
+  .steps li {
+    position: relative;
+  }
+  .n {
+    display: inline-grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--route);
+    color: var(--route);
+    font-weight: 700;
+    font-size: 0.8rem;
+    position: relative;
+  }
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.35rem;
+    margin: 1rem 0 0.4rem;
+  }
+  .steps p,
+  .plan p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+  .plan {
+    padding: 1.75rem;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--paper);
+  }
+  .plan h3 {
+    margin-top: 0;
+  }
+  .plan.featured {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .plan.featured p {
+    color: color-mix(in oklab, var(--paper) 78%, transparent);
+  }
+  .price {
+    font-family: var(--display);
+    font-size: 2.4rem !important;
+    color: inherit !important;
+    margin: 0.25rem 0 0.75rem !important;
+    font-variant-numeric: tabular-nums;
+  }
+  .price span {
+    font-size: 1rem;
+    font-family: var(--body);
+    opacity: 0.7;
+  }
+  .draft {
+    text-align: center;
+    padding: 2rem 1rem 3rem;
+    color: var(--ink-2);
+    font-size: 0.85rem;
+  }
+  @media (max-width: 860px) {
+    nav {
+      display: none;
+    }
+    .top {
+      justify-content: space-between;
+    }
+    .hero {
+      grid-template-columns: 1fr;
+      padding-top: 1.5rem;
+      gap: 2.5rem;
+    }
+    .phone {
+      width: 30%;
+    }
+    .map {
+      margin-bottom: 2rem;
+    }
+    .steps ol,
+    .plan-grid {
+      grid-template-columns: 1fr;
+    }
+    .steps ol::before {
+      top: 1rem;
+      bottom: 1rem;
+      left: 1.05rem;
+      right: auto;
+      border-top: 0;
+      border-left: 2px dashed var(--route);
+    }
+    .steps li {
+      padding-left: 3.25rem;
+    }
+    .n {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+    .steps h3 {
+      margin-top: 0.15rem;
+    }
+  }
+</style>
