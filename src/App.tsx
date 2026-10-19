@@ -14,6 +14,7 @@ import { ThemeProvider } from './state/theme'
 import { UiProvider } from './state/ui'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { captureLeadCodeFromUrl, WebTestLinker } from './state/webTest'
+import { NotificationScheduler } from './state/notifications'
 
 const loaders = {
   transactions: () => import('./pages/TransactionsPage'),
@@ -110,6 +111,7 @@ function Layout() {
       <TransactionFormHost />
       <UpdatePrompt />
       <WebTestLinker />
+      <NotificationScheduler />
     </AppShell>
   )
 }

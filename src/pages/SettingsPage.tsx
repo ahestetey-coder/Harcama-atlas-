@@ -2,6 +2,7 @@ import { CloudOff, Download, FlaskConical, Monitor, Moon, Repeat, RotateCcw, Sca
 import { useEffect, useState } from 'react'
 import { AccountCard } from '../components/AccountCard'
 import { DangerZoneCard } from '../components/DangerZoneCard'
+import { NotificationsCard } from '../components/NotificationsCard'
 import { RecurringIncomeCard } from '../components/RecurringIncomeCard'
 import { Link } from 'react-router-dom'
 import { PLAN_LABEL } from '../domain/plans'
@@ -124,6 +125,8 @@ export default function SettingsPage() {
         </Card>
 
         <RecurringIncomeCard />
+
+        <NotificationsCard />
 
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">

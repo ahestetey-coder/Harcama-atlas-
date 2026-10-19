@@ -111,6 +111,8 @@ export interface DuePayment {
   id: string
   /** Hatırlatma zamanı geldi mi (ödeme günü − hatırlatma günü ≤ bugün). */
   remind: boolean
+  /** Ödemeden kaç gün önce hatırlatılır. */
+  reminderDays: number
 }
 
 /** Bugünden itibaren `days` gün içindeki ödemeler (tarih sırasıyla). */
@@ -120,11 +122,11 @@ export function upcomingPayments(items: RecurringPayment[], plans: InstallmentPl
   for (const it of items) {
     if (!it.active) continue
     for (const d of occurrencesBetween(it, today, to))
-      out.push({ date: d, name: it.name, amountKurus: it.amountKurus, source: 'recurring', id: it.id, remind: addDays(d, -it.reminderDays) <= today })
+      out.push({ date: d, name: it.name, amountKurus: it.amountKurus, source: 'recurring', id: it.id, remind: addDays(d, -it.reminderDays) <= today, reminderDays: it.reminderDays })
   }
   for (const p of plans)
     for (const d of p.nextDates)
-      if (d >= today && d <= to) out.push({ date: d, name: `${p.name} (taksit)`, amountKurus: p.monthlyKurus, source: 'installment', id: p.key, remind: addDays(d, -3) <= today })
+      if (d >= today && d <= to) out.push({ date: d, name: `${p.name} (taksit)`, amountKurus: p.monthlyKurus, source: 'installment', id: p.key, remind: addDays(d, -3) <= today, reminderDays: 3 })
   return out.sort((a, b) => a.date.localeCompare(b.date) || b.amountKurus - a.amountKurus)
 }
 
