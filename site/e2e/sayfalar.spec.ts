@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const pages = ['/', '/fiyatlar/', '/nasil-kullanilir/']
+const pages = ['/', '/fiyatlar/', '/nasil-kullanilir/', '/test/']
 
 for (const path of pages) {
   test(`${path} açılır, tek h1 var, yatay kaydırma yok`, async ({ page }) => {
@@ -64,4 +64,12 @@ test('sayfa geçişinden sonra da etkileşimler çalışır', async ({ page, isM
   await expect(page).toHaveURL(/fiyatlar/)
   await page.getByRole('button', { name: /Yıllık/ }).click()
   await expect(page.locator('.plan', { hasText: 'Bütçeni planla' }).getByText('₺959,90')).toBeVisible()
+})
+
+test('test sayfası uygulamadaki testi gömülü modda açar', async ({ page }) => {
+  await page.goto('/test')
+  const src = await page.locator('iframe[data-test]').getAttribute('src')
+  expect(src).toContain('?gomulu=1&tema=')
+  expect(src).toContain('#/harita')
+  await expect(page.getByRole('link', { name: 'yeni sekmede aç' })).toHaveAttribute('href', /#\/harita$/)
 })

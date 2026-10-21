@@ -45,6 +45,7 @@ import { formatKurusCompact } from '../domain/money'
 import { newLeadCode, QUICK_QUESTIONS, QUICK_TEST_VERSION, quickResult, quickScenario, reachRange, type QuickAnswers, type QuickQuestion, type QuickResult } from '../domain/quickTest'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
+import { EMBEDDED, postToSite, startEmbedBridge } from '../lib/embed'
 import { AuroraBackground } from './AuthScreen'
 import { LevelRing } from '../components/LevelRing'
 
@@ -109,6 +110,10 @@ export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
 
   useEffect(() => {
     if (web) document.title = `Finansal Harita Testi · ${APP_CONFIG.name}`
+    if (EMBEDDED) {
+      startEmbedBridge()
+      return postToSite({ type: 'ha-test:step' })
+    }
     topRef.current?.scrollIntoView({ block: 'start' })
     window.scrollTo(0, 0)
     // Yalnızca ekran ya da soru değişince başa döner; sayfa yeniden çizildiğinde (ör. eşitleme) kaydırma korunur
@@ -152,10 +157,10 @@ export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
   }
 
   return (
-    <div className={cn('relative', !inApp && 'min-h-dvh')} ref={topRef}>
-      {!inApp && <AuroraBackground />}
-      <div className={cn('relative mx-auto flex max-w-2xl flex-col gap-6', !inApp && 'px-4 pb-16 pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-8')}>
-        {inApp ? (
+    <div className={cn('relative', !inApp && !EMBEDDED && 'min-h-dvh')} ref={topRef}>
+      {!inApp && !EMBEDDED && <AuroraBackground />}
+      <div className={cn('relative mx-auto flex max-w-2xl flex-col gap-6', !inApp && (EMBEDDED ? 'px-4 pb-6 pt-4' : 'px-4 pb-16 pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-8'))}>
+        {inApp || EMBEDDED ? (
           screen === 'quiz' && <span className="num -mb-3 text-[12.5px] font-medium text-muted">Adım {idx + 1}/{QUICK_QUESTIONS.length}</span>
         ) : (
           <header className="flex items-center justify-between gap-3">
@@ -937,7 +942,7 @@ function ContinueCard({ code, url, stage }: { code: string; url: string; stage: 
         ))}
       </ol>
       <div className="mt-5 flex flex-wrap gap-2.5">
-        <a href={`#/yolculuk?kod=${code}`} className="inline-flex h-12 items-center gap-2 rounded-xl bg-white px-5 text-[15px] font-semibold text-[#0b1323] hover:brightness-95">
+        <a href={EMBEDDED ? url : `#/yolculuk?kod=${code}`} target={EMBEDDED ? '_top' : undefined} className="inline-flex h-12 items-center gap-2 rounded-xl bg-white px-5 text-[15px] font-semibold text-[#0b1323] hover:brightness-95">
           Web'de devam et <ArrowRight className="size-4" />
         </a>
         {stores.map((s) =>

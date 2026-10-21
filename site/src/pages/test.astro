@@ -1,0 +1,272 @@
+---
+import Site from '../layouts/Site.astro'
+
+// Test uygulamanın kendisidir (#/harita); site onu gömülü modda gösterir, böylece tek bir test vardır.
+const appUrl = import.meta.env.PUBLIC_APP_URL || 'https://ahestetey-coder.github.io/Harcama-atlas-/'
+const gains = [
+  ['Arketipin', 'Parayla ilişkini anlatan profil: Temkinli Kaşif, Dengeli Yolcu ya da Atak Dağcı.'],
+  ['Konumun', 'Özgürlük rotasında bugün hangi durakta olduğun.'],
+  ['Özgürlük yılın', 'Bu tempoyla finansal özgürlüğe hangi yıllar arasında varacağın.'],
+  ['Rotan', 'Sıradaki durak ve ona giden ilk adımlar.'],
+]
+---
+
+<Site title="Finansal Harita testi · Harcama Atlası" description="10 soruluk, 2 dakikalık Finansal Harita testiyle arketipini, bugünkü konumunu ve finansal özgürlüğe varacağın yılı öğren. Ücretsiz.">
+  <section class="wrap head">
+    <p class="eyebrow reveal">Finansal Harita testi</p>
+    <h1 class="h-section reveal" style="--d:1">2 dakikada <span class="accent">haritanı çıkar.</span></h1>
+    <p class="lead reveal" style="--d:2">10 kısa soru. Sonunda nerede durduğunu, nereye gittiğini ve özgürlüğe hangi yıllar arasında varacağını görürsün.</p>
+    <ul class="facts reveal" style="--d:3">
+      <li><b>10 soru</b> · 2 dakika</li>
+      <li><b>Ücretsiz</b></li>
+      <li>Uygulamayla <b>aynı test</b></li>
+    </ul>
+  </section>
+
+  <div class="wrap layout">
+    <div class="frame card" data-test-frame data-app={appUrl}>
+      <div class="loading" data-loading>
+        <span class="dot" aria-hidden="true"></span>
+        <span>Test yükleniyor…</span>
+      </div>
+      <iframe title="Finansal Harita testi" data-test loading="eager" allow="clipboard-write"></iframe>
+      <p class="fallback">
+        Test görünmüyorsa <a href={`${appUrl}#/harita`} target="_blank" rel="noopener">yeni sekmede aç</a>.
+      </p>
+    </div>
+
+    <aside class="side">
+      <div class="card box reveal">
+        <h2>Sonunda ne göreceksin?</h2>
+        <ol class="gains">
+          {
+            gains.map(([t, s]) => (
+              <li>
+                <b>{t}</b>
+                <span>{s}</span>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+      <div class="card box reveal" style="--d:1">
+        <h2>Verilerin</h2>
+        <p>
+          Sonucunu görmek için adını ve e-postanı isteriz. Cevapların yalnızca onay verirsen kaydedilir; uygulamaya aynı e-postayla girince sonucun hesabına kendiliğinden bağlanır.
+        </p>
+        <a href="/yasal/kvkk">KVKK aydınlatma metni</a>
+      </div>
+    </aside>
+  </div>
+</Site>
+
+<script>
+  function testInit() {
+    const box = document.querySelector<HTMLElement>('[data-test-frame]')
+    const frame = box?.querySelector<HTMLIFrameElement>('[data-test]')
+    if (!box || !frame || frame.src) return
+    const app = new URL(box.dataset.app!)
+    const root = document.documentElement
+    const dark = root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)
+    frame.src = `${app.href}?gomulu=1&tema=${dark ? 'koyu' : 'acik'}#/harita`
+
+    let steps = 0
+    // Uygulama yükseklik bildirmezse (eski sürüm ya da yavaş bağlantı) test kendi içinde kaydırılır
+    const late = setTimeout(() => {
+      if (box.classList.contains('ready')) return
+      frame.style.height = '82vh'
+      box.classList.add('ready', 'no-bridge')
+    }, 6000)
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== app.origin || e.source !== frame.contentWindow) return
+      const d = e.data as { type?: string; height?: number }
+      if (d?.type === 'ha-test:height' && typeof d.height === 'number') {
+        clearTimeout(late)
+        frame.style.height = `${Math.max(420, d.height)}px`
+        box.classList.add('ready')
+        box.classList.remove('no-bridge')
+      } else if (d?.type === 'ha-test:step' && steps++ > 0) {
+        // Yeni soru açılınca testin başı görünür olsun (ilk açılışta sayfa kaydırılmaz)
+        const top = box.getBoundingClientRect().top
+        if (top < 0 || top > innerHeight * 0.5) scrollTo({ top: scrollY + top - 88, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+      }
+    }
+    const onTheme = (e: Event) => frame.contentWindow?.postMessage({ type: 'ha-site:theme', theme: (e as CustomEvent).detail }, app.origin)
+    addEventListener('message', onMsg)
+    document.addEventListener('ha:theme', onTheme)
+    document.addEventListener(
+      'astro:before-swap',
+      () => {
+        clearTimeout(late)
+        removeEventListener('message', onMsg)
+        document.removeEventListener('ha:theme', onTheme)
+      },
+      { once: true },
+    )
+  }
+  document.addEventListener('astro:page-load', testInit)
+</script>
+
+<style>
+  .head {
+    padding-block: 3rem 2.5rem;
+  }
+  .head h1 {
+    margin-top: 1rem;
+    max-width: 14ch;
+  }
+  .head .lead {
+    margin-top: 1.25rem;
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--ink-2);
+  }
+  .facts b {
+    color: var(--ink);
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 2rem;
+    align-items: start;
+    padding-bottom: 5rem;
+  }
+  .frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    background:
+      radial-gradient(90% 60% at 10% 0%, var(--brand-soft), transparent 60%),
+      radial-gradient(80% 50% at 100% 100%, var(--route-soft), transparent 60%), var(--card);
+    box-shadow: var(--shadow);
+    min-height: 520px;
+  }
+  .frame iframe {
+    display: block;
+    width: 100%;
+    height: 520px;
+    border: 0;
+    opacity: 0;
+    transition:
+      opacity 0.5s,
+      height 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .frame.ready iframe {
+    opacity: 1;
+  }
+  .loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 1rem;
+    color: var(--ink-2);
+    transition: opacity 0.4s;
+  }
+  .frame.ready:not(.no-bridge) .fallback {
+    display: none;
+  }
+  .frame.ready .loading {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--route);
+    box-shadow: 0 0 0 0 var(--route);
+    animation: ping 1.4s infinite;
+  }
+  @keyframes ping {
+    70% {
+      box-shadow: 0 0 0 18px transparent;
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+  .fallback {
+    margin: 0;
+    padding: 0 1.25rem 1rem;
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    text-align: center;
+  }
+  .side {
+    position: sticky;
+    top: 6rem;
+    display: grid;
+    gap: 1rem;
+  }
+  .box {
+    padding: 1.5rem;
+  }
+  .box h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .box p {
+    margin: 0 0 0.75rem;
+    color: var(--ink-2);
+    font-size: 0.95rem;
+  }
+  .box a {
+    color: var(--route);
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .gains {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.85rem;
+    counter-reset: g;
+  }
+  .gains li {
+    counter-increment: g;
+    position: relative;
+    display: grid;
+    padding-left: 2.2rem;
+    font-size: 0.95rem;
+  }
+  .gains li::before {
+    content: counter(g);
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--route-soft);
+    color: var(--route);
+    font: 800 0.78rem var(--display);
+  }
+  .gains span {
+    color: var(--ink-2);
+  }
+  @media (max-width: 960px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+    .side {
+      position: static;
+    }
+    .frame {
+      border-radius: 22px;
+      margin-inline: -0.25rem;
+    }
+  }
+</style>

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { ThemePreference } from '../domain/types'
 import { readPref, writePref } from './prefs'
 import { syncNativeTheme } from '../lib/native'
+import { EMBED_THEME, onSiteTheme } from '../lib/embed'
 
 interface ThemeCtx {
   preference: ThemePreference
@@ -17,6 +18,8 @@ function systemDark(): boolean {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPref] = useState<ThemePreference>(() => {
+    // Siteye gömülü testte sitenin teması geçerlidir ve kaydedilmez.
+    if (EMBED_THEME) return EMBED_THEME
     // Kullanıcı tema seçmediyse koyu tema varsayılır.
     const p = readPref('theme')
     return p === 'light' || p === 'dark' || p === 'system' ? p : 'dark'
@@ -30,6 +33,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     mq.addEventListener('change', on)
     return () => mq.removeEventListener('change', on)
   }, [])
+
+  useEffect(() => onSiteTheme(setPref), [])
 
   const resolved = preference === 'system' ? (sysDark ? 'dark' : 'light') : preference
 

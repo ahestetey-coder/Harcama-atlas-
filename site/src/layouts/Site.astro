@@ -127,6 +127,7 @@ const nav = [
       const next = isDark() ? 'light' : 'dark'
       const go = () => {
         root.dataset.theme = next
+        document.dispatchEvent(new CustomEvent('ha:theme', { detail: next }))
         try {
           localStorage.setItem('ha-site-theme', next)
         } catch { /* kaydedilemedi; seçim bu sayfada geçerli */ }
