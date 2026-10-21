@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test'
 
-const pages = ['/', '/fiyatlar/', '/nasil-kullanilir/', '/test/']
+const pages = ['/', '/fiyatlar/', '/nasil-kullanilir/', '/test/', '/giris/']
+
+// Testler gerçek veritabanına gitmez; fiyatlar sayfadaki varsayılanlarla kalır
+test.beforeEach(async ({ page }) => {
+  await page.route(/supabase\.co/, (r) => r.abort())
+})
 
 for (const path of pages) {
   test(`${path} açılır, tek h1 var, yatay kaydırma yok`, async ({ page }) => {

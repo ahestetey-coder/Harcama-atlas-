@@ -9,8 +9,10 @@ interface Props {
   title: string
   description: string
   jsonLd?: object
+  /** Hesap ve ödeme sayfaları arama motorlarında listelenmez. */
+  noindex?: boolean
 }
-const { title, description, jsonLd } = Astro.props
+const { title, description, jsonLd, noindex } = Astro.props
 const path = Astro.url.pathname.replace(/\/$/, '') || '/'
 const nav = [
   { href: '/#nasil', label: 'Nasıl çalışır' },
@@ -27,6 +29,7 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
     <meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0d1722" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -71,6 +74,7 @@ const nav = [
               ><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg
             >
           </button>
+          <a class="acct" href="/giris" data-account>Giriş yap</a>
           <a class="btn btn-sm head-cta" href="/test">Testi çöz</a>
           <button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="mobil-menu" aria-label="Menüyü aç">
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
@@ -79,6 +83,7 @@ const nav = [
       </div>
       <nav id="mobil-menu" class="mobile" aria-label="Mobil menü" hidden>
         {nav.map((n) => <a href={n.href}>{n.label}</a>)}
+        <a href="/giris" data-account>Giriş yap</a>
         <a class="btn btn-route" href="/test">Finansal Harita testini çöz</a>
       </nav>
     </header>
@@ -117,9 +122,22 @@ const nav = [
 </html>
 
 <script>
+  import { AUTH_STORAGE_KEY } from '../lib/config'
   const root = document.documentElement
   const mql = matchMedia('(prefers-color-scheme: dark)')
   const isDark = () => root.dataset.theme === 'dark' || (!root.dataset.theme && mql.matches)
+
+  // Oturum açıksa "Giriş yap" yerine "Hesabım" görünür (yalnızca yerel anahtara bakılır, ağ isteği yok)
+  function accountLink() {
+    let signedIn = false
+    try {
+      signedIn = !!localStorage.getItem(AUTH_STORAGE_KEY)
+    } catch { /* depolama kapalı; giriş bağlantısı kalır */ }
+    document.querySelectorAll<HTMLAnchorElement>('[data-account]').forEach((a) => {
+      a.href = signedIn ? '/hesap/abonelik' : '/giris'
+      a.textContent = signedIn ? 'Hesabım' : 'Giriş yap'
+    })
+  }
 
   function init() {
     // Tema düğmesi
@@ -155,6 +173,7 @@ const nav = [
 
   let scrollBound = false
   function onPage() {
+    accountLink()
     // Başlık: kaydırınca yoğunlaşır
     const head = document.querySelector('.site-head')
     const onScroll = () => head?.classList.toggle('scrolled', scrollY > 8)
@@ -322,8 +341,19 @@ const nav = [
   .mobile .btn {
     margin-top: 1rem;
   }
+  .acct {
+    color: var(--ink-2);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0.4rem 0.3rem;
+  }
+  .acct:hover {
+    color: var(--ink);
+  }
   @media (max-width: 900px) {
-    .links {
+    .links,
+    .acct {
       display: none;
     }
     .actions {

@@ -1,8 +1,9 @@
 ---
 import Site from '../layouts/Site.astro'
+import { APP_URL } from '../lib/config'
 
 // Test uygulamanın kendisidir (#/harita); site onu gömülü modda gösterir, böylece tek bir test vardır.
-const appUrl = import.meta.env.PUBLIC_APP_URL || 'https://ahestetey-coder.github.io/Harcama-atlas-/'
+const appUrl = APP_URL
 const gains = [
   ['Arketipin', 'Parayla ilişkini anlatan profil: Temkinli Kaşif, Dengeli Yolcu ya da Atak Dağcı.'],
   ['Konumun', 'Özgürlük rotasında bugün hangi durakta olduğun.'],

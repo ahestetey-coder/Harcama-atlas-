@@ -25,13 +25,13 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
             ) : (
               <>
                 <span class="m">
-                  <span class="amt">{formatTl(p.monthlyKurus)}</span>
+                  <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:monthly`}>{formatTl(p.monthlyKurus)}</span>
                   <span class="per">/ay</span>
                 </span>
                 <span class="y">
-                  <span class="amt">{formatTl(yearlyKurus(p.monthlyKurus))}</span>
+                  <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>{formatTl(yearlyKurus(p.monthlyKurus))}</span>
                   <span class="per">/yıl</span>
-                  <span class="sub">Aylık {formatTl(Math.round(yearlyKurus(p.monthlyKurus) / 12))} gibi</span>
+                  <span class="sub" data-live-sub={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>Aylık {formatTl(Math.round(yearlyKurus(p.monthlyKurus) / 12))} gibi</span>
                 </span>
               </>
             )}
@@ -59,7 +59,33 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
 </div>
 
 <script>
+  import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../lib/config'
+
+  type Row = { plan: string; period: string; amount_kurus: number }
+  const tl = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const tl0 = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 })
+  const fmt = (k: number) => (k % 100 === 0 ? tl0 : tl).format(k / 100)
+  let cache: Promise<Row[]> | null = null
+
+  // Güncel fiyatlar yönetici panelinden gelir; okunamazsa sayfadaki fiyatlar kalır
+  function livePrices(): Promise<Row[]> {
+    cache ??= fetch(`${SUPABASE_URL}/rest/v1/ha_web_prices?select=plan,period,amount_kurus&active=eq.true`, { headers: { apikey: SUPABASE_ANON_KEY } })
+      .then((r) => (r.ok ? (r.json() as Promise<Row[]>) : []))
+      .catch(() => [])
+    return cache
+  }
+
+  async function applyLive() {
+    const rows = await livePrices()
+    for (const r of rows) {
+      const key = `${r.plan}:${r.period}`
+      document.querySelectorAll<HTMLElement>(`[data-live="${key}"]`).forEach((el) => (el.textContent = fmt(r.amount_kurus)))
+      document.querySelectorAll<HTMLElement>(`[data-live-sub="${key}"]`).forEach((el) => (el.textContent = `Aylık ${fmt(Math.round(r.amount_kurus / 12))} gibi`))
+    }
+  }
+
   function init() {
+    if (document.querySelector('[data-live]')) void applyLive()
     document.querySelectorAll<HTMLElement>('.prices').forEach((root) => {
       root.querySelectorAll<HTMLButtonElement>('[data-set]').forEach((b) =>
         b.addEventListener('click', () => {

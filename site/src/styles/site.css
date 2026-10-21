@@ -287,3 +287,72 @@ a {
 ::view-transition-new(root) {
   animation-duration: 0.35s;
 }
+
+/* Hesap sayfaları: form alanları ve bildirimler */
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+.field label,
+.field .label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 0.95rem;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 500 1rem var(--body);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--route);
+  box-shadow: 0 0 0 4px var(--route-soft);
+}
+.notice {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  font-size: 0.94rem;
+  background: var(--brand-soft);
+  color: var(--ink);
+  border: 1px solid color-mix(in oklab, var(--brand) 30%, transparent);
+}
+.notice[data-tone='danger'] {
+  background: var(--route-soft);
+  border-color: color-mix(in oklab, var(--route) 35%, transparent);
+}
+.notice:empty {
+  display: none;
+}
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: progress;
+  transform: none;
+}
+.btn-block {
+  width: 100%;
+}
+.muted {
+  color: var(--ink-2);
+}
+.spin {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

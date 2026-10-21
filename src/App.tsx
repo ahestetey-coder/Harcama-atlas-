@@ -27,6 +27,7 @@ const loaders = {
   join: () => import('./pages/JoinPage'),
   admin: () => import('./pages/AdminPage'),
   research: () => import('./pages/ResearchAdminPage'),
+  billing: () => import('./pages/BillingAdminPage'),
   budget: () => import('./pages/BudgetPage'),
   plans: () => import('./pages/PlansPage'),
   goals: () => import('./pages/GoalsPage'),
@@ -49,6 +50,7 @@ const MembersPage = lazy(loaders.members)
 const JoinPage = lazy(loaders.join)
 const AdminPage = lazy(loaders.admin)
 const ResearchAdminPage = lazy(loaders.research)
+const BillingAdminPage = lazy(loaders.billing)
 const BudgetPage = lazy(loaders.budget)
 const PlansPage = lazy(loaders.plans)
 const GoalsPage = lazy(loaders.goals)
@@ -156,6 +158,7 @@ const router = createHashRouter([
       { path: '/ayarlar', element: <SettingsPage /> },
       { path: '/yonetim', element: <AdminPage /> },
       { path: '/yonetim/arastirma', element: <ResearchAdminPage /> },
+      { path: '/yonetim/satis', element: <BillingAdminPage /> },
       { path: '/butce', element: <BudgetPage /> },
       { path: '/paketler', element: <PlansPage /> },
       { path: '/odemeler', element: <OldPaymentsRoute /> },

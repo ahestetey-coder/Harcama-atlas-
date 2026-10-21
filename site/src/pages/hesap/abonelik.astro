@@ -1,0 +1,287 @@
+---
+import Site from '../../layouts/Site.astro'
+---
+
+<Site title="Aboneliğim · Harcama Atlası" description="Harcama Atlası aboneliğini görüntüle ve yönet." noindex>
+  <section class="wrap acc" data-acc>
+    <p class="eyebrow">Hesabım</p>
+    <h1 class="h-section">Aboneliğim</h1>
+    <p class="muted who" data-who></p>
+
+    <p class="notice" data-done hidden role="status" aria-live="polite"></p>
+
+    <div class="card main" data-main>
+      <div class="loading"><span class="spin" aria-hidden="true"></span> Yükleniyor…</div>
+    </div>
+
+    <div class="card change" data-change hidden>
+      <h2>Paketi değiştir</h2>
+      <p class="muted">Yeni paket hemen başlar; kalan süre için fark orantılı hesaplanır.</p>
+      <div class="opts" data-opts></div>
+      <p class="notice" data-change-msg role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="card app">
+      <div>
+        <h2>Uygulamada kullan</h2>
+        <p class="muted">Aynı hesapla giriş yap; paketin uygulamada kendiliğinden açılır.</p>
+      </div>
+      <div class="app-btns">
+        <a class="btn btn-route" data-open-app href="#">Uygulamayı aç</a>
+        <button class="btn btn-ghost" type="button" data-signout>Çıkış yap</button>
+      </div>
+    </div>
+  </section>
+</Site>
+
+<script>
+  import { billing, formatDate, formatTl, isLive, loadBilling, mySubscription, PERIOD_LABEL, PLAN_LABEL, requireUser, supa, type Period, type Plan, type Subscription } from '../../lib/account'
+  import { APP_SCHEME, APP_URL } from '../../lib/config'
+
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
+
+  function statusLine(s: Subscription): { badge: string; tone: 'ok' | 'warn' | 'off'; text: string } {
+    const price = s.amount_kurus ? formatTl(s.amount_kurus) : ''
+    if (s.status === 'trialing')
+      return { badge: 'Deneme', tone: 'ok', text: s.cancel_at ? `Deneme ${formatDate(s.trial_end)} tarihinde bitecek; iptal ettiğin için ücret alınmayacak.` : `Ücretsiz deneme ${formatDate(s.trial_end)} tarihinde bitiyor. Sonra ${price} alınır.` }
+    if (s.status === 'active')
+      return s.cancel_at
+        ? { badge: 'İptal edildi', tone: 'warn', text: `Paketin ${formatDate(s.cancel_at)} tarihine kadar açık; sonra yenilenmeyecek.` }
+        : { badge: 'Etkin', tone: 'ok', text: `Sonraki ödeme ${formatDate(s.current_period_end)} · ${price}` }
+    if (s.status === 'past_due') return { badge: 'Ödeme alınamadı', tone: 'warn', text: 'Son ödeme alınamadı. Kartını güncellersen paketin kesintisiz sürer.' }
+    if (s.status === 'paused') return { badge: 'Duraklatıldı', tone: 'warn', text: 'Aboneliğin duraklatıldı.' }
+    return { badge: 'Sona erdi', tone: 'off', text: 'Bu abonelik sona erdi.' }
+  }
+
+  async function init() {
+    const root = document.querySelector<HTMLElement>('[data-acc]')
+    if (!root || root.dataset.ready) return
+    root.dataset.ready = '1'
+    const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!
+    const user = await requireUser()
+    if (!user) return
+    $('[data-who]').textContent = user.email ?? ''
+
+    // Telefonda önce uygulama, yoksa web uygulaması açılır
+    const openApp = $<HTMLAnchorElement>('[data-open-app]')
+    openApp.href = APP_URL
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent))
+      openApp.addEventListener('click', (e) => {
+        e.preventDefault()
+        const t = setTimeout(() => location.assign(APP_URL), 1200)
+        addEventListener('pagehide', () => clearTimeout(t), { once: true })
+        location.assign(APP_SCHEME)
+      })
+
+    $('[data-signout]').addEventListener('click', async () => {
+      await supa().auth.signOut()
+      location.assign('/')
+    })
+
+    const done = new URLSearchParams(location.search).get('tamam') === '1'
+    const load = async (): Promise<Subscription | null> => {
+      const [sub, plan] = await Promise.all([mySubscription(), supa().rpc('ha_my_plan')])
+      render(sub, (plan.data as string) ?? 'free')
+      return sub
+    }
+
+    const render = (s: Subscription | null, plan: string) => {
+      const main = $('[data-main]')
+      if (!s || !isLive(s)) {
+        const granted = plan !== 'free'
+        main.innerHTML = `
+          <div class="head"><h2>${granted ? `${plan === 'plusplus' ? 'Plus+' : 'Plus'} paketin açık` : 'Ücretsiz paket'}</h2>
+          ${granted ? '<span class="badge" data-tone="ok">Etkin</span>' : ''}</div>
+          <p class="muted">${granted ? 'Bu paket web aboneliğiyle değil, deneme ya da hediye olarak tanımlandı.' : 'Bütçe koçu, rota ve senaryolar için Plus ya da Plus+’a geç.'}</p>
+          <div class="btns"><a class="btn btn-route" href="/fiyatlar">Paketleri gör</a></div>`
+        $('[data-change]').hidden = true
+        return
+      }
+      const st = statusLine(s)
+      main.innerHTML = `
+        <div class="head"><h2>${PLAN_LABEL[s.plan]} · ${PERIOD_LABEL[s.period]}</h2><span class="badge" data-tone="${st.tone}">${st.badge}</span></div>
+        <p>${esc(st.text)}</p>
+        <div class="btns">
+          ${s.status === 'past_due' ? '<button class="btn btn-route" type="button" data-portal="payment">Kartımı güncelle</button>' : ''}
+          <button class="btn ${s.status === 'past_due' ? 'btn-ghost' : 'btn-route'}" type="button" data-portal="overview">Aboneliği yönet</button>
+          ${s.cancel_at ? '' : '<button class="btn btn-ghost" type="button" data-portal="cancel">İptal et</button>'}
+        </div>
+        <p class="small muted">Faturalarını, kartını ve iptal işlemini Paddle’ın güvenli sayfasında yönetirsin.</p>
+        <p class="notice" data-tone="danger" data-portal-msg role="alert"></p>`
+      main.querySelectorAll<HTMLButtonElement>('[data-portal]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          b.disabled = true
+          try {
+            const r = await billing<{ url?: string; cancelUrl?: string; paymentUrl?: string }>({ action: 'portal' })
+            const url = b.dataset.portal === 'cancel' ? r.cancelUrl : b.dataset.portal === 'payment' ? r.paymentUrl : r.url
+            if (!url) throw new Error('Yönetim sayfası açılamadı.')
+            location.assign(url)
+          } catch (e) {
+            main.querySelector('[data-portal-msg]')!.textContent = (e as Error).message
+            b.disabled = false
+          }
+        }),
+      )
+      renderChange(s)
+    }
+
+    const renderChange = async (s: Subscription) => {
+      const { prices } = await loadBilling()
+      const opts = prices.filter((p) => p.active && p.paddle_price_id && !(p.plan === s.plan && p.period === s.period))
+      $('[data-change]').hidden = !opts.length || !!s.cancel_at || s.status === 'paused'
+      $('[data-opts]').innerHTML = opts
+        .map((p) => `<button class="opt" type="button" data-plan="${p.plan}" data-period="${p.period}"><b>${PLAN_LABEL[p.plan]} · ${PERIOD_LABEL[p.period]}</b><span>${formatTl(p.amount_kurus)} / ${p.period === 'monthly' ? 'ay' : 'yıl'}</span></button>`)
+        .join('')
+      $('[data-opts]')
+        .querySelectorAll<HTMLButtonElement>('.opt')
+        .forEach((b) =>
+          b.addEventListener('click', async () => {
+            const plan = b.dataset.plan as Plan
+            const period = b.dataset.period as Period
+            const msg = $('[data-change-msg]')
+            if (!confirm(`${PLAN_LABEL[plan]} · ${PERIOD_LABEL[period]} paketine geçilsin mi? Fark hemen kartından alınır ya da iade edilir.`)) return
+            b.disabled = true
+            try {
+              await billing({ action: 'change', plan, period })
+              msg.dataset.tone = 'ok'
+              msg.textContent = 'Paketin değişiyor. Birkaç saniye içinde burada görünecek.'
+              setTimeout(load, 4000)
+            } catch (e) {
+              msg.dataset.tone = 'danger'
+              msg.textContent = (e as Error).message
+              b.disabled = false
+            }
+          }),
+        )
+    }
+
+    let sub = await load()
+    if (done) {
+      const note = $('[data-done]')
+      note.hidden = false
+      note.textContent = 'Ödemen alındı, teşekkürler! Paketin birkaç saniye içinde açılır.'
+      // Paddle bildirimi birkaç saniye sürebilir; abonelik görünene kadar kısa aralıklarla bakılır
+      for (let i = 0; i < 10 && !isLive(sub); i++) {
+        await new Promise((r) => setTimeout(r, 2500))
+        sub = await load()
+      }
+      note.textContent = isLive(sub) ? 'Ödemen alındı, paketin açıldı. Uygulamada aynı hesapla giriş yapman yeterli.' : 'Ödemen alındı. Paketin birkaç dakika içinde açılacak; bu sayfayı sonra yenileyebilirsin.'
+    }
+  }
+  document.addEventListener('astro:page-load', init)
+</script>
+
+<style>
+  .acc {
+    max-width: 760px;
+    padding-block: 2.5rem 5rem;
+    display: grid;
+    gap: 1.25rem;
+  }
+  .acc h1 {
+    margin: 0.5rem 0 0;
+  }
+  .who {
+    margin: 0 0 0.5rem;
+  }
+  .main,
+  .change,
+  .app {
+    padding: 1.75rem;
+  }
+  .loading {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    color: var(--ink-2);
+  }
+  .acc :global(.head) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .acc h2,
+  .acc :global(h2) {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .acc :global(.badge) {
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: var(--paper-2);
+    color: var(--ink-2);
+  }
+  .acc :global(.badge[data-tone='ok']) {
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+  .acc :global(.badge[data-tone='warn']) {
+    background: var(--route-soft);
+    color: var(--route);
+  }
+  .main :global(p) {
+    margin: 0.75rem 0 0;
+  }
+  .acc :global(.btns) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+  }
+  .acc :global(.small) {
+    font-size: 0.85rem;
+  }
+  .change p {
+    margin: 0.4rem 0 1rem;
+  }
+  .opts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.6rem;
+  }
+  .opts :global(.opt) {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.9rem 1rem;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+    color: var(--ink);
+    text-align: left;
+    font: 500 0.9rem var(--body);
+    cursor: pointer;
+  }
+  .opts :global(.opt:hover) {
+    border-color: var(--route);
+  }
+  .opts :global(.opt b) {
+    font: 700 1rem var(--display);
+  }
+  .opts :global(.opt span) {
+    color: var(--ink-2);
+  }
+  .change .notice {
+    margin: 0.75rem 0 0;
+  }
+  .app {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .app p {
+    margin: 0.35rem 0 0;
+  }
+  .app-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+</style>
