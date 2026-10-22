@@ -13,6 +13,9 @@ const blog = defineCollection({
     /** Yazı sonundaki çağrı: test ya da fiyatlar */
     cta: z.enum(['test', 'plus']).default('test'),
     draft: z.boolean().default(false),
+    /** Kapak görseli: public/ altındaki yol, ör. /blog/slug/kapak.jpg */
+    cover: z.string().optional(),
+    coverAlt: z.string().default(''),
   }),
 })
 

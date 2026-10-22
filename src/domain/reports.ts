@@ -1,6 +1,7 @@
 import { addMonths, periodOf } from './dates'
 import { cleanDescription, merchantKey } from './normalize'
 import { isSpending, type MonthKey, type Transaction } from './types'
+import { ttf } from '../lib/i18n'
 
 const net = (t: Transaction) => (t.type === 'expense' ? t.amountKurus : t.type === 'refund' ? -t.amountKurus : 0)
 
@@ -106,22 +107,22 @@ export function periodReport(
   const insights: Insight[] = []
   if (history.length >= 1) {
     if (average > 0 && current > average * 1.15 && current - average >= 50000)
-      insights.push({ kind: 'total-up', tone: 'warning', text: `Toplam harcama, önceki ${history.length} dönemin ortalamasından %${Math.round(((current - average) / average) * 100)} fazla.`, amountKurus: current - average })
+      insights.push({ kind: 'total-up', tone: 'warning', text: ttf('Toplam harcama, önceki {0} dönemin ortalamasından %{1} fazla.', history.length, Math.round(((current - average) / average) * 100)), amountKurus: current - average })
     for (const c of categories) {
       if (c.averageKurus > 0 && c.currentKurus > c.averageKurus * 1.3 && c.diffVsAverage >= 50000)
         insights.push({
           kind: 'category-up',
           tone: 'warning',
           categoryId: c.categoryId,
-          text: `${names(c.categoryId)} ortalamanın %${Math.round((c.diffVsAverage / c.averageKurus) * 100)} üstünde. Ortalamaya inerseniz bu dönem ${formatTl(c.diffVsAverage)} tasarruf edersiniz.`,
+          text: ttf('{0} ortalamanın %{1} üstünde. Ortalamaya inerseniz bu dönem {2} tasarruf edersiniz.', names(c.categoryId), Math.round((c.diffVsAverage / c.averageKurus) * 100), formatTl(c.diffVsAverage)),
           amountKurus: c.diffVsAverage,
         })
       else if (!ongoing && c.averageKurus >= 50000 && c.currentKurus < c.averageKurus * 0.7)
-        insights.push({ kind: 'category-down', tone: 'good', categoryId: c.categoryId, text: `${names(c.categoryId)} ortalamanın altında; ${formatTl(-c.diffVsAverage)} daha az harcadınız.`, amountKurus: -c.diffVsAverage })
+        insights.push({ kind: 'category-down', tone: 'good', categoryId: c.categoryId, text: ttf('{0} ortalamanın altında; {1} daha az harcadınız.', names(c.categoryId), formatTl(-c.diffVsAverage)), amountKurus: -c.diffVsAverage })
     }
     for (const m of merchants.values())
       if (!prevMerchantKeys.has(m.key) && m.currentKurus >= 200000)
-        insights.push({ kind: 'merchant-new', tone: 'info', text: `${m.name}: önceki dönemlerde olmayan ${formatTl(m.currentKurus)} tutarında yeni harcama.`, amountKurus: m.currentKurus })
+        insights.push({ kind: 'merchant-new', tone: 'info', text: ttf('{0}: önceki dönemlerde olmayan {1} tutarında yeni harcama.', m.name, formatTl(m.currentKurus)), amountKurus: m.currentKurus })
   }
   insights.sort((a, b) => (a.tone === b.tone ? b.amountKurus - a.amountKurus : a.tone === 'warning' ? -1 : b.tone === 'warning' ? 1 : 0))
 

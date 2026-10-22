@@ -9,6 +9,7 @@ import { REPORT_KIND_LABEL, type ReportKind } from "../cloud/research";
 import { PlanBadge, PlanGate } from "../components/PlanGate";
 import { useReports } from "../state/coach";
 import { Alert, Badge, Card, More, Segmented } from "../components/ui/primitives";
+import { tt, ttf } from '../lib/i18n'
 
 interface Topic {
   id: string;
@@ -22,79 +23,79 @@ interface Topic {
 const TOPICS: Topic[] = [
   {
     id: "risk",
-    title: "Risk",
+    title: tt('Risk'),
     summary:
-      "Bir birikimin değerinin beklediğinizden farklı, özellikle daha düşük çıkma ihtimali.",
+      tt('Bir birikimin değerinin beklediğinizden farklı, özellikle daha düşük çıkma ihtimali.'),
     points: [
-      "Getirisi yüksek görünen araçlarda değer dalgalanması da genellikle daha büyüktür.",
-      "Paraya ne zaman ihtiyaç duyacağınız, ne kadar dalgalanmaya katlanabileceğinizi belirler. Yakın zamanda gereken para için dalgalanma daha çok sorun yaratır.",
-      "Geçmişteki getiri gelecekteki getiriyi garanti etmez.",
+      tt('Getirisi yüksek görünen araçlarda değer dalgalanması da genellikle daha büyüktür.'),
+      tt('Paraya ne zaman ihtiyaç duyacağınız, ne kadar dalgalanmaya katlanabileceğinizi belirler. Yakın zamanda gereken para için dalgalanma daha çok sorun yaratır.'),
+      tt('Geçmişteki getiri gelecekteki getiriyi garanti etmez.'),
     ],
     inApp:
-      "Gelecek senaryolarında temkinli, orta ve olumlu varsayımları yan yana görerek belirsizliğin etkisini inceleyebilirsiniz.",
+      tt('Gelecek senaryolarında temkinli, orta ve olumlu varsayımları yan yana görerek belirsizliğin etkisini inceleyebilirsiniz.'),
   },
   {
     id: "liquidity",
-    title: "Likidite",
+    title: tt('Likidite'),
     summary:
-      "Bir varlığı, değer kaybetmeden ve hızla nakde çevirebilme kolaylığı.",
+      tt('Bir varlığı, değer kaybetmeden ve hızla nakde çevirebilme kolaylığı.'),
     points: [
-      "Vadesiz hesap ve nakit en likit varlıklardır; vadeli mevduat, fon veya altında bozdurma süresi ve maliyeti olabilir.",
-      "Acil durum birikiminin kolay ulaşılabilir olması, beklenmedik bir giderde borçlanma ihtiyacını azaltır.",
-      "Likit olmayan bir varlığı acele satmak, düşük fiyatı kabul etmek anlamına gelebilir.",
+      tt('Vadesiz hesap ve nakit en likit varlıklardır; vadeli mevduat, fon veya altında bozdurma süresi ve maliyeti olabilir.'),
+      tt('Acil durum birikiminin kolay ulaşılabilir olması, beklenmedik bir giderde borçlanma ihtiyacını azaltır.'),
+      tt('Likit olmayan bir varlığı acele satmak, düşük fiyatı kabul etmek anlamına gelebilir.'),
     ],
     inApp:
-      "Yolculuğum sayfasındaki finansal güvence göstergesi yalnızca hızlı kullanılabilir birikimi (mevduat, nakit, döviz, altın, fon) sayar.",
+      tt('Yolculuğum sayfasındaki finansal güvence göstergesi yalnızca hızlı kullanılabilir birikimi (mevduat, nakit, döviz, altın, fon) sayar.'),
   },
   {
     id: "fees",
-    title: "Masraf ve vergiler",
+    title: tt('Masraf ve vergiler'),
     summary:
-      "Alım-satım komisyonu, yönetim ücreti, kur farkı ve vergiler getiriyi doğrudan azaltır.",
+      tt('Alım-satım komisyonu, yönetim ücreti, kur farkı ve vergiler getiriyi doğrudan azaltır.'),
     points: [
-      "Yıllık küçük bir yönetim ücreti bile uzun sürede birikimin önemli bir kısmını götürebilir.",
-      "Alış ve satış fiyatı arasındaki fark (makas) da bir maliyettir.",
-      "Bir ürünü karşılaştırırken getiriyi masraflar ve vergiler düşüldükten sonra değerlendirmek gerekir.",
+      tt('Yıllık küçük bir yönetim ücreti bile uzun sürede birikimin önemli bir kısmını götürebilir.'),
+      tt('Alış ve satış fiyatı arasındaki fark (makas) da bir maliyettir.'),
+      tt('Bir ürünü karşılaştırırken getiriyi masraflar ve vergiler düşüldükten sonra değerlendirmek gerekir.'),
     ],
     inApp:
-      "Yatırımlarım sayfasında alış ve satışları gerçek ödediğiniz fiyatla girerseniz kâr/zarar hesabı masrafları da yansıtır.",
+      tt('Yatırımlarım sayfasında alış ve satışları gerçek ödediğiniz fiyatla girerseniz kâr/zarar hesabı masrafları da yansıtır.'),
   },
   {
     id: "diversification",
-    title: "Çeşitlendirme",
+    title: tt('Çeşitlendirme'),
     summary:
-      "Birikimi tek bir araca bağlamak yerine farklı davranan araçlara dağıtmak.",
+      tt('Birikimi tek bir araca bağlamak yerine farklı davranan araçlara dağıtmak.'),
     points: [
-      "Farklı varlıklar aynı anda aynı yönde hareket etmeyebilir; bu, toplam dalgalanmayı azaltabilir.",
-      "Çeşitlendirme kaybı önlemez, yalnızca tek bir aracın etkisini sınırlar.",
-      "Aynı türden çok sayıda araç (ör. aynı sektördeki hisseler) gerçek bir çeşitlendirme sağlamayabilir.",
+      tt('Farklı varlıklar aynı anda aynı yönde hareket etmeyebilir; bu, toplam dalgalanmayı azaltabilir.'),
+      tt('Çeşitlendirme kaybı önlemez, yalnızca tek bir aracın etkisini sınırlar.'),
+      tt('Aynı türden çok sayıda araç (ör. aynı sektördeki hisseler) gerçek bir çeşitlendirme sağlamayabilir.'),
     ],
     inApp:
-      "Yatırımlarım sayfasındaki dağılım listesi, birikiminizin türlere göre nasıl dağıldığını gösterir.",
+      tt('Yatırımlarım sayfasındaki dağılım listesi, birikiminizin türlere göre nasıl dağıldığını gösterir.'),
   },
   {
     id: "inflation",
-    title: "Enflasyon ve reel getiri",
+    title: tt('Enflasyon ve reel getiri'),
     summary:
-      "Reel getiri, fiyat artışları düşüldükten sonra kalan gerçek kazançtır.",
+      tt('Reel getiri, fiyat artışları düşüldükten sonra kalan gerçek kazançtır.'),
     points: [
-      "Nominal olarak artan bir birikim, fiyatlar daha hızlı artıyorsa satın alma gücü kaybedebilir.",
-      "Uzun vadeli hedefleri bugünün parasıyla düşünmek, hedefin gerçekte ne kadar uzakta olduğunu daha iyi gösterir.",
+      tt('Nominal olarak artan bir birikim, fiyatlar daha hızlı artıyorsa satın alma gücü kaybedebilir.'),
+      tt('Uzun vadeli hedefleri bugünün parasıyla düşünmek, hedefin gerçekte ne kadar uzakta olduğunu daha iyi gösterir.'),
     ],
     inApp:
-      'Senaryolar sayfasındaki "Bugünün parasıyla" görünümü sonuçları enflasyondan arındırılmış olarak gösterir.',
+      tt('Senaryolar sayfasındaki "Bugünün parasıyla" görünümü sonuçları enflasyondan arındırılmış olarak gösterir.'),
   },
   {
     id: "emergency",
-    title: "Acil durum birikimi",
+    title: tt('Acil durum birikimi'),
     summary:
-      "Gelir kesildiğinde veya beklenmedik bir gider çıktığında başvurulan, kolay ulaşılır birikim.",
+      tt('Gelir kesildiğinde veya beklenmedik bir gider çıktığında başvurulan, kolay ulaşılır birikim.'),
     points: [
-      "Sık kullanılan bir ölçü, zorunlu giderlerin birkaç aylık tutarıdır; gelir düzensizse daha uzun süre düşünülebilir.",
-      "Bu birikim getiri için değil güvence için tutulur; bu yüzden likidite öndedir.",
+      tt('Sık kullanılan bir ölçü, zorunlu giderlerin birkaç aylık tutarıdır; gelir düzensizse daha uzun süre düşünülebilir.'),
+      tt('Bu birikim getiri için değil güvence için tutulur; bu yüzden likidite öndedir.'),
     ],
     inApp:
-      "Yolculuğum rotasında acil durum aşaması, zorunlu giderlerinizin 3 aylık tutarını ölçüt alır.",
+      tt('Yolculuğum rotasında acil durum aşaması, zorunlu giderlerinizin 3 aylık tutarını ölçüt alır.'),
   },
 ];
 
@@ -105,30 +106,30 @@ export default function LearningPage() {
   return (
     <div>
       <PageHeader
-        title="Finansal bilgi"
+        title={tt('Finansal bilgi')}
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plusplus" /> Temel kavramlar ve ekonomi gündemi
+            <PlanBadge plan="plusplus" /> {tt('Temel kavramlar ve ekonomi gündemi')}
           </span>
         }
       />
       <PlanGate
         feature="learning"
-        title="Finansal bilgi ve ekonomi gündemi"
+        title={tt('Finansal bilgi ve ekonomi gündemi')}
         points={[
-          "Risk, likidite, masraf ve çeşitlendirme gibi temel kavramlar",
-          "Editör onaylı günlük, haftalık ve aylık ekonomi raporları",
-          "Her bilginin kaynağı ve tarihi",
+          tt('Risk, likidite, masraf ve çeşitlendirme gibi temel kavramlar'),
+          tt('Editör onaylı günlük, haftalık ve aylık ekonomi raporları'),
+          tt('Her bilginin kaynağı ve tarihi'),
         ]}
       >
         <div className="flex flex-col gap-4">
           <Alert tone="info">
-            Genel bilgidir; yatırım tavsiyesi değildir.
+            {tt('Genel bilgidir; yatırım tavsiyesi değildir.')}
           </Alert>
 
-          <section aria-label="Temel kavramlar">
+          <section aria-label={tt('Temel kavramlar')}>
             <h2 className="mb-2 flex items-center gap-2 font-display text-base font-semibold">
-              <BookOpen className="size-5 text-accent" /> Temel kavramlar
+              <BookOpen className="size-5 text-accent" /> {tt('Temel kavramlar')}
             </h2>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {TOPICS.map((t) => (
@@ -166,18 +167,18 @@ export default function LearningPage() {
 
           <Assumptions />
 
-          <section aria-label="Ekonomi gündemi">
+          <section aria-label={tt('Ekonomi gündemi')}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-                <Newspaper className="size-5 text-accent" /> Ekonomi gündemi
+                <Newspaper className="size-5 text-accent" /> {tt('Ekonomi gündemi')}
               </h2>
               <Segmented<ReportKind | "hepsi">
-                label="Rapor türü"
+                label={tt('Rapor türü')}
                 value={kind}
                 onChange={setKind}
                 className="no-scrollbar max-sm:w-full max-sm:overflow-x-auto"
                 options={[
-                  { value: "hepsi", label: "Tümü" },
+                  { value: "hepsi", label: tt('Tümü') },
                   ...(["gunluk", "haftalik", "aylik", "acil"] as const).map(
                     (k) => ({ value: k, label: REPORT_KIND_LABEL[k] }),
                   ),
@@ -185,24 +186,22 @@ export default function LearningPage() {
               />
             </div>
             <p className="text-[12.5px] text-muted">
-              Editör onayından sonra yayınlanır.
+              {tt('Editör onayından sonra yayınlanır.')}
             </p>
             <More className="mb-3">
-              Raporlar herkese aynıdır; seçilmiş resmî kurumlar, haber
-              kaynakları ve uzmanlardan derlenir. Her cümlenin kaynağı
-              numarasıyla gösterilir.
+              {tt('Raporlar herkese aynıdır; seçilmiş resmî kurumlar, haber kaynakları ve uzmanlardan derlenir. Her cümlenin kaynağı numarasıyla gösterilir.')}
               <span className="mt-2 flex flex-wrap gap-2 text-[12.5px]">
                 <span className="inline-flex items-center gap-1.5">
-                  <Badge tone="teal">Resmî veri</Badge> kurumun açıkladığı
+                  <Badge tone="teal">{tt('Resmî veri')}</Badge> {tt('kurumun açıkladığı')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Badge tone="neutral">Haber</Badge> olanı aktarır
+                  <Badge tone="neutral">{tt('Haber')}</Badge> {tt('olanı aktarır')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Badge tone="accent">Uzman yorumu</Badge> bir kişinin görüşüdür
+                  <Badge tone="accent">{tt('Uzman yorumu')}</Badge> {tt('bir kişinin görüşüdür')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Badge tone="warning">Tahmin</Badge> gerçekleşmeyebilir
+                  <Badge tone="warning">{tt('Tahmin')}</Badge> {tt('gerçekleşmeyebilir')}
                 </span>
               </span>
             </More>
@@ -219,7 +218,7 @@ export default function LearningPage() {
             ) : (
               <Card className="p-5">
                 <p className="text-sm text-muted">
-                  {news ? "Henüz yayınlanmış rapor yok." : "Yükleniyor…"}
+                  {news ? tt('Henüz yayınlanmış rapor yok.') : tt('Yükleniyor…')}
                 </p>
               </Card>
             )}
@@ -238,12 +237,12 @@ function Assumptions() {
       document.getElementById("varsayimlar")?.scrollIntoView({ block: "start" });
   }, [hash]);
   return (
-    <section id="varsayimlar" aria-label="Varsayımlar ve kaynaklar" className="scroll-mt-20">
+    <section id="varsayimlar" aria-label={tt('Varsayımlar ve kaynaklar')} className="scroll-mt-20">
       <h2 className="mb-1 flex items-center gap-2 font-display text-base font-semibold">
-        <Scale className="size-5 text-accent" /> Varsayımlar ve kaynaklar
+        <Scale className="size-5 text-accent" /> {tt('Varsayımlar ve kaynaklar')}
       </h2>
       <p className="mb-3 text-[12.5px] text-muted">
-        Rotadaki hesaplar bu varsayımlara dayanır.
+        {tt('Rotadaki hesaplar bu varsayımlara dayanır.')}
       </p>
       <Card className="p-0">
         <ul className="divide-y divide-line">
@@ -252,7 +251,7 @@ function Assumptions() {
               <div className="font-semibold text-ink">{a.title}</div>
               <p className="mt-1 text-[13px] text-ink">{a.value}</p>
               <p className="mt-1 text-[12.5px] text-muted">{a.reason}</p>
-              <p className="mt-1 text-[12px] text-subtle">Kaynak: {a.source}</p>
+              <p className="mt-1 text-[12px] text-subtle">{ttf('Kaynak: {0}', a.source)}</p>
             </li>
           ))}
         </ul>

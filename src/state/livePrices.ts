@@ -4,6 +4,7 @@ import { autoPriceCode, autoQuote, confidentMatch, defaultMarket, quoteKey, quot
 import type { BaseRates, JourneyProfile } from '../domain/journey'
 import { useAuth } from './auth'
 import { useAssets, useRepo } from './data'
+import { tt } from '../lib/i18n'
 
 /**
  * Varlıkların güncel fiyatı kendiliğinden alınır: uygulama açılınca, varlık listesi değişince ve açık kaldıkça
@@ -104,7 +105,7 @@ export function useLivePriceSync(enabled: boolean) {
       const ok = data.quotes.filter((q) => q.ok).map((q) => ({ market: q.market, symbol: q.symbol, priceTl: q.priceTl!, date: q.date! }))
       const updates = [...(data.date ? rateUpdates(list, data.rates, data.date) : []), ...quoteUpdates(list, ok)]
       for (const u of updates) await repo.setAssetValuation(u.assetId, u.valuation)
-      const errors = new Map(data.quotes.filter((q) => !q.ok).map((q) => [`${q.market}:${q.symbol}`, q.error ?? 'Fiyat alınamadı']))
+      const errors = new Map(data.quotes.filter((q) => !q.ok).map((q) => [`${q.market}:${q.symbol}`, q.error ?? tt('Fiyat alınamadı')]))
       const failed: Record<string, string> = {}
       for (const a of list) {
         const q = autoQuote(a)
@@ -117,7 +118,7 @@ export function useLivePriceSync(enabled: boolean) {
       set({ busy: false, at: new Date().toISOString(), failed, linked, usd: usd && data.date ? { valueTl: usd.valueTl, date: data.date } : state.usd, goldGram: gold ? { valueTl: gold.priceTl, date: gold.date } : state.goldGram })
       return updates.length
     } catch (e) {
-      set({ busy: false, error: e instanceof Error ? e.message : 'Güncel fiyatlar alınamadı.' })
+      set({ busy: false, error: e instanceof Error ? e.message : tt('Güncel fiyatlar alınamadı.') })
       return null
     } finally {
       if (rerun) setTimeout(() => void runRef.current(), 0)

@@ -19,6 +19,7 @@ import { useUi } from '../state/ui'
 import { AssetEditor, type Editing } from './AssetsPage'
 import { RecurringEditor, type Draft } from './PaymentsSection'
 import { MoneyFlow } from './RouteSimulation'
+import { tt, ttf } from '../lib/i18n'
 
 /**
  * Rota kurulumu: Finansal Harita testinin tahmini rakamları 6 adımda gerçek rakamlarla değiştirilir.
@@ -29,13 +30,13 @@ import { MoneyFlow } from './RouteSimulation'
 type Status = 'web' | 'test' | 'app' | 'ok'
 type View = 'setup' | 'calc' | 'final'
 const STEPS = [
-  { key: 'gelir', title: 'Gelirin', lead: 'Testte gelir aralığı seçmiştin. Şimdi tam rakamı yaz.' },
-  { key: 'gider', title: 'Giderlerin', lead: 'Ortalama bir ayı düşün. + ile gider türünü seç, tutarını yaz.' },
-  { key: 'borc', title: 'Borçların', lead: 'Cevabına göre tahmini borç ekledik. Gerçek borçlarınla değiştir.' },
-  { key: 'birikim', title: 'Birikimin', lead: 'Toplam birikimini varlık türlerine böldük. Bugünkü TL karşılıklarını düzelt.' },
-  { key: 'hedef', title: 'Hedefin', lead: 'Hayalindeki pasif geliri testte seçtin. Yaşın ve süreyle tamamla.' },
-  { key: 'son', title: 'Son birkaç soru', lead: 'Rotanın temposunu ve risk dengesini ayarlamak için.' },
-  { key: 'ozgurluk', title: 'Özgürlük hedefin', lead: 'Hedefi verdiğin bilgilerden biz hesaplayalım ya da kendin yaz.' },
+  { key: 'gelir', title: tt('Gelirin'), lead: tt('Testte gelir aralığı seçmiştin. Şimdi tam rakamı yaz.') },
+  { key: 'gider', title: tt('Giderlerin'), lead: tt('Ortalama bir ayı düşün. + ile gider türünü seç, tutarını yaz.') },
+  { key: 'borc', title: tt('Borçların'), lead: tt('Cevabına göre tahmini borç ekledik. Gerçek borçlarınla değiştir.') },
+  { key: 'birikim', title: tt('Birikimin'), lead: tt('Toplam birikimini varlık türlerine böldük. Bugünkü TL karşılıklarını düzelt.') },
+  { key: 'hedef', title: tt('Hedefin'), lead: tt('Hayalindeki pasif geliri testte seçtin. Yaşın ve süreyle tamamla.') },
+  { key: 'son', title: tt('Son birkaç soru'), lead: tt('Rotanın temposunu ve risk dengesini ayarlamak için.') },
+  { key: 'ozgurluk', title: tt('Özgürlük hedefin'), lead: tt('Hedefi verdiğin bilgilerden biz hesaplayalım ya da kendin yaz.') },
 ] as const
 
 const K = 100
@@ -252,20 +253,20 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
   const webRange = reachRange(web)
 
   const check = (i: number): string | null => {
-    if (i === 0 && soft(f.income) <= 0) return 'Aylık net gelirini yaz.'
-    if (i === 0 && !(Number(f.dependents) >= 0 && Number(f.dependents) <= 20)) return 'Bakmakla yükümlü olduğun kişi sayısını 0–20 arası yaz.'
-    if (i === 1 && f.expenses.reduce((s, r) => s + soft(r.amount), 0) <= 0) return 'En az bir gider ekle ve tutarını yaz.'
-    if (i === 2) for (const d of f.debts) if (d.rate.trim() && !(num(d.rate) >= 0 && num(d.rate) <= 20)) return 'Aylık faiz %0 ile %20 arasında olmalı.'
+    if (i === 0 && soft(f.income) <= 0) return tt('Aylık net gelirini yaz.')
+    if (i === 0 && !(Number(f.dependents) >= 0 && Number(f.dependents) <= 20)) return tt('Bakmakla yükümlü olduğun kişi sayısını 0–20 arası yaz.')
+    if (i === 1 && f.expenses.reduce((s, r) => s + soft(r.amount), 0) <= 0) return tt('En az bir gider ekle ve tutarını yaz.')
+    if (i === 2) for (const d of f.debts) if (d.rate.trim() && !(num(d.rate) >= 0 && num(d.rate) <= 20)) return tt('Aylık faiz %0 ile %20 arasında olmalı.')
     if (i === 4) {
-      if (soft(f.dream) <= 0) return 'Aylık pasif gelir hedefini yaz.'
+      if (soft(f.dream) <= 0) return tt('Aylık pasif gelir hedefini yaz.')
       const age = Number(f.age)
-      if (!Number.isInteger(age) || age < 15 || age > 90) return 'Yaşını 15 ile 90 arasında yaz.'
+      if (!Number.isInteger(age) || age < 15 || age > 90) return tt('Yaşını 15 ile 90 arasında yaz.')
       const y = Number(f.years)
-      if (!Number.isInteger(y) || y < 1 || age + y > 100) return 'Süre en az 1 yıl olmalı ve hedef yaşın 100\'ü geçmemeli.'
+      if (!Number.isInteger(y) || y < 1 || age + y > 100) return tt('Süre en az 1 yıl olmalı ve hedef yaşın 100\'ü geçmemeli.')
     }
     if (i === 6 && f.goalMode === 'own') {
-      if (!usdRate) return 'Dolar kuru henüz alınamadı; biraz sonra tekrar dene ya da otomatik hedefi seç.'
-      if (soft(f.ownUsd) <= 0) return 'Hedef tutarını dolar olarak yaz.'
+      if (!usdRate) return tt('Dolar kuru henüz alınamadı; biraz sonra tekrar dene ya da otomatik hedefi seç.')
+      if (soft(f.ownUsd) <= 0) return tt('Hedef tutarını dolar olarak yaz.')
     }
     return null
   }
@@ -319,7 +320,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       await repo.saveSettings({ journey: profile, webTest: { ...link, refinedAt: new Date().toISOString() } })
       clearRouteDraft()
       setSaved({ profile, facts: draft.facts })
-      toast('Rotan kuruldu.')
+      toast(tt('Rotan kuruldu.'))
       setTimeout(() => setView('final'), reduced ? 0 : 1200)
     } catch (e) {
       setView('setup')
@@ -337,8 +338,8 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     return (
       <Card className="flex flex-col items-center gap-4 p-8 text-center" aria-live="polite">
         <Spinner />
-        <h2 className="font-display text-xl font-bold text-ink">Rotan gerçek rakamlarınla yeniden çiziliyor</h2>
-        <p className="text-[13.5px] text-muted">Borç sırası, acil fon hedefi ve yatırım temposu hesaplanıyor.</p>
+        <h2 className="font-display text-xl font-bold text-ink">{tt('Rotan gerçek rakamlarınla yeniden çiziliyor')}</h2>
+        <p className="text-[13.5px] text-muted">{tt('Borç sırası, acil fon hedefi ve yatırım temposu hesaplanıyor.')}</p>
       </Card>
     )
   if (view === 'final' && saved) return <Final saved={saved} rates={rates} webRange={webRange} webGoal={web.goalKurus} webLevel={web.level} name={link.name} onDone={onDone} onEdit={() => setView('setup')} canJourney={has('journey')} canCoach={has('aiCoach')} />
@@ -349,8 +350,8 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
     <MoneyField id={`rs-${k}`} label={label} hint={hint} badge={badge(k)} value={f[k] as string} onChange={(v) => set(k, v as never)} />
   )
   return (
-    <Card className="overflow-hidden p-5" aria-label="Rota kurulumu">
-      <ol className="grid grid-cols-7 gap-1" aria-label="Kurulum adımları">
+    <Card className="overflow-hidden p-5" aria-label={tt('Rota kurulumu')}>
+      <ol className="grid grid-cols-7 gap-1" aria-label={tt('Kurulum adımları')}>
         {STEPS.map((x, i) => (
           <li key={x.key} aria-current={i === step ? 'step' : undefined} aria-label={x.title}>
             <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
@@ -361,11 +362,11 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       </ol>
       <div className="sticky top-0 z-10 mt-3 flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[13px]" aria-live="polite">
         <span className="flex items-center gap-2 text-muted">
-          <span className="size-2 rounded-full bg-accent" aria-hidden /> Canlı özgürlük yılın
+          <span className="size-2 rounded-full bg-accent" aria-hidden /> {tt('Canlı özgürlük yılın')}
         </span>
         <span className="flex items-baseline gap-2">
           <span className="text-[12.5px] text-subtle">{webRange ?? '—'} →</span>
-          <span className="num font-display text-lg font-bold text-amber-600 dark:text-amber-400">{liveYear ?? 'Görünmüyor'}</span>
+          <span className="num font-display text-lg font-bold text-amber-600 dark:text-amber-400">{liveYear ?? tt('Görünmüyor')}</span>
         </span>
       </div>
 
@@ -373,32 +374,32 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
         <motion.div key={step} custom={dir} initial={reduced ? false : { opacity: 0, x: 24 * dir }} animate={{ opacity: 1, x: 0 }} exit={reduced ? undefined : { opacity: 0, x: -24 * dir }} transition={{ duration: 0.22 }}>
           <div className="mt-5">
             <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted">
-              Adım {step + 1} / {STEPS.length}
+              {ttf('Adım {0} / {1}', step + 1, STEPS.length)}
             </p>
             <h2 className="mt-1 font-display text-2xl font-bold text-ink">{s.title}</h2>
-            <p className="mt-1 text-[13.5px] text-muted">{s.key === 'borc' && appDebts.length ? 'Borçların uygulamadaki Borçlar sayfasından geldi.' : s.key === 'birikim' && useAppCap ? 'Birikimin Yatırımlarım sayfasından geldi.' : s.key === 'gider' && appSpend ? 'Giderin son aylardaki harcama kayıtlarından hesaplandı.' : s.lead}</p>
+            <p className="mt-1 text-[13.5px] text-muted">{s.key === 'borc' && appDebts.length ? tt('Borçların uygulamadaki Borçlar sayfasından geldi.') : s.key === 'birikim' && useAppCap ? tt('Birikimin Yatırımlarım sayfasından geldi.') : s.key === 'gider' && appSpend ? tt('Giderin son aylardaki harcama kayıtlarından hesaplandı.') : s.lead}</p>
           </div>
           <div className="mt-4 flex flex-col gap-4">
             {s.key === 'gelir' && (
               <>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {money('income', 'Aylık net ana gelir')}
-                  {money('extra', 'Aylık ek gelir', 'Serbest iş, prim, yan gelir')}
+                  {money('income', tt('Aylık net ana gelir'))}
+                  {money('extra', tt('Aylık ek gelir'), tt('Serbest iş, prim, yan gelir'))}
                 </div>
-                {money('passive', 'Çalışmadan gelen aylık gelir', 'Kira, faiz, temettü')}
-                <ChipField label="Gelirin ne kadar düzenli?" badge={badge('stability')}>
+                {money('passive', tt('Çalışmadan gelen aylık gelir'), tt('Kira, faiz, temettü'))}
+                <ChipField label={tt('Gelirin ne kadar düzenli?')} badge={badge('stability')}>
                   <Segmented<IncomeStability>
-                    label="Gelir düzeni"
+                    label={tt('Gelir düzeni')}
                     value={f.stability}
                     onChange={(v) => set('stability', v)}
                     options={[
-                      { value: 'regular', label: 'Sabit' },
-                      { value: 'variable', label: 'Dalgalı' },
-                      { value: 'irregular', label: 'Düzensiz' },
+                      { value: 'regular', label: tt('Sabit') },
+                      { value: 'variable', label: tt('Dalgalı') },
+                      { value: 'irregular', label: tt('Düzensiz') },
                     ]}
                   />
                 </ChipField>
-                <CountField id="rs-dep" label="Bakmakla yükümlü olduğun kişi" badge={badge('dependents')} value={f.dependents} onChange={(v) => set('dependents', v)} />
+                <CountField id="rs-dep" label={tt('Bakmakla yükümlü olduğun kişi')} badge={badge('dependents')} value={f.dependents} onChange={(v) => set('dependents', v)} />
               </>
             )}
             {s.key === 'gider' && (
@@ -406,7 +407,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                 <ExpensesEditor rows={f.expenses} badge={badge('expenses')} onChange={(r) => set('expenses', r)} extraKurus={appDebts.reduce((s, d) => s + d.minPaymentKurus, 0) + (facts.recurringList ?? []).reduce((s, r) => s + r.monthlyKurus, 0)} />
                 <AppPayments debts={appDebts} recurring={facts.recurringList ?? []} onAddDebt={addDebt} onAddPayment={() => setPayDraft({ kind: 'installment' })} />
                 <p className="flex items-center gap-2 text-[12.5px] text-muted">
-                  <CalendarClock className="size-4 shrink-0 text-accent" /> Harcamalarını girdikçe bu rakamlar uygulamadaki kayıtlarından güncellenir.
+                  <CalendarClock className="size-4 shrink-0 text-accent" /> {tt('Harcamalarını girdikçe bu rakamlar uygulamadaki kayıtlarından güncellenir.')}
                 </p>
               </>
             )}
@@ -419,14 +420,13 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                         {d.name}
                       </button>
                       <span className="num shrink-0 text-muted">
-                        {formatKurusCompact(d.balanceKurus)} · {formatKurusCompact(d.minPaymentKurus)}/ay
-                      </span>
+                        {ttf('{0} · {1}/ay', formatKurusCompact(d.balanceKurus), formatKurusCompact(d.minPaymentKurus))}</span>
                     </li>
                   ))}
                   <li className="flex flex-wrap items-center gap-2">
                     <StatusBadge s="app" />
                     <button type="button" onClick={addDebt} className="inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline">
-                      <Plus className="size-4" /> Borç ekle
+                      <Plus className="size-4" /> {tt('Borç ekle')}
                     </button>
                   </li>
                 </ul>
@@ -434,21 +434,21 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                 <>
                   <DebtsEditor debts={f.debts} badge={badge('debts')} onChange={(d) => set('debts', d)} hint={est.debts.length > 0 && !f.debts.length} />
                   <button type="button" onClick={addDebt} className="text-left text-[13px] font-medium text-accent hover:underline">
-                    Kredini ya da kart borcunu kayıtlı borç olarak ekle; Borçlar ve ödemeler sayfasına da işlenir
+                    {tt('Kredini ya da kart borcunu kayıtlı borç olarak ekle; Borçlar ve ödemeler sayfasına da işlenir')}
                   </button>
                 </>
               ))}
             {s.key === 'birikim' && (
               <>
                 {appAssets && (
-                  <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-3.5" role="group" aria-label="Yatırımlarım'daki birikimin">
+                  <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-3.5" role="group" aria-label={tt('Yatırımlarım\'daki birikimin')}>
                     <div className="grid grid-cols-2 gap-3 text-[13px]">
                       <div>
-                        <div className="text-muted">Yatırımlarım'da toplam</div>
+                        <div className="text-muted">{tt('Yatırımlarım\'da toplam')}</div>
                         <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(facts.assetsKurus)}</div>
                       </div>
                       <div>
-                        <div className="text-muted">Hızlı kullanılabilir</div>
+                        <div className="text-muted">{tt('Hızlı kullanılabilir')}</div>
                         <div className="num text-[16px] font-semibold text-ink">{formatKurusCompact(facts.liquidKurus)}</div>
                       </div>
                     </div>
@@ -456,90 +456,90 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                       <div className="flex flex-wrap items-center gap-2 text-[13px]">
                         <StatusBadge s="app" />
                         <button type="button" onClick={() => set('capSrc', 'estimate')} className="font-medium text-accent hover:underline">
-                          Tahmini rakamlarla devam et
+                          {tt('Tahmini rakamlarla devam et')}
                         </button>
                       </div>
                     ) : (
                       <Button variant="primary" onClick={() => set('capSrc', 'app')} className="self-start">
-                        Rotamı bu birikim verilerimle işle
+                        {tt('Rotamı bu birikim verilerimle işle')}
                       </Button>
                     )}
                   </div>
                 )}
                 {!useAppCap && (
                   <>
-                    {money('emergency', 'Acil durum fonu', 'Hemen ulaşabildiğin nakit ve mevduat')}
+                    {money('emergency', tt('Acil durum fonu'), tt('Hemen ulaşabildiğin nakit ve mevduat'))}
                     <div className="grid grid-cols-2 gap-3">
-                      <MoneyField id="rs-fx" label="Döviz" value={f.fx} onChange={(v) => set('fx', v)} />
-                      <MoneyField id="rs-gold" label="Altın" value={f.gold} onChange={(v) => set('gold', v)} />
-                      <MoneyField id="rs-funds" label="Hisse ve fon" value={f.funds} onChange={(v) => set('funds', v)} />
-                      <MoneyField id="rs-crypto" label="Kripto" value={f.crypto} onChange={(v) => set('crypto', v)} />
+                      <MoneyField id="rs-fx" label={tt('Döviz')} value={f.fx} onChange={(v) => set('fx', v)} />
+                      <MoneyField id="rs-gold" label={tt('Altın')} value={f.gold} onChange={(v) => set('gold', v)} />
+                      <MoneyField id="rs-funds" label={tt('Hisse ve fon')} value={f.funds} onChange={(v) => set('funds', v)} />
+                      <MoneyField id="rs-crypto" label={tt('Kripto')} value={f.crypto} onChange={(v) => set('crypto', v)} />
                       <MoneyField id="rs-bes" label="BES" value={f.pension} onChange={(v) => set('pension', v)} />
                     </div>
-                    {money('invest', 'Her ay düzenli yatırıma ayırdığın')}
+                    {money('invest', tt('Her ay düzenli yatırıma ayırdığın'))}
                   </>
                 )}
                 <button type="button" onClick={addAsset} className="inline-flex items-center gap-1 self-start text-[13px] font-medium text-accent hover:underline">
-                  <Plus className="size-4" /> Yatırımlarım'a birikim ekle
+                  <Plus className="size-4" /> {tt('Yatırımlarım\'a birikim ekle')}
                 </button>
               </>
             )}
             {s.key === 'hedef' && (
               <>
-                {money('dream', 'Aylık pasif gelir hedefi', 'Bugünün parasıyla, çalışmadan karşılanacak aylık yaşam')}
+                {money('dream', tt('Aylık pasif gelir hedefi'), tt('Bugünün parasıyla, çalışmadan karşılanacak aylık yaşam'))}
                 <div className="grid grid-cols-2 gap-3">
-                  <CountField id="rs-age" label="Yaşın" badge={f.age ? undefined : <Badge tone="danger">Eksik</Badge>} value={f.age} onChange={(v) => set('age', v)} placeholder="Örn. 32" />
-                  <CountField id="rs-years" label="Kaç yılda varmak istersin?" badge={badge('years')} value={f.years} onChange={(v) => set('years', v)} />
+                  <CountField id="rs-age" label={tt('Yaşın')} badge={f.age ? undefined : <Badge tone="danger">{tt('Eksik')}</Badge>} value={f.age} onChange={(v) => set('age', v)} placeholder={tt('Örn. 32')} />
+                  <CountField id="rs-years" label={tt('Kaç yılda varmak istersin?')} badge={badge('years')} value={f.years} onChange={(v) => set('years', v)} />
                 </div>
-                {money('retire', 'Beklenen aylık emekli maaşı', 'Hedefe vardığında alacağın SGK ya da BES, bugünün parasıyla. Bu tutar birikimden çekilmez, hedef küçülür. Bilmiyorsan boş bırak.')}
+                {money('retire', tt('Beklenen aylık emekli maaşı'), tt('Hedefe vardığında alacağın SGK ya da BES, bugünün parasıyla. Bu tutar birikimden çekilmez, hedef küçülür. Bilmiyorsan boş bırak.'))}
               </>
             )}
             {s.key === 'ozgurluk' && (
               <>
-                <ChipField label="Hedefini nasıl belirleyelim?">
+                <ChipField label={tt('Hedefini nasıl belirleyelim?')}>
                   <Segmented
-                    label="Hedef türü"
+                    label={tt('Hedef türü')}
                     value={f.goalMode}
                     onChange={(v) => set('goalMode', v)}
                     options={[
-                      { value: 'auto', label: 'Otomatik' },
-                      { value: 'own', label: 'Kendim yazacağım' },
+                      { value: 'auto', label: tt('Otomatik') },
+                      { value: 'own', label: tt('Kendim yazacağım') },
                     ]}
                   />
                 </ChipField>
                 {f.goalMode === 'auto' ? (
                   <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[13.5px] text-ink">
-                    Verdiğin bilgilere göre bağımsızlık hedefin{' '}
+                    {tt('Verdiğin bilgilere göre bağımsızlık hedefin')}{' '}
                     <span className="num font-semibold">{usdRate ? `${Math.round(live.plan.suggestedFiKurus / 100 / usdRate).toLocaleString('tr-TR')} $` : formatKurusCompact(live.plan.suggestedFiKurus)}</span>.
                   </p>
                 ) : (
-                  <MoneyField id="rs-ownUsd" unit="$" label="Bağımsızlık hedefin" hint="Bu tutara göre ara adımlar, Lean FI (%70) ve Fat FI (%150) hesaplanır; sayfa dolar bazında hazırlanır." value={f.ownUsd} onChange={(v) => set('ownUsd', v)} autoFocus />
+                  <MoneyField id="rs-ownUsd" unit="$" label={tt('Bağımsızlık hedefin')} hint={tt('Bu tutara göre ara adımlar, Lean FI (%70) ve Fat FI (%150) hesaplanır; sayfa dolar bazında hazırlanır.')} value={f.ownUsd} onChange={(v) => set('ownUsd', v)} autoFocus />
                 )}
               </>
             )}
             {s.key === 'son' && (
               <>
-                <ChipField label="Yatırımın bir ayda %20 düşse ne yaparsın?" badge={badge('drop')}>
+                <ChipField label={tt('Yatırımın bir ayda %20 düşse ne yaparsın?')} badge={badge('drop')}>
                   <Segmented
-                    label="Düşüşte tepkin"
+                    label={tt('Düşüşte tepkin')}
                     value={f.drop}
                     onChange={(v) => set('drop', v)}
                     options={[
-                      { value: 'sat', label: 'Satarım' },
-                      { value: 'bekle', label: 'Beklerim' },
-                      { value: 'al', label: 'Alırım' },
+                      { value: 'sat', label: tt('Satarım') },
+                      { value: 'bekle', label: tt('Beklerim') },
+                      { value: 'al', label: tt('Alırım') },
                     ]}
                   />
                 </ChipField>
-                <ChipField label="Yatırım tecrüben" badge={badge('exp')}>
+                <ChipField label={tt('Yatırım tecrüben')} badge={badge('exp')}>
                   <Segmented
-                    label="Yatırım tecrüben"
+                    label={tt('Yatırım tecrüben')}
                     value={f.exp}
                     onChange={(v) => set('exp', v)}
                     options={[
-                      { value: 'yok', label: 'Yok' },
-                      { value: 'az', label: 'Biraz' },
-                      { value: 'var', label: 'Deneyimliyim' },
+                      { value: 'yok', label: tt('Yok') },
+                      { value: 'az', label: tt('Biraz') },
+                      { value: 'var', label: tt('Deneyimliyim') },
                     ]}
                   />
                 </ChipField>
@@ -556,10 +556,10 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
       )}
       <div className="sticky bottom-0 mt-5 grid grid-cols-[auto_1fr] gap-2 bg-surface pt-3">
         <Button variant="secondary" size="lg" onClick={back} icon={<ArrowLeft className="size-4" />}>
-          Geri
+          {tt('Geri')}
         </Button>
         <Button variant="primary" size="lg" onClick={next} loading={busy} icon={<ArrowRight className="size-4" />} className="flex-row-reverse">
-          {step === STEPS.length - 1 ? 'Rotamı hesapla' : 'Onayla ve devam'}
+          {step === STEPS.length - 1 ? tt('Rotamı hesapla') : tt('Onayla ve devam')}
         </Button>
       </div>
       <AssetEditor editing={editing} onClose={() => setEditing(null)} />
@@ -569,10 +569,10 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
 }
 
 function StatusBadge({ s }: { s: Status }) {
-  if (s === 'web') return <Badge tone="warning">Tahmini</Badge>
-  if (s === 'test') return <Badge tone="neutral">Testten</Badge>
-  if (s === 'app') return <Badge tone="info">Uygulamadan</Badge>
-  return <Badge tone="accent">Onaylı</Badge>
+  if (s === 'web') return <Badge tone="warning">{tt('Tahmini')}</Badge>
+  if (s === 'test') return <Badge tone="neutral">{tt('Testten')}</Badge>
+  if (s === 'app') return <Badge tone="info">{tt('Uygulamadan')}</Badge>
+  return <Badge tone="accent">{tt('Onaylı')}</Badge>
 }
 
 function Label({ htmlFor, label, badge }: { htmlFor?: string; label: string; badge?: ReactNode }) {
@@ -628,19 +628,19 @@ function ExpensesEditor({ rows, badge, onChange, extraKurus }: { rows: ExpenseDr
   }
   return (
     <div className="flex flex-col gap-3">
-      <Label label="Aylık giderlerin" badge={badge} />
-      <ul className="flex flex-col gap-2" aria-label="Giderler">
+      <Label label={tt('Aylık giderlerin')} badge={badge} />
+      <ul className="flex flex-col gap-2" aria-label={tt('Giderler')}>
         {rows.map((r) => (
           <li key={r.id} className="grid grid-cols-[1fr_auto] items-end gap-2 rounded-xl border border-line bg-surface-2 p-3">
             <MoneyField id={`rs-e-${r.id}`} label={SPEND_GROUP_LABEL[r.group]} value={r.amount} autoFocus={r.id === fresh} onChange={(v) => onChange(rows.map((x) => (x.id === r.id ? { ...x, amount: v } : x)))} />
-            <Button variant="ghost" size="sm" className="text-danger" aria-label={`${SPEND_GROUP_LABEL[r.group]} giderini sil`} icon={<Trash2 className="size-4" />} onClick={() => onChange(rows.filter((x) => x.id !== r.id))} />
+            <Button variant="ghost" size="sm" className="text-danger" aria-label={ttf('{0} giderini sil', SPEND_GROUP_LABEL[r.group])} icon={<Trash2 className="size-4" />} onClick={() => onChange(rows.filter((x) => x.id !== r.id))} />
           </li>
         ))}
       </ul>
       {picking ? (
         <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line-strong p-3">
-          <span className="text-[12.5px] font-medium text-muted">Hangi gider?</span>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Gider kategorisi">
+          <span className="text-[12.5px] font-medium text-muted">{tt('Hangi gider?')}</span>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={tt('Gider kategorisi')}>
             {SPEND_GROUPS.map((g) => (
               <button key={g} type="button" onClick={() => add(g)} className="rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink hover:border-accent hover:text-accent">
                 {SPEND_GROUP_LABEL[g]}
@@ -650,11 +650,11 @@ function ExpensesEditor({ rows, badge, onChange, extraKurus }: { rows: ExpenseDr
         </div>
       ) : (
         <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => setPicking(true)}>
-          Gider ekle
+          {tt('Gider ekle')}
         </Button>
       )}
       <div className="flex items-center justify-between rounded-xl bg-accent-soft px-3.5 py-2.5 text-[13.5px]" aria-live="polite">
-        <span className="font-medium text-ink">Toplam aylık gider</span>
+        <span className="font-medium text-ink">{tt('Toplam aylık gider')}</span>
         <span className="num font-display text-lg font-bold text-ink">{formatKurus(total)}</span>
       </div>
     </div>
@@ -666,10 +666,10 @@ function ExpensesEditor({ rows, badge, onChange, extraKurus }: { rows: ExpenseDr
  * Kişi oraya gidip ekler; dönünce kurulum kaldığı yerden sürer ve eklenenler burada otomatik görünür.
  */
 function AppPayments({ debts, recurring, onAddDebt, onAddPayment }: { debts: Array<{ id: string; name: string; minPaymentKurus: number }>; recurring: Array<{ name: string; monthlyKurus: number; installment: boolean }>; onAddDebt: () => void; onAddPayment: () => void }) {
-  const lines = [...debts.map((d) => ({ key: d.id, name: d.name, kurus: d.minPaymentKurus, tag: 'Borç' })), ...recurring.map((r, i) => ({ key: `r${i}`, name: r.name, kurus: r.monthlyKurus, tag: r.installment ? 'Taksit' : 'Düzenli' }))]
+  const lines = [...debts.map((d) => ({ key: d.id, name: d.name, kurus: d.minPaymentKurus, tag: tt('Borç') })), ...recurring.map((r, i) => ({ key: `r${i}`, name: r.name, kurus: r.monthlyKurus, tag: r.installment ? tt('Taksit') : tt('Düzenli') }))]
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-line p-3.5" aria-label="Kredi, taksit ve düzenli ödemeler" role="group">
-      <span className="text-[13.5px] font-medium text-ink">Kredi, taksit ve düzenli ödemeler</span>
+    <div className="flex flex-col gap-2 rounded-xl border border-line p-3.5" aria-label={tt('Kredi, taksit ve düzenli ödemeler')} role="group">
+      <span className="text-[13.5px] font-medium text-ink">{tt('Kredi, taksit ve düzenli ödemeler')}</span>
       {lines.length ? (
         <ul className="flex flex-col gap-1.5">
           {lines.map((l) => (
@@ -678,19 +678,19 @@ function AppPayments({ debts, recurring, onAddDebt, onAddPayment }: { debts: Arr
                 <Badge tone="info">{l.tag}</Badge>
                 <span className="truncate text-ink">{l.name}</span>
               </span>
-              <span className="num shrink-0 text-muted">{formatKurusCompact(l.kurus)}/ay</span>
+              <span className="num shrink-0 text-muted">{ttf('{0}/ay', formatKurusCompact(l.kurus))}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-[12.5px] text-muted">Kredilerini, kart taksitlerini ve düzenli ödemelerini buradan ekle; Borçlar ve ödemeler sayfasına da işlenir.</p>
+        <p className="text-[12.5px] text-muted">{tt('Kredilerini, kart taksitlerini ve düzenli ödemelerini buradan ekle; Borçlar ve ödemeler sayfasına da işlenir.')}</p>
       )}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={onAddDebt} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
-          <Plus className="size-4" /> Kredi / kart borcu ekle
+          <Plus className="size-4" /> {tt('Kredi / kart borcu ekle')}
         </button>
         <button type="button" onClick={onAddPayment} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-2">
-          <Plus className="size-4" /> Taksit / düzenli ödeme ekle
+          <Plus className="size-4" /> {tt('Taksit / düzenli ödeme ekle')}
         </button>
       </div>
     </div>
@@ -701,12 +701,12 @@ function DebtsEditor({ debts, badge, onChange, hint }: { debts: DebtDraft[]; bad
   const upd = (i: number, p: Partial<DebtDraft>) => onChange(debts.map((d, j) => (j === i ? { ...d, ...p } : d)))
   return (
     <div className="flex flex-col gap-3">
-      <Label label={debts.length ? `${debts.length} borç` : 'Borç yok'} badge={badge} />
-      {hint && <p className="rounded-xl bg-warning-soft px-3 py-2 text-[13px] text-ink">Testte taksitlerin olduğunu söyledin. Kalan borcunu ve taksitini eklersen kapatma sırası ve borçsuzluk tarihin çıkar; eklemezsen rota borçsuz hesaplanır.</p>}
+      <Label label={debts.length ? ttf('{0} borç', debts.length) : tt('Borç yok')} badge={badge} />
+      {hint && <p className="rounded-xl bg-warning-soft px-3 py-2 text-[13px] text-ink">{tt('Testte taksitlerin olduğunu söyledin. Kalan borcunu ve taksitini eklersen kapatma sırası ve borçsuzluk tarihin çıkar; eklemezsen rota borçsuz hesaplanır.')}</p>}
       {debts.map((d, i) => (
         <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface-2 p-3">
           <label className="col-span-2 flex flex-col gap-1 text-[12px] font-medium text-muted">
-            Tür
+            {tt('Tür')}
             <Select value={d.type} onChange={(e) => upd(i, { type: e.target.value as SetupDebtType })}>
               {(Object.keys(SETUP_DEBT_LABEL) as SetupDebtType[]).map((t) => (
                 <option key={t} value={t}>
@@ -715,21 +715,21 @@ function DebtsEditor({ debts, badge, onChange, hint }: { debts: DebtDraft[]; bad
               ))}
             </Select>
           </label>
-          <MoneyField id={`rs-d${i}-bal`} label="Kalan" value={d.balance} onChange={(v) => upd(i, { balance: v })} />
-          <MoneyField id={`rs-d${i}-pay`} label="Aylık taksit" value={d.pay} onChange={(v) => upd(i, { pay: v })} />
+          <MoneyField id={`rs-d${i}-bal`} label={tt('Kalan')} value={d.balance} onChange={(v) => upd(i, { balance: v })} />
+          <MoneyField id={`rs-d${i}-pay`} label={tt('Aylık taksit')} value={d.pay} onChange={(v) => upd(i, { pay: v })} />
           <div className="flex min-w-0 flex-col gap-1.5">
-            <Label htmlFor={`rs-d${i}-rate`} label="Aylık faiz %" />
+            <Label htmlFor={`rs-d${i}-rate`} label={tt('Aylık faiz %')} />
             <Input id={`rs-d${i}-rate`} inputMode="decimal" value={d.rate} onChange={(e) => upd(i, { rate: e.target.value })} placeholder="0" className="num" />
           </div>
           <div className="flex items-end">
             <Button variant="ghost" size="sm" className="text-danger" icon={<Trash2 className="size-4" />} onClick={() => onChange(debts.filter((_, j) => j !== i))}>
-              Sil
+              {tt('Sil')}
             </Button>
           </div>
         </div>
       ))}
       <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => onChange([...debts, { type: 'loan', balance: '', pay: '', rate: '' }])}>
-        Borç ekle
+        {tt('Borç ekle')}
       </Button>
     </div>
   )
@@ -764,17 +764,17 @@ function Final({
   const cur = j.current
   const total = j.stages.length
   const rows: Array<[string, string, string, boolean?]> = [
-    ['Özgürlük yılı', webRange ?? '—', year ? String(year) : 'Görünmüyor', true],
-    ['Gereken birikim', formatKurusCompact(webGoal), formatKurusCompact(j.indicators.goalKurus)],
+    [tt('Özgürlük yılı'), webRange ?? '—', year ? String(year) : tt('Görünmüyor'), true],
+    [tt('Gereken birikim'), formatKurusCompact(webGoal), formatKurusCompact(j.indicators.goalKurus)],
     ['Seviye', `${webLevel}/${total}`, `${j.level}/${total}${cur ? ` · ${cur.title}` : ''}`],
   ]
   const first = name?.trim().split(' ')[0]
-  const msg = `${first ? `Merhaba ${first}. ` : ''}Haritan artık gerçek rakamlarınla çizildi. ${year ? `Bu tempoyla özgürlük yılın ${year}. ` : ''}${cur ? `Şu an ${cur.title} durağındasın; ilk hedefimiz: ${cur.goal.charAt(0).toLocaleLowerCase('tr-TR')}${cur.goal.slice(1)}.` : 'Rotan tamam; birikimini koru ve güvenli çekim planı yap.'}`
+  const msg = ttf('{0}Haritan artık gerçek rakamlarınla çizildi. {1}{2}', first ? ttf('Merhaba {0}. ', first) : '', year ? ttf('Bu tempoyla özgürlük yılın {0}. ', year) : '', cur ? ttf('Şu an {0} durağındasın; ilk hedefimiz: {1}{2}.', cur.title, cur.goal.charAt(0).toLocaleLowerCase('tr-TR'), cur.goal.slice(1)) : tt('Rotan tamam; birikimini koru ve güvenli çekim planı yap.'))
   return (
-    <Card className="flex flex-col gap-5 p-5 sm:p-6" aria-label="Netleşen haritan">
+    <Card className="flex flex-col gap-5 p-5 sm:p-6" aria-label={tt('Netleşen haritan')}>
       <div>
-        <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted">Rota kurulumu tamam</p>
-        <h2 className="mt-1 font-display text-3xl font-extrabold text-ink">Haritan netleşti.</h2>
+        <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted">{tt('Rota kurulumu tamam')}</p>
+        <h2 className="mt-1 font-display text-3xl font-extrabold text-ink">{tt('Haritan netleşti.')}</h2>
       </div>
       <div className="overflow-hidden rounded-2xl border border-line">
         {rows.map(([k, from, to, hl]) => (
@@ -786,34 +786,34 @@ function Final({
           </div>
         ))}
       </div>
-      <p className="-mt-3 text-[12.5px] text-muted">Sol taraf testteki tahmin, sağ taraf gerçek rakamlarınla hesaplanan değer.</p>
+      <p className="-mt-3 text-[12.5px] text-muted">{tt('Sol taraf testteki tahmin, sağ taraf gerçek rakamlarınla hesaplanan değer.')}</p>
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 text-white">
           <MessageCircle className="size-4" />
         </span>
         <div className="rounded-2xl rounded-tl-sm border border-line bg-surface-2 px-3.5 py-2.5 text-[13.5px] text-ink">
-          <div className="font-semibold">Koçun</div>
+          <div className="font-semibold">{tt('Koçun')}</div>
           {msg}
         </div>
       </div>
       <MoneyFlow profile={saved.profile} facts={saved.facts} j={j} />
       <div className="flex flex-col gap-2">
         <Button variant="primary" size="lg" onClick={onDone} icon={<ArrowRight className="size-4" />} className="flex-row-reverse">
-          {canJourney ? 'Finansal özgürlük sayfama git' : 'Rotamı gör'}
+          {canJourney ? tt('Finansal özgürlük sayfama git') : tt('Rotamı gör')}
         </Button>
         {canCoach ? (
           <Link to="/koc" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line-strong bg-surface text-sm font-semibold text-ink hover:bg-surface-2">
-            <MessageCircle className="size-4" /> Koçumla başla
+            <MessageCircle className="size-4" /> {tt('Koçumla başla')}
           </Link>
         ) : (
           !canJourney && (
             <Link to="/paketler" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-accent-soft text-sm font-semibold text-accent-strong dark:text-accent">
-              <Sparkles className="size-4" /> Tam rota ve koç Plus+'ta
+              <Sparkles className="size-4" /> {tt('Tam rota ve koç Plus+\'ta')}
             </Link>
           )
         )}
         <Button variant="ghost" onClick={onEdit}>
-          Rakamlarımı tekrar düzenle
+          {tt('Rakamlarımı tekrar düzenle')}
         </Button>
       </div>
     </Card>

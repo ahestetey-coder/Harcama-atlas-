@@ -4,6 +4,8 @@ description: 'Gelirini ihtiyaç, istek ve birikim olarak üçe bölen 50/30/20 k
 date: 2026-10-22
 tags: ['Bütçe', 'Başlangıç']
 cta: plus
+cover: '/blog/50-30-20-butce-kurali/kapak.jpg'
+coverAlt: 'Mutfak masasında defter ve telefonla aylık bütçe planlayan bir kadın'
 ---
 
 Bütçe yapmanın en zor kısmı başlamaktır. Hangi harcamaya ne kadar ayıracağını bilmeden yazdığın rakamlar birkaç gün içinde anlamını yitirir. **50/30/20 kuralı** bu yüzden popüler: geliri üç kovaya böler ve sana bir başlangıç noktası verir.
@@ -15,6 +17,8 @@ Elinize geçen net gelirin:
 - **%50'si ihtiyaçlara:** kira, faturalar, market, ulaşım, sigorta, zorunlu borç ödemeleri.
 - **%30'u isteklere:** dışarıda yemek, kıyafet, tatil, abonelikler, hobiler.
 - **%20'si birikime ve borç kapatmaya:** acil durum fonu, yatırımlar, asgari ödemenin üstündeki borç ödemeleri.
+
+![Üç farklı büyüklükte para yığını: ihtiyaçlar, istekler ve birikim](/blog/50-30-20-butce-kurali/1.jpg)
 
 ## Örnek: 40.000 TL net maaş
 
@@ -43,6 +47,8 @@ Bu, kuralın işe yaramadığı anlamına gelmez. Oranları kendi durumuna göre
 3. **Harcamaları üç kovaya ayır.** Her kategoriyi bir kez "ihtiyaç" ya da "istek" olarak işaretlemen yeter.
 4. **Birikimi maaş günü ayır.** Ay sonunda ne kalırsa onu biriktirmek yerine, maaş yattığı gün birikim hesabına aktar.
 5. **Ay sonunda karşılaştır ve bir şeyi değiştir.** Her ay tek bir kalemi iyileştirmek, bütün bütçeyi bir anda değiştirmeye çalışmaktan daha kalıcıdır.
+
+![Maaş günü telefondan birikim hesabına para aktarma](/blog/50-30-20-butce-kurali/2.jpg)
 
 ## Borcun varsa
 

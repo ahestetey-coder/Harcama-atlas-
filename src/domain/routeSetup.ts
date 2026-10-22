@@ -1,5 +1,6 @@
 import type { CoachDebt } from './coach'
 import type { JourneyFacts } from './journey'
+import { tt } from '../lib/i18n'
 
 /**
  * Rota kurulumunda girilen ilk rakamlar (borç ve birikim). Uygulamada henüz Borçlarım / Yatırımlarım
@@ -8,13 +9,13 @@ import type { JourneyFacts } from './journey'
 export type SetupDebtType = 'card' | 'overdraft' | 'loan' | 'auto' | 'mortgage' | 'personal' | 'other'
 
 export const SETUP_DEBT_LABEL: Record<SetupDebtType, string> = {
-  card: 'Kredi kartı',
-  overdraft: 'KMH / ek hesap',
-  loan: 'İhtiyaç kredisi',
-  auto: 'Taşıt kredisi',
-  mortgage: 'Konut kredisi',
-  personal: 'Kişisel borç',
-  other: 'Diğer',
+  card: tt('Kredi kartı'),
+  overdraft: tt('KMH / ek hesap'),
+  loan: tt('İhtiyaç kredisi'),
+  auto: tt('Taşıt kredisi'),
+  mortgage: tt('Konut kredisi'),
+  personal: tt('Kişisel borç'),
+  other: tt('Diğer'),
 }
 const CONSUMER: SetupDebtType[] = ['card', 'overdraft', 'loan', 'personal']
 

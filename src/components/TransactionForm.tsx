@@ -16,6 +16,7 @@ import { cn } from '../lib/cn'
 import { CategoryIcon, GroupBadge, GroupPicker, Money } from './common'
 import { Modal } from './ui/Modal'
 import { Button, Checkbox, Field, Input, Segmented, Select, Textarea } from './ui/primitives'
+import { tt, ttf } from '../lib/i18n'
 
 interface FormState {
   date: string
@@ -57,7 +58,7 @@ export function TransactionFormHost() {
     <Modal
       open={formState.open}
       onOpenChange={(o) => !o && closeTransactionForm()}
-      title={formState.tx?.source === 'shared' ? 'Üyenin harcaması' : formState.tx?.source === 'planned' ? (formState.tx.type === 'income' ? 'Düzenli gelir' : 'Planlı taksit') : formState.tx?.source === 'settlement' ? 'Paylaşım farkı' : formState.tx ? 'İşlemi düzenle' : formState.type === 'income' ? 'Gelir ekle' : formState.type === 'refund' ? 'İade ekle' : formState.type === 'transfer' ? 'Kart ödemesi / transfer ekle' : 'Gider ekle'}
+      title={formState.tx?.source === 'shared' ? tt('Üyenin harcaması') : formState.tx?.source === 'planned' ? (formState.tx.type === 'income' ? tt('Düzenli gelir') : tt('Planlı taksit')) : formState.tx?.source === 'settlement' ? tt('Paylaşım farkı') : formState.tx ? tt('İşlemi düzenle') : formState.type === 'income' ? tt('Gelir ekle') : formState.type === 'refund' ? tt('İade ekle') : formState.type === 'transfer' ? tt('Kart ödemesi / transfer ekle') : tt('Gider ekle')}
       size="md"
       side
     >
@@ -108,7 +109,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
   const followSalaryCycle = async () => {
     try {
       await repo.saveSettings({ cycleSource: 'salary' })
-      toast(`Ayınız artık her ayın ${personalCycleDay(await repo.getSettings())}. gününde başlıyor.`)
+      toast(ttf('Ayınız artık her ayın {0}. gününde başlıyor.', personalCycleDay(await repo.getSettings())))
     } catch (err) {
       toast(toUserMessage(err), { kind: 'error' })
     }
@@ -125,11 +126,11 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
     if (submitting.current) return
     const errs: TxFieldErrors = {}
     const amt = parseUserAmount(s.amount)
-    if (!amt.ok) errs.amount = amt.reason === 'empty' ? 'Tutar girin.' : amt.reason === 'ambiguous' ? 'Tutar belirsiz; kuruşu virgülle yazın (ör. 1.234,56).' : 'Tutar okunamadı. Örnek: 1.234,56'
-    else if (amt.kurus <= 0) errs.amount = 'Sıfırdan büyük bir tutar girin. İade için türü "İade" seçin.'
-    if (!isIsoDate(s.date)) errs.date = 'Geçerli bir tarih seçin.'
-    if (!s.description.trim()) errs.description = 'Açıklama veya iş yeri girin.'
-    if (s.type === 'expense' && !s.categoryId) errs.category = 'Gider için kategori seçmelisiniz.'
+    if (!amt.ok) errs.amount = amt.reason === 'empty' ? tt('Tutar girin.') : amt.reason === 'ambiguous' ? tt('Tutar belirsiz; kuruşu virgülle yazın (ör. 1.234,56).') : tt('Tutar okunamadı. Örnek: 1.234,56')
+    else if (amt.kurus <= 0) errs.amount = tt('Sıfırdan büyük bir tutar girin. İade için türü "İade" seçin.')
+    if (!isIsoDate(s.date)) errs.date = tt('Geçerli bir tarih seçin.')
+    if (!s.description.trim()) errs.description = tt('Açıklama veya iş yeri girin.')
+    if (s.type === 'expense' && !s.categoryId) errs.category = tt('Gider için kategori seçmelisiniz.')
     setErrors(errs)
     if (hasErrors(errs) || !amt.ok) {
       const first = Object.keys(errs)[0]
@@ -154,7 +155,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
       if (tx) {
         await repo.updateTransaction(tx.id, input, learn)
         setHighlightId(tx.id)
-        toast('İşlem güncellendi.')
+        toast(tt('İşlem güncellendi.'))
       } else {
         const saved = await repo.addTransaction(input, learn)
         let salary = false
@@ -169,11 +170,11 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         const other = savedPeriod !== month
         // Yeni düzenli maaşta, ay döngüsü hiç seçilmemişse maaş gününe bağlamayı önerir
         const offerCycle = salary && settings?.cycleSource === undefined && settings?.cycleStartDay == null
-        toast(other ? `Kaydedildi. İşlem ${periodLabel(savedPeriod, startDay)} döneminde.` : s.type === 'income' ? (s.repeat ? 'Gelir kaydedildi; her ay kendiliğinden eklenecek.' : 'Gelir kaydedildi.') : 'Gider kaydedildi.', {
+        toast(other ? ttf('Kaydedildi. İşlem {0} döneminde.', periodLabel(savedPeriod, startDay)) : s.type === 'income' ? (s.repeat ? tt('Gelir kaydedildi; her ay kendiliğinden eklenecek.') : tt('Gelir kaydedildi.')) : tt('Gider kaydedildi.'), {
           action: other
-            ? { label: 'O aya git', onClick: () => setMonth(savedPeriod) }
+            ? { label: tt('O aya git'), onClick: () => setMonth(savedPeriod) }
             : offerCycle
-              ? { label: 'Ayım maaş günümde başlasın', onClick: () => void followSalaryCycle() }
+              ? { label: tt('Ayım maaş günümde başlasın'), onClick: () => void followSalaryCycle() }
               : undefined,
         })
       }
@@ -188,18 +189,18 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4 pt-1">
       <Segmented
-        label="İşlem türü"
+        label={tt('İşlem türü')}
         value={s.type}
         onChange={(v) => set('type', v)}
-        options={(['expense', 'income', 'refund', 'transfer'] as TxType[]).map((t) => ({ value: t, label: t === 'transfer' ? 'Transfer' : TX_TYPE_LABEL[t] }))}
+        options={(['expense', 'income', 'refund', 'transfer'] as TxType[]).map((t) => ({ value: t, label: t === 'transfer' ? tt('Transfer') : TX_TYPE_LABEL[t] }))}
         className="w-full [&>button]:px-2 [&>button]:text-[12.5px] sm:[&>button]:text-[13px]"
       />
-      {s.type === 'transfer' && <p className="-mt-2 text-[12.5px] text-subtle">Gider toplamına dahil edilmez.</p>}
-      {s.type === 'income' && <p className="-mt-2 text-[12.5px] text-subtle">Gider toplamına girmez, grupla paylaşılmaz.</p>}
-      {s.type === 'refund' && <p className="-mt-2 text-[12.5px] text-subtle">Tutarı pozitif girin.</p>}
+      {s.type === 'transfer' && <p className="-mt-2 text-[12.5px] text-subtle">{tt('Gider toplamına dahil edilmez.')}</p>}
+      {s.type === 'income' && <p className="-mt-2 text-[12.5px] text-subtle">{tt('Gider toplamına girmez, grupla paylaşılmaz.')}</p>}
+      {s.type === 'refund' && <p className="-mt-2 text-[12.5px] text-subtle">{tt('Tutarı pozitif girin.')}</p>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Tutar (TL)" htmlFor="tx-amount" error={errors.amount}>
+        <Field label={tt('Tutar (TL)')} htmlFor="tx-amount" error={errors.amount}>
           <div className="relative">
             <Input
               ref={amountRef}
@@ -216,16 +217,16 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-subtle">₺</span>
           </div>
         </Field>
-        <Field label="Tarih" htmlFor="tx-date" error={errors.date}>
+        <Field label={tt('Tarih')} htmlFor="tx-date" error={errors.date}>
           <Input id="tx-date" type="date" value={s.date} onChange={(e) => set('date', e.target.value)} aria-invalid={!!errors.date} max="2200-12-31" />
         </Field>
       </div>
 
-      <Field label="Açıklama / iş yeri" htmlFor="tx-description" error={errors.description}>
+      <Field label={tt('Açıklama / iş yeri')} htmlFor="tx-description" error={errors.description}>
         <Input
           id="tx-description"
           autoComplete="off"
-          placeholder={s.type === 'income' ? 'Örn. Maaş' : 'Örn. Migros Kadıköy'}
+          placeholder={s.type === 'income' ? tt('Örn. Maaş') : tt('Örn. Migros Kadıköy')}
           maxLength={200}
           value={s.description}
           onChange={(e) => {
@@ -237,15 +238,15 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
         />
       </Field>
 
-      <Field label="Kategori" htmlFor="tx-category" error={errors.category} optional={s.type !== 'expense'}>
+      <Field label={tt('Kategori')} htmlFor="tx-category" error={errors.category} optional={s.type !== 'expense'}>
         <div className="flex items-center gap-2">
           <CategoryIcon category={selectedCat} />
           <Select id="tx-category" value={s.categoryId} onChange={(e) => set('categoryId', e.target.value)} aria-invalid={!!errors.category}>
-            <option value="">{s.type === 'expense' ? 'Kategori seçin…' : 'Kategori yok'}</option>
+            <option value="">{s.type === 'expense' ? tt('Kategori seçin…') : tt('Kategori yok')}</option>
             {activeCats.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
-                {c.archived ? ' (arşivde)' : ''}
+                {c.archived ? tt(' (arşivde)') : ''}
               </option>
             ))}
           </Select>
@@ -256,26 +257,26 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
             onClick={() => set('categoryId', suggestion.id)}
             className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 py-1 text-[12.5px] font-medium text-accent-strong transition-colors hover:brightness-105 dark:text-accent"
           >
-            <Lightbulb className="size-3.5" /> Kural önerisi: {suggestion.name}
+            <Lightbulb className="size-3.5" /> {tt('Kural önerisi:')} {suggestion.name}
           </button>
         )}
       </Field>
 
       {!tx && s.type === 'income' && (
         <Checkbox
-          label="Her ay tekrarlansın (düzenli gelir)"
-          description="Her ay aynı gün kendiliğinden eklenir."
+          label={tt('Her ay tekrarlansın (düzenli gelir)')}
+          description={tt('Her ay aynı gün kendiliğinden eklenir.')}
           checked={s.repeat}
           onChange={(v) => set('repeat', v)}
         />
       )}
 
       {activeGroups.length > 0 && s.type !== 'income' && (
-        <Field label="Harcama grubu" optional>
+        <Field label={tt('Harcama grubu')} optional>
           <GroupPicker groups={activeGroups} value={s.groupId} onChange={(v) => set('groupId', v)} />
           {activeGroups.find((g) => g.id === s.groupId)?.cloudId && (
             <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-medium text-accent">
-              <Cloud className="size-3.5" /> Bu harcama grup üyeleriyle paylaşılır.
+              <Cloud className="size-3.5" /> {tt('Bu harcama grup üyeleriyle paylaşılır.')}
             </p>
           )}
         </Field>
@@ -284,15 +285,15 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
       {categoryChanged && s.description.trim() && (
         <div className="rounded-2xl border border-line bg-surface-2 p-3">
           <Checkbox
-            label="Bu iş yeri için sonraki işlemlerde de kullan"
-            description="Mevcut kayıtlar değişmez."
+            label={tt('Bu iş yeri için sonraki işlemlerde de kullan')}
+            description={tt('Mevcut kayıtlar değişmez.')}
             checked={s.learn}
             onChange={(v) => set('learn', v)}
           />
           {s.learn && (
             <div className="mt-2 pl-7">
-              <Input aria-label="Eşleşecek iş yeri ifadesi" value={s.learnPattern} onChange={(e) => set('learnPattern', e.target.value)} className="h-10 sm:h-9 sm:text-sm" />
-              <p className="mt-1 text-[12px] text-subtle">Açıklamada aynen geçmeli.</p>
+              <Input aria-label={tt('Eşleşecek iş yeri ifadesi')} value={s.learnPattern} onChange={(e) => set('learnPattern', e.target.value)} className="h-10 sm:h-9 sm:text-sm" />
+              <p className="mt-1 text-[12px] text-subtle">{tt('Açıklamada aynen geçmeli.')}</p>
             </div>
           )}
         </div>
@@ -300,12 +301,12 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
 
       <details className="group rounded-2xl border border-line px-3 py-2 open:pb-3">
         <summary className="cursor-pointer select-none list-none py-1 text-sm font-medium text-muted marker:hidden hover:text-ink">
-          <span className="inline-block transition-transform group-open:rotate-90">›</span> Ödeme aracı, kart adı ve not
+          <span className="inline-block transition-transform group-open:rotate-90">›</span> {tt('Ödeme aracı, kart adı ve not')}
         </summary>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Ödeme aracı" htmlFor="tx-payment" optional>
+          <Field label={tt('Ödeme aracı')} htmlFor="tx-payment" optional>
             <Select id="tx-payment" value={s.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value as PaymentMethod | '')}>
-              <option value="">Belirtilmedi</option>
+              <option value="">{tt('Belirtilmedi')}</option>
               {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((p) => (
                 <option key={p} value={p}>
                   {PAYMENT_LABEL[p]}
@@ -313,10 +314,10 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
               ))}
             </Select>
           </Field>
-          <Field label="Kart/hesap takma adı" htmlFor="tx-alias" optional hint="Ör. “Maaş kartı”. Kart numarası girmeyin.">
+          <Field label={tt('Kart/hesap takma adı')} htmlFor="tx-alias" optional hint={tt('Ör. “Maaş kartı”. Kart numarası girmeyin.')}>
             <Input id="tx-alias" maxLength={40} value={s.accountAlias} onChange={(e) => set('accountAlias', e.target.value.replace(/\d{12,}/g, ''))} />
           </Field>
-          <Field label="Not" htmlFor="tx-note" optional className="sm:col-span-2">
+          <Field label={tt('Not')} htmlFor="tx-note" optional className="sm:col-span-2">
             <Textarea id="tx-note" maxLength={500} value={s.note} onChange={(e) => set('note', e.target.value)} />
           </Field>
         </div>
@@ -324,10 +325,10 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
 
       <div className={cn('safe-bottom-pad sticky z-10 -mx-5 mt-1 flex -bottom-[calc(1.25rem+env(safe-area-inset-bottom))] -mb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:-bottom-5 lg:-mb-5 lg:pb-3 gap-2 border-t border-line bg-surface px-5 pt-3 sm:-mx-6 sm:px-6')}>
         <Button variant="ghost" onClick={onDone} className="flex-1 sm:flex-none">
-          Vazgeç
+          {tt('Vazgeç')}
         </Button>
         <Button type="submit" variant="primary" loading={saving} className="flex-1">
-          {tx ? 'Değişiklikleri kaydet' : 'Kaydet'}
+          {tx ? tt('Değişiklikleri kaydet') : 'Kaydet'}
         </Button>
       </div>
     </form>
@@ -345,31 +346,31 @@ function SharedTxView({ tx }: { tx: Transaction }) {
       <p className="flex items-start gap-2 rounded-2xl border border-line bg-surface-2 p-3 text-sm text-muted">
         <Lock className="mt-0.5 size-4 shrink-0" />{' '}
         {tx.source === 'planned' && tx.type === 'income'
-          ? 'Düzenli gelirinizden kendiliğinden eklendi. Elle girerseniz iki kez sayılmaz.'
+          ? tt('Düzenli gelirinizden kendiliğinden eklendi. Elle girerseniz iki kez sayılmaz.')
           : tx.source === 'planned'
-          ? 'Taksit planından kendiliğinden yansıtıldı. Gerçek işlem yüklenince onun yerini alır.'
+          ? tt('Taksit planından kendiliğinden yansıtıldı. Gerçek işlem yüklenince onun yerini alır.')
           : tx.source === 'settlement'
-            ? `${group?.name ?? 'Ortak'} gideri paylaştırıldı. Payınızla aradaki fark toplamınıza ${tx.type === 'refund' ? 'alacak' : 'borç'} olarak eklendi.`
-          : SHARED_READONLY}
+            ? ttf('{0} gideri paylaştırıldı. Payınızla aradaki fark toplamınıza {1} olarak eklendi.', group?.name ?? tt('Ortak'), tx.type === 'refund' ? tt('alacak') : tt('borç'))
+          : tt(SHARED_READONLY)}
       </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
         {tx.source === 'shared' && (
           <>
-            <dt className="text-muted">Ekleyen</dt>
-            <dd className="font-medium text-ink">{member?.name ?? 'Grup üyesi'}</dd>
+            <dt className="text-muted">{tt('Ekleyen')}</dt>
+            <dd className="font-medium text-ink">{member?.name ?? tt('Grup üyesi')}</dd>
           </>
         )}
-        <dt className="text-muted">Tutar</dt>
+        <dt className="text-muted">{tt('Tutar')}</dt>
         <dd>
           <Money kurus={tx.amountKurus} type={tx.type} />
         </dd>
-        <dt className="text-muted">Tarih</dt>
+        <dt className="text-muted">{tt('Tarih')}</dt>
         <dd className="text-ink">{formatDate(tx.date, 'long')}</dd>
-        <dt className="text-muted">Açıklama</dt>
+        <dt className="text-muted">{tt('Açıklama')}</dt>
         <dd className="break-words text-ink">{tx.description}</dd>
         {tx.source === 'shared' && (
           <>
-            <dt className="text-muted">Kategori</dt>
+            <dt className="text-muted">{tt('Kategori')}</dt>
             <dd className="flex items-center gap-2 text-ink">
               {cat ? (
                 <>
@@ -381,11 +382,11 @@ function SharedTxView({ tx }: { tx: Transaction }) {
             </dd>
           </>
         )}
-        <dt className="text-muted">Grup</dt>
+        <dt className="text-muted">{tt('Grup')}</dt>
         <dd>{group ? <GroupBadge group={group} /> : '—'}</dd>
         {tx.note && (
           <>
-            <dt className="text-muted">Not</dt>
+            <dt className="text-muted">{tt('Not')}</dt>
             <dd className="break-words text-ink">{tx.note}</dd>
           </>
         )}

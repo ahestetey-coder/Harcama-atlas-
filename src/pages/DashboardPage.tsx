@@ -28,6 +28,7 @@ import { usePlan } from '../state/plan'
 import { useBudgetSetup, useBudgetStatus, useDuePayments, useMoneyFlow } from '../state/budget'
 import { MoneyFlowSummary } from '../components/MoneyFlowCard'
 import { useCoach } from '../state/coach'
+import { tt, ttf } from '../lib/i18n'
 
 const MAX_SLICES = 7
 
@@ -80,7 +81,7 @@ export default function DashboardPage() {
   // Paylaşılan grupta birden fazla üye varsa gider eşit paylaştırılabilir
   const sharedGroup = groupFilter && groupFilter !== 'none' && groupMap.get(groupFilter)?.cloudId ? groupMap.get(groupFilter) : undefined
   const splitMembers = useMemo(
-    () => (sharedGroup ? members.filter((m) => m.groupIds.includes(sharedGroup.id)).map((m) => ({ id: m.id, name: m.id === selfId ? 'Siz' : m.name, color: m.color })) : []),
+    () => (sharedGroup ? members.filter((m) => m.groupIds.includes(sharedGroup.id)).map((m) => ({ id: m.id, name: m.id === selfId ? tt('Siz') : m.name, color: m.color })) : []),
     [sharedGroup, members, selfId],
   )
   const canSplit = splitMembers.length > 1
@@ -107,10 +108,10 @@ export default function DashboardPage() {
     const rest = withExpense.slice(MAX_SLICES)
     const out: DonutSlice[] = top.map((c) => {
       const cat = c.categoryId ? categories.get(c.categoryId) : undefined
-      return { id: c.categoryId ?? 'none', name: cat?.name ?? 'Kategorisiz', color: cat?.color ?? '#94a3b8', kurus: c.expenseKurus }
+      return { id: c.categoryId ?? 'none', name: cat?.name ?? tt('Kategorisiz'), color: cat?.color ?? '#94a3b8', kurus: c.expenseKurus }
     })
     if (rest.length)
-      out.push({ id: 'rest', name: `Diğer ${rest.length} kategori`, color: '#64748b', kurus: rest.reduce((s, c) => s + c.expenseKurus, 0), grouped: true })
+      out.push({ id: 'rest', name: ttf('Diğer {0} kategori', rest.length), color: '#64748b', kurus: rest.reduce((s, c) => s + c.expenseKurus, 0), grouped: true })
     return out
   }, [summary, categories])
 
@@ -123,7 +124,7 @@ export default function DashboardPage() {
   const coachBudget = budgetSetup?.mode === 'auto' && !!budgetSetup.auto
   const openCategory = (c: CategoryTotal) => {
     const cat = c.categoryId ? categories.get(c.categoryId) : undefined
-    setDrawer({ title: cat?.name ?? 'Kategorisiz', categoryId: c.categoryId, filter: (t) => isSpending(t) && (t.categoryId ?? null) === c.categoryId })
+    setDrawer({ title: cat?.name ?? tt('Kategorisiz'), categoryId: c.categoryId, filter: (t) => isSpending(t) && (t.categoryId ?? null) === c.categoryId })
   }
 
   const daily = summary.daily.map((d) => ({ ...d, label: formatDate(d.date, 'long') }))
@@ -137,9 +138,9 @@ export default function DashboardPage() {
     <div className="num space-y-1 text-[12.5px] leading-snug text-muted">
       {comparison.kind !== 'none' && <p>{comparison.label}</p>}
       <p>
-        Gider {formatKurus(summary.expenseKurus)}
-        {summary.refundKurus > 0 && ` · iade −${formatKurus(summary.refundKurus)}`} · {summary.count} işlem
-        {summary.transferCount > 0 && ` · ${summary.transferCount} kart ödemesi dahil değil`}
+        {tt('Gider')} {formatKurus(summary.expenseKurus)}
+        {summary.refundKurus > 0 && ttf(' · iade −{0}', formatKurus(summary.refundKurus))} · {summary.count} {tt('işlem')}
+        {summary.transferCount > 0 && ttf(' · {0} kart ödemesi dahil değil', summary.transferCount)}
       </p>
     </div>
   )
@@ -167,22 +168,22 @@ export default function DashboardPage() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-ink">
-              {sharedGroup.name} · {splitMembers.length} üye
+              {sharedGroup.name} · {splitMembers.length} {tt('üye')}
               <span
                 className={cn(
                   'rounded-full px-2 py-0.5 text-[11px] font-semibold',
                   groupSettlement ? 'bg-surface text-accent-strong dark:text-accent' : 'bg-surface/70 text-muted',
                 )}
               >
-                {groupSettlement ? 'Paylaştırıldı' : 'Paylaştırılmadı'}
+                {groupSettlement ? tt('Paylaştırıldı') : tt('Paylaştırılmadı')}
               </span>
             </p>
             <p className="num text-[12.5px] leading-snug text-muted">
-              {settlementRangeText(groupPeriod!)} · {formatKurus(groupNet)} · kişi başı {formatKurus(Math.floor(groupNet / splitMembers.length))}
+              {ttf('{0} · {1} · kişi başı {2}', settlementRangeText(groupPeriod!), formatKurus(groupNet), formatKurus(Math.floor(groupNet / splitMembers.length)))}
             </p>
           </div>
           <Button variant="primary" size="sm" onClick={() => setSplitOpen(true)} className="shrink-0">
-            {isGroupOwner ? (groupSettlement ? 'Paylaşımı yönet' : 'Gideri paylaştır') : 'Paylaşımı gör'}
+            {isGroupOwner ? (groupSettlement ? tt('Paylaşımı yönet') : tt('Gideri paylaştır')) : tt('Paylaşımı gör')}
           </Button>
         </div>
       )}
@@ -192,9 +193,9 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Özet"
+        title={tt('Özet')}
         hideTitle
-        subtitle={isCurrent ? `${hello} · ${formatDate(today, 'weekday')}` : isFuture ? 'Gelecek bir ay seçili' : `${label} özeti`}
+        subtitle={isCurrent ? `${hello} · ${formatDate(today, 'weekday')}` : isFuture ? tt('Gelecek bir ay seçili') : ttf('{0} özeti', label)}
       />
 
       {hasFeature('aiCoach') && <CoachBanner />}
@@ -220,43 +221,41 @@ export default function DashboardPage() {
               icon={<Wallet className="size-6" />}
               title={
                 personName
-                  ? `${label} içinde ${personName === 'Siz' ? 'sizin' : `${personName} adlı üyenin`} kaydı yok`
+                  ? ttf('{0} içinde {1} kaydı yok', label, personName === 'Siz' ? 'sizin' : ttf('{0} adlı üyenin', personName))
                   : filterName
-                    ? `${label} içinde “${filterName}” kaydı yok`
-                    : `${label} için kayıt yok`
+                    ? ttf('{0} içinde “{1}” kaydı yok', label, filterName)
+                    : ttf('{0} için kayıt yok', label)
               }
               action={
                 <>
                   {personName && (
                     <Button variant="primary" onClick={() => person.set('')}>
-                      Herkesi göster
+                      {tt('Herkesi göster')}
                     </Button>
                   )}
                   {filterName && allMonthCount > 0 && (
                     <Button variant="primary" onClick={() => setGroupFilter('')}>
-                      Tüm grupları göster ({allMonthCount} işlem)
-                    </Button>
+                      {ttf('Tüm grupları göster ({0} işlem)', allMonthCount)}</Button>
                   )}
                   {otherMonth && (
                     <Button variant="primary" onClick={() => setMonth(otherMonth)}>
-                      {periodLabel(otherMonth, startDay)} kayıtlarını göster
-                    </Button>
+                      {ttf('{0} kayıtlarını göster', periodLabel(otherMonth, startDay))}</Button>
                   )}
                   <Button variant={otherMonth ? 'secondary' : 'primary'} icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
-                    Gider ekle
+                    {tt('Gider ekle')}
                   </Button>
                   <Button icon={<FileUp className="size-4" />} onClick={() => openImport()}>
-                    Ekstre içe aktar
+                    {tt('Ekstre içe aktar')}
                   </Button>
                   {!isDemo && (
                     <Button variant="ghost" icon={<FlaskConical className="size-4" />} onClick={() => setDemo(true)}>
-                      Demo verisiyle dene
+                      {tt('Demo verisiyle dene')}
                     </Button>
                   )}
                 </>
               }
             >
-              Gider ekleyin veya ekstrenizi içe aktarın.
+              {tt('Gider ekleyin veya ekstrenizi içe aktarın.')}
             </EmptyState>
           </Card>
           {!groupFilter && moneyFlow && <MoneyFlowSummary flow={moneyFlow} className="lg:col-span-12" />}
@@ -276,14 +275,14 @@ export default function DashboardPage() {
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 id="net-title" className="text-[12.5px] font-medium uppercase tracking-wider text-white/70">
-                  Net gider · {label}
+                  {tt('Net gider ·')} {label}
                   {filterName && ` · ${filterName}`}
                   {personName && ` · ${personName}`}
                 </h2>
                 {isCurrent && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80" title={startDay > 1 ? cycleDescription(startDay) : undefined}>
-                    <CalendarClock className="size-3.5" /> {diffDays(today, periodRange(month, startDay).start) + 1}/{periodLength(month, startDay)}. gün
-                    {startDay > 1 && ` · ${startDay}. gün döngüsü${cycleGroup ? ` · ${cycleGroup}` : ''}`}
+                    <CalendarClock className="size-3.5" /> {diffDays(today, periodRange(month, startDay).start) + 1}/{periodLength(month, startDay)}{tt('. gün')}
+                    {startDay > 1 && ttf(' · {0}. gün döngüsü{1}', startDay, cycleGroup ? ` · ${cycleGroup}` : '')}
                   </span>
                 )}
               </div>
@@ -291,43 +290,43 @@ export default function DashboardPage() {
               <ComparisonChip comparison={comparison} />
               {summary.incomeKurus > 0 && (
                 <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4">
-                  <HeroStat label="Gelir" value={formatKurus(summary.incomeKurus)} />
-                  <HeroStat label={remaining >= 0 ? 'Kalan' : 'Gelirden fazla'} value={formatKurus(Math.abs(remaining))} tone={remaining >= 0 ? 'up' : 'down'} />
+                  <HeroStat label={tt('Gelir')} value={formatKurus(summary.incomeKurus)} />
+                  <HeroStat label={remaining >= 0 ? 'Kalan' : tt('Gelirden fazla')} value={formatKurus(Math.abs(remaining))} tone={remaining >= 0 ? 'up' : 'down'} />
                 </dl>
               )}
               <div className="mt-4 border-t border-white/10 pt-4">
                 {budgetGroup ? (
-                  <section aria-label="Grup bütçesi">
+                  <section aria-label={tt('Grup bütçesi')}>
                     <div className="flex items-center justify-between gap-2 text-[13px]">
                       <span className="flex min-w-0 items-center gap-1.5 font-semibold text-white/85">
-                        <Target className="size-4 shrink-0" /> <span className="truncate">{budgetGroup.name} bütçesi</span>
+                        <Target className="size-4 shrink-0" /> <span className="truncate">{ttf('{0} bütçesi', budgetGroup.name)}</span>
                       </span>
                       {canEditGroupBudget && (
                         <button type="button" onClick={() => setGroupBudgetOpen(true)} className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
-                          {budgetGroup.budgetKurus ? 'Düzenle' : 'Belirle'}
+                          {budgetGroup.budgetKurus ? tt('Düzenle') : 'Belirle'}
                         </button>
                       )}
                     </div>
                     {budgetGroup.budgetKurus ? (
                       <BudgetBar budget={budgetGroup.budgetKurus} net={groupNet} />
                     ) : (
-                      <p className="mt-1 text-[12.5px] text-white/60">{canEditGroupBudget ? 'Grubun aylık bütçesini belirleyin.' : 'Grup bütçesini grup yöneticisi belirler.'}</p>
+                      <p className="mt-1 text-[12.5px] text-white/60">{canEditGroupBudget ? tt('Grubun aylık bütçesini belirleyin.') : tt('Grup bütçesini grup yöneticisi belirler.')}</p>
                     )}
                   </section>
                 ) : budget ? (
-                  <section aria-label="Aylık bütçe">
+                  <section aria-label={tt('Aylık bütçe')}>
                     <div className="flex items-center justify-between gap-2 text-[13px]">
                       <span className="flex items-center gap-1.5 font-semibold text-white/85">
-                        <Target className="size-4" /> Aylık bütçe
-                        {coachBudget && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">Koç belirledi</span>}
+                        <Target className="size-4" /> {tt('Aylık bütçe')}
+                        {coachBudget && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">{tt('Koç belirledi')}</span>}
                       </span>
                       {coachBudget ? (
                         <Link to="/butce" className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
-                          Ayrıntı
+                          {tt('Ayrıntı')}
                         </Link>
                       ) : (
                         <button type="button" onClick={() => setBudgetOpen(true)} className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
-                          Düzenle
+                          {tt('Düzenle')}
                         </button>
                       )}
                     </div>
@@ -337,7 +336,7 @@ export default function DashboardPage() {
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
                     <button type="button" onClick={() => setBudgetOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-white/15">
-                      <Target className="size-3.5" /> Aylık bütçe belirle
+                      <Target className="size-3.5" /> {tt('Aylık bütçe belirle')}
                     </button>
                     <BudgetPlanLink />
                   </div>
@@ -351,13 +350,13 @@ export default function DashboardPage() {
 
           {/* Kategori dağılımı */}
           <Card className="p-5 lg:col-span-7">
-            <h2 className="mb-4 font-display text-base font-semibold">Kategoriler</h2>
+            <h2 className="mb-4 font-display text-base font-semibold">{tt('Kategoriler')}</h2>
             {summary.expenseKurus > 0 ? (
               <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-[200px_1fr]">
                 <CategoryDonut
                   slices={slices}
                   total={summary.expenseKurus}
-                  centerLabel="Gider"
+                  centerLabel={tt('Gider')}
                   onSelect={(s) => {
                     if (s.grouped) return navigate(`/islemler?ay=${month}`)
                     const c = summary.byCategory.find((x) => (x.categoryId ?? 'none') === s.id)
@@ -368,14 +367,14 @@ export default function DashboardPage() {
                   <CategoryTable rows={allCats ? summary.byCategory : summary.byCategory.slice(0, 5)} total={summary.expenseKurus} categories={categories} onSelect={openCategory} />
                   {summary.byCategory.length > 5 && (
                     <button type="button" onClick={() => setAllCats((v) => !v)} className="mt-1 w-full rounded-xl py-2 text-[13px] font-medium text-accent hover:bg-accent-soft">
-                      {allCats ? 'Daha az göster' : `Tüm kategoriler (${summary.byCategory.length})`}
+                      {allCats ? tt('Daha az göster') : ttf('Tüm kategoriler ({0})', summary.byCategory.length)}
                     </button>
                   )}
                 </div>
               </div>
             ) : (
-              <EmptyState icon={<PiggyBank className="size-6" />} title="Bu ay gider yok" className="py-6">
-                Yalnızca gelir, iade veya transfer kayıtları var.
+              <EmptyState icon={<PiggyBank className="size-6" />} title={tt('Bu ay gider yok')} className="py-6">
+                {tt('Yalnızca gelir, iade veya transfer kayıtları var.')}
               </EmptyState>
             )}
           </Card>
@@ -383,10 +382,9 @@ export default function DashboardPage() {
           {/* Son işlemler */}
           <Card className="p-5 lg:col-span-5">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="font-display text-base font-semibold">Son işlemler</h2>
+              <h2 className="font-display text-base font-semibold">{tt('Son işlemler')}</h2>
               <Link to={`/islemler?ay=${month}`} className="text-[13px] font-medium text-accent hover:underline">
-                Tümü ({listMonthTxs.length})
-              </Link>
+                {ttf('Tümü ({0})', listMonthTxs.length)}</Link>
             </div>
             <TransactionList transactions={listMonthTxs.slice(0, 6)} categories={categories} compact onEdit={openTransactionForm} markUncounted={!groupFilter} moved={groupFilter ? undefined : personal?.moved} />
           </Card>
@@ -395,19 +393,19 @@ export default function DashboardPage() {
           {groupRows.length > 1 && (
             <Card className="p-5 lg:col-span-7">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="font-display text-base font-semibold">Gruplara göre</h2>
+                <h2 className="font-display text-base font-semibold">{tt('Gruplara göre')}</h2>
                 <Link to="/kategoriler?bolum=groups" className="text-[13px] font-medium text-accent hover:underline">
-                  Grupları düzenle
+                  {tt('Grupları düzenle')}
                 </Link>
               </div>
               <GroupTable rows={groupRows} selected={groupFilter} onSelect={(id) => setGroupFilter(groupFilter === id ? '' : id)} />
-              <div className="mt-4 border-t border-line pt-3" aria-label="Net gider ayrıntısı">
+              <div className="mt-4 border-t border-line pt-3" aria-label={tt('Net gider ayrıntısı')}>
                 {details}
               </div>
             </Card>
           )}
           {groupRows.length <= 1 && (
-            <div className="px-1 lg:col-span-7" aria-label="Net gider ayrıntısı">
+            <div className="px-1 lg:col-span-7" aria-label={tt('Net gider ayrıntısı')}>
               {details}
             </div>
           )}
@@ -416,21 +414,21 @@ export default function DashboardPage() {
           {personRows.length > 1 && (
             <Card className="p-5 lg:col-span-5">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="font-display text-base font-semibold">Kişilere göre{filterName ? ` · ${filterName}` : ''}</h2>
+                <h2 className="font-display text-base font-semibold">{ttf('Kişilere göre{0}', filterName ? ` · ${filterName}` : '')}</h2>
                 {canSplit ? (
                   <button type="button" onClick={() => setSplitOpen(true)} className="text-[13px] font-medium text-accent hover:underline">
-                    Paylaştır
+                    {tt('Paylaştır')}
                   </button>
                 ) : (
                   <Link to="/uyeler" className="text-[13px] font-medium text-accent hover:underline">
-                    Üyeler
+                    {tt('Üyeler')}
                   </Link>
                 )}
               </div>
               <GroupTable
                 rows={personRows}
                 selected={person.value}
-                actionLabel="Yalnızca bu kişiyi göster"
+                actionLabel={tt('Yalnızca bu kişiyi göster')}
                 onSelect={(id) => person.set(person.value === id ? '' : id)}
               />
             </Card>
@@ -439,9 +437,9 @@ export default function DashboardPage() {
           {/* Günlük gider: ayrıntı, istenince açılır */}
           <Card className="p-5 lg:col-span-12">
             <button type="button" onClick={() => setDailyOpen((v) => !v)} aria-expanded={dailyOpen} className="flex w-full items-center justify-between gap-2 text-left">
-              <h2 className="font-display text-base font-semibold">Günlük gider</h2>
+              <h2 className="font-display text-base font-semibold">{tt('Günlük gider')}</h2>
               <span className="flex items-center gap-1 text-[13px] font-medium text-accent">
-                {dailyOpen ? 'Gizle' : 'Göster'}
+                {dailyOpen ? 'Gizle' : tt('Göster')}
                 <ChevronDown className={cn('size-4 transition-transform', dailyOpen && 'rotate-180')} />
               </span>
             </button>
@@ -509,7 +507,7 @@ function HeroStat({ label, value, tone }: { label: string; value: string; tone?:
 /** Günün saatine göre selam. */
 function greeting(): string {
   const h = new Date().getHours()
-  return h < 6 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar'
+  return h < 6 ? tt('İyi geceler') : h < 12 ? tt('Günaydın') : h < 18 ? tt('İyi günler') : tt('İyi akşamlar')
 }
 
 function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareWithPrevious> }) {
@@ -545,7 +543,7 @@ function CoachBanner() {
     <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
       <Link
         to="/koc"
-        aria-label="Koç mesajları"
+        aria-label={tt('Koç mesajları')}
         className={cn(
           'mb-3 flex items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-[13px] shadow-card hover:brightness-105',
           warn ? 'border border-danger/35 bg-danger-soft text-ink' : 'bg-slate-950 text-white hover:brightness-110',
@@ -556,7 +554,7 @@ function CoachBanner() {
         </span>
         <span className="min-w-0 flex-1">
           <span className={cn('block truncate font-semibold', warn && 'text-danger')}>{first.title}</span>
-          <span className={cn('block truncate', warn ? 'text-muted' : 'text-slate-300')}>{first.body}</span>
+          <span className={cn(tt('block truncate'), warn ? 'text-muted' : 'text-slate-300')}>{first.body}</span>
         </span>
         {unread.length > 1 && <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[12px]', warn ? 'bg-danger/15 text-danger' : 'bg-white/15')}>+{unread.length - 1}</span>}
         <ChevronRight className={cn('size-4 shrink-0', warn ? 'text-danger' : 'text-slate-400')} />
@@ -571,17 +569,17 @@ function DueBanner() {
   const due = useDuePayments(has('subscriptions'))
   if (!due.length) return null
   return (
-    <Link to="/borclar?bolum=odemeler" className="mb-3 block rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-[13px] text-ink hover:brightness-105" aria-label="Yaklaşan ödemeler">
+    <Link to="/borclar?bolum=odemeler" className="mb-3 block rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-[13px] text-ink hover:brightness-105" aria-label={tt('Yaklaşan ödemeler')}>
       {due.slice(0, 3).map((d) => (
         <div key={`${d.id}:${d.date}`} className="flex items-center gap-2 py-0.5">
           <CalendarClock className="size-4 shrink-0 text-warning" />
           <span className="min-w-0 flex-1 truncate">
-            <strong className="font-semibold">{d.name}</strong> · {d.date === todayIso() ? 'bugün' : formatDate(d.date, 'long')}
+            <strong className="font-semibold">{d.name}</strong> · {d.date === todayIso() ? tt('bugün') : formatDate(d.date, 'long')}
           </span>
           <span className="num shrink-0 font-medium">{formatKurus(d.amountKurus)}</span>
         </div>
       ))}
-      {due.length > 3 && <div className="mt-0.5 text-subtle">+{due.length - 3} ödeme daha</div>}
+      {due.length > 3 && <div className="mt-0.5 text-subtle">{ttf('+{0} ödeme daha', due.length - 3)}</div>}
     </Link>
   )
 }
@@ -594,9 +592,9 @@ function BudgetPlanLink() {
   const over = warnings.some((w) => w.status.state === 'over')
   return (
     <Link to="/butce" className="mt-2 inline-flex items-center gap-2 rounded-full px-1 py-1 text-[12.5px] font-semibold text-emerald-200 hover:text-white">
-      Bütçe planı
+      {tt('Bütçe planı')}
       {warnings.length > 0 ? (
-        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', over ? 'bg-rose-400/20 text-rose-100' : 'bg-amber-400/20 text-amber-100')}>{warnings.length} uyarı</span>
+        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', over ? 'bg-rose-400/20 text-rose-100' : 'bg-amber-400/20 text-amber-100')}>{ttf('{0} uyarı', warnings.length)}</span>
       ) : (
         <ChevronRight className="size-4" />
       )}
@@ -612,11 +610,11 @@ function BudgetBar({ budget, net }: { budget: number; net: number }) {
     <div className="mt-2">
       <div className="flex items-baseline justify-between gap-2">
         <span className={cn('num font-display text-lg font-bold', over ? 'text-rose-200' : 'text-white')}>
-          {over ? `${formatKurus(net - budget)} aşıldı` : `${formatKurus(budget - net)} kaldı`}
+          {over ? ttf('{0} aşıldı', formatKurus(net - budget)) : ttf('{0} kaldı', formatKurus(budget - net))}
         </span>
         <span className="num text-[12.5px] text-white/60">/ {formatKurus(budget)}</span>
       </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/12" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(1, Math.max(0, ratio)) * 100)} aria-label="Bütçe kullanımı">
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/12" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(1, Math.max(0, ratio)) * 100)} aria-label={tt('Bütçe kullanımı')}>
         <motion.div
           className={cn('h-full rounded-full', over ? 'bg-rose-400' : ratio > 0.85 ? 'bg-amber-400' : 'bg-gradient-to-r from-emerald-300 to-cyan-300')}
           initial={{ width: 0 }}
@@ -624,14 +622,14 @@ function BudgetBar({ budget, net }: { budget: number; net: number }) {
           transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
         />
       </div>
-      <p className="mt-1.5 text-[12px] text-white/55">%{Math.max(0, Math.round(ratio * 100))} kullanıldı</p>
+      <p className="mt-1.5 text-[12px] text-white/55">{ttf('%{0} kullanıldı', Math.max(0, Math.round(ratio * 100)))}</p>
     </div>
   )
 }
 
 function CategoryTable({ rows, total, categories, onSelect }: { rows: CategoryTotal[]; total: number; categories: ReturnType<typeof useCategoryMap>; onSelect: (c: CategoryTotal) => void }) {
   return (
-    <ul className="flex flex-col gap-1" aria-label="Kategori listesi">
+    <ul className="flex flex-col gap-1" aria-label={tt('Kategori listesi')}>
       {rows.map((c) => {
         const cat = c.categoryId ? categories.get(c.categoryId) : undefined
         const share = total ? c.expenseKurus / total : 0
@@ -652,7 +650,7 @@ function CategoryTable({ rows, total, categories, onSelect }: { rows: CategoryTo
                 </div>
                 {c.refundKurus > 0 && (
                   <div className="num mt-1 text-[11.5px] text-muted">
-                    İade −{formatKurus(c.refundKurus)} · Net <span className={cn(c.netKurus < 0 && 'text-accent')}>{c.netKurus < 0 ? '−' : ''}{formatKurus(Math.abs(c.netKurus))}</span>
+                    {tt('İade −')}{formatKurus(c.refundKurus)} {tt('· Net')} <span className={cn(c.netKurus < 0 && 'text-accent')}>{c.netKurus < 0 ? '−' : ''}{formatKurus(Math.abs(c.netKurus))}</span>
                   </div>
                 )}
               </div>
@@ -671,23 +669,23 @@ function DrawerBody({ txs, categories, link, onEdit }: { txs: Transaction[]; cat
     <div>
       <div className="mb-3 grid grid-cols-3 gap-2 rounded-2xl bg-surface-2 p-3 text-center">
         <div>
-          <div className="text-[11.5px] text-subtle">Gider</div>
+          <div className="text-[11.5px] text-subtle">{tt('Gider')}</div>
           <div className="num text-sm font-semibold">{formatKurus(exp)}</div>
         </div>
         <div>
-          <div className="text-[11.5px] text-subtle">İade</div>
+          <div className="text-[11.5px] text-subtle">{tt('İade')}</div>
           <div className="num text-sm font-semibold text-accent">{formatKurus(ref)}</div>
         </div>
         <div>
-          <div className="text-[11.5px] text-subtle">Net</div>
+          <div className="text-[11.5px] text-subtle">{tt('Net')}</div>
           <div className="num text-sm font-semibold">
             <Money kurus={exp - ref} plain />
           </div>
         </div>
       </div>
-      {txs.length ? <TransactionList transactions={txs} categories={categories} compact onEdit={onEdit} /> : <p className="py-6 text-center text-sm text-muted">Bu seçimde işlem yok.</p>}
+      {txs.length ? <TransactionList transactions={txs} categories={categories} compact onEdit={onEdit} /> : <p className="py-6 text-center text-sm text-muted">{tt('Bu seçimde işlem yok.')}</p>}
       <Link to={link} className="mt-4 block rounded-xl border border-line py-2.5 text-center text-sm font-medium text-accent hover:bg-accent-soft">
-        İşlemler sayfasında filtreli aç
+        {tt('İşlemler sayfasında filtreli aç')}
       </Link>
     </div>
   )
@@ -702,12 +700,12 @@ function BudgetModal({ open, onOpenChange, current }: { open: boolean; onOpenCha
     let kurus: number | null = null
     if (!clear && value.trim()) {
       const p = parseUserAmount(value)
-      if (!p.ok || p.kurus <= 0) return setError('Geçerli bir tutar girin, örn. 25.000')
+      if (!p.ok || p.kurus <= 0) return setError(tt('Geçerli bir tutar girin, örn. 25.000'))
       kurus = p.kurus
     }
     try {
       await repo.saveSettings({ monthlyBudgetKurus: kurus, budgetMode: 'manual' })
-      toast(kurus ? 'Bütçe kaydedildi.' : 'Bütçe kaldırıldı.')
+      toast(kurus ? tt('Bütçe kaydedildi.') : tt('Bütçe kaldırıldı.'))
       onOpenChange(false)
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
@@ -721,24 +719,24 @@ function BudgetModal({ open, onOpenChange, current }: { open: boolean; onOpenCha
         setError(undefined)
         onOpenChange(o)
       }}
-      title="Aylık bütçe"
-      description="Her ay aynı tutar uygulanır."
+      title={tt('Aylık bütçe')}
+      description={tt('Her ay aynı tutar uygulanır.')}
       size="sm"
       footer={
         <>
           {current && (
             <Button variant="ghost" className="mr-auto text-danger" onClick={() => save(true)}>
-              Bütçeyi kaldır
+              {tt('Bütçeyi kaldır')}
             </Button>
           )}
           <Button variant="primary" onClick={() => save()}>
-            Kaydet
+            {tt('Kaydet')}
           </Button>
         </>
       }
     >
-      <Field label="Tutar (TL)" htmlFor="budget" error={error}>
-        <Input id="budget" inputMode="decimal" className="num" placeholder="Örn. 30.000" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
+      <Field label={tt('Tutar (TL)')} htmlFor="budget" error={error}>
+        <Input id="budget" inputMode="decimal" className="num" placeholder={tt('Örn. 30.000')} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
       </Field>
     </Modal>
   )
@@ -756,13 +754,13 @@ function GroupBudgetModal({ open, onOpenChange, group }: { open: boolean; onOpen
     let kurus: number | null = null
     if (!clear && value.trim()) {
       const p = parseUserAmount(value)
-      if (!p.ok || p.kurus <= 0) return setError('Geçerli bir tutar girin, örn. 25.000')
+      if (!p.ok || p.kurus <= 0) return setError(tt('Geçerli bir tutar girin, örn. 25.000'))
       kurus = p.kurus
     }
     setBusy(true)
     try {
       await setGroupBudget(repo, backend, group.id, kurus)
-      toast(kurus ? 'Grup bütçesi kaydedildi.' : 'Grup bütçesi kaldırıldı.')
+      toast(kurus ? tt('Grup bütçesi kaydedildi.') : tt('Grup bütçesi kaldırıldı.'))
       onOpenChange(false)
     } catch (e) {
       setError(e instanceof UserFacingError ? e.message : group.cloudId ? cloudErrorMessage(e) : toUserMessage(e))
@@ -778,24 +776,24 @@ function GroupBudgetModal({ open, onOpenChange, group }: { open: boolean; onOpen
         setError(undefined)
         onOpenChange(o)
       }}
-      title={`${group.name} bütçesi`}
-      description={group.cloudId ? 'Bütün üyeler görür.' : undefined}
+      title={ttf('{0} bütçesi', group.name)}
+      description={group.cloudId ? tt('Bütün üyeler görür.') : undefined}
       size="sm"
       footer={
         <>
           {current && (
             <Button variant="ghost" className="mr-auto text-danger" disabled={busy} onClick={() => save(true)}>
-              Bütçeyi kaldır
+              {tt('Bütçeyi kaldır')}
             </Button>
           )}
           <Button variant="primary" loading={busy} onClick={() => save()}>
-            Kaydet
+            {tt('Kaydet')}
           </Button>
         </>
       }
     >
-      <Field label="Tutar (TL)" htmlFor="group-budget" error={error}>
-        <Input id="group-budget" inputMode="decimal" className="num" placeholder="Örn. 20.000" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
+      <Field label={tt('Tutar (TL)')} htmlFor="group-budget" error={error}>
+        <Input id="group-budget" inputMode="decimal" className="num" placeholder={tt('Örn. 20.000')} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
       </Field>
     </Modal>
   )
@@ -803,7 +801,7 @@ function GroupBudgetModal({ open, onOpenChange, group }: { open: boolean; onOpen
 
 function DashboardSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Panel yükleniyor">
+    <div aria-busy="true" aria-label={tt('Panel yükleniyor')}>
       <Skeleton className="mb-6 h-9 w-40" />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <Skeleton className="h-60 rounded-3xl lg:col-span-7" />
@@ -829,7 +827,7 @@ interface GroupRow {
 function groupBreakdown(txs: Transaction[], month: string, groups: SpendGroup[], startDay: number): GroupRow[] {
   const rows = new Map<string, GroupRow>()
   for (const g of groups) rows.set(g.id, { id: g.id, name: g.name, color: g.color, expenseKurus: 0, refundKurus: 0, count: 0 })
-  rows.set('none', { id: 'none', name: 'Grupsuz', color: '#94a3b8', expenseKurus: 0, refundKurus: 0, count: 0 })
+  rows.set('none', { id: 'none', name: tt('Grupsuz'), color: '#94a3b8', expenseKurus: 0, refundKurus: 0, count: 0 })
   for (const t of txs) {
     if (periodOf(t.date, startDay) !== month || !isSpending(t)) continue
     const r = rows.get(t.groupId && rows.has(t.groupId) ? t.groupId : 'none')!
@@ -851,8 +849,8 @@ function personBreakdown(txs: Transaction[], members: Map<string, Member>, selfI
     let r = rows.get(id)
     if (!r) {
       const m = members.get(id)
-      r = { id, name: m?.name ?? 'Grup üyesi', color: m?.color ?? '#94a3b8', expenseKurus: 0, refundKurus: 0, count: 0 }
-      if (id === selfId && (!m || m.name === 'Ben')) r.name = 'Siz'
+      r = { id, name: m?.name ?? tt('Grup üyesi'), color: m?.color ?? '#94a3b8', expenseKurus: 0, refundKurus: 0, count: 0 }
+      if (id === selfId && (!m || m.name === 'Ben')) r.name = tt('Siz')
       rows.set(id, r)
     }
     r.count++
@@ -866,7 +864,7 @@ function GroupTable({
   rows,
   selected,
   onSelect,
-  actionLabel = 'Paneli bu gruba göre filtrele',
+  actionLabel = tt('Paneli bu gruba göre filtrele'),
 }: {
   rows: GroupRow[]
   selected: string
@@ -885,13 +883,13 @@ function GroupTable({
               type="button"
               onClick={() => onSelect(r.id)}
               aria-pressed={selected === r.id}
-              aria-label={`${r.name}: net ${formatKurus(net)}, ${r.count} işlem. ${actionLabel}`}
+              aria-label={ttf('{0}: net {1}, {2} işlem. {3}', r.name, formatKurus(net), r.count, actionLabel)}
               className={cn('w-full rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-2', selected === r.id && 'bg-surface-2 ring-1 ring-line-strong')}
             >
               <div className="flex items-center gap-2 text-[13.5px]">
                 <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} aria-hidden />
                 <span className="min-w-0 flex-1 truncate font-medium text-ink">{r.name}</span>
-                <span className="num text-[12px] text-subtle">{r.count} işlem</span>
+                <span className="num text-[12px] text-subtle">{ttf('{0} işlem', r.count)}</span>
                 <span className="num w-28 text-right font-semibold">{formatKurus(net)}</span>
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
@@ -940,7 +938,7 @@ function SharedPeriodNotes({
     })
   if (!rows.length) return null
   return (
-    <section aria-label="Ortak grupların dönemi" className="flex flex-col gap-2">
+    <section aria-label={tt('Ortak grupların dönemi')} className="flex flex-col gap-2">
       {rows.map(({ g, key, range, settlement, owner, share }) => (
         <button
           key={g.id}
@@ -955,13 +953,13 @@ function SharedPeriodNotes({
             <span className="block text-sm font-semibold text-ink">
               {settlement
                 ? owner
-                  ? `${g.name} giderini paylaştırdınız`
-                  : `Yönetici ${g.name} giderini sizinle paylaştı`
-                : `${g.name} · bu dönem henüz paylaştırılmadı`}
+                  ? ttf('{0} giderini paylaştırdınız', g.name)
+                  : ttf('Yönetici {0} giderini sizinle paylaştı', g.name)
+                : ttf('{0} · bu dönem henüz paylaştırılmadı', g.name)}
             </span>
             <span className="num block text-[12.5px] leading-snug text-muted">
-              {range && `${owner || settlement ? '' : 'Yöneticinin dönemi: '}${settlementRangeText(range)} · `}
-              {settlement ? `payınız ${formatKurus(share)}` : 'toplamınıza girmez'}
+              {range && `${owner || settlement ? '' : tt('Yöneticinin dönemi: ')}${settlementRangeText(range)} · `}
+              {settlement ? ttf('payınız {0}', formatKurus(share)) : tt('toplamınıza girmez')}
             </span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-subtle" aria-hidden />

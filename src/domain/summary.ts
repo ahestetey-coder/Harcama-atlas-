@@ -1,5 +1,6 @@
 import { addDays, dayOf, diffDays, periodLength, periodOf, periodRange } from './dates'
 import { isSpending, type Category, type MonthKey, type Transaction } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 export interface CategoryTotal {
   categoryId: string | null
@@ -121,7 +122,7 @@ export type Comparison =
  */
 export function compareWithPrevious(all: Transaction[], month: MonthKey, previousMonth: MonthKey, today: string, startDay = 1): Comparison {
   const prevHasData = all.some((t) => periodOf(t.date, startDay) === previousMonth && isSpending(t))
-  if (!prevHasData) return { kind: 'none', reason: 'Önceki ayda karşılaştırılacak kayıt yok.' }
+  if (!prevHasData) return { kind: 'none', reason: tt('Önceki ayda karşılaştırılacak kayıt yok.') }
   const isCurrent = periodOf(today, startDay) === month
   const upTo = isCurrent ? diffDays(today, periodRange(month, startDay).start) + 1 : undefined
   const cur = summarizeMonth(all, month, undefined, startDay)
@@ -130,8 +131,8 @@ export function compareWithPrevious(all: Transaction[], month: MonthKey, previou
   const diff = cur.netKurus - prev.netKurus
   const percent = prev.netKurus > 0 ? (diff / prev.netKurus) * 100 : null
   const label = isCurrent
-    ? `Ay tamamlanmadı: önceki ayın ilk ${prevUpTo} günüyle karşılaştırıldı`
-    : 'Önceki aya göre'
+    ? ttf('Ay tamamlanmadı: önceki ayın ilk {0} günüyle karşılaştırıldı', prevUpTo)
+    : tt('Önceki aya göre')
   return { kind: 'ok', previousNetKurus: prev.netKurus, diffKurus: diff, percent, partial: isCurrent, label }
 }
 
@@ -141,5 +142,5 @@ export function isFutureMonth(month: MonthKey, today: string, startDay = 1): boo
 
 export function categoryName(categories: Category[], id: string | null): string {
   if (!id) return 'Kategorisiz'
-  return categories.find((c) => c.id === id)?.name ?? 'Bilinmeyen kategori'
+  return categories.find((c) => c.id === id)?.name ?? tt('Bilinmeyen kategori')
 }

@@ -5,6 +5,7 @@ import { useIsAdmin } from './admin'
 import { useAuth } from './auth'
 import { useData } from './data'
 import { readPref, writePref } from './prefs'
+import { tt } from '../lib/i18n'
 
 interface PlanCtx {
   /** Geçerli paket (önizleme varsa o). */
@@ -58,6 +59,6 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
 export function usePlan(): PlanCtx {
   const c = useContext(Ctx)
-  if (!c) throw new Error('usePlan, PlanProvider içinde kullanılmalı')
+  if (!c) throw new Error(tt('usePlan, PlanProvider içinde kullanılmalı'))
   return c
 }

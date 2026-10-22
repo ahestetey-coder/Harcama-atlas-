@@ -13,6 +13,7 @@ import { cn } from '../lib/cn'
 import { FlowCells } from '../components/MoneyFlowCard'
 import { useMoneyFlow } from '../state/budget'
 import { useReducedMotion } from '../lib/hooks'
+import { tt, ttf } from '../lib/i18n'
 
 /**
  * Özgürlük simülasyonu: gerçek gelir, gider, borç ve yatırımlarla rota motorunun yıl yıl birikim yolu,
@@ -44,9 +45,9 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
     return y < 0 ? null : y
   }
   const levels = [
-    { id: 'security' as const, label: 'Güvence', color: C.lean, value: plan.leanKurus },
-    { id: 'independence' as const, label: 'Bağımsızlık', color: C.fi, value: plan.fiKurus },
-    { id: 'freedom' as const, label: 'Özgürlük', color: C.fat, value: plan.fatKurus },
+    { id: 'security' as const, label: tt('Güvence'), color: C.lean, value: plan.leanKurus },
+    { id: 'independence' as const, label: tt('Bağımsızlık'), color: C.fi, value: plan.fiKurus },
+    { id: 'freedom' as const, label: tt('Özgürlük'), color: C.fat, value: plan.fatKurus },
   ].map((l) => ({ ...l, year: l.id === 'independence' && reach !== null ? Math.ceil(reach / 12) : cross(l.value) }))
 
   const fatYear = levels[2].year
@@ -86,51 +87,50 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
   const maxExtra = Math.max(5000, Math.ceil(Math.max(plan.levers.extraMonthlyKurus, profile.monthlyIncomeKurus * 0.3) / 100 / 1000) * 1000)
 
   return (
-    <Card className="relative overflow-hidden p-4" aria-label="Özgürlük simülasyonu">
+    <Card className="relative overflow-hidden p-4" aria-label={tt('Özgürlük simülasyonu')}>
       <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-sky-500/10 blur-3xl" aria-hidden />
       <div className="pointer-events-none absolute -bottom-28 -left-20 size-72 rounded-full bg-violet-500/10 blur-3xl" aria-hidden />
       <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-muted">
-            <Sparkles className="size-3.5 text-accent" /> Özgürlük simülasyonu
+            <Sparkles className="size-3.5 text-accent" /> {tt('Özgürlük simülasyonu')}
           </p>
           <div className="mt-1 flex items-baseline gap-3">
             {reach !== null ? (
               <AnimatedNumber value={yearOf(reach)} from={YEAR0} className="bg-gradient-to-r from-sky-500 via-violet-500 to-amber-500 bg-clip-text font-display text-5xl font-extrabold tracking-tight text-transparent" />
             ) : (
-              <span className="font-display text-3xl font-bold text-ink">Henüz görünmüyor</span>
+              <span className="font-display text-3xl font-bold text-ink">{tt('Henüz görünmüyor')}</span>
             )}
-            {reachAge !== null && <span className="text-[15px] font-medium text-muted">{reachAge} yaşında</span>}
+            {reachAge !== null && <span className="text-[15px] font-medium text-muted">{ttf('{0} yaşında', reachAge)}</span>}
           </div>
-          <p className="mt-1 text-[13px] text-muted">Finansal bağımsızlığa varış · {SCENARIOS[sc].label.toLowerCase()} senaryo</p>
+          <p className="mt-1 text-[13px] text-muted">{ttf('Finansal bağımsızlığa varış · {0} senaryo', SCENARIOS[sc].label.toLowerCase())}</p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           {vsTarget !== null && (
             <Badge tone={vsTarget <= 0 ? 'accent' : 'warning'}>
-              {vsTarget < 0 ? `Hedef yaşından ${-vsTarget} yıl önce` : vsTarget === 0 ? 'Tam hedef yaşında' : `Hedef yaşından ${vsTarget} yıl sonra`}
+              {vsTarget < 0 ? ttf('Hedef yaşından {0} yıl önce', -vsTarget) : vsTarget === 0 ? tt('Tam hedef yaşında') : ttf('Hedef yaşından {0} yıl sonra', vsTarget)}
             </Badge>
           )}
           {gained !== null && gained > 0 && (
             <motion.span key={extra} initial={reduced ? false : { scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="num rounded-full bg-accent-soft px-2.5 py-1 text-[12.5px] font-semibold text-accent">
-              {gained >= 1 ? `${gained.toLocaleString('tr-TR')} yıl` : `${Math.round(gained * 12)} ay`} erken
-            </motion.span>
+              {ttf('{0} erken', gained >= 1 ? ttf('{0} yıl', gained.toLocaleString('tr-TR')) : `${Math.round(gained * 12)} ay`)}</motion.span>
           )}
         </div>
       </div>
 
       <div className="relative mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr] sm:items-end">
         <Segmented
-          label="Getiri senaryosu"
+          label={tt('Getiri senaryosu')}
           value={sc}
           onChange={setSc}
           options={(Object.keys(SCENARIOS) as ScenarioKey[]).map((k) => ({ value: k, label: `${SCENARIOS[k].label} %${SCENARIOS[k].realReturnPct.toLocaleString('tr-TR')}` }))}
         />
-        <Slider id="sim-route-extra" label="Her ay fazladan biriktirirsem" value={extra} min={0} max={maxExtra} step={500} onChange={setExtra} display={(v) => `+${formatKurus(v * 100)}`} />
+        <Slider id="sim-route-extra" label={tt('Her ay fazladan biriktirirsem')} value={extra} min={0} max={maxExtra} step={500} onChange={setExtra} display={(v) => `+${formatKurus(v * 100)}`} />
       </div>
 
       <div className="relative mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-muted" aria-hidden>
-        <Key color={C.path} label="Birikim yolun" />
-        <Key color={C.path} label="Diğer senaryolar" dashed />
+        <Key color={C.path} label={tt('Birikim yolun')} />
+        <Key color={C.path} label={tt('Diğer senaryolar')} dashed />
         {levels.map((l) => (
           <Key key={l.id} color={l.color} label={`${l.label} ${formatKurusCompact(l.value)}`} dotted />
         ))}
@@ -155,15 +155,13 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
                 return (
                   <div className="rounded-xl border border-line bg-surface px-3 py-2 text-[12.5px] shadow-card">
                     <div className="font-semibold text-ink">
-                      {r.year} · {r.age} yaş
-                    </div>
-                    {r.path !== null && <div className="num text-muted">Birikim: {formatKurus(r.path)}</div>}
+                      {ttf('{0} · {1} yaş', r.year, r.age)}</div>
+                    {r.path !== null && <div className="num text-muted">{ttf('Birikim: {0}', formatKurus(r.path))}</div>}
                     {levels
                       .filter((l) => l.year !== null && YEAR0 + l.year === r.year)
                       .map((l) => (
                         <div key={l.id} className="font-medium text-ink">
-                          {l.label} eşiği geçilir
-                        </div>
+                          {ttf('{0} eşiği geçilir', l.label)}</div>
                       ))}
                   </div>
                 )
@@ -173,7 +171,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
               <ReferenceLine key={l.id} y={l.value} stroke={l.color} strokeWidth={1.5} strokeDasharray="3 4" label={{ value: l.label, position: 'insideTopLeft', fill: 'var(--muted)', fontSize: 11 }} />
             ))}
             {plan.debtFreeMonth !== null && plan.debtFreeMonth > 0 && plan.debtFreeMonth <= horizon * 12 && (
-              <ReferenceLine x={YEAR0 + plan.debtFreeMonth / 12} stroke="var(--border-strong)" strokeDasharray="2 3" label={{ value: 'Borçsuz', position: 'top', fill: 'var(--muted)', fontSize: 11 }} />
+              <ReferenceLine x={YEAR0 + plan.debtFreeMonth / 12} stroke="var(--border-strong)" strokeDasharray="2 3" label={{ value: tt('Borçsuz'), position: 'top', fill: 'var(--muted)', fontSize: 11 }} />
             )}
             <Line type="monotone" dataKey="cautious" stroke={C.path} strokeOpacity={0.45} strokeWidth={1.5} strokeDasharray="5 5" dot={false} isAnimationActive={!reduced} />
             <Line type="monotone" dataKey="optimistic" stroke={C.path} strokeOpacity={0.45} strokeWidth={1.5} strokeDasharray="5 5" dot={false} isAnimationActive={!reduced} />
@@ -186,12 +184,12 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
         </ResponsiveContainer>
       </div>
       <table className="sr-only">
-        <caption>Yıllara göre tahmini net birikim, bugünün parasıyla</caption>
+        <caption>{tt('Yıllara göre tahmini net birikim, bugünün parasıyla')}</caption>
         <thead>
           <tr>
-            <th>Yıl</th>
-            <th>Yaş</th>
-            <th>Birikim</th>
+            <th>{tt('Yıl')}</th>
+            <th>{tt('Yaş')}</th>
+            <th>{tt('Birikim')}</th>
           </tr>
         </thead>
         <tbody>
@@ -205,7 +203,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
         </tbody>
       </table>
 
-      <ol className="relative -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Rota takvimi">
+      <ol className="relative -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" aria-label={tt('Rota takvimi')}>
         {milestones.map((m, i) => {
           const state = m.done ? 'done' : m.month === null ? 'far' : 'eta'
           return (
@@ -226,8 +224,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
         })}
       </ol>
       <p className="relative mt-3 text-[12px] text-subtle">
-        Bugünün parasıyla. Birikim her yıl enflasyon kadar, üstüne de %{SCENARIOS[sc].realReturnPct.toLocaleString('tr-TR')} bileşik büyür (enflasyon %{DEFAULT_INFLATION_PCT} ise yılda yaklaşık %{nominalPct(SCENARIOS[sc].realReturnPct).toLocaleString('tr-TR')}); aylık birikim yılda %{SAVING_GROWTH_PCT} artar; borç kapanınca taksiti birikime geçer. Tahmindir, garanti değildir.
-      </p>
+        {ttf('Bugünün parasıyla. Birikim her yıl enflasyon kadar, üstüne de %{0} bileşik büyür (enflasyon %{1} ise yılda yaklaşık %{2}); aylık birikim yılda %{3} artar; borç kapanınca taksiti birikime geçer. Tahmindir, garanti değildir.', SCENARIOS[sc].realReturnPct.toLocaleString('tr-TR'), DEFAULT_INFLATION_PCT, nominalPct(SCENARIOS[sc].realReturnPct).toLocaleString('tr-TR'), SAVING_GROWTH_PCT)}</p>
     </Card>
   )
 }
@@ -253,17 +250,16 @@ export function MoneyFlow({ j }: { profile?: JourneyProfile; facts?: JourneyFact
   if (!flow) return null
   const next = j.stages.filter((s) => !s.done).slice(0, 3)
   return (
-    <Card className="p-4" aria-label="Aylık paranın yolu">
+    <Card className="p-4" aria-label={tt('Aylık paranın yolu')}>
       <h3 className="flex items-center gap-2 font-display text-base font-semibold">
-        <TrendingUp className="size-4 text-accent" /> Aylık paranın yolu
+        <TrendingUp className="size-4 text-accent" /> {tt('Aylık paranın yolu')}
       </h3>
       <p className="mt-0.5 text-[12.5px] text-muted">
-        {formatKurus(flow.incomeKurus)} gelir · 50/30/20 kuralı · Özet ile aynı
-      </p>
+        {ttf('{0} gelir · 50/30/20 kuralı · Özet ile aynı', formatKurus(flow.incomeKurus))}</p>
       <FlowCells flow={flow} />
       {next.length > 0 && (
         <div className="mt-3 border-t border-line pt-2.5">
-          <h4 className="text-[13px] font-semibold text-ink">Sıradaki hamlelerin</h4>
+          <h4 className="text-[13px] font-semibold text-ink">{tt('Sıradaki hamlelerin')}</h4>
           <ol className="mt-2 flex flex-col gap-2">
             {next.map((s, i) => (
               <li key={s.id} className="grid grid-cols-[26px_1fr] gap-2.5 text-[13.5px]">
@@ -277,16 +273,16 @@ export function MoneyFlow({ j }: { profile?: JourneyProfile; facts?: JourneyFact
           <div className="mt-3 flex flex-wrap gap-3 text-[13px] font-semibold">
             {next.some((s) => s.id === 'debt') && (
               <Link to="/borclar" className="inline-flex items-center gap-1 text-accent">
-                <Flag className="size-3.5" /> Borç planım <ArrowRight className="size-3.5" />
+                <Flag className="size-3.5" /> {tt('Borç planım')} <ArrowRight className="size-3.5" />
               </Link>
             )}
             {next.some((s) => s.id === 'starter' || s.id === 'emergency') && (
               <Link to="/yatirimlar" className="inline-flex items-center gap-1 text-accent">
-                <ShieldCheck className="size-3.5" /> Acil fonumu ekle <ArrowRight className="size-3.5" />
+                <ShieldCheck className="size-3.5" /> {tt('Acil fonumu ekle')} <ArrowRight className="size-3.5" />
               </Link>
             )}
             <Link to="/butce" className="inline-flex items-center gap-1 text-accent">
-              Bütçemi aç <ArrowRight className="size-3.5" />
+              {tt('Bütçemi aç')} <ArrowRight className="size-3.5" />
             </Link>
           </div>
         </div>

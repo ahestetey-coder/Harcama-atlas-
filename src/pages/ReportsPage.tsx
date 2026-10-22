@@ -12,6 +12,7 @@ import { usePersonalCycle } from '../state/cycle'
 import { useCategoryMap } from '../state/data'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 /** Eğilim grafiği rengi (tek seri; açık ve koyu yüzeyde doğrulandı). */
 const COLOR_TREND = '#059669'
@@ -21,22 +22,22 @@ export default function ReportsPage() {
   return (
     <div>
       <PageHeader
-        title="Raporlar"
+        title={tt('Raporlar')}
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Kişisel harcamalar
+            <PlanBadge plan="plus" /> {tt('Kişisel harcamalar')}
           </span>
         }
         actions={<MonthSwitcher month={month} onChange={setMonth} />}
       />
       <PlanGate
         feature="reports"
-        title="Ayrıntılı raporlar"
+        title={tt('Ayrıntılı raporlar')}
         points={[
-          'Kategorileri önceki dönemle ve son 3 dönemin ortalamasıyla karşılaştırın',
-          'En çok harcadığınız iş yerlerini görün',
-          'Olağandışı artışlar ve tasarruf fırsatları için cihazda hazırlanan uyarılar alın',
-          'Son 6 dönemin eğilimini izleyin',
+          tt('Kategorileri önceki dönemle ve son 3 dönemin ortalamasıyla karşılaştırın'),
+          tt('En çok harcadığınız iş yerlerini görün'),
+          tt('Olağandışı artışlar ve tasarruf fırsatları için cihazda hazırlanan uyarılar alın'),
+          tt('Son 6 dönemin eğilimini izleyin'),
         ]}
       >
         <ReportsContent />
@@ -52,22 +53,22 @@ function ReportsContent() {
   const { month } = useUi()
   const ongoing = month === currentPeriod(startDay)
   const report = useMemo(
-    () => (personal ? periodReport(personal.counted, month, startDay, (id) => (id ? (catMap.get(id)?.name ?? 'Diğer') : 'Kategorisiz'), ongoing) : null),
+    () => (personal ? periodReport(personal.counted, month, startDay, (id) => (id ? (catMap.get(id)?.name ?? tt('Diğer')) : 'Kategorisiz'), ongoing) : null),
     [personal, month, startDay, catMap, ongoing],
   )
   if (!report) return null
   const diffPrev = report.currentKurus - report.previousKurus
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card className="flex flex-wrap gap-x-8 gap-y-3 p-5 lg:col-span-2" aria-label="Dönem özeti">
+      <Card className="flex flex-wrap gap-x-8 gap-y-3 p-5 lg:col-span-2" aria-label={tt('Dönem özeti')}>
         <Stat label={periodLabel(month, startDay)} value={formatKurus(report.currentKurus)} />
         <Stat
-          label="Önceki döneme göre"
+          label={tt('Önceki döneme göre')}
           value={`${diffPrev > 0 ? '+' : diffPrev < 0 ? '−' : ''}${formatKurus(Math.abs(diffPrev))}`}
           icon={diffPrev > 0 ? <ArrowUpRight className="size-4 text-danger" /> : diffPrev < 0 ? <ArrowDownRight className="size-4 text-accent" /> : null}
         />
-        {report.historyMonths > 0 && <Stat label={`Son ${report.historyMonths} dönem ortalaması`} value={formatKurus(report.averageKurus)} />}
-        {ongoing && <p className="w-full text-[12px] text-subtle">Dönem sürüyor; rakamlar değişebilir.</p>}
+        {report.historyMonths > 0 && <Stat label={ttf('Son {0} dönem ortalaması', report.historyMonths)} value={formatKurus(report.averageKurus)} />}
+        {ongoing && <p className="w-full text-[12px] text-subtle">{tt('Dönem sürüyor; rakamlar değişebilir.')}</p>}
       </Card>
 
       <Insights items={report.insights} history={report.historyMonths} />
@@ -98,14 +99,14 @@ const INSIGHT_ICON: Record<Insight['tone'], ReactNode> = {
 
 function Insights({ items, history }: { items: Insight[]; history: number }) {
   return (
-    <Card className="p-5 lg:col-span-2" aria-label="Tasarruf uyarıları">
+    <Card className="p-5 lg:col-span-2" aria-label={tt('Tasarruf uyarıları')}>
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <Lightbulb className="size-5 text-warning" /> Bu dönem dikkat çekenler
+        <Lightbulb className="size-5 text-warning" /> {tt('Bu dönem dikkat çekenler')}
       </h2>
       {history === 0 ? (
-        <p className="mt-2 text-sm text-muted">Karşılaştırma için geçmiş dönem kaydı gerekiyor.</p>
+        <p className="mt-2 text-sm text-muted">{tt('Karşılaştırma için geçmiş dönem kaydı gerekiyor.')}</p>
       ) : items.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">Olağandışı bir artış yok.</p>
+        <p className="mt-2 text-sm text-muted">{tt('Olağandışı bir artış yok.')}</p>
       ) : (
         <ul className="mt-3 space-y-2.5">
           {items.map((i, n) => (
@@ -116,7 +117,7 @@ function Insights({ items, history }: { items: Insight[]; history: number }) {
           ))}
         </ul>
       )}
-      <More className="mt-3">Uyarılar cihazınızda, son 3 dönemin ortalamasıyla karşılaştırılarak hazırlanır; hiçbir veri dışarı gönderilmez.</More>
+      <More className="mt-3">{tt('Uyarılar cihazınızda, son 3 dönemin ortalamasıyla karşılaştırılarak hazırlanır; hiçbir veri dışarı gönderilmez.')}</More>
     </Card>
   )
 }
@@ -126,12 +127,12 @@ function Trend({ report, startDay }: { report: PeriodReport; startDay: number })
   const avgPct = report.averageKurus > 0 ? (report.averageKurus / max) * 100 : null
   return (
     <Card className="p-5">
-      <h2 className="font-display text-base font-semibold">Son 6 dönem</h2>
-      <p className="mt-0.5 text-[12.5px] text-muted">Net harcama (iadeler düşülmüş)</p>
+      <h2 className="font-display text-base font-semibold">{tt('Son 6 dönem')}</h2>
+      <p className="mt-0.5 text-[12.5px] text-muted">{tt('Net harcama (iadeler düşülmüş)')}</p>
       <div className="relative mt-4 flex h-40 items-end gap-2 border-b border-line" aria-hidden>
         {avgPct !== null && (
           <div className="pointer-events-none absolute inset-x-0 border-t border-dashed border-line-strong" style={{ bottom: `${avgPct}%` }}>
-            <span className="absolute -top-4 left-0 text-[10.5px] text-subtle">ortalama</span>
+            <span className="absolute -top-4 left-0 text-[10.5px] text-subtle">{tt('ortalama')}</span>
           </div>
         )}
         {report.trend.map((t) => {
@@ -156,11 +157,11 @@ function Trend({ report, startDay }: { report: PeriodReport; startDay: number })
         ))}
       </div>
       <table className="sr-only">
-        <caption>Son 6 dönemin net harcaması</caption>
+        <caption>{tt('Son 6 dönemin net harcaması')}</caption>
         <thead>
           <tr>
-            <th>Dönem</th>
-            <th>Net harcama</th>
+            <th>{tt('Dönem')}</th>
+            <th>{tt('Net harcama')}</th>
           </tr>
         </thead>
         <tbody>
@@ -182,27 +183,27 @@ function Categories({ report }: { report: PeriodReport }) {
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-base font-semibold">Kategoriler</h2>
+        <h2 className="font-display text-base font-semibold">{tt('Kategoriler')}</h2>
         <Segmented
-          label="Karşılaştırma"
+          label={tt('Karşılaştırma')}
           value={base}
           onChange={setBase}
           options={[
-            { value: 'avg', label: 'Ortalama' },
-            { value: 'prev', label: 'Önceki' },
+            { value: 'avg', label: tt('Ortalama') },
+            { value: 'prev', label: tt('Önceki') },
           ]}
         />
       </div>
       {report.categories.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">Bu dönemde kayıt yok.</p>
+        <p className="mt-3 text-sm text-muted">{tt('Bu dönemde kayıt yok.')}</p>
       ) : (
-        <table className="mt-3 w-full text-[13px]" aria-label="Kategori karşılaştırması">
+        <table className="mt-3 w-full text-[13px]" aria-label={tt('Kategori karşılaştırması')}>
           <thead>
             <tr className="text-left text-[12px] text-muted">
-              <th className="pb-1.5 font-medium">Kategori</th>
-              <th className="pb-1.5 text-right font-medium">Bu dönem</th>
-              <th className="pb-1.5 text-right font-medium">{base === 'avg' ? 'Ortalama' : 'Önceki'}</th>
-              <th className="pb-1.5 text-right font-medium">Fark</th>
+              <th className="pb-1.5 font-medium">{tt('Kategori')}</th>
+              <th className="pb-1.5 text-right font-medium">{tt('Bu dönem')}</th>
+              <th className="pb-1.5 text-right font-medium">{base === 'avg' ? 'Ortalama' : tt('Önceki')}</th>
+              <th className="pb-1.5 text-right font-medium">{tt('Fark')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -240,24 +241,24 @@ function Merchants({ report }: { report: PeriodReport }) {
   return (
     <Card className="p-5 lg:col-span-2">
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <Store className="size-5 text-accent" /> En çok harcanan iş yerleri
+        <Store className="size-5 text-accent" /> {tt('En çok harcanan iş yerleri')}
       </h2>
       {top.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">Bu dönemde iş yeri harcaması yok.</p>
+        <p className="mt-3 text-sm text-muted">{tt('Bu dönemde iş yeri harcaması yok.')}</p>
       ) : (
-        <ul className="mt-3 space-y-2.5" aria-label="İş yerleri">
+        <ul className="mt-3 space-y-2.5" aria-label={tt('İş yerleri')}>
           {top.map((m) => (
             <li key={m.key} className="text-[13px]">
               <div className="flex items-baseline gap-2">
                 <span className="min-w-0 flex-1 truncate font-medium text-ink">{m.name}</span>
-                <span className="shrink-0 text-[12px] text-muted">{m.count} işlem</span>
+                <span className="shrink-0 text-[12px] text-muted">{ttf('{0} işlem', m.count)}</span>
                 <span className="num w-28 shrink-0 text-right font-semibold">{formatKurus(m.currentKurus)}</span>
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
                   <div className="h-full rounded-full" style={{ width: `${(m.currentKurus / max) * 100}%`, background: COLOR_TREND }} />
                 </div>
-                <span className="w-28 shrink-0 text-right text-[11.5px] text-subtle">{m.previousKurus > 0 ? `önceki ${formatKurusCompact(m.previousKurus)}` : 'önceki dönemde yok'}</span>
+                <span className="w-28 shrink-0 text-right text-[11.5px] text-subtle">{m.previousKurus > 0 ? ttf('önceki {0}', formatKurusCompact(m.previousKurus)) : tt('önceki dönemde yok')}</span>
               </div>
             </li>
           ))}

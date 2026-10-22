@@ -14,15 +14,16 @@ import { cn } from '../../lib/cn'
 import { useCategories, useGroups, useRules, useTransactions } from '../../state/data'
 import { useUi } from '../../state/ui'
 import type { ReviewData } from './useImportFlow'
+import { tt, ttf } from '../../lib/i18n'
 
 const PAGE = 40
 type Tab = 'all' | RowStatus
 
 const STATUS_META: Record<RowStatus, { label: string; tone: 'accent' | 'danger' | 'warning' | 'neutral' }> = {
-  valid: { label: 'Geçerli', tone: 'accent' },
-  problem: { label: 'Sorunlu', tone: 'danger' },
-  duplicate: { label: 'Tekrar şüphesi', tone: 'warning' },
-  excluded: { label: 'Hariç', tone: 'neutral' },
+  valid: { label: tt('Geçerli'), tone: 'accent' },
+  problem: { label: tt('Sorunlu'), tone: 'danger' },
+  duplicate: { label: tt('Tekrar şüphesi'), tone: 'warning' },
+  excluded: { label: tt('Hariç'), tone: 'neutral' },
 }
 
 export function ReviewStep({
@@ -82,10 +83,10 @@ export function ReviewStep({
   const removeRow = (r: DraftRow) => {
     const index = rows.findIndex((x) => x.id === r.id)
     onRowsChange(rows.filter((x) => x.id !== r.id))
-    toast('Satır silindi; kaydedilmeyecek.', {
+    toast(tt('Satır silindi; kaydedilmeyecek.'), {
       kind: 'info',
       action: {
-        label: 'Geri al',
+        label: tt('Geri al'),
         onClick: () => {
           const cur = latest.current.rows
           if (cur.some((x) => x.id === r.id)) return
@@ -122,8 +123,8 @@ export function ReviewStep({
       type: 'expense',
       categoryId: null,
       currency: 'TRY',
-      source: fromLine ? { kind: fromLine.origin === 'ocr' ? 'ocr-line' : 'pdf-line', page: fromLine.page, line: fromLine.index + 1, text: fromLine.text } : { kind: 'manual-row', text: 'Elle eklenen satır' },
-      notes: fromLine ? ['Tanınmayan satırdan oluşturuldu; alanları kontrol edin.'] : [],
+      source: fromLine ? { kind: fromLine.origin === 'ocr' ? 'ocr-line' : 'pdf-line', page: fromLine.page, line: fromLine.index + 1, text: fromLine.text } : { kind: 'manual-row', text: tt('Elle eklenen satır') },
+      notes: fromLine ? [tt('Tanınmayan satırdan oluşturuldu; alanları kontrol edin.')] : [],
     }
     onRowsChange([...rows, row])
     setTab('all')
@@ -148,11 +149,11 @@ export function ReviewStep({
     <div className="flex flex-col gap-3">
       {/* Durum sekmeleri ve kısa özet */}
       <Card className="p-3">
-        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5" role="tablist" aria-label="Satır durumu">
+        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5" role="tablist" aria-label={tt('Satır durumu')}>
           {(['all', 'valid', 'problem', 'duplicate', 'excluded'] as Tab[]).map((t) => {
             const n = t === 'all' ? counts.total : counts[t]
             if (t !== 'all' && t !== 'valid' && n === 0 && tab !== t) return null
-            const meta = t === 'all' ? { label: 'Tümü', tone: 'neutral' as const } : STATUS_META[t]
+            const meta = t === 'all' ? { label: tt('Tümü'), tone: 'neutral' as const } : STATUS_META[t]
             return (
               <button
                 key={t}
@@ -184,9 +185,9 @@ export function ReviewStep({
           })}
         </div>
         <p className="num mt-2.5 border-t border-line pt-2.5 text-[13px] text-muted">
-          Gider <b className="font-semibold text-ink">{formatKurus(counts.expenseKurus)}</b>
-          {counts.refundKurus > 0 && <> · İade <b className="font-semibold text-ink">{formatKurus(counts.refundKurus)}</b></>}
-          {counts.transferKurus > 0 && <> · Kart ödemesi {formatKurus(counts.transferKurus)} (gidere girmez)</>}
+          {tt('Gider')} <b className="font-semibold text-ink">{formatKurus(counts.expenseKurus)}</b>
+          {counts.refundKurus > 0 && <> {tt('· İade')} <b className="font-semibold text-ink">{formatKurus(counts.refundKurus)}</b></>}
+          {counts.transferKurus > 0 && <> {ttf('· Kart ödemesi {0} (gidere girmez)', formatKurus(counts.transferKurus))}</>}
         </p>
       </Card>
 
@@ -194,9 +195,9 @@ export function ReviewStep({
 
       {activeGroups.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 px-1">
-          <span className="text-[13px] font-medium text-muted">Tüm satırların grubu:</span>
-          <GroupPicker groups={activeGroups} value={commonGroup ?? '__mixed'} onChange={setAllGroups} label="Tüm satırların grubu" size="sm" />
-          {commonGroup === null && <span className="text-[12px] text-subtle">(satırlarda farklı gruplar var)</span>}
+          <span className="text-[13px] font-medium text-muted">{tt('Tüm satırların grubu:')}</span>
+          <GroupPicker groups={activeGroups} value={commonGroup ?? '__mixed'} onChange={setAllGroups} label={tt('Tüm satırların grubu')} size="sm" />
+          {commonGroup === null && <span className="text-[12px] text-subtle">{tt('(satırlarda farklı gruplar var)')}</span>}
         </div>
       )}
 
@@ -204,21 +205,21 @@ export function ReviewStep({
       {review.totals.map((t, i) => {
         const diff = extractedNet - t.amountKurus
         return (
-          <Alert key={i} tone={diff === 0 ? 'accent' : 'warning'} icon={diff === 0 ? <CircleCheck /> : <AlertTriangle />} title="Kaynak toplamıyla kontrol">
-            {diff === 0 ? 'Belgedeki toplamla eşleşiyor.' : `Belgedeki toplamdan ${formatKurus(Math.abs(diff))} farklı: sorunlu veya hariç satırlara bakın.`}
+          <Alert key={i} tone={diff === 0 ? 'accent' : 'warning'} icon={diff === 0 ? <CircleCheck /> : <AlertTriangle />} title={tt('Kaynak toplamıyla kontrol')}>
+            {diff === 0 ? tt('Belgedeki toplamla eşleşiyor.') : ttf('Belgedeki toplamdan {0} farklı: sorunlu veya hariç satırlara bakın.', formatKurus(Math.abs(diff)))}
           </Alert>
         )
       })}
       <div className="flex flex-wrap items-start gap-x-3 gap-y-1 px-1 text-[12.5px] text-subtle">
         <span className="inline-flex items-center gap-1">
           <Info className="size-3.5" aria-hidden />
-          {review.parserVerified ? 'Sütun eşleştirmenize göre okundu.' : 'Okuyucu bu bankayla doğrulanmadı; satırlara göz atın.'}
+          {review.parserVerified ? tt('Sütun eşleştirmenize göre okundu.') : tt('Okuyucu bu bankayla doğrulanmadı; satırlara göz atın.')}
         </span>
-        {review.usedOcr && <span className="num">OCR okuma kalitesi: %{review.ocrConfidence ?? '—'}</span>}
+        {review.usedOcr && <span className="num">{ttf('OCR okuma kalitesi: %{0}', review.ocrConfidence ?? '—')}</span>}
         {(review.periodText || review.notes.length > 0) && (
-          <More label="Ayrıntılar" className="mt-0">
+          <More label={tt('Ayrıntılar')} className="mt-0">
             <ul className="space-y-1">
-              {review.periodText && <li>Ekstre bilgisi: {review.periodText}.</li>}
+              {review.periodText && <li>{ttf('Ekstre bilgisi: {0}.', review.periodText)}</li>}
               {review.notes.map((n) => (
                 <li key={n}>{n}</li>
               ))}
@@ -228,11 +229,11 @@ export function ReviewStep({
         <div className="ml-auto flex gap-1.5">
           {(review.lines.length > 0 || review.sheet) && (
             <Button size="sm" variant="ghost" icon={<FileText className="size-4" />} onClick={() => setSourceOpen(true)} className="xl:hidden">
-              Kaynak
+              {tt('Kaynak')}
             </Button>
           )}
           <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => addRow()}>
-            Satır ekle
+            {tt('Satır ekle')}
           </Button>
         </div>
       </div>
@@ -241,13 +242,11 @@ export function ReviewStep({
         <div className="flex flex-wrap gap-2">
           {missingCat > 0 && (
             <Button size="sm" variant="soft" onClick={confirmAllOther}>
-              Kategorisi eksik {missingCat} satırı “Diğer” olarak onayla
-            </Button>
+              {ttf('Kategorisi eksik {0} satırı “Diğer” olarak onayla', missingCat)}</Button>
           )}
           {undecided > 0 && (
             <Button size="sm" variant="soft" icon={<SkipForward className="size-4" />} onClick={skipAllDuplicates}>
-              Kararsız {undecided} tekrar şüphesini atla
-            </Button>
+              {ttf('Kararsız {0} tekrar şüphesini atla', undecided)}</Button>
           )}
         </div>
       )}
@@ -256,7 +255,7 @@ export function ReviewStep({
         <div className="flex min-w-0 flex-col gap-2">
           {shown.length === 0 ? (
             <Card className="p-8 text-center text-sm text-muted">
-              {rows.length === 0 ? 'Dosyadan işlem çıkarılamadı. Satırları elle ekleyebilirsiniz.' : 'Bu sekmede satır yok.'}
+              {rows.length === 0 ? tt('Dosyadan işlem çıkarılamadı. Satırları elle ekleyebilirsiniz.') : tt('Bu sekmede satır yok.')}
             </Card>
           ) : (
             <>
@@ -286,13 +285,13 @@ export function ReviewStep({
           {pages > 1 && (
             <div className="flex items-center justify-center gap-2 py-2">
               <Button size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                Önceki
+                {tt('Önceki')}
               </Button>
               <span className="num text-sm text-muted">
                 {page + 1} / {pages}
               </span>
               <Button size="sm" disabled={page >= pages - 1} onClick={() => setPage((p) => p + 1)}>
-                Sonraki
+                {tt('Sonraki')}
               </Button>
             </div>
           )}
@@ -307,22 +306,22 @@ export function ReviewStep({
       {/* Kaydet alanı: listenin sonunda, ekranı kapatmaz */}
       <div className="glass flex flex-wrap items-center gap-3 rounded-2xl border border-line-strong px-4 py-3">
         <p className="min-w-0 flex-1 text-[13px] text-muted">
-          <span className="font-semibold text-ink">{counts.valid} işlem</span> kaydedilecek.
-          {counts.problem + counts.duplicate > 0 && <> {counts.problem + counts.duplicate} satır düzeltilmeden kaydedilmez.</>}
+          <span className="font-semibold text-ink">{ttf('{0} işlem', counts.valid)}</span> {tt('kaydedilecek.')}
+          {counts.problem + counts.duplicate > 0 && <> {ttf('{0} satır düzeltilmeden kaydedilmez.', counts.problem + counts.duplicate)}</>}
         </p>
         <Button variant="ghost" onClick={onCancel}>
-          İptal
+          {tt('İptal')}
         </Button>
         <Button variant="primary" disabled={counts.valid === 0 || saving} loading={saving} onClick={() => setConfirmOpen(true)}>
-          Onayla ve kaydet
+          {tt('Onayla ve kaydet')}
         </Button>
       </div>
 
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={`${counts.valid} işlem kaydedilsin mi?`}
-        confirmLabel="Kaydet"
+        title={ttf('{0} işlem kaydedilsin mi?', counts.valid)}
+        confirmLabel={tt('Kaydet')}
         loading={saving}
         onConfirm={() => {
           setConfirmOpen(false)
@@ -330,19 +329,18 @@ export function ReviewStep({
         }}
       >
         <ul className="num space-y-1">
-          <li>Gider: {formatKurus(counts.expenseKurus)}</li>
-          <li>İade: {formatKurus(counts.refundKurus)}</li>
-          <li>Kart ödemesi/transfer: {formatKurus(counts.transferKurus)} (gidere dahil edilmez)</li>
+          <li>{ttf('Gider: {0}', formatKurus(counts.expenseKurus))}</li>
+          <li>{ttf('İade: {0}', formatKurus(counts.refundKurus))}</li>
+          <li>{ttf('Kart ödemesi/transfer: {0} (gidere dahil edilmez)', formatKurus(counts.transferKurus))}</li>
         </ul>
         {counts.problem + counts.duplicate + counts.excluded > 0 && (
           <p className="mt-3">
-            Kaydedilmeyecek: {counts.problem} sorunlu, {counts.duplicate} kararsız tekrar şüphesi, {counts.excluded} hariç satır.
-          </p>
+            {ttf('Kaydedilmeyecek: {0} sorunlu, {1} kararsız tekrar şüphesi, {2} hariç satır.', counts.problem, counts.duplicate, counts.excluded)}</p>
         )}
-        <p className="mt-3">Aktarım geçmişinden geri alınabilir.</p>
+        <p className="mt-3">{tt('Aktarım geçmişinden geri alınabilir.')}</p>
       </ConfirmDialog>
 
-      <Modal open={sourceOpen} onOpenChange={setSourceOpen} title="Kaynak metin" side size="lg">
+      <Modal open={sourceOpen} onOpenChange={setSourceOpen} title={tt('Kaynak metin')} side size="lg">
         <SourcePanel review={review} focus={focusLine} onCreate={addRow} embedded />
       </Modal>
     </div>
@@ -401,8 +399,8 @@ const RowCard = memo(function RowCard({
   const unknownMerchant = r.type === 'expense' && !r.categoryId && r.include
   const shownProblems = unknownMerchant ? problems.filter((p) => p.field !== 'category') : problems
   const notes = [
-    ...(r.excludedReason && !r.include ? [`Hariç: ${r.excludedReason}`] : []),
-    ...(r.foreign ? [`Döviz: ${(r.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ${r.foreign.currency}. Yalnızca TL karşılığı kaydedilir.`] : []),
+    ...(r.excludedReason && !r.include ? [ttf('Hariç: {0}', r.excludedReason)] : []),
+    ...(r.foreign ? [ttf('Döviz: {0} {1}. Yalnızca TL karşılığı kaydedilir.', (r.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 }), r.foreign.currency)] : []),
     ...(r.ruleConflict ? [r.ruleConflict] : r.ruleNote && r.categorySource === 'rule' ? [r.ruleNote] : []),
     ...r.notes,
   ]
@@ -416,30 +414,30 @@ const RowCard = memo(function RowCard({
         status === 'excluded' && 'opacity-60',
         flash && 'row-flash',
       )}
-      aria-label={`${r.description || 'Açıklamasız satır'}, ${meta.label}`}
+      aria-label={`${r.description || tt('Açıklamasız satır')}, ${meta.label}`}
     >
       <div className="flex items-start gap-2">
-        <Checkbox label={<span className="sr-only">İçe aktar</span>} checked={r.include} onChange={(v) => onChange(r.id, { include: v })} className="mt-2" />
+        <Checkbox label={<span className="sr-only">{tt('İçe aktar')}</span>} checked={r.include} onChange={(v) => onChange(r.id, { include: v })} className="mt-2" />
         <div className="min-w-0 flex-1">
           <Input
             value={r.description}
             onChange={(e) => onChange(r.id, { description: e.target.value })}
-            aria-label="Açıklama"
+            aria-label={tt('Açıklama')}
             aria-invalid={has('description')}
-            placeholder="Açıklama"
+            placeholder={tt('Açıklama')}
             className="h-9 border-transparent bg-transparent px-1.5 text-[14px] font-medium shadow-none hover:border-line focus:border-line-strong"
           />
           <div className="mt-1 grid grid-cols-2 gap-1.5 sm:grid-cols-[140px_120px_minmax(0,1fr)]">
-            <Input type="date" value={r.date ?? ''} onChange={(e) => onChange(r.id, { date: e.target.value || null })} aria-label="Tarih" aria-invalid={has('date')} className="h-9 min-w-0 px-2 text-[13px]" id={`${idp}-date`} />
+            <Input type="date" value={r.date ?? ''} onChange={(e) => onChange(r.id, { date: e.target.value || null })} aria-label={tt('Tarih')} aria-invalid={has('date')} className="h-9 min-w-0 px-2 text-[13px]" id={`${idp}-date`} />
             <Input
               inputMode="decimal"
               value={amountText}
               onChange={(e) => setAmountText(e.target.value)}
               onBlur={commitAmount}
               onKeyDown={(e) => e.key === 'Enter' && commitAmount()}
-              aria-label="Tutar (TL)"
+              aria-label={tt('Tutar (TL)')}
               aria-invalid={has('amount') || has('currency')}
-              placeholder={r.foreign ? 'TL karşılığı' : '0,00'}
+              placeholder={r.foreign ? tt('TL karşılığı') : '0,00'}
               className={cn('num h-9 min-w-0 text-right text-[13px] font-semibold', r.type !== 'expense' && 'text-accent-strong dark:text-accent')}
             />
             <div className="col-span-2 flex min-w-0 items-center gap-1.5 sm:col-span-1">
@@ -450,11 +448,11 @@ const RowCard = memo(function RowCard({
                   const v = e.target.value || null
                   onChange(r.id, { categoryId: v, categorySource: v ? 'manual' : undefined, learnPattern: r.learnPattern ?? suggestLearnPattern(r.description) })
                 }}
-                aria-label="Kategori"
+                aria-label={tt('Kategori')}
                 aria-invalid={has('category')}
                 className="h-9 min-w-0 text-[13px]"
               >
-                <option value="">{r.type === 'expense' ? 'Kategori seçin' : 'Kategori yok'}</option>
+                <option value="">{r.type === 'expense' ? tt('Kategori seçin') : tt('Kategori yok')}</option>
                 {categories
                   .filter((c) => !c.archived)
                   .map((c) => (
@@ -471,26 +469,26 @@ const RowCard = memo(function RowCard({
               {r.type !== 'expense' && <Badge tone="teal">{TX_TYPE_LABEL[r.type]}</Badge>}
               {r.installment && (
                 <Badge tone="info" className="num">
-                  Taksit {r.installment.current}/{r.installment.total || '?'}
+                  {ttf('Taksit {0}/{1}', r.installment.current, r.installment.total || '?')}
                 </Badge>
               )}
-              {r.inFileDuplicate && <Badge tone="neutral">Dosyada tekrar ediyor</Badge>}
-              {r.ownDate && r.ownDate !== r.date && <span className="num text-[12px] text-subtle">İşlem tarihi {formatDate(r.ownDate)}</span>}
+              {r.inFileDuplicate && <Badge tone="neutral">{tt('Dosyada tekrar ediyor')}</Badge>}
+              {r.ownDate && r.ownDate !== r.date && <span className="num text-[12px] text-subtle">{ttf('İşlem tarihi {0}', formatDate(r.ownDate))}</span>}
             </div>
           )}
           {groups.length > 0 && r.type !== 'income' && (
             <div className="mt-1.5">
-              <GroupPicker groups={groups} value={r.groupId ?? ''} onChange={(v) => onChange(r.id, { groupId: v || null })} label={`${r.description || 'Satır'} grubu`} size="sm" />
+              <GroupPicker groups={groups} value={r.groupId ?? ''} onChange={(v) => onChange(r.id, { groupId: v || null })} label={`${r.description || tt('Satır')} grubu`} size="sm" />
             </div>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-center">
           {onRemove && (
-            <button type="button" onClick={onRemove} aria-label="Satırı sil" className="grid size-9 place-items-center rounded-xl text-subtle hover:bg-surface-2 hover:text-danger">
+            <button type="button" onClick={onRemove} aria-label={tt('Satırı sil')} className="grid size-9 place-items-center rounded-xl text-subtle hover:bg-surface-2 hover:text-danger">
               <Trash2 className="size-4" />
             </button>
           )}
-          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="Ayrıntılar" className="grid size-9 place-items-center rounded-xl text-subtle hover:bg-surface-2 hover:text-ink">
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={tt('Ayrıntılar')} className="grid size-9 place-items-center rounded-xl text-subtle hover:bg-surface-2 hover:text-ink">
             <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
           </button>
         </div>
@@ -509,7 +507,7 @@ const RowCard = memo(function RowCard({
 
       {r.amountCandidates && r.amountKurus === null && (
         <div className="mt-2 flex flex-wrap items-center gap-2 pl-8 text-[12.5px]">
-          <span className="text-warning">“{r.amountRaw}” hangisi?</span>
+          <span className="text-warning">{ttf('“{0}” hangisi?', r.amountRaw)}</span>
           {r.amountCandidates.map((c) => (
             <Button key={c} size="sm" variant="soft" onClick={() => onChange(r.id, { amountKurus: c, amountCandidates: undefined })}>
               {formatKurus(c)}
@@ -520,32 +518,32 @@ const RowCard = memo(function RowCard({
 
       {unknownMerchant && (
         <div className="mt-2 flex flex-wrap items-center gap-2 pl-8 text-[12.5px]">
-          <span className="text-danger">Bu iş yeri tanınmadı; kategori tahmin edilmedi.</span>
+          <span className="text-danger">{tt('Bu iş yeri tanınmadı; kategori tahmin edilmedi.')}</span>
           <Button size="sm" variant="soft" onClick={() => onChange(r.id, { categoryId: OTHER_CATEGORY_ID, categorySource: 'confirmed-other' })}>
-            “Diğer” olarak onayla
+            {tt('“Diğer” olarak onayla')}
           </Button>
         </div>
       )}
 
       {r.categorySource === 'manual' && r.categoryId && r.description.trim() && (
         <div className="mt-2 flex flex-wrap items-center gap-2 pl-8">
-          <Checkbox label={<span className="text-[13px]">Bu iş yeri için sonraki işlemlerde de kullan</span>} checked={!!r.learn} onChange={(v) => onChange(r.id, { learn: v, learnPattern: r.learnPattern ?? suggestLearnPattern(r.description) })} />
-          {r.learn && <Input aria-label="Kural ifadesi" value={r.learnPattern ?? ''} onChange={(e) => onChange(r.id, { learnPattern: e.target.value })} className="h-8 w-48 text-[12.5px]" />}
+          <Checkbox label={<span className="text-[13px]">{tt('Bu iş yeri için sonraki işlemlerde de kullan')}</span>} checked={!!r.learn} onChange={(v) => onChange(r.id, { learn: v, learnPattern: r.learnPattern ?? suggestLearnPattern(r.description) })} />
+          {r.learn && <Input aria-label={tt('Kural ifadesi')} value={r.learnPattern ?? ''} onChange={(e) => onChange(r.id, { learnPattern: e.target.value })} className="h-8 w-48 text-[12.5px]" />}
         </div>
       )}
 
       {r.duplicateOf?.length ? (
         <div className="mt-2.5 rounded-xl border border-warning/35 bg-warning-soft p-3">
           <p className="flex items-center gap-1.5 text-[13px] font-semibold text-warning">
-            <Copy className="size-4" /> Mevcut kayıtla benziyor
+            <Copy className="size-4" /> {tt('Mevcut kayıtla benziyor')}
           </p>
           <div className="mt-2 grid grid-cols-1 gap-2 text-[12.5px] sm:grid-cols-2">
             {r.duplicateOf.map((id) => {
               const e = existing.get(id)
               return (
                 <div key={id} className="rounded-lg bg-surface p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-subtle">Kayıtlı işlem ({e ? SOURCE_LABEL[e.source] : '?'})</div>
-                  <div className="mt-0.5 font-medium">{e?.description ?? 'Silinmiş kayıt'}</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-subtle">{ttf('Kayıtlı işlem ({0})', e ? SOURCE_LABEL[e.source] : '?')}</div>
+                  <div className="mt-0.5 font-medium">{e?.description ?? tt('Silinmiş kayıt')}</div>
                   <div className="num text-muted">{e ? `${formatDate(e.date)} · ${formatKurus(e.amountKurus)}` : ''}</div>
                 </div>
               )
@@ -553,10 +551,10 @@ const RowCard = memo(function RowCard({
           </div>
           <div className="mt-2.5 flex flex-wrap gap-2">
             <Button size="sm" variant={r.duplicateDecision === 'skip' ? 'primary' : 'secondary'} icon={<SkipForward className="size-4" />} onClick={() => onChange(r.id, { duplicateDecision: 'skip' })} aria-pressed={r.duplicateDecision === 'skip'}>
-              Atla
+              {tt('Atla')}
             </Button>
             <Button size="sm" variant={r.duplicateDecision === 'keep' ? 'primary' : 'secondary'} icon={<Split className="size-4" />} onClick={() => onChange(r.id, { duplicateDecision: 'keep' })} aria-pressed={r.duplicateDecision === 'keep'}>
-              Ayrı işlem olarak ekle
+              {tt('Ayrı işlem olarak ekle')}
             </Button>
           </div>
         </div>
@@ -566,7 +564,7 @@ const RowCard = memo(function RowCard({
         <div className="mt-2.5 flex flex-col gap-2.5 border-t border-line pt-2.5 pl-8">
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-2">
-              <span className="text-[12px] font-medium text-subtle">Tür</span>
+              <span className="text-[12px] font-medium text-subtle">{tt('Tür')}</span>
               <Select value={r.type} onChange={(e) => onChange(r.id, { type: e.target.value as TxType })} className="h-9 w-auto text-[13px]">
                 {(Object.keys(TX_TYPE_LABEL) as TxType[]).map((t) => (
                   <option key={t} value={t}>
@@ -576,7 +574,7 @@ const RowCard = memo(function RowCard({
               </Select>
             </label>
           </div>
-          {r.installment?.purchaseTotalKurus ? <p className="num text-[12.5px] text-muted">Taksitli alışveriş toplamı {formatKurus(r.installment.purchaseTotalKurus)}; gidere yalnızca bu ayın taksiti eklenir.</p> : null}
+          {r.installment?.purchaseTotalKurus ? <p className="num text-[12.5px] text-muted">{ttf('Taksitli alışveriş toplamı {0}; gidere yalnızca bu ayın taksiti eklenir.', formatKurus(r.installment.purchaseTotalKurus))}</p> : null}
           {notes.length > 0 && (
             <ul className="space-y-1 text-[12.5px] text-muted">
               {notes.map((n) => (
@@ -586,7 +584,7 @@ const RowCard = memo(function RowCard({
           )}
           <button type="button" onClick={onShowSource} className="flex min-w-0 items-center gap-1.5 text-left text-[12px] text-subtle hover:text-ink" title={r.source.text}>
             <FileText className="size-3.5 shrink-0" />
-            <span className="shrink-0">{r.source.kind === 'manual-row' ? 'Elle eklendi' : r.source.kind === 'sheet-row' ? `Satır ${r.source.line}` : `s.${r.source.page} · satır ${r.source.line}`}</span>
+            <span className="shrink-0">{r.source.kind === 'manual-row' ? tt('Elle eklendi') : r.source.kind === 'sheet-row' ? ttf('Satır {0}', r.source.line) : ttf('s.{0} · satır {1}', r.source.page, r.source.line)}</span>
             {r.source.kind !== 'manual-row' && <span className="num truncate font-mono">{r.source.text}</span>}
           </button>
         </div>
@@ -604,12 +602,12 @@ function DueDateCard({ on, current, dueDate, onApply, onOff }: { on: boolean; cu
       <div className="flex items-center gap-3">
         <CalendarClock className="size-5 shrink-0 text-accent" aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="text-[13.5px] font-semibold">Son ödeme tarihine ekle</p>
-          <p className="text-[12px] text-subtle">{on ? 'Tüm işlemler bu tarihte; kendi tarihleri notta kalır.' : dueDate ? `Ekstrede son ödeme: ${formatDate(dueDate)}` : 'Son ödeme tarihi okunamadı; tarihi seçin.'}</p>
+          <p className="text-[13.5px] font-semibold">{tt('Son ödeme tarihine ekle')}</p>
+          <p className="text-[12px] text-subtle">{on ? tt('Tüm işlemler bu tarihte; kendi tarihleri notta kalır.') : dueDate ? ttf('Ekstrede son ödeme: {0}', formatDate(dueDate)) : tt('Son ödeme tarihi okunamadı; tarihi seçin.')}</p>
         </div>
         <Switch
           checked={on}
-          label="Son ödeme tarihine ekle"
+          label={tt('Son ödeme tarihine ekle')}
           disabled={!on && !pick}
           onChange={(v) => (v ? onApply(pick) : onOff())}
         />
@@ -617,7 +615,7 @@ function DueDateCard({ on, current, dueDate, onApply, onOff }: { on: boolean; cu
       {(on || !dueDate) && (
         <Input
           type="date"
-          aria-label="Son ödeme tarihi"
+          aria-label={tt('Son ödeme tarihi')}
           value={date}
           onChange={(e) => {
             const v = e.target.value
@@ -646,7 +644,7 @@ function SourcePanel({ review, focus, onCreate, embedded }: { review: ReviewData
   if (review.sheet) {
     return (
       <Card className={cn('overflow-hidden', embedded && 'border-0 shadow-none')}>
-        {!embedded && <div className="border-b border-line px-4 py-3 text-sm font-semibold">Kaynak tablo</div>}
+        {!embedded && <div className="border-b border-line px-4 py-3 text-sm font-semibold">{tt('Kaynak tablo')}</div>}
         <div ref={ref} className="scrollbar-thin max-h-[70vh] overflow-auto p-2 font-mono text-[11.5px]">
           {review.sheet.rows.slice(0, 400).map((r, i) => (
             <div key={i} data-key={`0:${i + 1}`} className={cn('flex gap-2 rounded px-2 py-0.5', focus === `0:${i + 1}` && 'bg-accent-soft')}>
@@ -664,9 +662,9 @@ function SourcePanel({ review, focus, onCreate, embedded }: { review: ReviewData
       <div className="flex gap-1 border-b border-line p-2">
         {(
           [
-            ['lines', `Tüm satırlar (${review.lines.length})`],
-            ['unparsed', `Tanınmayan (${review.unparsed.length})`],
-            ['ignored', `Özet (${review.ignored.length})`],
+            ['lines', ttf('Tüm satırlar ({0})', review.lines.length)],
+            ['unparsed', ttf('Tanınmayan ({0})', review.unparsed.length)],
+            ['ignored', ttf('Özet ({0})', review.ignored.length)],
           ] as const
         ).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setView(k)} className={cn('rounded-lg px-2 py-1 text-[12px] font-medium', view === k ? 'bg-surface-2 text-ink' : 'text-muted hover:text-ink')}>
@@ -693,12 +691,12 @@ function SourcePanel({ review, focus, onCreate, embedded }: { review: ReviewData
               <div key={`${l.page}:${l.index}`} className="mb-1.5 rounded-lg border border-line p-2">
                 <div className="text-muted">{l.text}</div>
                 <button type="button" onClick={() => onCreate(l)} className="mt-1 font-sans text-[12px] font-semibold text-accent hover:underline">
-                  Bu satırdan işlem oluştur
+                  {tt('Bu satırdan işlem oluştur')}
                 </button>
               </div>
             ))
           ) : (
-            <p className="p-3 font-sans text-sm text-muted">Tanınmayan satır yok.</p>
+            <p className="p-3 font-sans text-sm text-muted">{tt('Tanınmayan satır yok.')}</p>
           ))}
         {view === 'ignored' &&
           review.ignored.map((i) => (
@@ -706,7 +704,7 @@ function SourcePanel({ review, focus, onCreate, embedded }: { review: ReviewData
               <div className="text-muted">{i.line.text}</div>
               <div className="mt-0.5 font-sans text-[12px] text-subtle">{i.reason}</div>
               <button type="button" onClick={() => onCreate(i.line)} className="mt-1 font-sans text-[12px] font-semibold text-accent hover:underline">
-                Yine de işlem olarak ekle
+                {tt('Yine de işlem olarak ekle')}
               </button>
             </div>
           ))}

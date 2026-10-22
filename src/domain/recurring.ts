@@ -2,6 +2,7 @@ import { addDays, daysInMonth, monthOf, periodOf, periodRange, toIsoDate } from 
 import { incomeDates, matchIncomes } from './income'
 import { cleanDescription, merchantKey } from './normalize'
 import type { IsoDate, MonthKey, RecurringIncome, RecurringPayment, Transaction } from './types'
+import { ttf } from '../lib/i18n'
 
 /** Tarihe k ay ekler; gün, `day` (yoksa tarihin günü) ile ayın son gününden küçük olanıdır. */
 export function addMonthsClamped(date: IsoDate, k: number, day?: number): IsoDate {
@@ -306,7 +307,7 @@ export function plannedInstallments(real: Transaction[], items: RecurringPayment
         return
       }
       const n = i + 1
-      out.push(base(`plan:rec:${it.id}:${d}`, d, it.amountKurus, total ? `${it.name} (${n}/${total}. taksit)` : `${it.name} (taksit)`, it.categoryId))
+      out.push(base(`plan:rec:${it.id}:${d}`, d, it.amountKurus, total ? ttf('{0} ({1}/{2}. taksit)', it.name, n, total) : `${it.name} (taksit)`, it.categoryId))
     })
   }
   return out

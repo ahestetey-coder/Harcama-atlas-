@@ -3,6 +3,7 @@ import { formatKurus } from './money'
 import { occurrencesBetween, type DuePayment } from './recurring'
 import type { BudgetStatus, LimitState } from './budget'
 import type { IsoDate, RecurringIncome } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 /**
  * Mobil uygulamanın cihazda kurduğu (sunucusuz) bildirimler. Bu dosya yalnızca hangi bildirimin
@@ -21,10 +22,10 @@ export interface NotifyPrefs {
 export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = { enabled: true, payments: true, income: true, budget: true, spending: true }
 
 export const NOTIFY_KIND_LABEL: Record<NotifyKind, { title: string; hint: string }> = {
-  payments: { title: 'Ödeme hatırlatmaları', hint: 'Düzenli ödeme, taksit ve borç günleri' },
-  income: { title: 'Gelir günü', hint: 'Maaş ve düzenli gelir günü' },
-  budget: { title: 'Bütçe uyarıları', hint: 'Bütçe dolmaya yaklaşınca ve aşılınca' },
-  spending: { title: 'Harcama girme hatırlatması', hint: '2 gün kayıt girilmezse 3. gün akşamı' },
+  payments: { title: tt('Ödeme hatırlatmaları'), hint: tt('Düzenli ödeme, taksit ve borç günleri') },
+  income: { title: tt('Gelir günü'), hint: tt('Maaş ve düzenli gelir günü') },
+  budget: { title: tt('Bütçe uyarıları'), hint: tt('Bütçe dolmaya yaklaşınca ve aşılınca') },
+  spending: { title: tt('Harcama girme hatırlatması'), hint: tt('2 gün kayıt girilmezse 3. gün akşamı') },
 }
 
 export interface PlannedNotification {
@@ -83,7 +84,7 @@ export interface NotifyInput {
 }
 
 function dayWord(n: number): string {
-  return n === 1 ? 'Yarın' : `${n} gün sonra`
+  return n === 1 ? tt('Yarın') : ttf('{0} gün sonra', n)
 }
 
 /** Önümüzdeki günler için kurulacak zamanlı bildirimler (en yakından uzağa, en fazla MAX_PENDING). */
@@ -97,22 +98,22 @@ export function planNotifications(input: NotifyInput, prefs: NotifyPrefs): Plann
   if (prefs.payments) {
     for (const d of input.due) {
       if (d.date < today || d.date > to) continue
-      const amount = d.amountKurus > 0 ? `${lira(d.amountKurus)} ödenecek.` : 'Son ödeme günü.'
+      const amount = d.amountKurus > 0 ? ttf('{0} ödenecek.', lira(d.amountKurus)) : tt('Son ödeme günü.')
       const route = '/borclar?bolum=odemeler'
       if (d.reminderDays > 0)
         out.push({
           key: `pay:${d.id}:${d.date}:once`,
           kind: 'payments',
           at: atLocal(addDays(d.date, -d.reminderDays), PAYMENT_HOUR),
-          title: `${dayWord(d.reminderDays)} ödeme: ${d.name}`,
-          body: `${amount} Hesabında yeterli para olduğundan emin ol.`,
+          title: ttf('{0} ödeme: {1}', dayWord(d.reminderDays), d.name),
+          body: ttf('{0} Hesabında yeterli para olduğundan emin ol.', amount),
           route,
         })
       out.push({
         key: `pay:${d.id}:${d.date}:gun`,
         kind: 'payments',
         at: atLocal(d.date, DUE_DAY_HOUR),
-        title: `Bugün ödeme günü: ${d.name}`,
+        title: ttf('Bugün ödeme günü: {0}', d.name),
         body: amount,
         route,
       })
@@ -129,10 +130,10 @@ export function planNotifications(input: NotifyInput, prefs: NotifyPrefs): Plann
           key: `gelir:${inc.id}:${d}`,
           kind: 'income',
           at: atLocal(d, INCOME_HOUR),
-          title: salary ? 'Bugün maaş günü' : `Bugün gelir günü: ${inc.name}`,
+          title: salary ? tt('Bugün maaş günü') : ttf('Bugün gelir günü: {0}', inc.name),
           body: salary
-            ? `${lira(inc.amountKurus)} bekleniyor. Yeni dönemin bütçesine bir göz at.`
-            : `${lira(inc.amountKurus)} bekleniyor. Geldiyse planına göz at.`,
+            ? ttf('{0} bekleniyor. Yeni dönemin bütçesine bir göz at.', lira(inc.amountKurus))
+            : ttf('{0} bekleniyor. Geldiyse planına göz at.', lira(inc.amountKurus)),
           route: '/butce',
         })
       }
@@ -147,8 +148,8 @@ export function planNotifications(input: NotifyInput, prefs: NotifyPrefs): Plann
         key: `kayit:${input.lastEntryDate}:${gap}`,
         kind: 'spending',
         at: atLocal(d, SPENDING_HOUR),
-        title: 'Harcamalarını girmeyi unutma',
-        body: `${gap} gündür kayıt yok. Birkaç saniyede ekleyebilir ya da ekstreni yükleyebilirsin.`,
+        title: tt('Harcamalarını girmeyi unutma'),
+        body: ttf('{0} gündür kayıt yok. Birkaç saniyede ekleyebilir ya da ekstreni yükleyebilirsin.', gap),
         route: '/islemler',
       })
     }
@@ -181,16 +182,16 @@ export function budgetAlerts(
     if (sent.has(key)) continue
     const s = w.status
     const pct = Math.round(s.ratio * 100)
-    const name = w.kind === 'total' ? 'Aylık bütçen' : `${categoryName(w.categoryId ?? '')} limitin`
+    const name = w.kind === 'total' ? tt('Aylık bütçen') : `${categoryName(w.categoryId ?? '')} limitin`
     out.push({
       key,
       kind: 'budget',
       at: new Date(now.getTime() + 2000),
-      title: state === 'over' ? `${name} aşıldı` : `${name} %${pct} doldu`,
+      title: state === 'over' ? ttf('{0} aşıldı', name) : ttf('{0} %{1} doldu', name, pct),
       body:
         state === 'over'
-          ? `Bu dönem ${lira(s.spentKurus)} harcandı, limit ${lira(s.effectiveKurus)}. ${lira(s.spentKurus - s.effectiveKurus)} fazla.`
-          : `Bu dönem ${lira(s.spentKurus)} / ${lira(s.effectiveKurus)} harcandı. Kalan ${lira(s.effectiveKurus - s.spentKurus)}.`,
+          ? ttf('Bu dönem {0} harcandı, limit {1}. {2} fazla.', lira(s.spentKurus), lira(s.effectiveKurus), lira(s.spentKurus - s.effectiveKurus))
+          : ttf('Bu dönem {0} / {1} harcandı. Kalan {2}.', lira(s.spentKurus), lira(s.effectiveKurus), lira(s.effectiveKurus - s.spentKurus)),
       route: '/butce',
     })
   }

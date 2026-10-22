@@ -13,6 +13,7 @@ import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
 import { usePlan } from '../state/plan'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 /** Uygulamada kullanılabilir olan Plus/Plus+ özellikleri. Diğerleri "Yakında" gösterilir. */
 const READY: Partial<Record<Feature, string>> = {
@@ -38,39 +39,39 @@ interface Item {
 const PLANS: Array<{ plan: Plan; tagline: string; items: Item[] }> = [
   {
     plan: 'free',
-    tagline: 'Harcamalarını kaydet, düzenle ve takip et',
+    tagline: tt('Harcamalarını kaydet, düzenle ve takip et'),
     items: [
-      { text: 'Ekstreyi PDF, Excel, CSV veya ekran görüntüsünden içe aktarma' },
-      { text: 'Kaydetmeden önce inceleme, tekrar uyarısı ve kategori önerileri' },
-      { text: 'Aylık panel, kategori dağılımı ve aylık toplam bütçe' },
-      { text: 'Kart kesim gününe göre dönem' },
-      { text: 'Ortak gruplar, üye daveti ve eşit gider paylaşımı' },
-      { text: 'Yedekleme, çevrimdışı kullanım ve hesap silme' },
+      { text: tt('Ekstreyi PDF, Excel, CSV veya ekran görüntüsünden içe aktarma') },
+      { text: tt('Kaydetmeden önce inceleme, tekrar uyarısı ve kategori önerileri') },
+      { text: tt('Aylık panel, kategori dağılımı ve aylık toplam bütçe') },
+      { text: tt('Kart kesim gününe göre dönem') },
+      { text: tt('Ortak gruplar, üye daveti ve eşit gider paylaşımı') },
+      { text: tt('Yedekleme, çevrimdışı kullanım ve hesap silme') },
     ],
   },
   {
     plan: 'plus',
-    tagline: 'Bütçeni planla, varlıklarını tek yerde gör',
+    tagline: tt('Bütçeni planla, varlıklarını tek yerde gör'),
     items: [
-      { text: 'Koçun otomatik bütçesi, kategori limitleri, haftalık bütçe, devir, uyarılar ve ay sonu tahmini', feature: 'advancedBudget' },
-      { text: 'Taksitler ve gelecek aylardaki ödeme yükü', feature: 'installments' },
-      { text: 'Abonelikler, düzenli ödemeler ve hatırlatmalar', feature: 'subscriptions' },
-      { text: 'Birikim hedefleri ve ayrılması gereken aylık tutar', feature: 'goals' },
-      { text: 'Kategori, iş yeri ve dönem karşılaştırmalı raporlar', feature: 'reports' },
-      { text: 'Yatırımlarım ve Borçlarım: altın, döviz, fon, hisse, kripto, emtia, mevduat; türüne göre borçlar ve kart taksitleri', feature: 'assets' },
-      { text: 'Yüzde, ağırlık veya özel tutarla ortak gider paylaşımı', feature: 'advancedSplit' },
-      { text: "Web'deki Finansal Harita testini gerçek rakamlarınla netleştirme: kesin özgürlük yılı ve sıradaki durak", feature: 'webRefine' },
-      { text: 'Finansal Özgürlük Yolculuğum: Özgürlük Rotası testi, 8 duraklı rota ve yıl yıl simülasyon', feature: 'journey' },
+      { text: tt('Koçun otomatik bütçesi, kategori limitleri, haftalık bütçe, devir, uyarılar ve ay sonu tahmini'), feature: 'advancedBudget' },
+      { text: tt('Taksitler ve gelecek aylardaki ödeme yükü'), feature: 'installments' },
+      { text: tt('Abonelikler, düzenli ödemeler ve hatırlatmalar'), feature: 'subscriptions' },
+      { text: tt('Birikim hedefleri ve ayrılması gereken aylık tutar'), feature: 'goals' },
+      { text: tt('Kategori, iş yeri ve dönem karşılaştırmalı raporlar'), feature: 'reports' },
+      { text: tt('Yatırımlarım ve Borçlarım: altın, döviz, fon, hisse, kripto, emtia, mevduat; türüne göre borçlar ve kart taksitleri'), feature: 'assets' },
+      { text: tt('Yüzde, ağırlık veya özel tutarla ortak gider paylaşımı'), feature: 'advancedSplit' },
+      { text: tt('Web\'deki Finansal Harita testini gerçek rakamlarınla netleştirme: kesin özgürlük yılı ve sıradaki durak'), feature: 'webRefine' },
+      { text: tt('Finansal Özgürlük Yolculuğum: Özgürlük Rotası testi, 8 duraklı rota ve yıl yıl simülasyon'), feature: 'journey' },
     ],
   },
   {
     plan: 'plusplus',
-    tagline: 'Finansal özgürlük yolculuğunu oluştur ve ilerlemeni izle',
+    tagline: tt('Finansal özgürlük yolculuğunu oluştur ve ilerlemeni izle'),
     items: [
-      { text: 'Plus’ın bütün özellikleri' },
-      { text: 'Gelecek senaryoları: temkinli, orta ve olumlu varsayımlar', feature: 'scenarios' },
-      { text: 'Finans koçu: borç kapatma ve yapılandırma planı, yatırıma ayrılacak tutar, kişiye özel mesajlar', feature: 'aiCoach' },
-      { text: 'Finansal bilgi ve ekonomi gündemi', feature: 'learning' },
+      { text: tt('Plus’ın bütün özellikleri') },
+      { text: tt('Gelecek senaryoları: temkinli, orta ve olumlu varsayımlar'), feature: 'scenarios' },
+      { text: tt('Finans koçu: borç kapatma ve yapılandırma planı, yatırıma ayrılacak tutar, kişiye özel mesajlar'), feature: 'aiCoach' },
+      { text: tt('Finansal bilgi ve ekonomi gündemi'), feature: 'learning' },
     ],
   },
 ]
@@ -89,7 +90,7 @@ export default function PlansPage() {
       await chooseTestPlan(backend.client, p)
       if (preview) setPreview(null)
       refresh()
-      toast(p === 'free' ? 'Ücretsiz pakete geçtin.' : `${PLAN_LABEL[p]} açıldı. Deneme sürümünde ücret alınmaz.`)
+      toast(p === 'free' ? tt('Ücretsiz pakete geçtin.') : ttf('{0} açıldı. Deneme sürümünde ücret alınmaz.', PLAN_LABEL[p]))
     } catch (e) {
       toast(cloudErrorMessage(e), { kind: 'error' })
     } finally {
@@ -98,41 +99,41 @@ export default function PlansPage() {
   }
   return (
     <div>
-      <PageHeader title="Paketler" subtitle="Temel özellikler hep ücretsiz" />
+      <PageHeader title={tt('Paketler')} subtitle={tt('Temel özellikler hep ücretsiz')} />
 
       {canPreview && (
         <Card className="mb-5 p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <FlaskConical className="size-5 text-accent" /> Önizleme
+            <FlaskConical className="size-5 text-accent" /> {tt('Önizleme')}
           </h2>
-          <p className="mt-1 text-sm text-muted">Paketleri ödeme olmadan deneyin.</p>
-          <More label="Kimler görür?">Yalnızca yönetici hesabında, demo modunda ve yerel kullanımda görünür.</More>
+          <p className="mt-1 text-sm text-muted">{tt('Paketleri ödeme olmadan deneyin.')}</p>
+          <More label={tt('Kimler görür?')}>{tt('Yalnızca yönetici hesabında, demo modunda ve yerel kullanımda görünür.')}</More>
           <Segmented<Plan>
-            label="Önizleme paketi"
+            label={tt('Önizleme paketi')}
             value={preview ?? 'free'}
             onChange={(p) => setPreview(p)}
             className="mt-4 w-full max-w-md"
             options={[
-              { value: 'free', label: 'Ücretsiz' },
-              { value: 'plus', label: 'Plus' },
-              { value: 'plusplus', label: 'Plus+' },
+              { value: 'free', label: tt('Ücretsiz') },
+              { value: 'plus', label: tt('Plus') },
+              { value: 'plusplus', label: tt('Plus+') },
             ]}
           />
         </Card>
       )}
 
-      <Card className="mb-5 flex flex-wrap items-center justify-between gap-3 p-5" aria-label="Mevcut paketiniz">
+      <Card className="mb-5 flex flex-wrap items-center justify-between gap-3 p-5" aria-label={tt('Mevcut paketiniz')}>
         <div>
-          <div className="text-[13px] text-muted">Mevcut paketiniz</div>
+          <div className="text-[13px] text-muted">{tt('Mevcut paketiniz')}</div>
           <div className="mt-0.5 flex items-center gap-2 font-display text-2xl font-bold text-ink">
             {PLAN_LABEL[purchased]}
             {purchased !== 'free' && <PlanBadge plan={purchased} />}
           </div>
-          {preview && <p className="mt-1 text-[12.5px] text-muted">Şu an {PLAN_LABEL[preview]} önizlemesindesiniz.</p>}
+          {preview && <p className="mt-1 text-[12.5px] text-muted">{ttf('Şu an {0} önizlemesindesiniz.', PLAN_LABEL[preview])}</p>}
         </div>
         {testBuy && purchased !== 'free' && (
           <Button variant="secondary" loading={busy === 'free'} disabled={busy !== null} onClick={() => choose('free')}>
-            Ücretsize dön
+            {tt('Ücretsize dön')}
           </Button>
         )}
       </Card>
@@ -153,7 +154,7 @@ export default function PlansPage() {
                   <h2 className="font-display text-xl font-bold text-ink">{PLAN_LABEL[p.plan]}</h2>
                   {current ? (
                     <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11.5px] font-semibold text-accent-strong dark:text-accent">
-                      {purchased === p.plan ? 'Mevcut paketiniz' : 'Önizlemede'}
+                      {purchased === p.plan ? tt('Mevcut paketiniz') : tt('Önizlemede')}
                     </span>
                   ) : (
                     <PlanBadge plan={p.plan} />
@@ -168,10 +169,10 @@ export default function PlansPage() {
                         {ready ? <Check className="mt-0.5 size-4 shrink-0 text-accent" /> : <Clock className="mt-0.5 size-4 shrink-0 text-subtle" />}
                         <span className={ready ? 'text-ink' : 'text-muted'}>
                           {it.text}
-                          {!ready && <span className="ml-1.5 text-[11.5px] font-medium text-subtle">Yakında</span>}
+                          {!ready && <span className="ml-1.5 text-[11.5px] font-medium text-subtle">{tt('Yakında')}</span>}
                           {it.feature && READY[it.feature] && (
                             <Link to={READY[it.feature]!} className="ml-1.5 text-[12px] font-medium text-accent hover:underline">
-                              Aç
+                              {tt('Aç')}
                             </Link>
                           )}
                         </span>
@@ -190,7 +191,7 @@ export default function PlansPage() {
                     )}
                   >
                     <Sparkles className="size-4" />
-                    {busy === p.plan ? 'Seçiliyor…' : p.plan === 'free' ? 'Ücretsize dön' : `${PLAN_LABEL[p.plan]} seç · deneme sürümünde ücretsiz`}
+                    {busy === p.plan ? tt('Seçiliyor…') : p.plan === 'free' ? tt('Ücretsize dön') : ttf('{0} seç · deneme sürümünde ücretsiz', PLAN_LABEL[p.plan])}
                   </button>
                 ) : (
                   p.plan !== 'free' &&
@@ -200,7 +201,7 @@ export default function PlansPage() {
                       disabled
                       className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 text-sm font-semibold text-subtle"
                     >
-                      <Sparkles className="size-4" /> Satın alma yakında
+                      <Sparkles className="size-4" /> {tt('Satın alma yakında')}
                     </button>
                   )
                 )}
@@ -209,9 +210,9 @@ export default function PlansPage() {
           )
         })}
       </div>
-      <Alert tone="info" className="mt-5" title={testBuy ? 'Deneme sürümü' : 'Ödeme nasıl olacak?'}>
-        {testBuy && 'Şu an paketler ücretsiz seçilir. Yayında '}
-        App Store ve Google Play üzerinden alınacak. Kart bilgileriniz bize gelmez.
+      <Alert tone="info" className="mt-5" title={testBuy ? tt('Deneme sürümü') : tt('Ödeme nasıl olacak?')}>
+        {testBuy && tt('Şu an paketler ücretsiz seçilir. Yayında ')}
+        {tt('App Store ve Google Play üzerinden alınacak. Kart bilgileriniz bize gelmez.')}
       </Alert>
     </div>
   )

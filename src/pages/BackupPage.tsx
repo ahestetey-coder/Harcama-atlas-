@@ -8,6 +8,7 @@ import { toUserMessage, type RestoreMode } from '../data/repository'
 import { downloadBlob } from '../lib/download'
 import { useData } from '../state/data'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 export default function BackupPage() {
   const { repo, isDemo } = useData()
@@ -41,7 +42,7 @@ export default function BackupPage() {
     try {
       const b = await repo.exportBackup()
       downloadBlob(new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' }), isDemo ? backupFileName().replace('-yedek-', '-demo-yedek-') : backupFileName())
-      toast(`Yedek indirildi: ${b.data.transactions.length} işlem, ${b.data.categories.length} kategori, ${b.data.rules.length} kural.`)
+      toast(ttf('Yedek indirildi: {0} işlem, {1} kategori, {2} kural.', b.data.transactions.length, b.data.categories.length, b.data.rules.length))
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
     }
@@ -50,7 +51,7 @@ export default function BackupPage() {
   const onFile = async (f: File | undefined) => {
     if (!f) return
     setParseError(null)
-    if (f.size > 50 * 1024 * 1024) return setParseError({ message: 'Dosya çok büyük (50 MB sınırı).' })
+    if (f.size > 50 * 1024 * 1024) return setParseError({ message: tt('Dosya çok büyük (50 MB sınırı).') })
     const r = parseBackup(await f.text())
     if (fileRef.current) fileRef.current.value = ''
     if (!r.ok) return setParseError({ message: r.message, details: r.details })
@@ -65,8 +66,8 @@ export default function BackupPage() {
       const rep = await repo.restoreBackup(pending.backup, mode)
       toast(
         mode === 'replace'
-          ? `Geri yüklendi: ${rep.added.transactions} işlem, ${rep.added.categories} kategori, ${rep.added.rules} kural.`
-          : `Birleştirildi: ${rep.added.transactions} yeni işlem eklendi, ${rep.skipped.transactions} mevcut işlem korundu.`,
+          ? ttf('Geri yüklendi: {0} işlem, {1} kategori, {2} kural.', rep.added.transactions, rep.added.categories, rep.added.rules)
+          : ttf('Birleştirildi: {0} yeni işlem eklendi, {1} mevcut işlem korundu.', rep.added.transactions, rep.skipped.transactions),
       )
       setPending(null)
       void refresh()
@@ -80,7 +81,7 @@ export default function BackupPage() {
   const wipe = async () => {
     try {
       await repo.clearAll()
-      toast(isDemo ? 'Demo verileri silindi.' : 'Bütün veriler silindi. Başlangıç kategorileri ve kuralları yeniden oluşturuldu.')
+      toast(isDemo ? tt('Demo verileri silindi.') : tt('Bütün veriler silindi. Başlangıç kategorileri ve kuralları yeniden oluşturuldu.'))
       setWipeOpen(false)
       setWipeText('')
       void refresh()
@@ -94,30 +95,29 @@ export default function BackupPage() {
 
   return (
     <div>
-      <PageHeader title="Yedekleme ve veri" subtitle={isDemo ? 'Yalnızca demo verisi etkilenir' : 'Düzenli yedek almayı unutmayın'} />
+      <PageHeader title={tt('Yedekleme ve veri')} subtitle={isDemo ? tt('Yalnızca demo verisi etkilenir') : tt('Düzenli yedek almayı unutmayın')} />
 
-      <Alert tone="warning" icon={<ShieldAlert />} title="Tarayıcı verilerini silmek kayıtlarınızı da siler" className="mb-4">
-        Sunucuda kopyası yoktur; düzenli JSON yedeği indirin.
-        <More label="Neden?">
-          Veriler bu tarayıcıda (IndexedDB) tutulur. Site verilerini temizlemek, gizli pencere, tarayıcıyı kaldırmak veya cihazın yer açması kayıtları kalıcı olarak
-          silebilir.
+      <Alert tone="warning" icon={<ShieldAlert />} title={tt('Tarayıcı verilerini silmek kayıtlarınızı da siler')} className="mb-4">
+        {tt('Sunucuda kopyası yoktur; düzenli JSON yedeği indirin.')}
+        <More label={tt('Neden?')}>
+          {tt('Veriler bu tarayıcıda (IndexedDB) tutulur. Site verilerini temizlemek, gizli pencere, tarayıcıyı kaldırmak veya cihazın yer açması kayıtları kalıcı olarak silebilir.')}
         </More>
       </Alert>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Download className="size-5 text-accent" /> Yedek al
+            <Download className="size-5 text-accent" /> {tt('Yedek al')}
           </h2>
-          <p className="mt-1 text-sm text-muted">Tüm kayıtlarınız tek bir JSON dosyasında.</p>
+          <p className="mt-1 text-sm text-muted">{tt('Tüm kayıtlarınız tek bir JSON dosyasında.')}</p>
           {counts && (
             <dl className="num mt-4 grid grid-cols-4 gap-2 rounded-2xl bg-surface-2 p-3 text-center">
               {(
                 [
-                  ['İşlem', counts.transactions],
+                  [tt('İşlem'), counts.transactions],
                   ['Kategori', counts.categories],
                   ['Kural', counts.rules],
-                  ['Aktarım', counts.imports],
+                  [tt('Aktarım'), counts.imports],
                 ] as const
               ).map(([l, n]) => (
                 <div key={l}>
@@ -128,18 +128,18 @@ export default function BackupPage() {
             </dl>
           )}
           <Button variant="primary" className="mt-4" icon={<FileJson className="size-4" />} onClick={exportBackup}>
-            JSON yedeği indir
+            {tt('JSON yedeği indir')}
           </Button>
         </Card>
 
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Upload className="size-5 text-accent" /> Yedekten geri yükle
+            <Upload className="size-5 text-accent" /> {tt('Yedekten geri yükle')}
           </h2>
-          <p className="mt-1 text-sm text-muted">Onaylamadan hiçbir veri değişmez.</p>
+          <p className="mt-1 text-sm text-muted">{tt('Onaylamadan hiçbir veri değişmez.')}</p>
           <input ref={fileRef} type="file" accept="application/json,.json" className="sr-only" id="restore-file" onChange={(e) => onFile(e.target.files?.[0])} />
           <Button className="mt-4" icon={<Upload className="size-4" />} onClick={() => fileRef.current?.click()}>
-            Yedek dosyası seç
+            {tt('Yedek dosyası seç')}
           </Button>
           {parseError && (
             <Alert tone="danger" icon={<TriangleAlert />} title={parseError.message} className="mt-3">
@@ -156,13 +156,13 @@ export default function BackupPage() {
 
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <HardDrive className="size-5 text-accent" /> Depolama
+            <HardDrive className="size-5 text-accent" /> {tt('Depolama')}
           </h2>
           <p className="num mt-2 text-sm text-muted">
-            Kullanılan: {mb(storage?.usage)} / tarayıcının ayırdığı: {mb(storage?.quota)}
+            {ttf('Kullanılan: {0} / tarayıcının ayırdığı: {1}', mb(storage?.usage), mb(storage?.quota))}
           </p>
           <p className="mt-1 text-sm text-muted">
-            Kalıcı depolama: {storage?.persisted ? 'verildi' : 'verilmedi (tarayıcı silebilir)'}
+            {ttf('Kalıcı depolama: {0}', storage?.persisted ? 'verildi' : tt('verilmedi (tarayıcı silebilir)'))}
           </p>
           {!storage?.persisted && 'storage' in navigator && (
             <Button
@@ -171,21 +171,21 @@ export default function BackupPage() {
               onClick={async () => {
                 const ok = await navigator.storage.persist?.()
                 setStorage((s) => ({ ...s, persisted: !!ok }))
-                toast(ok ? 'Kalıcı depolama izni verildi.' : 'Tarayıcı kalıcı depolama iznini vermedi. Düzenli yedek almaya devam edin.', { kind: ok ? 'success' : 'info' })
+                toast(ok ? tt('Kalıcı depolama izni verildi.') : tt('Tarayıcı kalıcı depolama iznini vermedi. Düzenli yedek almaya devam edin.'), { kind: ok ? 'success' : 'info' })
               }}
             >
-              Kalıcı depolama iste
+              {tt('Kalıcı depolama iste')}
             </Button>
           )}
         </Card>
 
         <Card className="border-danger/25 p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold text-danger">
-            <Trash2 className="size-5" /> {isDemo ? 'Demo verilerini sil' : 'Bütün verileri sil'}
+            <Trash2 className="size-5" /> {isDemo ? tt('Demo verilerini sil') : tt('Bütün verileri sil')}
           </h2>
-          <p className="mt-1 text-sm text-muted">Geri alınamaz; önce yedek alın.</p>
+          <p className="mt-1 text-sm text-muted">{tt('Geri alınamaz; önce yedek alın.')}</p>
           <Button variant="danger" className="mt-4" icon={<Trash2 className="size-4" />} onClick={() => setWipeOpen(true)}>
-            Verileri sil…
+            {tt('Verileri sil…')}
           </Button>
         </Card>
       </div>
@@ -193,15 +193,15 @@ export default function BackupPage() {
       <Modal
         open={!!pending}
         onOpenChange={(o) => !o && setPending(null)}
-        title="Yedeği geri yükle"
+        title={tt('Yedeği geri yükle')}
         description={pending?.fileName}
         footer={
           <>
             <Button variant="ghost" onClick={() => setPending(null)}>
-              Vazgeç
+              {tt('Vazgeç')}
             </Button>
             <Button variant={mode === 'replace' ? 'danger' : 'primary'} onClick={restore} loading={restoring}>
-              {mode === 'replace' ? 'Mevcut verileri değiştir' : 'Birleştir'}
+              {mode === 'replace' ? tt('Mevcut verileri değiştir') : tt('Birleştir')}
             </Button>
           </>
         }
@@ -209,23 +209,23 @@ export default function BackupPage() {
         {b && counts && (
           <div className="flex flex-col gap-4 text-sm">
             <p className="text-muted">
-              Yedek tarihi: {new Date(b.exportedAt).toLocaleString('tr-TR')} · şema sürümü {b.schemaVersion}
+              {ttf('Yedek tarihi: {0} · şema sürümü {1}', new Date(b.exportedAt).toLocaleString('tr-TR'), b.schemaVersion)}
             </p>
             <table className="num w-full text-left">
               <thead className="text-[12px] text-subtle">
                 <tr>
                   <th className="py-1 font-medium"></th>
-                  <th className="py-1 font-medium">Şu an</th>
-                  <th className="py-1 font-medium">Yedekte</th>
+                  <th className="py-1 font-medium">{tt('Şu an')}</th>
+                  <th className="py-1 font-medium">{tt('Yedekte')}</th>
                 </tr>
               </thead>
               <tbody>
                 {(
                   [
-                    ['İşlem', counts.transactions, b.data.transactions.length],
+                    [tt('İşlem'), counts.transactions, b.data.transactions.length],
                     ['Kategori', counts.categories, b.data.categories.length],
                     ['Kural', counts.rules, b.data.rules.length],
-                    ['Aktarım', counts.imports, b.data.imports.length],
+                    [tt('Aktarım'), counts.imports, b.data.imports.length],
                   ] as const
                 ).map(([l, a, c]) => (
                   <tr key={l} className="border-t border-line">
@@ -237,22 +237,22 @@ export default function BackupPage() {
               </tbody>
             </table>
             <Segmented
-              label="Geri yükleme türü"
+              label={tt('Geri yükleme türü')}
               value={mode}
               onChange={setMode}
               options={[
-                { value: 'merge', label: 'Birleştir' },
-                { value: 'replace', label: 'Değiştir' },
+                { value: 'merge', label: tt('Birleştir') },
+                { value: 'replace', label: tt('Değiştir') },
               ]}
               className="w-full"
             />
             {mode === 'merge' ? (
-              <Alert tone="info">Yalnızca burada olmayan kayıtlar eklenir, mevcutlar korunur.</Alert>
+              <Alert tone="info">{tt('Yalnızca burada olmayan kayıtlar eklenir, mevcutlar korunur.')}</Alert>
             ) : (
-              <Alert tone="danger" icon={<TriangleAlert />} title={`Mevcut ${counts.transactions} işlem silinecek`}>
-                Bütün mevcut veriler silinip yerine yedek yüklenecek.
+              <Alert tone="danger" icon={<TriangleAlert />} title={ttf('Mevcut {0} işlem silinecek', counts.transactions)}>
+                {tt('Bütün mevcut veriler silinip yerine yedek yüklenecek.')}
                 <button type="button" onClick={exportBackup} className="mt-1 block font-semibold text-accent hover:underline">
-                  Önce mevcut verilerin yedeğini indir
+                  {tt('Önce mevcut verilerin yedeğini indir')}
                 </button>
               </Alert>
             )}
@@ -266,16 +266,16 @@ export default function BackupPage() {
           setWipeOpen(o)
           if (!o) setWipeText('')
         }}
-        title={isDemo ? 'Demo verileri silinsin mi?' : 'Bütün veriler silinsin mi?'}
-        confirmLabel="Kalıcı olarak sil"
+        title={isDemo ? tt('Demo verileri silinsin mi?') : tt('Bütün veriler silinsin mi?')}
+        confirmLabel={tt('Kalıcı olarak sil')}
         danger
-        confirmDisabled={wipeText.trim().toLocaleUpperCase('tr-TR') !== 'SİL'}
+        confirmDisabled={wipeText.trim().toLocaleUpperCase('tr-TR') !== tt('SİL')}
         onConfirm={wipe}
       >
         <p>
-          {counts?.transactions ?? 0} işlem ve bütün ayarlar silinecek. Onaylamak için aşağıya <strong className="text-ink">SİL</strong> yazın.
+          {counts?.transactions ?? 0} {tt('işlem ve bütün ayarlar silinecek. Onaylamak için aşağıya')} <strong className="text-ink">{tt('SİL')}</strong> {tt('yazın.')}
         </p>
-        <Field label="Onay" htmlFor="wipe-confirm" className="mt-3">
+        <Field label={tt('Onay')} htmlFor="wipe-confirm" className="mt-3">
           <Input id="wipe-confirm" value={wipeText} onChange={(e) => setWipeText(e.target.value)} autoComplete="off" />
         </Field>
       </ConfirmDialog>

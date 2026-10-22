@@ -15,19 +15,20 @@ import { useUi } from '../state/ui'
 import { FixedCostsDialog } from './FixedCostsDialog'
 import { SalaryDialog } from './SalaryDialog'
 import { Alert, Button, Card, More } from './ui/primitives'
+import { tt, ttf } from '../lib/i18n'
 
 const ROWS: Array<{ key: BucketKind; label: string; short: string; color: string }> = [
-  { key: 'fixed', label: 'Zorunlu sabitler', short: 'zorunlu sabitler', color: 'bg-slate-400 dark:bg-slate-500' },
-  { key: 'needs', label: 'İhtiyaçlar', short: 'ihtiyaçlar', color: 'bg-info' },
-  { key: 'wants', label: 'İstekler', short: 'istekler', color: 'bg-amber-400' },
-  { key: 'saving', label: 'Birikim ve borç kapatma', short: 'birikim ve borç', color: 'bg-accent' },
+  { key: 'fixed', label: tt('Zorunlu sabitler'), short: tt('zorunlu sabitler'), color: 'bg-slate-400 dark:bg-slate-500' },
+  { key: 'needs', label: tt('İhtiyaçlar'), short: tt('ihtiyaçlar'), color: 'bg-info' },
+  { key: 'wants', label: tt('İstekler'), short: 'istekler', color: 'bg-amber-400' },
+  { key: 'saving', label: tt('Birikim ve borç kapatma'), short: tt('birikim ve borç'), color: 'bg-accent' },
 ]
 
 const DESTINATION: Record<'emergency' | 'debt' | 'goals' | 'grow', string> = {
-  emergency: 'acil durum fonu',
-  debt: 'kart ve kredi borcu',
-  goals: 'birikim hedefleri',
-  grow: 'uzun vadeli birikim',
+  emergency: tt('acil durum fonu'),
+  debt: tt('kart ve kredi borcu'),
+  goals: tt('birikim hedefleri'),
+  grow: tt('uzun vadeli birikim'),
 }
 
 /** Gelirin payı (0..1) → "%41,7"; tam sayıda ondalık yazılmaz ("%10"). */
@@ -39,15 +40,15 @@ const limitText = (rate: number) => `%${Math.round(rate * 100)}`
 
 /** Kova çubuğunun ekran okuyucu metni. */
 export function bucketAriaLabel(b: BucketBudget): string {
-  return `Dağılım: ${ROWS.map((r) => `${r.short} ${pctText(b.buckets[r.key].pct)}`).join(', ')}`
+  return ttf('Dağılım: {0}', ROWS.map((r) => `${r.short} ${pctText(b.buckets[r.key].pct)}`).join(', '))
 }
 
 /** Kartın tek kalın cümlesi: maaş günü ne kadar birikime ayrılacak ya da açık ne kadar. */
 export function bucketHeadline(b: BucketBudget): string {
-  if (b.shortfallKurus > 0) return `Giderleriniz gelirinizi ${formatKurus(b.shortfallKurus)} aşıyor.`
-  const save = `önce ${formatKurus(b.buckets.saving.kurus)} birikime ayırın`
-  if (!b.payday) return `Gelir gelince ${save}.`
-  return `${formatDate(b.payday.date, 'weekday')}: ${save}${b.payday.shifted ? ' (maaş hafta sonuna denk geliyor)' : ''}.`
+  if (b.shortfallKurus > 0) return ttf('Giderleriniz gelirinizi {0} aşıyor.', formatKurus(b.shortfallKurus))
+  const save = ttf('önce {0} birikime ayırın', formatKurus(b.buckets.saving.kurus))
+  if (!b.payday) return ttf('Gelir gelince {0}.', save)
+  return `${formatDate(b.payday.date, 'weekday')}: ${save}${b.payday.shifted ? tt(' (maaş hafta sonuna denk geliyor)') : ''}.`
 }
 
 /** En fazla bir uyarı: motorun öncelik sırasıyla ilk bozulan kural. */
@@ -55,17 +56,17 @@ export function bucketAlert(b: BucketBudget): { tone: 'danger' | 'warning'; text
   const c = b.checks
   switch (b.alert) {
     case 'shortfall':
-      return { tone: 'danger', text: `Giderleriniz gelirinizi ${formatKurus(b.shortfallKurus)} aşıyor; bu ay istek ve birikim ayrılmadı.` }
+      return { tone: 'danger', text: ttf('Giderleriniz gelirinizi {0} aşıyor; bu ay istek ve birikim ayrılmadı.', formatKurus(b.shortfallKurus)) }
     case 'consumer': {
-      const extra = b.saving.debtExtraKurus > 0 ? ` İsteklerden ${formatKurus(b.saving.debtExtraKurus)} borca ayrıldı.` : ''
-      return { tone: 'warning', text: `Kart ve kredi ödemeleri: gelirin ${pctText(c.consumerPct)} · önerilen en fazla ${limitText(CONSUMER_DEBT_LIMIT)}.${extra}` }
+      const extra = b.saving.debtExtraKurus > 0 ? ttf(' İsteklerden {0} borca ayrıldı.', formatKurus(b.saving.debtExtraKurus)) : ''
+      return { tone: 'warning', text: ttf('Kart ve kredi ödemeleri: gelirin {0} · önerilen en fazla {1}.{2}', pctText(c.consumerPct), limitText(CONSUMER_DEBT_LIMIT), extra) }
     }
     case 'dti':
-      return { tone: 'warning', text: `Borç ödemeleri: gelirin ${pctText(c.dtiPct)} · önerilen en fazla ${limitText(DTI_LIMIT)}.` }
+      return { tone: 'warning', text: ttf('Borç ödemeleri: gelirin {0} · önerilen en fazla {1}.', pctText(c.dtiPct), limitText(DTI_LIMIT)) }
     case 'housing':
-      return { tone: 'warning', text: `Konut gideri: gelirin ${pctText(c.housingPct)} · önerilen en fazla ${limitText(HOUSING_LIMIT)}.` }
+      return { tone: 'warning', text: ttf('Konut gideri: gelirin {0} · önerilen en fazla {1}.', pctText(c.housingPct), limitText(HOUSING_LIMIT)) }
     case 'saving':
-      return { tone: 'warning', text: `Birikim: gelirin ${pctText(c.savingPct)} · önce ${limitText(MIN_SAVING_RATE)}'a çıkarmayı hedefleyin.` }
+      return { tone: 'warning', text: ttf('Birikim: gelirin {0} · önce {1}\'a çıkarmayı hedefleyin.', pctText(c.savingPct), limitText(MIN_SAVING_RATE)) }
     default:
       return null
   }
@@ -89,8 +90,8 @@ export function mainDestination(b: BucketBudget): string | null {
 export function stageText(b: BucketBudget): string | null {
   const { stage, monthsToStage } = b.destinations
   if (!stage) return null
-  const name = { starter: '1 aylık fon', debt: 'kart ve kredi borcunu kapatmak', emergency: `${b.emergency.minMonths} aylık fon`, grow: 'uzun vadeli birikim' }[stage]
-  return monthsToStage ? `${name}, yaklaşık ${monthsToStage} maaş günü` : name
+  const name = { starter: tt('1 aylık fon'), debt: tt('kart ve kredi borcunu kapatmak'), emergency: ttf('{0} aylık fon', b.emergency.minMonths), grow: tt('uzun vadeli birikim') }[stage]
+  return monthsToStage ? ttf('{0}, yaklaşık {1} maaş günü', name, monthsToStage) : name
 }
 
 export type BucketChip = 'housing' | 'cycle' | 'raise'
@@ -145,17 +146,17 @@ export function BucketCard() {
   )
   const addSalary = (
     <Button size="sm" variant="soft" icon={<Plus className="size-4" />} onClick={() => setSalaryOpen(true)}>
-      Maaşımı ekle
+      {tt('Maaşımı ekle')}
     </Button>
   )
 
   if (!auto || !b)
     return (
-      <Card className="mb-4 p-5" aria-label="Bütçe dağılımı">
+      <Card className="mb-4 p-5" aria-label={tt('Bütçe dağılımı')}>
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <Wallet className="size-5 text-accent" /> Gelirinizin dağılımı
+          <Wallet className="size-5 text-accent" /> {tt('Gelirinizin dağılımı')}
         </h2>
-        <p className="mt-1 text-sm text-muted">Maaşınızı ve maaş gününüzü girin; bütçeniz hazır olsun.</p>
+        <p className="mt-1 text-sm text-muted">{tt('Maaşınızı ve maaş gününüzü girin; bütçeniz hazır olsun.')}</p>
         <div className="mt-3">{addSalary}</div>
         {dialogs}
       </Card>
@@ -173,24 +174,24 @@ export function BucketCard() {
   const stage = stageText(b)
 
   return (
-    <Card className="mb-4 p-5" aria-label="Bütçe dağılımı">
+    <Card className="mb-4 p-5" aria-label={tt('Bütçe dağılımı')}>
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <Wallet className="size-5 text-accent" /> Gelirinizin dağılımı
+        <Wallet className="size-5 text-accent" /> {tt('Gelirinizin dağılımı')}
       </h2>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted">
         <span className="num min-w-0">
           {source === 'plan' && salary
-            ? `Maaş ${formatKurus(salary.amountKurus)} · her ayın ${dayOf(salary.startDate)}. günü`
+            ? ttf('Maaş {0} · her ayın {1}. günü', formatKurus(salary.amountKurus), dayOf(salary.startDate))
             : source === 'plan'
-              ? `Gelir ${formatKurus(b.incomeKurus)} · düzenli gelirlerinize göre`
+              ? ttf('Gelir {0} · düzenli gelirlerinize göre', formatKurus(b.incomeKurus))
               : source === 'records'
-                ? `Gelir ${formatKurus(b.incomeKurus)} · son dönemlere göre`
-                : `Gelir ${formatKurus(b.incomeKurus)} · Yolculuk testinden`}
+                ? ttf('Gelir {0} · son dönemlere göre', formatKurus(b.incomeKurus))
+                : ttf('Gelir {0} · Yolculuk testinden', formatKurus(b.incomeKurus))}
         </span>
         {salary ? (
-          <Button size="sm" variant="ghost" aria-label="Maaşı değiştir" onClick={() => setSalaryOpen(true)}>
-            Değiştir
+          <Button size="sm" variant="ghost" aria-label={tt('Maaşı değiştir')} onClick={() => setSalaryOpen(true)}>
+            {tt('Değiştir')}
           </Button>
         ) : (
           addSalary
@@ -217,7 +218,7 @@ export function BucketCard() {
             </dd>
             {r.key === 'saving' && (destination || b.oneOffKurus > 0) && (
               <dd className="col-span-2 mt-0.5 pl-[18px] text-[12.5px] text-subtle">
-                {[destination && `→ ${destination}`, b.oneOffKurus > 0 && `+${formatKurus(b.oneOffKurus)} ek gelir`].filter(Boolean).join(' · ')}
+                {[destination && `→ ${destination}`, b.oneOffKurus > 0 && ttf('+{0} ek gelir', formatKurus(b.oneOffKurus))].filter(Boolean).join(' · ')}
               </dd>
             )}
           </div>
@@ -232,27 +233,27 @@ export function BucketCard() {
 
       {chip === 'housing' ? (
         <Button size="sm" variant="soft" className="mt-3" icon={<Plus className="size-4" />} onClick={() => setFixedOpen(true)}>
-          Kira ve borçlarınızı ekleyin
+          {tt('Kira ve borçlarınızı ekleyin')}
         </Button>
       ) : chip ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-accent-soft px-3 py-2 text-[13px] text-ink">
           <span className="flex min-w-0 items-center gap-2">
             <CalendarClock className="size-4 shrink-0 text-accent" aria-hidden />
-            {chip === 'cycle' ? 'Ayınız maaş gününde başlasın mı?' : `Maaşınız ${formatKurus(b.salaryUpdateKurus!)} görünüyor.`}
+            {chip === 'cycle' ? tt('Ayınız maaş gününde başlasın mı?') : ttf('Maaşınız {0} görünüyor.', formatKurus(b.salaryUpdateKurus!))}
           </span>
           {chip === 'cycle' ? (
-            <Button size="sm" variant="primary" onClick={() => void run(() => repo.saveSettings({ cycleSource: 'salary' }), `Ayınız artık her ayın ${cycleDay}. gününde başlıyor.`)}>
-              Başlat
+            <Button size="sm" variant="primary" onClick={() => void run(() => repo.saveSettings({ cycleSource: 'salary' }), ttf('Ayınız artık her ayın {0}. gününde başlıyor.', cycleDay))}>
+              {tt('Başlat')}
             </Button>
           ) : (
             <Button
               size="sm"
               variant="primary"
               onClick={() =>
-                void run(() => repo.saveSalary({ amountKurus: b.salaryUpdateKurus!, day: dayOf(salary!.startDate), followCycle: settings.cycleSource === 'salary' }), 'Maaş güncellendi.')
+                void run(() => repo.saveSalary({ amountKurus: b.salaryUpdateKurus!, day: dayOf(salary!.startDate), followCycle: settings.cycleSource === 'salary' }), tt('Maaş güncellendi.'))
               }
             >
-              Maaşı güncelle
+              {tt('Maaşı güncelle')}
             </Button>
           )}
         </div>
@@ -261,46 +262,43 @@ export function BucketCard() {
       {offerCopy && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[13px]">
           <span className="text-muted">
-            Harcama bütçesi <span className="num font-semibold text-ink">{formatKurus(b.spendKurus)}</span>
+            {tt('Harcama bütçesi')} <span className="num font-semibold text-ink">{formatKurus(b.spendKurus)}</span>
           </span>
           <Button
             size="sm"
             variant="soft"
-            onClick={() => void run(() => repo.saveSettings({ budgetMode: 'manual', monthlyBudgetKurus: b.spendKurus }), `Harcama bütçeniz ${formatKurus(b.spendKurus)} oldu.`)}
+            onClick={() => void run(() => repo.saveSettings({ budgetMode: 'manual', monthlyBudgetKurus: b.spendKurus }), ttf('Harcama bütçeniz {0} oldu.', formatKurus(b.spendKurus)))}
           >
-            Bu bütçeyi kullan
+            {tt('Bu bütçeyi kullan')}
           </Button>
         </div>
       )}
 
       <div className="mt-2 flex flex-wrap items-start justify-between gap-x-3">
-        <More label="Nasıl hesaplandı?">
+        <More label={tt('Nasıl hesaplandı?')}>
           <ul className="list-disc space-y-1 pl-4">
             <li>
-              50/30/20: gelirin yarısı zorunlu giderlere, %30'u isteklere, %20'si birikime. Sizde zorunlu giderler {pctText(c.mustHavePct)}. Önce %5 birikim ve %10 istek ayrılır; sonra birikim %10'a ve %20'ye, istekler en fazla %30'a çıkar.
-            </li>
+              {ttf('50/30/20: gelirin yarısı zorunlu giderlere, %30\'u isteklere, %20\'si birikime. Sizde zorunlu giderler {0}. Önce %5 birikim ve %10 istek ayrılır; sonra birikim %10\'a ve %20\'ye, istekler en fazla %30\'a çıkar.', pctText(c.mustHavePct))}</li>
             <li>
-              Konut {pctText(c.housingPct)} (en fazla {limitText(HOUSING_LIMIT)}) · borç ödemeleri {pctText(c.dtiPct)} (en fazla {limitText(DTI_LIMIT)}) · kart ve kredi {pctText(c.consumerPct)} (en fazla {limitText(CONSUMER_DEBT_LIMIT)}) · birikim {pctText(c.savingPct)} (en az {limitText(MIN_SAVING_RATE)}). Sınırlar brüt gelire göre tanımlı; net gelire uygulamak daha sıkıdır.
-            </li>
-            {b.outsideKurus > 0 && <li>Bütçe dışında: kart/KMH ödemesi {formatKurus(b.outsideKurus)}.</li>}
-            <li>Kategori payları: TÜİK 2025, üç dönemde sizin harcamanıza geçer.</li>
+              {ttf('Konut {0} (en fazla {1}) · borç ödemeleri {2} (en fazla {3}) · kart ve kredi {4} (en fazla {5}) · birikim {6} (en az {7}). Sınırlar brüt gelire göre tanımlı; net gelire uygulamak daha sıkıdır.', pctText(c.housingPct), limitText(HOUSING_LIMIT), pctText(c.dtiPct), limitText(DTI_LIMIT), pctText(c.consumerPct), limitText(CONSUMER_DEBT_LIMIT), pctText(c.savingPct), limitText(MIN_SAVING_RATE))}</li>
+            {b.outsideKurus > 0 && <li>{ttf('Bütçe dışında: kart/KMH ödemesi {0}.', formatKurus(b.outsideKurus))}</li>}
+            <li>{tt('Kategori payları: TÜİK 2025, üç dönemde sizin harcamanıza geçer.')}</li>
             <li>
-              Acil durum fonu: 1 aylık {formatKurus(essentialKurus)}, sonra {minMonths === maxMonths ? minMonths : `${minMonths}–${maxMonths}`} ay.
-              {stage && ` Sıradaki adım: ${stage}.`}
+              {tt('Acil durum fonu: 1 aylık')} {formatKurus(essentialKurus)}{tt(', sonra')} {minMonths === maxMonths ? minMonths : `${minMonths}–${maxMonths}`} {tt('ay.')}
+              {stage && ttf(' Sıradaki adım: {0}.', stage)}
             </li>
             {b.upcoming.map((u) => (
               <li key={u.id}>
-                Yaklaşan gelir: {u.name}, {formatDate(u.date, 'long')}, {formatKurus(u.amountKurus)}.
-              </li>
+                {ttf('Yaklaşan gelir: {0}, {1}, {2}.', u.name, formatDate(u.date, 'long'), formatKurus(u.amountKurus))}</li>
             ))}
-            {b.reservedKurus > 0 && <li>Yıllık gelirin {formatKurus(b.reservedKurus)} kısmı sonraki aylara ayrıldı.</li>}
-            <li>Maaş hafta sonuna denk gelirse önceki iş günü yatar; ayınız maaş gününde başlıyorsa o gelir yine yeni ayınıza sayılır.</li>
-            <li>Uygulama yatırım ürünü önermez.</li>
+            {b.reservedKurus > 0 && <li>{ttf('Yıllık gelirin {0} kısmı sonraki aylara ayrıldı.', formatKurus(b.reservedKurus))}</li>}
+            <li>{tt('Maaş hafta sonuna denk gelirse önceki iş günü yatar; ayınız maaş gününde başlıyorsa o gelir yine yeni ayınıza sayılır.')}</li>
+            <li>{tt('Uygulama yatırım ürünü önermez.')}</li>
           </ul>
         </More>
         {chip !== 'housing' && (
           <Button size="sm" variant="ghost" onClick={() => setFixedOpen(true)}>
-            Sabit giderler
+            {tt('Sabit giderler')}
           </Button>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { getLang, ttf } from '../lib/i18n'
 import type { IsoDate, MonthKey } from './types'
 
 /**
@@ -5,9 +6,13 @@ import type { IsoDate, MonthKey } from './types'
  * görüntüleme veya gün sayma için UTC öğlen saatiyle çevrilir; saat dilimi kayması olmaz.
  */
 
-export const MONTH_NAMES = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
-export const MONTH_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
-const WEEKDAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi']
+// Ekstre okuma Türkçe ay adlarını tanır; görünen adlar seçili dildedir (dil, uygulama modülleri yüklenmeden önce belirlenir).
+const MONTH_NAMES_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+const MONTH_SHORT_TR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+const EN = getLang() === 'en'
+export const MONTH_NAMES = EN ? ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] : MONTH_NAMES_TR
+export const MONTH_SHORT = EN ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : MONTH_SHORT_TR
+const WEEKDAYS = EN ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] : ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi']
 
 const pad = (n: number, w = 2) => String(n).padStart(w, '0')
 
@@ -105,10 +110,10 @@ export type DateParseResult =
   | { ok: false; reason: 'empty' | 'invalid' | 'ambiguous'; message: string }
 
 const MONTH_LOOKUP: Record<string, number> = {}
-MONTH_NAMES.forEach((n, i) => {
+MONTH_NAMES_TR.forEach((n, i) => {
   MONTH_LOOKUP[foldMonth(n)] = i + 1
 })
-MONTH_SHORT.forEach((n, i) => {
+MONTH_SHORT_TR.forEach((n, i) => {
   MONTH_LOOKUP[foldMonth(n)] = i + 1
 })
 Object.assign(MONTH_LOOKUP, { eyl: 9, agu: 8, agus: 8, sub: 2, haz: 6, tem: 7, kas: 11, ara: 12, nis: 4, mar: 3, may: 5, oca: 1, eki: 10 })
@@ -253,5 +258,5 @@ export function periodLabel(key: MonthKey, startDay = 1): string {
 /** "Her ayın 15'i – sonraki ayın 14'ü" gibi kısa açıklama. */
 export function cycleDescription(startDay = 1): string {
   const s = normalizeStartDay(startDay)
-  return s === 1 ? 'Takvim ayı (1 – ay sonu)' : `Her ayın ${s}. günü – sonraki ayın ${s - 1}. günü`
+  return s === 1 ? ttf('Takvim ayı (1 – ay sonu)') : ttf('Her ayın {0}. günü – sonraki ayın {1}. günü', s, s - 1)
 }

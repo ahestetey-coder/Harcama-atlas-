@@ -3,6 +3,7 @@ import { CheckCircle2, CircleAlert, Info, X } from 'lucide-react'
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { currentMonth } from '../domain/dates'
 import type { MonthKey, Transaction } from '../domain/types'
+import { tt } from '../lib/i18n'
 
 type ToastKind = 'success' | 'error' | 'info'
 interface Toast {
@@ -110,7 +111,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
                   {t.action.label}
                 </button>
               )}
-              <button type="button" aria-label="Bildirimi kapat" className="shrink-0 rounded-md p-0.5 text-subtle hover:text-ink" onClick={() => dismiss(t.id)}>
+              <button type="button" aria-label={tt('Bildirimi kapat')} className="shrink-0 rounded-md p-0.5 text-subtle hover:text-ink" onClick={() => dismiss(t.id)}>
                 <X className="size-4" />
               </button>
             </motion.div>
@@ -123,6 +124,6 @@ export function UiProvider({ children }: { children: ReactNode }) {
 
 export function useUi(): UiCtx {
   const c = useContext(Ctx)
-  if (!c) throw new Error('UiProvider eksik')
+  if (!c) throw new Error(tt('UiProvider eksik'))
   return c
 }

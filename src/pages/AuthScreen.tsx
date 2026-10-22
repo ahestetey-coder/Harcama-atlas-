@@ -8,6 +8,7 @@ import { cn } from '../lib/cn'
 import { useAuth } from '../state/auth'
 import { APP_CONFIG } from '../config/app'
 import { isNativeApp } from '../lib/native'
+import { tt, ttf } from '../lib/i18n'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
@@ -22,7 +23,7 @@ function initialResetEmail(): string | null {
 const EASE = [0.2, 0.8, 0.2, 1] as const
 
 function errText(e: unknown): string {
-  return e instanceof UserFacingError ? e.message : 'Bir sorun oluştu. Bağlantınızı kontrol edip tekrar deneyin.'
+  return e instanceof UserFacingError ? e.message : tt('Bir sorun oluştu. Bağlantınızı kontrol edip tekrar deneyin.')
 }
 
 /** Hesap sunucusu yanıt verene kadar gösterilen ekran. */
@@ -60,10 +61,10 @@ export function AuroraBackground() {
 }
 
 const DONUT = [
-  { pct: 38, color: '#10b981', label: 'Market', start: 0 },
-  { pct: 24, color: '#06b6d4', label: 'Faturalar', start: 38 },
-  { pct: 18, color: '#f59e0b', label: 'Akaryakıt', start: 62 },
-  { pct: 20, color: '#8b5cf6', label: 'Diğer', start: 80 },
+  { pct: 38, color: '#10b981', label: tt('Market'), start: 0 },
+  { pct: 24, color: '#06b6d4', label: tt('Faturalar'), start: 38 },
+  { pct: 18, color: '#f59e0b', label: tt('Akaryakıt'), start: 62 },
+  { pct: 20, color: '#8b5cf6', label: tt('Diğer'), start: 80 },
 ]
 
 /** Masaüstünde formun yanındaki tanıtım paneli: canlanan halka grafik ve süzülen kartlar. */
@@ -84,12 +85,12 @@ function HeroPanel() {
 
       <div className="relative">
         <motion.h2 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5, ease: EASE }} className="font-display text-[2rem] font-bold leading-tight tracking-tight">
-          Harcamalarınız,
+          {tt('Harcamalarınız,')}
           <br />
-          <span className="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">tek bakışta.</span>
+          <span className="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">{tt('tek bakışta.')}</span>
         </motion.h2>
         <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.5, ease: EASE }} className="mt-3 max-w-sm text-[15px] leading-relaxed text-white/70">
-          Ekstrenizi yükleyin, giderleriniz kendiliğinden ayrılsın.
+          {tt('Ekstrenizi yükleyin, giderleriniz kendiliğinden ayrılsın.')}
         </motion.p>
       </div>
 
@@ -121,7 +122,7 @@ function HeroPanel() {
           </svg>
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
-              <div className="text-[11px] font-medium uppercase tracking-wider text-white/50">Eylül</div>
+              <div className="text-[11px] font-medium uppercase tracking-wider text-white/50">{tt('Eylül')}</div>
               <div className="font-display text-2xl font-bold">12.480 ₺</div>
             </div>
           </div>
@@ -133,8 +134,8 @@ function HeroPanel() {
             <FileUp className="size-4" />
           </span>
           <div>
-            <div className="text-[12.5px] font-semibold">Ekstre okundu</div>
-            <div className="text-[11.5px] text-white/60">46 işlem · 3 iade</div>
+            <div className="text-[12.5px] font-semibold">{tt('Ekstre okundu')}</div>
+            <div className="text-[11.5px] text-white/60">{tt('46 işlem · 3 iade')}</div>
           </div>
         </FloatCard>
         <FloatCard className="bottom-6 right-0" delay={1.1} float={[0, 10, 0]}>
@@ -142,8 +143,8 @@ function HeroPanel() {
             <Users className="size-4" />
           </span>
           <div>
-            <div className="text-[12.5px] font-semibold">Ayşe ortak gider ekledi</div>
-            <div className="text-[11.5px] text-white/60">Elektrik faturası · 450 ₺</div>
+            <div className="text-[12.5px] font-semibold">{tt('Ayşe ortak gider ekledi')}</div>
+            <div className="text-[11.5px] text-white/60">{tt('Elektrik faturası · 450 ₺')}</div>
           </div>
         </FloatCard>
         <FloatCard className="bottom-0 left-4" delay={1.3} float={[0, -8, 0]}>
@@ -151,14 +152,14 @@ function HeroPanel() {
             <ChartPie className="size-4" />
           </span>
           <div>
-            <div className="text-[12.5px] font-semibold">Market %38</div>
-            <div className="text-[11.5px] text-white/60">Geçen aya göre −%6</div>
+            <div className="text-[12.5px] font-semibold">{tt('Market %38')}</div>
+            <div className="text-[11.5px] text-white/60">{tt('Geçen aya göre −%6')}</div>
           </div>
         </FloatCard>
       </div>
 
       <ul className="relative mt-8 flex flex-wrap gap-2 text-[12.5px] text-white/75">
-        {['PDF ve fotoğraftan okuma', 'Kişisel ve ortak gruplar', 'Her cihazda aynı veriler'].map((t, i) => (
+        {[tt('PDF ve fotoğraftan okuma'), tt('Kişisel ve ortak gruplar'), tt('Her cihazda aynı veriler')].map((t, i) => (
           <motion.li
             key={t}
             initial={{ opacity: 0, y: 8 }}
@@ -221,9 +222,9 @@ function AuthFrame({ children }: { children: ReactNode }) {
           >
             <ShieldCheck className="mt-px size-3.5 shrink-0" />
             <span>
-              Harcamalarınız bu cihazda saklanır.{' '}
+              {tt('Harcamalarınız bu cihazda saklanır.')}{' '}
               <a href={APP_CONFIG.privacyUrl} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
-                Gizlilik politikası
+                {tt('Gizlilik politikası')}
               </a>
             </span>
           </motion.p>
@@ -241,7 +242,7 @@ function PasswordInput({ id, value, onChange, autoComplete }: { id: string; valu
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
-        aria-label={show ? 'Şifreyi gizle' : 'Şifreyi göster'}
+        aria-label={show ? tt('Şifreyi gizle') : tt('Şifreyi göster')}
         className="absolute inset-y-0 right-0 grid w-11 place-items-center text-subtle hover:text-ink"
       >
         <AnimatePresence mode="wait" initial={false}>
@@ -300,7 +301,7 @@ export function AuthScreen() {
       else if (mode === 'signup') {
         if (!(await auth.signUp(name, email, password))) {
           setMode('signin')
-          setInfo(`Hesabınız oluşturuldu. ${email.trim()} adresine gelen bağlantıya tıklayıp hesabınızı doğrulayın, sonra giriş yapın.`)
+          setInfo(ttf('Hesabınız oluşturuldu. {0} adresine gelen bağlantıya tıklayıp hesabınızı doğrulayın, sonra giriş yapın.', email.trim()))
         }
       } else if (isNativeApp) {
         const url = new URL(APP_CONFIG.webUrl)
@@ -310,7 +311,7 @@ export function AuthScreen() {
         window.location.href = url.toString()
       } else {
         await auth.sendPasswordReset(email)
-        setInfo('Şifre yenileme bağlantısı gönderildi. E-postanızdaki bağlantıyı bu cihazda açın.')
+        setInfo(tt('Şifre yenileme bağlantısı gönderildi. E-postanızdaki bağlantıyı bu cihazda açın.'))
       }
     } catch (err) {
       setError(errText(err))
@@ -339,19 +340,19 @@ export function AuthScreen() {
         {mode === 'reset' ? (
           <motion.div key="reset" variants={panel} initial="initial" animate="animate" exit="exit">
             <button type="button" onClick={() => go('signin')} className="group -ml-1 mb-4 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink">
-              <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" /> Girişe dön
+              <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" /> {tt('Girişe dön')}
             </button>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Şifrenizi mi unuttunuz?</h1>
+            <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{tt('Şifrenizi mi unuttunuz?')}</h1>
             <p className="mt-1.5 text-sm text-muted">
-              {isNativeApp ? 'Yenileme tarayıcıda yapılır. Yeni şifrenle sonra uygulamaya giriş yaparsın.' : 'Size bir yenileme bağlantısı gönderelim.'}
+              {isNativeApp ? tt('Yenileme tarayıcıda yapılır. Yeni şifrenle sonra uygulamaya giriş yaparsın.') : tt('Size bir yenileme bağlantısı gönderelim.')}
             </p>
             <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
-              <Field label="E-posta" htmlFor={`${uid}-email`}>
+              <Field label={tt('E-posta')} htmlFor={`${uid}-email`}>
                 <Input id={`${uid}-email`} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </Field>
               <Messages error={error} info={info} />
               <Button type="submit" variant="primary" size="lg" className="w-full" loading={busy === 'form'} icon={<Mail className="size-4" />}>
-                {isNativeApp ? "Safari'de devam et" : 'Bağlantı gönder'}
+                {isNativeApp ? tt('Safari\'de devam et') : tt('Bağlantı gönder')}
               </Button>
             </form>
           </motion.div>
@@ -359,12 +360,12 @@ export function AuthScreen() {
           <motion.div key="main" variants={panel} initial="initial" animate="animate" exit="exit">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={mode} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
-                <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{signup ? 'Hesap oluşturun' : 'Tekrar hoş geldiniz'}</h1>
-                <p className="mt-1.5 text-sm text-muted">{signup ? 'Birkaç saniyede kayıt olun.' : 'Hesabınıza giriş yapın.'}</p>
+                <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{signup ? tt('Hesap oluşturun') : tt('Tekrar hoş geldiniz')}</h1>
+                <p className="mt-1.5 text-sm text-muted">{signup ? tt('Birkaç saniyede kayıt olun.') : tt('Hesabınıza giriş yapın.')}</p>
               </motion.div>
             </AnimatePresence>
 
-            <div role="tablist" aria-label="Giriş veya kayıt" className="relative mt-6 grid grid-cols-2 rounded-2xl bg-surface-2 p-1">
+            <div role="tablist" aria-label={tt('Giriş veya kayıt')} className="relative mt-6 grid grid-cols-2 rounded-2xl bg-surface-2 p-1">
               {(['signin', 'signup'] as const).map((m) => (
                 <button
                   key={m}
@@ -375,7 +376,7 @@ export function AuthScreen() {
                   className={cn('relative rounded-xl py-2 text-sm font-semibold transition-colors duration-200', mode === m ? 'text-ink' : 'text-muted hover:text-ink')}
                 >
                   {mode === m && <motion.span layoutId="auth-tab" className="absolute inset-0 rounded-xl bg-surface shadow-card" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />}
-                  <span className="relative">{m === 'signin' ? 'Giriş yap' : 'Kayıt ol'}</span>
+                  <span className="relative">{m === 'signin' ? tt('Giriş yap') : tt('Kayıt ol')}</span>
                 </button>
               ))}
             </div>
@@ -383,10 +384,10 @@ export function AuthScreen() {
             {auth.googleEnabled && (
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
                 <Button type="button" size="lg" className="mt-5 w-full transition-transform hover:-translate-y-px" onClick={google} loading={busy === 'google'} icon={<GoogleIcon />}>
-                  Google ile devam et
+                  {tt('Google ile devam et')}
                 </Button>
                 <div className="my-5 flex items-center gap-3 text-[12px] font-medium text-subtle" aria-hidden>
-                  <span className="h-px flex-1 bg-line" /> veya e-posta ile <span className="h-px flex-1 bg-line" />
+                  <span className="h-px flex-1 bg-line" /> {tt('veya e-posta ile')} <span className="h-px flex-1 bg-line" />
                 </div>
               </motion.div>
             )}
@@ -402,32 +403,32 @@ export function AuthScreen() {
                     transition={{ duration: 0.22, ease: EASE }}
                     className="-m-1 overflow-hidden p-1"
                   >
-                    <Field label="Adınız" htmlFor={`${uid}-name`} hint="Grup üyeleri bu adı görür.">
+                    <Field label={tt('Adınız')} htmlFor={`${uid}-name`} hint={tt('Grup üyeleri bu adı görür.')}>
                       <Input id={`${uid}-name`} autoComplete="given-name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required />
                     </Field>
                   </motion.div>
                 )}
               </AnimatePresence>
-              <Field label="E-posta" htmlFor={`${uid}-email`}>
+              <Field label={tt('E-posta')} htmlFor={`${uid}-email`}>
                 <Input id={`${uid}-email`} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </Field>
-              <Field label="Şifre" htmlFor={`${uid}-password`} hint={signup ? 'En az 6 karakter, banka şifresi olmasın.' : undefined}>
+              <Field label={tt('Şifre')} htmlFor={`${uid}-password`} hint={signup ? tt('En az 6 karakter, banka şifresi olmasın.') : undefined}>
                 <PasswordInput id={`${uid}-password`} value={password} onChange={setPassword} autoComplete={signup ? 'new-password' : 'current-password'} />
               </Field>
               {!signup && (
                 <button type="button" onClick={() => go('reset')} className="-mt-2 self-end text-[13px] font-medium text-accent hover:underline">
-                  Şifremi unuttum
+                  {tt('Şifremi unuttum')}
                 </button>
               )}
               <Messages error={error} info={info} />
               <Button type="submit" variant="primary" size="lg" className="w-full transition-transform hover:-translate-y-px" loading={busy === 'form'} icon={<LockKeyhole className="size-4" />}>
-                {signup ? 'Kayıt ol' : 'Giriş yap'}
+                {signup ? tt('Kayıt ol') : tt('Giriş yap')}
               </Button>
             </form>
             <p className="mt-5 text-center text-sm text-muted">
-              {signup ? 'Zaten hesabınız var mı? ' : 'Hesabınız yok mu? '}
+              {signup ? tt('Zaten hesabınız var mı? ') : tt('Hesabınız yok mu? ')}
               <button type="button" onClick={() => go(signup ? 'signin' : 'signup')} className="font-semibold text-accent hover:underline">
-                {signup ? 'Giriş yapın' : 'Kayıt olun'}
+                {signup ? tt('Giriş yapın') : tt('Kayıt olun')}
               </button>
             </p>
           </motion.div>
@@ -456,15 +457,15 @@ export function NewPasswordScreen() {
   }
   return (
     <AuthFrame>
-      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Yeni şifre belirleyin</h1>
-      <p className="mt-1.5 text-sm text-muted">{auth.user?.email} için yeni şifre yazın.</p>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{tt('Yeni şifre belirleyin')}</h1>
+      <p className="mt-1.5 text-sm text-muted">{auth.user?.email} {tt('için yeni şifre yazın.')}</p>
       <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
-        <Field label="Yeni şifre" htmlFor="new-password" hint="En az 6 karakter.">
+        <Field label={tt('Yeni şifre')} htmlFor="new-password" hint={tt('En az 6 karakter.')}>
           <PasswordInput id="new-password" value={password} onChange={setPassword} autoComplete="new-password" />
         </Field>
         <Messages error={error} />
         <Button type="submit" variant="primary" size="lg" className="w-full" loading={busy} icon={<KeyRound className="size-4" />}>
-          Şifreyi kaydet
+          {tt('Şifreyi kaydet')}
         </Button>
       </form>
     </AuthFrame>

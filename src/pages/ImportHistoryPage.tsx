@@ -9,9 +9,10 @@ import { formatKurus } from '../domain/money'
 import type { ImportRecord } from '../domain/types'
 import { useImports, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 const KIND_ICON = { pdf: FileText, csv: FileSpreadsheet, xlsx: FileSpreadsheet, image: ImageIcon }
-const KIND_LABEL = { pdf: 'PDF', csv: 'CSV', xlsx: 'Excel', image: 'Görsel' }
+const KIND_LABEL = { pdf: 'PDF', csv: 'CSV', xlsx: 'Excel', image: tt('Görsel') }
 
 export default function ImportHistoryPage() {
   const imports = useImports()
@@ -28,11 +29,11 @@ export default function ImportHistoryPage() {
 
   return (
     <div>
-      <PageHeader title="Aktarım geçmişi" subtitle="Tümüyle geri alınabilir." />
+      <PageHeader title={tt('Aktarım geçmişi')} subtitle={tt('Tümüyle geri alınabilir.')} />
       <Card className="overflow-hidden">
         {!imports ? null : imports.length === 0 ? (
-          <EmptyState icon={<History className="size-6" />} title="Henüz aktarım yok" action={<Button variant="primary" onClick={() => openImport()}>Dosya içe aktar</Button>}>
-            İçe aktardığınız her dosya burada listelenir.
+          <EmptyState icon={<History className="size-6" />} title={tt('Henüz aktarım yok')} action={<Button variant="primary" onClick={() => openImport()}>{tt('Dosya içe aktar')}</Button>}>
+            {tt('İçe aktardığınız her dosya burada listelenir.')}
           </EmptyState>
         ) : (
           <ul>
@@ -48,22 +49,22 @@ export default function ImportHistoryPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate font-medium">{r.fileName}</span>
                       <Badge>{KIND_LABEL[r.fileKind]}</Badge>
-                      {r.status === 'undone' && <Badge tone="danger">Geri alındı</Badge>}
+                      {r.status === 'undone' && <Badge tone="danger">{tt('Geri alındı')}</Badge>}
                     </div>
                     <div className="num mt-0.5 text-[12.5px] text-subtle">
-                      {d.toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })} · {r.transactionCount} işlem · gider {formatKurus(r.totalExpenseKurus)}
-                      {r.totalRefundKurus > 0 && ` · iade ${formatKurus(r.totalRefundKurus)}`}
-                      {r.skippedCount > 0 && ` · ${r.skippedCount} satır alınmadı`}
+                      {d.toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })} · {r.transactionCount} {tt('işlem · gider')} {formatKurus(r.totalExpenseKurus)}
+                      {r.totalRefundKurus > 0 && ttf(' · iade {0}', formatKurus(r.totalRefundKurus))}
+                      {r.skippedCount > 0 && ttf(' · {0} satır alınmadı', r.skippedCount)}
                       {r.accountAlias && ` · ${r.accountAlias}`}
                     </div>
                   </div>
                   {r.status === 'active' && (
                     <div className="flex gap-2">
                       <Button size="sm" icon={<ListOrdered className="size-4" />} onClick={() => navigate(`/islemler?aktarim=${r.id}`)}>
-                        İşlemler
+                        {tt('İşlemler')}
                       </Button>
                       <Button size="sm" variant="ghost" className="text-danger" icon={<Undo2 className="size-4" />} onClick={() => askUndo(r)}>
-                        Geri al
+                        {tt('Geri al')}
                       </Button>
                     </div>
                   )}
@@ -76,8 +77,8 @@ export default function ImportHistoryPage() {
       <ConfirmDialog
         open={!!undo}
         onOpenChange={(o) => !o && setUndo(null)}
-        title="Aktarım geri alınsın mı?"
-        confirmLabel={`${undo?.count ?? 0} işlemi sil`}
+        title={tt('Aktarım geri alınsın mı?')}
+        confirmLabel={ttf('{0} işlemi sil', undo?.count ?? 0)}
         danger
         loading={busy}
         onConfirm={async () => {
@@ -85,7 +86,7 @@ export default function ImportHistoryPage() {
           setBusy(true)
           try {
             const n = await repo.undoImport(undo.rec.id)
-            toast(`Aktarım geri alındı; ${n} işlem silindi.`)
+            toast(ttf('Aktarım geri alındı; {0} işlem silindi.', n))
             setUndo(null)
           } catch (e) {
             toast(toUserMessage(e), { kind: 'error' })
@@ -94,8 +95,8 @@ export default function ImportHistoryPage() {
           }
         }}
       >
-        “{undo?.rec.fileName}” ile gelen {undo?.count} işlem silinecek.
-        {undo && undo.edited > 0 && <p className="mt-2 font-medium text-warning">Düzenlediğiniz {undo.edited} işlem de silinecek.</p>}
+        “{undo?.rec.fileName}{tt('” ile gelen')} {undo?.count} {tt('işlem silinecek.')}
+        {undo && undo.edited > 0 && <p className="mt-2 font-medium text-warning">{ttf('Düzenlediğiniz {0} işlem de silinecek.', undo.edited)}</p>}
       </ConfirmDialog>
     </div>
   )

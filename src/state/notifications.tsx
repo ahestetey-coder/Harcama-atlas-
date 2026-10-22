@@ -18,6 +18,7 @@ import { useBudgetStatus } from './budget'
 import { usePersonalCycle } from './cycle'
 import { useAssets, useCategoryMap, useSettings, useTransactions } from './data'
 import { useAllRecurring, usePersonalTransactions } from './personal'
+import { tt } from '../lib/i18n'
 
 /**
  * Mobil uygulamada cihazda kurulan bildirimler (sunucu yok; ücretsiz Apple kimliğiyle kurulan
@@ -82,7 +83,7 @@ function writeSent(keys: Set<string>, period: string): void {
 let pluginPromise: Promise<LocalNotificationsPlugin> | null = null
 function plugin(): Promise<LocalNotificationsPlugin> {
   pluginPromise ??= import('@capacitor/local-notifications').then(async ({ LocalNotifications }) => {
-    await LocalNotifications.createChannel({ id: CHANNEL, name: 'Hatırlatmalar', description: 'Ödeme, gelir, bütçe ve kayıt hatırlatmaları', importance: 4 }).catch(() => {})
+    await LocalNotifications.createChannel({ id: CHANNEL, name: tt('Hatırlatmalar'), description: tt('Ödeme, gelir, bütçe ve kayıt hatırlatmaları'), importance: 4 }).catch(() => {})
     // Bildirime dokununca ilgili sayfa açılır
     await LocalNotifications.addListener('localNotificationActionPerformed', (e) => {
       const route = (e.notification.extra as { route?: string } | undefined)?.route
@@ -139,8 +140,8 @@ export async function sendTestNotification(): Promise<NotifyPermission> {
         key: `deneme:${Date.now()}`,
         kind: 'payments',
         at: new Date(Date.now() + 5000),
-        title: 'Harcama Atlası',
-        body: 'Bildirimler çalışıyor. Hatırlatmalar bu şekilde gelecek.',
+        title: tt('Harcama Atlası'),
+        body: tt('Bildirimler çalışıyor. Hatırlatmalar bu şekilde gelecek.'),
         route: '/ayarlar',
       }),
     ],
