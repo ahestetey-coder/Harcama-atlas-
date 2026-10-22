@@ -9,6 +9,7 @@ import { useRepo, useSettings } from '../state/data'
 import { usePlan } from '../state/plan'
 import { useReducedMotion } from '../lib/hooks'
 import FreedomMapPage, { UnlockStrip } from './FreedomMapPage'
+import { tt, ttf } from '../lib/i18n'
 
 /**
  * Uygulama içi Finansal Harita testi (#/finansal-harita): her pakette açık. Web testiyle aynı 10 soru
@@ -22,7 +23,7 @@ export default function MapTestPage() {
   const saved = settings.webTest?.answers
   return (
     <div>
-      <PageHeader title="Finansal Harita testi" subtitle={saved ? 'Kayıtlı sonucun · istersen testi yeniden çöz' : '10 soru · 2 dakika · Ücretsiz'} />
+      <PageHeader title={tt('Finansal Harita testi')} subtitle={saved ? tt('Kayıtlı sonucun · istersen testi yeniden çöz') : tt('10 soru · 2 dakika · Ücretsiz')} />
       <FreedomMapPage
         inApp={{
           initial: saved,
@@ -44,13 +45,13 @@ function Teaser() {
   const { has } = usePlan()
   const navigate = useNavigate()
   if (has('webRefine'))
-    return <UnlockStrip title="Bu yıl bir tahmin." text="Rota kurulumunda gerçek rakamlarınla kesin yılını ve aylık planını çıkar." cta="Rotamı kur" onClick={() => navigate('/yolculuk?kur=1')} />
+    return <UnlockStrip title={tt('Bu yıl bir tahmin.')} text={tt('Rota kurulumunda gerçek rakamlarınla kesin yılını ve aylık planını çıkar.')} cta={tt('Rotamı kur')} onClick={() => navigate('/yolculuk?kur=1')} />
   return (
     <UnlockStrip
-      title="Bu yıl bir tahmin."
+      title={tt('Bu yıl bir tahmin.')}
       badge={<PlanBadge plan="plus" />}
-      text="Plus ile gerçek rakamlarınla kesin özgürlük yılın, borçsuzluk tarihin ve aylık yatırım planın çıkar."
-      cta="Plus ile kesinleştir"
+      text={tt('Plus ile gerçek rakamlarınla kesin özgürlük yılın, borçsuzluk tarihin ve aylık yatırım planın çıkar.')}
+      cta={tt('Plus ile kesinleştir')}
       onClick={() => navigate('/paketler')}
     />
   )
@@ -64,26 +65,25 @@ function NextStep({ result }: { result: QuickResult }) {
   const canSetup = has('webRefine')
   const stage = result.journey.current?.title
   const locked: Array<[ReactNode, string, string]> = [
-    [<CalendarCheck key="y" className="size-4" />, 'Kesin özgürlük yılın', '20••'],
-    [<Unlink key="d" className="size-4" />, 'Borçsuzluk tarihin', '•• / 20••'],
-    [<PiggyBank key="p" className="size-4" />, 'Aylık yatırım planın', '•••• ₺'],
-    [<LineChart key="s" className="size-4" />, 'Yıl yıl simülasyonun', '▁▂▃▅▇'],
+    [<CalendarCheck key="y" className="size-4" />, tt('Kesin özgürlük yılın'), '20••'],
+    [<Unlink key="d" className="size-4" />, tt('Borçsuzluk tarihin'), '•• / 20••'],
+    [<PiggyBank key="p" className="size-4" />, tt('Aylık yatırım planın'), '•••• ₺'],
+    [<LineChart key="s" className="size-4" />, tt('Yıl yıl simülasyonun'), '▁▂▃▅▇'],
   ]
   return (
     <div className="hero-gradient relative overflow-hidden rounded-[1.25rem] p-5 text-white shadow-card sm:p-6">
       <div className="pointer-events-none absolute -right-20 -top-20 size-64 rounded-full bg-amber-400/20 blur-3xl" aria-hidden />
-      <div className="relative text-[12px] font-medium uppercase tracking-[0.14em] text-white/70">Sıradaki adım</div>
-      <h2 className="relative mt-1 font-display text-2xl font-bold sm:text-3xl">Rotanı gerçek rakamlarınla kur</h2>
+      <div className="relative text-[12px] font-medium uppercase tracking-[0.14em] text-white/70">{tt('Sıradaki adım')}</div>
+      <h2 className="relative mt-1 font-display text-2xl font-bold sm:text-3xl">{tt('Rotanı gerçek rakamlarınla kur')}</h2>
       <p className="relative mt-2 text-[14px] leading-relaxed text-white/80">
-        Haritan şimdilik aralıklarla çizildi. Rota kurulumunda 6 adımda gerçek rakamlarını girersin{stage ? `; ${stage} durağından itibaren` : ';'} gelirin, giderin, borcun ve yatırımın bilimsel oranlara göre yönlendirilir.
-      </p>
+        {ttf('Haritan şimdilik aralıklarla çizildi. Rota kurulumunda 6 adımda gerçek rakamlarını girersin{0} gelirin, giderin, borcun ve yatırımın bilimsel oranlara göre yönlendirilir.', stage ? ttf('; {0} durağından itibaren', stage) : ';')}</p>
       {canSetup ? (
         <button type="button" onClick={() => navigate('/yolculuk?kur=1')} className="relative mt-5 inline-flex h-12 items-center gap-2 rounded-xl bg-white px-5 text-[15px] font-semibold text-[#0b1323] hover:bg-white/90">
-          Rotamı kur · 5 dk <ArrowRight className="size-4" />
+          {tt('Rotamı kur · 5 dk')} <ArrowRight className="size-4" />
         </button>
       ) : (
         <>
-          <ul className="relative mt-4 grid grid-cols-2 gap-2.5" aria-label="Plus ile açılanlar">
+          <ul className="relative mt-4 grid grid-cols-2 gap-2.5" aria-label={tt('Plus ile açılanlar')}>
             {locked.map(([icon, label, mask], i) => (
               <motion.li
                 key={label}
@@ -106,10 +106,10 @@ function NextStep({ result }: { result: QuickResult }) {
             <div className="rounded-xl border-2 border-emerald-400/70 bg-white/10 p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <PlanBadge plan="plus" />
-                <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">Önerilen</span>
+                <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">{tt('Önerilen')}</span>
               </div>
               <ul className="mt-2 flex flex-col gap-1 text-[13px] text-white/90">
-                {['6 adımda rota kurulumu', 'Kesin özgürlük yılı ve borçsuzluk tarihi', 'Finansal Yolculuğum: 8 duraklı rota ve simülasyon', 'Aylık paranın yolu, yatırım ve borç takibi'].map((t) => (
+                {[tt('6 adımda rota kurulumu'), tt('Kesin özgürlük yılı ve borçsuzluk tarihi'), tt('Finansal Yolculuğum: 8 duraklı rota ve simülasyon'), tt('Aylık paranın yolu, yatırım ve borç takibi')].map((t) => (
                   <li key={t} className="flex items-start gap-1.5">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-300" /> {t}
                   </li>
@@ -119,7 +119,7 @@ function NextStep({ result }: { result: QuickResult }) {
             <div className="rounded-xl border border-white/20 bg-white/5 p-3.5">
               <PlanBadge plan="plusplus" />
               <ul className="mt-2 flex flex-col gap-1 text-[13px] text-white/90">
-                {["Plus'taki her şey", 'Rotana göre seni takip eden koç', 'Gelecek senaryoları', 'Finansal bilgi ve gündem'].map((t) => (
+                {[tt('Plus\'taki her şey'), tt('Rotana göre seni takip eden koç'), tt('Gelecek senaryoları'), tt('Finansal bilgi ve gündem')].map((t) => (
                   <li key={t} className="flex items-start gap-1.5">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-violet-300" /> {t}
                   </li>
@@ -132,10 +132,10 @@ function NextStep({ result }: { result: QuickResult }) {
             onClick={() => navigate('/paketler')}
             className="relative mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 px-5 text-[15px] font-semibold text-[#0b1323] shadow-[0_12px_26px_-12px_rgb(251_146_60/0.9)] hover:brightness-110 sm:w-auto"
           >
-            <Sparkles className="size-4" /> Paketleri gör ve rotamı aç
+            <Sparkles className="size-4" /> {tt('Paketleri gör ve rotamı aç')}
           </button>
           <p className="relative mt-2 flex items-center gap-1.5 text-[12.5px] text-white/75">
-            <Lock className="size-3.5" /> Sonucun kaydedildi; paketini seçince rota kurulumu buradan devam eder.
+            <Lock className="size-3.5" /> {tt('Sonucun kaydedildi; paketini seçince rota kurulumu buradan devam eder.')}
           </p>
         </>
       )}

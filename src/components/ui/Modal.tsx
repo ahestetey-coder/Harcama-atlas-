@@ -6,6 +6,7 @@ import { cn } from '../../lib/cn'
 import { useIsDesktop } from '../../lib/hooks'
 import { revealOnFocus } from '../../lib/viewport'
 import { Button, IconButton } from './primitives'
+import { tt } from '../../lib/i18n'
 
 const ease = [0.2, 0.8, 0.2, 1] as const
 
@@ -104,11 +105,11 @@ export function Modal({
                     {description ? (
                       <Dialog.Description className="mt-0.5 text-sm text-muted">{description}</Dialog.Description>
                     ) : (
-                      <Dialog.Description className="sr-only">{typeof title === 'string' ? title : 'İletişim kutusu'}</Dialog.Description>
+                      <Dialog.Description className="sr-only">{typeof title === 'string' ? title : tt('İletişim kutusu')}</Dialog.Description>
                     )}
                   </div>
                   <Dialog.Close asChild>
-                    <IconButton label="Kapat" size="sm" className="-mr-1.5 -mt-0.5">
+                    <IconButton label={tt('Kapat')} size="sm" className="-mr-1.5 -mt-0.5">
                       <X className="size-[18px]" />
                     </IconButton>
                   </Dialog.Close>
@@ -156,7 +157,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Vazgeç
+            {tt('Vazgeç')}
           </Button>
           <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} loading={loading} disabled={confirmDisabled}>
             {confirmLabel}

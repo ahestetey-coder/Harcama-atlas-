@@ -4,6 +4,7 @@ import { mappingProblems, guessMapping, type ColumnMapping } from '../../import/
 import { cellText } from '../../import/sheet'
 import type { SheetTable } from '../../import/types'
 import { cn } from '../../lib/cn'
+import { tt, ttf } from '../../lib/i18n'
 
 const colLetter = (i: number) => {
   let s = ''
@@ -37,14 +38,14 @@ export function MappingStep({
   const [m, setM] = useState<ColumnMapping>(initial)
   const table = tables[sheet]
   const width = useMemo(() => Math.max(1, ...table.rows.slice(0, 40).map((r) => r.length)), [table])
-  const headers = (table.rows[m.headerRow] ?? []).map((c, i) => cellText(c) || `Sütun ${colLetter(i)}`)
+  const headers = (table.rows[m.headerRow] ?? []).map((c, i) => cellText(c) || ttf('Sütun {0}', colLetter(i)))
   const cols = Array.from({ length: width }, (_, i) => ({ i, label: `${colLetter(i)} · ${headers[i] ?? ''}`.trim() }))
   const problems = mappingProblems(m)
   const set = <K extends keyof ColumnMapping>(k: K, v: ColumnMapping[K]) => setM((p) => ({ ...p, [k]: v }))
   const colSelect = (k: 'date' | 'description' | 'amount' | 'debit' | 'credit' | 'category' | 'currency', label: string, optional = false) => (
     <Field label={label} htmlFor={`map-${k}`} optional={optional}>
       <Select id={`map-${k}`} value={m[k] === null ? '' : String(m[k])} onChange={(e) => set(k, e.target.value === '' ? null : Number(e.target.value))}>
-        <option value="">{optional ? 'Yok' : 'Seçin…'}</option>
+        <option value="">{optional ? 'Yok' : tt('Seçin…')}</option>
         {cols.map((c) => (
           <option key={c.i} value={c.i}>
             {c.label}
@@ -56,24 +57,24 @@ export function MappingStep({
   const used = new Map<number, string>()
   const mark = (i: number | null, name: string) => i !== null && used.set(i, name)
   mark(m.date, 'Tarih')
-  mark(m.description, 'Açıklama')
+  mark(m.description, tt('Açıklama'))
   if (m.amountMode === 'single') mark(m.amount, 'Tutar')
   else {
-    mark(m.debit, 'Borç')
+    mark(m.debit, tt('Borç'))
     mark(m.credit, 'Alacak')
   }
   mark(m.category, 'Kategori')
-  mark(m.currency, 'Para birimi')
+  mark(m.currency, tt('Para birimi'))
   const preview = table.rows.slice(m.headerRow, m.headerRow + 9)
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
       <Card className="p-5">
-        <h2 className="font-display text-base font-semibold">Sütunları eşleştirin</h2>
-        <p className="mt-1 text-[13px] text-muted">Tahminlerimizi kontrol edin.</p>
+        <h2 className="font-display text-base font-semibold">{tt('Sütunları eşleştirin')}</h2>
+        <p className="mt-1 text-[13px] text-muted">{tt('Tahminlerimizi kontrol edin.')}</p>
         <div className="mt-4 flex flex-col gap-3.5">
           {fileKind === 'xlsx' && tables.length > 1 && (
-            <Field label="Excel sayfası" htmlFor="map-sheet">
+            <Field label={tt('Excel sayfası')} htmlFor="map-sheet">
               <Select
                 id="map-sheet"
                 value={sheet}
@@ -85,68 +86,67 @@ export function MappingStep({
               >
                 {tables.map((t, i) => (
                   <option key={t.name + i} value={i}>
-                    {t.name} ({t.rows.length} satır)
-                  </option>
+                    {ttf('{0} ({1} satır)', t.name, t.rows.length)}</option>
                 ))}
               </Select>
             </Field>
           )}
-          <Field label="Başlık satırı" htmlFor="map-header" hint="Sütun adlarının olduğu satır.">
+          <Field label={tt('Başlık satırı')} htmlFor="map-header" hint={tt('Sütun adlarının olduğu satır.')}>
             <Select id="map-header" value={m.headerRow} onChange={(e) => set('headerRow', Number(e.target.value))}>
               {table.rows.slice(0, 30).map((r, i) => (
                 <option key={i} value={i}>
-                  {i + 1}. satır: {r.map(cellText).filter(Boolean).join(' | ').slice(0, 48) || '(boş)'}
+                  {ttf('{0}. satır: {1}', i + 1, r.map(cellText).filter(Boolean).join(' | ').slice(0, 48) || tt('(boş)'))}
                 </option>
               ))}
             </Select>
           </Field>
-          {colSelect('date', 'Tarih sütunu')}
-          {colSelect('description', 'Açıklama sütunu')}
-          <Field label="Tutar düzeni" htmlFor="map-mode">
+          {colSelect('date', tt('Tarih sütunu'))}
+          {colSelect('description', tt('Açıklama sütunu'))}
+          <Field label={tt('Tutar düzeni')} htmlFor="map-mode">
             <Select id="map-mode" value={m.amountMode} onChange={(e) => set('amountMode', e.target.value as ColumnMapping['amountMode'])}>
-              <option value="single">Tek tutar sütunu</option>
-              <option value="debitCredit">Ayrı borç ve alacak sütunları</option>
+              <option value="single">{tt('Tek tutar sütunu')}</option>
+              <option value="debitCredit">{tt('Ayrı borç ve alacak sütunları')}</option>
             </Select>
           </Field>
           {m.amountMode === 'single' ? (
             <>
-              {colSelect('amount', 'Tutar sütunu')}
-              <Field label="Giderler nasıl görünüyor?" htmlFor="map-sign">
+              {colSelect('amount', tt('Tutar sütunu'))}
+              <Field label={tt('Giderler nasıl görünüyor?')} htmlFor="map-sign">
                 <Select id="map-sign" value={m.expenseSign} onChange={(e) => set('expenseSign', e.target.value as ColumnMapping['expenseSign'])}>
-                  <option value="positive">Pozitif (kart ekstresi: harcama 150,00)</option>
-                  <option value="negative">Eksi (hesap dökümü: harcama −150,00)</option>
+                  <option value="positive">{tt('Pozitif (kart ekstresi: harcama 150,00)')}</option>
+                  <option value="negative">{tt('Eksi (hesap dökümü: harcama −150,00)')}</option>
                 </Select>
               </Field>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {colSelect('debit', 'Borç (giden)')}
-              {colSelect('credit', 'Alacak (gelen)')}
+              {colSelect('debit', tt('Borç (giden)'))}
+              {colSelect('credit', tt('Alacak (gelen)'))}
             </div>
           )}
-          <Field label="Dosya türü" htmlFor="map-kind" hint="Hesaba gelen para hariç tutulur.">
+          <Field label={tt('Dosya türü')} htmlFor="map-kind" hint={tt('Hesaba gelen para hariç tutulur.')}>
             <Select id="map-kind" value={m.statementKind} onChange={(e) => set('statementKind', e.target.value as ColumnMapping['statementKind'])}>
-              <option value="card">Kredi kartı ekstresi</option>
-              <option value="account">Banka hesap hareketleri</option>
+              <option value="card">{tt('Kredi kartı ekstresi')}</option>
+              <option value="account">{tt('Banka hesap hareketleri')}</option>
             </Select>
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Tarih biçimi" htmlFor="map-date-order">
+            <Field label={tt('Tarih biçimi')} htmlFor="map-date-order">
               <Select id="map-date-order" value={m.dateOrder} onChange={(e) => set('dateOrder', e.target.value as ColumnMapping['dateOrder'])}>
-                <option value="dmy">GG.AA.YYYY</option>
-                <option value="mdy">AA/GG/YYYY</option>
+                <option value="dmy">{tt('GG.AA.YYYY')}</option>
+                <option value="mdy">{tt('AA/GG/YYYY')}</option>
               </Select>
             </Field>
-            <Field label="Sayı biçimi" htmlFor="map-num">
+            <Field label={tt('Sayı biçimi')} htmlFor="map-num">
               <Select id="map-num" value={m.numberFormat} onChange={(e) => set('numberFormat', e.target.value as ColumnMapping['numberFormat'])}>
                 <option value="tr">1.234,56</option>
                 <option value="en">1,234.56</option>
-                <option value="auto">Belirsiz: sor</option>
+                <option value="auto">{tt('Belirsiz: sor')}</option>
               </Select>
             </Field>
           </div>
-          {colSelect('category', 'Kategori sütunu', true)}
-          {colSelect('currency', 'Para birimi sütunu', true)}
+          {colSelect('category', tt('Kategori sütunu'), true)}
+          {colSelect('currency', tt('Para birimi sütunu'), true)}
         </div>
       </Card>
       <div className="flex min-w-0 flex-col gap-4">
@@ -155,9 +155,9 @@ export function MappingStep({
             {n}
           </Alert>
         ))}
-        {m.numberFormat === 'auto' && <Alert tone="warning">Sayı biçimi anlaşılamadı. Belirsiz tutarlar incelemede sorulacak.</Alert>}
+        {m.numberFormat === 'auto' && <Alert tone="warning">{tt('Sayı biçimi anlaşılamadı. Belirsiz tutarlar incelemede sorulacak.')}</Alert>}
         <Card className="min-w-0 overflow-hidden">
-          <div className="border-b border-line px-4 py-3 text-sm font-semibold">Önizleme (ilk satırlar)</div>
+          <div className="border-b border-line px-4 py-3 text-sm font-semibold">{tt('Önizleme (ilk satırlar)')}</div>
           <div className="scrollbar-thin overflow-x-auto">
             <table className="min-w-full text-[12.5px]">
               <thead>
@@ -184,16 +184,16 @@ export function MappingStep({
           </div>
         </Card>
         {problems.length > 0 && (
-          <Alert tone="warning" title="Eksik eşleştirme">
+          <Alert tone="warning" title={tt('Eksik eşleştirme')}>
             {problems.join(' ')}
           </Alert>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onCancel}>
-            Vazgeç
+            {tt('Vazgeç')}
           </Button>
           <Button variant="primary" disabled={problems.length > 0} onClick={() => onConfirm(table, m)}>
-            İşlemleri çıkar ve incele
+            {tt('İşlemleri çıkar ve incele')}
           </Button>
         </div>
       </div>

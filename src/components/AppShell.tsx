@@ -16,6 +16,7 @@ import { ImportSheet } from './ImportSheet'
 import { QuickAddSheet } from './QuickAdd'
 import { Modal } from './ui/Modal'
 import { Alert, Button, IconButton } from './ui/primitives'
+import { tt } from '../lib/i18n'
 
 interface NavItem {
   to: string
@@ -29,33 +30,33 @@ interface NavItem {
 }
 
 const ITEMS = {
-  home: { to: '/', label: 'Özet', icon: LayoutDashboard, end: true, tone: 'from-emerald-500 to-teal-600' },
-  txs: { to: '/islemler', label: 'İşlemler', icon: ListOrdered, tone: 'from-sky-500 to-blue-600' },
-  categories: { to: '/kategoriler', label: 'Kategoriler ve gruplar', short: 'Kategoriler', icon: Tags, tone: 'from-teal-500 to-cyan-600' },
-  budget: { to: '/butce', label: 'Bütçe planı', short: 'Bütçe', icon: Target, tone: 'from-amber-500 to-orange-600' },
-  goals: { to: '/hedefler', label: 'Birikim hedefleri', short: 'Hedefler', icon: PiggyBank, tone: 'from-pink-500 to-rose-600' },
-  reports: { to: '/raporlar', label: 'Raporlar', icon: ChartColumn, tone: 'from-indigo-500 to-blue-700' },
-  assets: { to: '/yatirimlar', label: 'Yatırımlarım', short: 'Yatırım', icon: Wallet, tone: 'from-emerald-600 to-green-700' },
-  debts: { to: '/borclar', label: 'Borçlar ve ödemeler', short: 'Borçlar', icon: CreditCard, tone: 'from-rose-500 to-red-600' },
-  coach: { to: '/koc', label: 'Koçum', short: 'Koç', icon: Bot, tone: 'from-cyan-500 to-emerald-500' },
-  journey: { to: '/yolculuk', label: 'Finansal yolculuğum', short: 'Yolculuğum', icon: Mountain, tone: 'from-orange-500 to-red-600' },
-  mapTest: { to: '/finansal-harita', label: 'Finansal Harita testi', short: 'Harita testi', icon: MapIcon, tone: 'from-amber-500 to-orange-600' },
-  scenarios: { to: '/senaryolar', label: 'Gelecek senaryoları', short: 'Senaryolar', icon: TrendingUp, tone: 'from-fuchsia-500 to-purple-600' },
-  learning: { to: '/ogren', label: 'Finansal bilgi', short: 'Bilgi', icon: BookOpen, tone: 'from-yellow-500 to-amber-600' },
-  members: { to: '/uyeler', label: 'Üyeler ve paylaşım', short: 'Üyeler', icon: Users, tone: 'from-fuchsia-500 to-pink-600' },
-  history: { to: '/aktarimlar', label: 'Aktarım geçmişi', short: 'Aktarımlar', icon: History, tone: 'from-slate-500 to-slate-700' },
-  backup: { to: '/yedekleme', label: 'Yedekleme ve veri', short: 'Yedekleme', icon: Database, tone: 'from-slate-500 to-slate-700' },
-  settings: { to: '/ayarlar', label: 'Ayarlar', icon: Settings, tone: 'from-slate-500 to-slate-700' },
-  plans: { to: '/paketler', label: 'Paketler', icon: Sparkles, tone: 'from-amber-400 to-pink-500' },
-  admin: { to: '/yonetim', label: 'Yönetici paneli', short: 'Yönetim', icon: ShieldCheck, tone: 'from-rose-500 to-red-700' },
+  home: { to: '/', label: tt('Özet'), icon: LayoutDashboard, end: true, tone: 'from-emerald-500 to-teal-600' },
+  txs: { to: '/islemler', label: tt('İşlemler'), icon: ListOrdered, tone: 'from-sky-500 to-blue-600' },
+  categories: { to: '/kategoriler', label: tt('Kategoriler ve gruplar'), short: tt('Kategoriler'), icon: Tags, tone: 'from-teal-500 to-cyan-600' },
+  budget: { to: '/butce', label: tt('Bütçe planı'), short: tt('Bütçe'), icon: Target, tone: 'from-amber-500 to-orange-600' },
+  goals: { to: '/hedefler', label: tt('Birikim hedefleri'), short: tt('Hedefler'), icon: PiggyBank, tone: 'from-pink-500 to-rose-600' },
+  reports: { to: '/raporlar', label: tt('Raporlar'), icon: ChartColumn, tone: 'from-indigo-500 to-blue-700' },
+  assets: { to: '/yatirimlar', label: tt('Yatırımlarım'), short: tt('Yatırım'), icon: Wallet, tone: 'from-emerald-600 to-green-700' },
+  debts: { to: '/borclar', label: tt('Borçlar ve ödemeler'), short: tt('Borçlar'), icon: CreditCard, tone: 'from-rose-500 to-red-600' },
+  coach: { to: '/koc', label: tt('Koçum'), short: tt('Koç'), icon: Bot, tone: 'from-cyan-500 to-emerald-500' },
+  journey: { to: '/yolculuk', label: tt('Finansal yolculuğum'), short: tt('Yolculuğum'), icon: Mountain, tone: 'from-orange-500 to-red-600' },
+  mapTest: { to: '/finansal-harita', label: tt('Finansal Harita testi'), short: tt('Harita testi'), icon: MapIcon, tone: 'from-amber-500 to-orange-600' },
+  scenarios: { to: '/senaryolar', label: tt('Gelecek senaryoları'), short: tt('Senaryolar'), icon: TrendingUp, tone: 'from-fuchsia-500 to-purple-600' },
+  learning: { to: '/ogren', label: tt('Finansal bilgi'), short: tt('Bilgi'), icon: BookOpen, tone: 'from-yellow-500 to-amber-600' },
+  members: { to: '/uyeler', label: tt('Üyeler ve paylaşım'), short: tt('Üyeler'), icon: Users, tone: 'from-fuchsia-500 to-pink-600' },
+  history: { to: '/aktarimlar', label: tt('Aktarım geçmişi'), short: tt('Aktarımlar'), icon: History, tone: 'from-slate-500 to-slate-700' },
+  backup: { to: '/yedekleme', label: tt('Yedekleme ve veri'), short: tt('Yedekleme'), icon: Database, tone: 'from-slate-500 to-slate-700' },
+  settings: { to: '/ayarlar', label: tt('Ayarlar'), icon: Settings, tone: 'from-slate-500 to-slate-700' },
+  plans: { to: '/paketler', label: tt('Paketler'), icon: Sparkles, tone: 'from-amber-400 to-pink-500' },
+  admin: { to: '/yonetim', label: tt('Yönetici paneli'), short: tt('Yönetim'), icon: ShieldCheck, tone: 'from-rose-500 to-red-700' },
 } satisfies Record<string, NavItem>
 
 /** Kenar menüsü ve "Menü" penceresindeki bölümler. */
 const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
-  { title: 'Günlük', items: [ITEMS.home, ITEMS.txs, ITEMS.categories] },
-  { title: 'Planlama', items: [ITEMS.budget, ITEMS.debts, ITEMS.goals, ITEMS.reports] },
-  { title: 'Yatırım ve gelecek', items: [ITEMS.mapTest, ITEMS.journey, ITEMS.assets, ITEMS.coach, ITEMS.scenarios, ITEMS.learning] },
-  { title: 'Hesap ve veri', items: [ITEMS.members, ITEMS.history, ITEMS.backup, ITEMS.settings, ITEMS.plans] },
+  { title: tt('Günlük'), items: [ITEMS.home, ITEMS.txs, ITEMS.categories] },
+  { title: tt('Planlama'), items: [ITEMS.budget, ITEMS.debts, ITEMS.goals, ITEMS.reports] },
+  { title: tt('Yatırım ve gelecek'), items: [ITEMS.mapTest, ITEMS.journey, ITEMS.assets, ITEMS.coach, ITEMS.scenarios, ITEMS.learning] },
+  { title: tt('Hesap ve veri'), items: [ITEMS.members, ITEMS.history, ITEMS.backup, ITEMS.settings, ITEMS.plans] },
 ]
 /** Mobil alt menüdeki sekmeler ("+" düğmesinin solu ve sağı). */
 const DOCK_LEFT: NavItem[] = [ITEMS.home, ITEMS.txs, ITEMS.budget]
@@ -89,7 +90,7 @@ export function Logo({ className }: { className?: string }) {
           </linearGradient>
         </defs>
         <rect width="64" height="64" rx="16" fill={`url(#${gid}b)`} />
-        <g transform="translate(9.6 12.085) scale(0.7)">
+        <g transform={tt('translate(9.6 12.085) scale(0.7)')}>
           <path d="M3 56 C15 42 21 11 32 11 C43 11 49 42 61 56 Z" fill={`url(#${gid}1)`} />
           <path d="M11 56 C20 45 25 25 32 25 C39 25 44 45 53 56 Z" fill={`url(#${gid}2)`} />
           <path d="M20 56 C25 49 28 38 32 38 C36 38 39 49 44 56 Z" fill={`url(#${gid}3)`} />
@@ -127,7 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh lg:pl-[272px]">
       <a href="#main" className="sr-only z-[80] rounded-lg bg-surface px-3 py-2 focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
-        İçeriğe geç
+        {tt('İçeriğe geç')}
       </a>
       {/* Masaüstü yan menü */}
       <aside className="glass fixed inset-y-0 left-0 z-30 hidden w-[272px] flex-col border-r border-line px-4 py-5 lg:flex">
@@ -137,13 +138,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="mt-6 flex gap-2">
           <Button variant="primary" size="lg" className="flex-1" icon={<Plus className="size-5" />} onClick={() => setAddOpen(true)}>
-            Yeni ekle
+            {tt('Yeni ekle')}
           </Button>
-          <IconButton label="Gider ekle" className="size-12 rounded-xl border border-line bg-surface shadow-card" onClick={() => openTransactionForm()}>
+          <IconButton label={tt('Gider ekle')} className="size-12 rounded-xl border border-line bg-surface shadow-card" onClick={() => openTransactionForm()}>
             <Receipt className="size-5" />
           </IconButton>
         </div>
-        <nav aria-label="Ana menü" className="-mx-1 mt-5 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-2">
+        <nav aria-label={tt('Ana menü')} className="-mx-1 mt-5 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-2">
           {sections.map((sec) => (
             <div key={sec.title} className="flex flex-col gap-0.5">
               <div className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-subtle">{sec.title}</div>
@@ -179,11 +180,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {isDemo && (
             <div className="rounded-2xl border border-warning/30 bg-warning-soft p-3 text-[12.5px] text-ink">
               <div className="flex items-center gap-1.5 font-semibold text-warning">
-                <FlaskConical className="size-4" /> Demo modu açık
+                <FlaskConical className="size-4" /> {tt('Demo modu açık')}
               </div>
-              <p className="mt-1 text-muted">Gerçek kayıtlarınız ayrı saklanır.</p>
+              <p className="mt-1 text-muted">{tt('Gerçek kayıtlarınız ayrı saklanır.')}</p>
               <button type="button" className="mt-2 font-semibold text-accent hover:underline" onClick={() => setDemo(false)}>
-                Demo modunu kapat
+                {tt('Demo modunu kapat')}
               </button>
             </div>
           )}
@@ -197,7 +198,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-2">
           {isDemo && (
             <button type="button" onClick={() => setDemo(false)} className="rounded-full bg-warning-soft px-2.5 py-1 text-[12px] font-semibold text-warning">
-              Demo · kapat
+              {tt('Demo · kapat')}
             </button>
           )}
           <ThemeToggle />
@@ -207,13 +208,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       {isDemo && (
         <div className="hidden border-b border-warning/25 bg-warning-soft px-6 py-2 text-center text-[13px] text-ink lg:block">
           <FlaskConical className="mr-1.5 inline size-4 text-warning" />
-          Demo modu: gösterilen kayıtlar örnektir ve gerçek verilerinize karışmaz.
+          {tt('Demo modu: gösterilen kayıtlar örnektir ve gerçek verilerinize karışmaz.')}
         </div>
       )}
 
       <main id="main" className={cn('app-depth mx-auto w-full max-w-[1180px] px-4 pb-36 pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-7', depth && 'app-depth-on')}>
         {dbError && (
-          <Alert tone="danger" title="Veritabanı açılamadı" className="mb-4">
+          <Alert tone="danger" title={tt('Veritabanı açılamadı')} className="mb-4">
             {dbError}
           </Alert>
         )}
@@ -224,7 +225,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       {/* Mobil alt menü: yüzen çubuk */}
-      <nav aria-label="Alt menü" className="hide-on-kb pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden">
+      <nav aria-label={tt('Alt menü')} className="hide-on-kb pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden">
         <div className="dock pointer-events-auto relative mx-auto grid max-w-md grid-cols-7 items-end rounded-[26px] border border-line-strong px-1 pb-1 pt-1.5 shadow-float">
           {DOCK_LEFT.map((n) => (
             <MobileTab key={n.to} item={n} />
@@ -233,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <motion.button
               type="button"
               onClick={() => setAddOpen(true)}
-              aria-label="Ekle"
+              aria-label={tt('Ekle')}
               aria-haspopup="dialog"
               whileTap={{ scale: 0.9 }}
               animate={{ rotate: addOpen ? 45 : 0 }}
@@ -254,13 +255,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             {inMenu && <TabIndicator />}
             <Menu className="relative size-[21px]" />
-            <span className="relative">Menü</span>
+            <span className="relative">{tt('Menü')}</span>
           </button>
         </div>
       </nav>
       <QuickAddSheet open={addOpen} onOpenChange={setAddOpen} />
       <ImportSheet />
-      <Modal open={moreOpen} onOpenChange={setMoreOpen} title="Menü" size="md">
+      <Modal open={moreOpen} onOpenChange={setMoreOpen} title={tt('Menü')} size="md">
         <div className="flex flex-col gap-5 pb-2">
           {sections.map((sec, si) => (
             <section key={sec.title} aria-label={sec.title}>
@@ -317,8 +318,8 @@ function ThemeToggle() {
     <button
       type="button"
       onClick={() => setPreference(dark ? 'light' : 'dark')}
-      aria-label={dark ? 'Açık temaya geç' : 'Koyu temaya geç'}
-      title={dark ? 'Açık tema' : 'Koyu tema'}
+      aria-label={dark ? tt('Açık temaya geç') : tt('Koyu temaya geç')}
+      title={dark ? tt('Açık tema') : tt('Koyu tema')}
       className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-surface text-muted shadow-card transition-colors hover:text-ink"
     >
       <AnimatePresence mode="wait" initial={false}>
@@ -345,7 +346,7 @@ function AccountBox({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-center gap-2 rounded-2xl border border-line bg-surface-2 py-2 pl-3 pr-1.5', className)}>
       <div className="min-w-0 flex-1 text-[12.5px]">
-        <div className="truncate font-semibold text-ink">{auth.user.name ?? 'Hesabım'}</div>
+        <div className="truncate font-semibold text-ink">{auth.user.name ?? tt('Hesabım')}</div>
         <div className="truncate text-subtle">{auth.user.email}</div>
       </div>
       <button
@@ -353,14 +354,14 @@ function AccountBox({ className }: { className?: string }) {
         onClick={() => setConfirm(true)}
         className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-[12.5px] font-semibold text-muted hover:bg-surface hover:text-ink"
       >
-        <LogOut className="size-4" /> Çıkış
+        <LogOut className="size-4" /> {tt('Çıkış')}
       </button>
-      <Modal open={confirm} onOpenChange={setConfirm} title="Çıkış yapılsın mı?" size="sm">
-        <p className="text-sm text-muted">Kayıtlarınız hesabınızda saklı kalır; yeniden girince gelir.</p>
+      <Modal open={confirm} onOpenChange={setConfirm} title={tt('Çıkış yapılsın mı?')} size="sm">
+        <p className="text-sm text-muted">{tt('Kayıtlarınız hesabınızda saklı kalır; yeniden girince gelir.')}</p>
         <div className="mt-5 flex justify-end gap-2 pb-1">
-          <Button onClick={() => setConfirm(false)}>Vazgeç</Button>
+          <Button onClick={() => setConfirm(false)}>{tt('Vazgeç')}</Button>
           <Button variant="primary" icon={<LogOut className="size-4" />} onClick={() => void auth.signOut()}>
-            Çıkış yap
+            {tt('Çıkış yap')}
           </Button>
         </div>
       </Modal>

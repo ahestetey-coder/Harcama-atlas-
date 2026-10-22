@@ -6,12 +6,13 @@ import type { FlowKey, FlowRow, MoneyFlowResult } from '../domain/moneyFlow'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
 import { Card } from './ui/primitives'
+import { tt, ttf } from '../lib/i18n'
 
 /** 50/30/20 kovaları; renkler açık ve koyu temada doğrulanmış paletten. */
 export const FLOW_META: Record<FlowKey, { label: string; color: string }> = {
-  needs: { label: 'Zorunlu gider ve ihtiyaçlar', color: '#0284c7' },
-  wants: { label: 'İstekler', color: '#d97706' },
-  saving: { label: 'Borç kapama ve birikim', color: '#059669' },
+  needs: { label: tt('Zorunlu gider ve ihtiyaçlar'), color: '#0284c7' },
+  wants: { label: tt('İstekler'), color: '#d97706' },
+  saving: { label: tt('Borç kapama ve birikim'), color: '#059669' },
 }
 
 /** Tam lira: 1765000 → "17.650 ₺" */
@@ -20,8 +21,8 @@ const pct = (x: number) => `%${Math.round(x * 100)}`
 
 /** Hücrenin durum satırı: hedefin içinde mi, ne kadar aşıldı ya da birikim ne kadar eksik. */
 export function flowNote(r: FlowRow): string {
-  if (r.key === 'saving') return r.spentKurus >= r.targetKurus ? '✓ hedefte' : `${tl(r.targetKurus - r.spentKurus)} kaldı`
-  return r.ok ? `✓ ${tl(r.targetKurus - r.spentKurus)} kaldı` : `! ${tl(r.spentKurus - r.targetKurus)} aştı`
+  if (r.key === 'saving') return r.spentKurus >= r.targetKurus ? tt('✓ hedefte') : ttf('{0} kaldı', tl(r.targetKurus - r.spentKurus))
+  return r.ok ? ttf('✓ {0} kaldı', tl(r.targetKurus - r.spentKurus)) : ttf('! {0} aştı', tl(r.spentKurus - r.targetKurus))
 }
 
 function Bar({ r, delay }: { r: FlowRow; delay: number }) {
@@ -71,7 +72,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
             </div>
             <div className="num mt-1 text-[15px] font-semibold leading-tight text-ink">{tl(r.targetKurus)}</div>
             <div className="num mt-1 text-[11.5px] text-muted">
-              {r.key === 'saving' ? 'Ayrılan' : 'Harcanan'} {tl(r.spentKurus)} / {tl(r.targetKurus)}
+              {r.key === 'saving' ? tt('Ayrılan') : 'Harcanan'} {tl(r.spentKurus)} / {tl(r.targetKurus)}
             </div>
             <div className="mt-1.5">
               <Bar r={r} delay={0.1 * i} />
@@ -81,7 +82,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
         ))}
       </ul>
       <p className="mt-2 text-[11.5px] text-subtle">
-        Zorunlu: kira, fatura, market, ulaşım, sağlık, eğitim, kredi ve taksit ödemeleri. İstekler: restoran ve kafe, giyim, eğlence, abonelikler ve diğer. Borç kapama ve birikim: Yatırımlarım'a eklenenler ve borçlarından düşülen ödemeler.
+        {tt('Zorunlu: kira, fatura, market, ulaşım, sağlık, eğitim, kredi ve taksit ödemeleri. İstekler: restoran ve kafe, giyim, eğlence, abonelikler ve diğer. Borç kapama ve birikim: Yatırımlarım\'a eklenenler ve borçlarından düşülen ödemeler.')}
       </p>
     </>
   )
@@ -91,18 +92,18 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
 export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; className?: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <Card className={cn('p-4', className)} aria-label="Aylık paranın yolu">
+    <Card className={cn('p-4', className)} aria-label={tt('Aylık paranın yolu')}>
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <TrendingUp className="size-4 text-accent" /> Aylık paranın yolu
+          <TrendingUp className="size-4 text-accent" /> {tt('Aylık paranın yolu')}
         </h2>
         <div className="relative flex items-center gap-1">
           <Link to="/butce" className="inline-flex items-center text-[13px] font-medium text-accent hover:underline">
-            Bütçe <ChevronRight className="size-4" />
+            {tt('Bütçe')} <ChevronRight className="size-4" />
           </Link>
           <button
             type="button"
-            aria-label="Borç kapama ve birikim ekle"
+            aria-label={tt('Borç kapama ve birikim ekle')}
             aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
             className="pressable grid size-8 place-items-center rounded-full bg-accent text-white shadow-card"
@@ -112,18 +113,17 @@ export function MoneyFlowSummary({ flow, className }: { flow: MoneyFlowResult; c
           {open && (
             <div role="menu" className="absolute right-0 top-10 z-10 w-48 overflow-hidden rounded-xl border border-line bg-surface p-1 shadow-float">
               <Link role="menuitem" to="/yatirimlar?yeni=1" className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13.5px] text-ink hover:bg-surface-2">
-                <PiggyBank className="size-4 text-accent" /> Birikim ekle
+                <PiggyBank className="size-4 text-accent" /> {tt('Birikim ekle')}
               </Link>
               <Link role="menuitem" to="/borclar" className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13.5px] text-ink hover:bg-surface-2">
-                <CreditCard className="size-4 text-accent" /> Borç ödemesi ekle
+                <CreditCard className="size-4 text-accent" /> {tt('Borç ödemesi ekle')}
               </Link>
             </div>
           )}
         </div>
       </div>
       <p className="num mt-0.5 text-[12.5px] text-muted">
-        {tl(flow.incomeKurus)} gelir · 50/30/20 kuralı
-      </p>
+        {ttf('{0} gelir · 50/30/20 kuralı', tl(flow.incomeKurus))}</p>
       <FlowCells flow={flow} />
     </Card>
   )

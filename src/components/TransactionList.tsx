@@ -11,6 +11,7 @@ import { useGroupMap } from '../state/data'
 import { useUi } from '../state/ui'
 import { CategoryIcon, GroupBadge, IncomeIcon, Money, TransferIcon } from './common'
 import { Badge, IconButton } from './ui/primitives'
+import { tt, ttf } from '../lib/i18n'
 
 interface Props {
   transactions: Transaction[]
@@ -40,11 +41,11 @@ function TxMeta({ t, group, member, uncounted, period }: { t: Transaction; group
         </span>
       )}
       <GroupBadge group={group} />
-      {uncounted && t.source === 'shared' && <Badge tone="warning">Toplama girmez</Badge>}
+      {uncounted && t.source === 'shared' && <Badge tone="warning">{tt('Toplama girmez')}</Badge>}
       {t.type !== 'expense' && t.source !== 'settlement' && <Badge tone={t.type === 'refund' ? 'accent' : t.type === 'income' ? 'teal' : 'neutral'}>{TX_TYPE_LABEL[t.type]}</Badge>}
       {t.installment && (
         <Badge tone="info" className="num">
-          Taksit {t.installment.current}/{t.installment.total || '?'}
+          {ttf('Taksit {0}/{1}', t.installment.current, t.installment.total || '?')}
         </Badge>
       )}
       {t.foreign && (
@@ -52,7 +53,7 @@ function TxMeta({ t, group, member, uncounted, period }: { t: Transaction; group
           {(t.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {t.foreign.currency}
         </Badge>
       )}
-      {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge tone={t.source === 'settlement' ? 'accent' : undefined}>{t.source === 'planned' && t.type === 'income' ? 'Düzenli gelir' : SOURCE_LABEL[t.source]}</Badge>}
+      {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge tone={t.source === 'settlement' ? 'accent' : undefined}>{t.source === 'planned' && t.type === 'income' ? tt('Düzenli gelir') : SOURCE_LABEL[t.source]}</Badge>}
       {period && <Badge className="num">{period}</Badge>}
     </>
   )
@@ -68,14 +69,14 @@ export function TransactionList({ transactions, categories, selectable, selected
     const p = periodOf(at, startDay)
     if (p === periodOf(t.date, startDay)) return null
     const start = periodRange(p, startDay).start
-    return `${dayOf(start)} ${MONTH_SHORT[Number(start.slice(5, 7)) - 1]} dönemi`
+    return ttf('{0} {1} dönemi', dayOf(start), MONTH_SHORT[Number(start.slice(5, 7)) - 1])
   }
   const groups = useGroupMap()
   const { map: members, selfId } = useMembers()
   // Ortak gruptaki her işlemde ekleyen kişi görünür; üyeden gelen işlemlerde her zaman
   const memberOf = (t: Transaction): Pick<Member, 'name' | 'color'> | undefined => {
-    if (t.memberId && t.memberId !== selfId) return members.get(t.memberId) ?? { name: 'Grup üyesi', color: '#94a3b8' }
-    if (t.groupId && groups.get(t.groupId)?.cloudId) return { name: 'Siz', color: (selfId && members.get(selfId)?.color) || '#94a3b8' }
+    if (t.memberId && t.memberId !== selfId) return members.get(t.memberId) ?? { name: tt('Grup üyesi'), color: '#94a3b8' }
+    if (t.groupId && groups.get(t.groupId)?.cloudId) return { name: tt('Siz'), color: (selfId && members.get(selfId)?.color) || '#94a3b8' }
     return undefined
   }
   const shown = transactions.slice(0, limit)
@@ -99,19 +100,19 @@ export function TransactionList({ transactions, categories, selectable, selected
                 <th className="w-10 border-b border-line py-2.5 pl-4">
                   <input
                     type="checkbox"
-                    aria-label="Görünen tüm işlemleri seç"
+                    aria-label={tt('Görünen tüm işlemleri seç')}
                     checked={!!allSelected}
                     onChange={(e) => onToggleAll?.(e.target.checked)}
                     className="size-4 accent-emerald-600"
                   />
                 </th>
               )}
-              <th className="border-b border-line py-2.5 pl-4 font-medium">Tarih</th>
-              <th className="border-b border-line py-2.5 pl-3 font-medium">Açıklama</th>
-              <th className="border-b border-line py-2.5 pl-3 font-medium">Kategori</th>
-              <th className="border-b border-line py-2.5 pl-3 font-medium">Ödeme</th>
-              <th className="border-b border-line py-2.5 pr-3 text-right font-medium">Tutar</th>
-              {(onEdit || onDelete) && <th className="w-24 border-b border-line py-2.5 pr-3"><span className="sr-only">İşlemler</span></th>}
+              <th className="border-b border-line py-2.5 pl-4 font-medium">{tt('Tarih')}</th>
+              <th className="border-b border-line py-2.5 pl-3 font-medium">{tt('Açıklama')}</th>
+              <th className="border-b border-line py-2.5 pl-3 font-medium">{tt('Kategori')}</th>
+              <th className="border-b border-line py-2.5 pl-3 font-medium">{tt('Ödeme')}</th>
+              <th className="border-b border-line py-2.5 pr-3 text-right font-medium">{tt('Tutar')}</th>
+              {(onEdit || onDelete) && <th className="w-24 border-b border-line py-2.5 pr-3"><span className="sr-only">{tt('İşlemler')}</span></th>}
             </tr>
           </thead>
           <tbody>
@@ -130,7 +131,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                   >
                     {selectable && (
                       <td className="border-b border-line py-2.5 pl-4">
-                        <input type="checkbox" aria-label={`${t.description} seç`} checked={!!selected?.has(t.id)} onChange={() => onToggle?.(t.id)} className="size-4 accent-emerald-600" />
+                        <input type="checkbox" aria-label={ttf('{0} seç', t.description)} checked={!!selected?.has(t.id)} onChange={() => onToggle?.(t.id)} className="size-4 accent-emerald-600" />
                       </td>
                     )}
                     <td className="num whitespace-nowrap border-b border-line py-2.5 pl-4 text-muted">{formatDate(t.date)}</td>
@@ -163,7 +164,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                       <td className="border-b border-line py-1.5 pr-3 text-right">
                         <div className="inline-flex opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                           {onEdit && (
-                            <IconButton label={`${t.description} düzenle`} size="sm" onClick={() => onEdit(t)}>
+                            <IconButton label={ttf('{0} düzenle', t.description)} size="sm" onClick={() => onEdit(t)}>
                               <Pencil className="size-4" />
                             </IconButton>
                           )}
@@ -200,7 +201,7 @@ export function TransactionList({ transactions, categories, selectable, selected
               >
                 <div className={cn('flex items-center gap-2.5 py-3', compact ? 'px-0' : 'px-3 sm:px-4', selected?.has(t.id) && 'bg-accent-soft/60')}>
                   {selectable && (
-                    <input type="checkbox" aria-label={`${t.description} seç`} checked={!!selected?.has(t.id)} onChange={() => onToggle?.(t.id)} className="size-[18px] shrink-0 accent-emerald-600" />
+                    <input type="checkbox" aria-label={ttf('{0} seç', t.description)} checked={!!selected?.has(t.id)} onChange={() => onToggle?.(t.id)} className="size-[18px] shrink-0 accent-emerald-600" />
                   )}
                   {t.type === 'transfer' && !cat ? <TransferIcon /> : t.type === 'income' && !cat ? <IncomeIcon /> : <CategoryIcon category={cat} />}
                   <button
@@ -208,7 +209,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                     className="min-w-0 flex-1 text-left disabled:cursor-default"
                     onClick={() => onEdit?.(t)}
                     disabled={!onEdit}
-                    aria-label={onEdit ? `${t.description}, ${formatKurus(t.amountKurus)}, düzenle` : undefined}
+                    aria-label={onEdit ? ttf('{0}, {1}, düzenle', t.description, formatKurus(t.amountKurus)) : undefined}
                   >
                     <div className="line-clamp-2 text-[14px] leading-snug [overflow-wrap:break-word] font-medium text-ink">{t.description}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-subtle">
@@ -233,8 +234,7 @@ export function TransactionList({ transactions, categories, selectable, selected
       </ul>
       {transactions.length > limit && (
         <p className="px-4 py-3 text-center text-[13px] text-subtle">
-          İlk {limit} işlem gösteriliyor. Filtreleri daraltın.
-        </p>
+          {ttf('İlk {0} işlem gösteriliyor. Filtreleri daraltın.', limit)}</p>
       )}
     </div>
   )

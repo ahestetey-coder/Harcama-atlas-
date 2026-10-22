@@ -18,8 +18,9 @@ import { ImageStep } from './ImageStep'
 import { MappingStep } from './MappingStep'
 import { ReviewStep } from './ReviewStep'
 import { ACCEPT, useImportFlow } from './useImportFlow'
+import { tt, ttf } from '../../lib/i18n'
 
-const STEPS = ['Dosya seç', 'Oku', 'İncele ve düzelt', 'Kaydet']
+const STEPS = [tt('Dosya seç'), 'Oku', tt('İncele ve düzelt'), 'Kaydet']
 
 export default function ImportPage() {
   return <ImportFlow />
@@ -76,7 +77,7 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
         isDemo,
       })
       const res = await repo.commitImport(commit)
-      if (!res.saved) toast('Bu aktarım zaten kaydedilmişti; tekrar eklenmedi.', { kind: 'info' })
+      if (!res.saved) toast(tt('Bu aktarım zaten kaydedilmişti; tekrar eklenmedi.'), { kind: 'info' })
       // İşlemler hangi aylara düştü? Panel, en çok işlemin olduğu aya geçer
       // (ekstre geçen aya aitse panel bu ayı boş gösterirdi).
       const byMonth = new Map<string, number>()
@@ -104,8 +105,8 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
 
   return (
     <div>
-      {!embedded && <PageHeader title="İçe aktar" subtitle="Dosya seçin, inceleyin, onaylayın." />}
-      <ol className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1 text-[12.5px] sm:gap-3" aria-label="Adımlar">
+      {!embedded && <PageHeader title={tt('İçe aktar')} subtitle={tt('Dosya seçin, inceleyin, onaylayın.')} />}
+      <ol className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1 text-[12.5px] sm:gap-3" aria-label={tt('Adımlar')}>
         {STEPS.map((s, i) => (
           <li key={s} className="flex shrink-0 items-center gap-1.5 sm:gap-3" aria-current={i === stepIndex ? 'step' : undefined}>
             <span
@@ -129,18 +130,17 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
           <div className="flex items-start gap-3">
             <TriangleAlert className="mt-0.5 size-6 shrink-0 text-warning" />
             <div>
-              <h2 className="font-display text-lg font-semibold">Bu dosya daha önce içe aktarılmış</h2>
+              <h2 className="font-display text-lg font-semibold">{tt('Bu dosya daha önce içe aktarılmış')}</h2>
               <p className="mt-1 text-sm text-muted">
-                “{stage.existing.fileName}” {formatDate(stage.existing.importedAt.slice(0, 10), 'long')} tarihinde aktarıldı ({stage.existing.transactionCount} işlem). Aynı içerik.
-              </p>
-              <p className="mt-2 text-sm text-muted">Devam ederseniz tekrarlar size gösterilir.</p>
+                {ttf('“{0}” {1} tarihinde aktarıldı ({2} işlem). Aynı içerik.', stage.existing.fileName, formatDate(stage.existing.importedAt.slice(0, 10), 'long'), stage.existing.transactionCount)}</p>
+              <p className="mt-2 text-sm text-muted">{tt('Devam ederseniz tekrarlar size gösterilir.')}</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Button variant="primary" onClick={() => flow.start(info)}>
-                  Yine de devam et
+                  {tt('Yine de devam et')}
                 </Button>
-                <Button onClick={() => navigate('/aktarimlar')}>Aktarım geçmişini aç</Button>
+                <Button onClick={() => navigate('/aktarimlar')}>{tt('Aktarım geçmişini aç')}</Button>
                 <Button variant="ghost" onClick={flow.reset}>
-                  Vazgeç
+                  {tt('Vazgeç')}
                 </Button>
               </div>
             </div>
@@ -158,7 +158,7 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
           </div>
           <h2 className="font-display text-lg font-semibold">{stage.label}</h2>
           {stage.detail && <p className="mt-1 text-sm text-muted">{stage.detail}</p>}
-          <div className="mx-auto mt-5 h-2 max-w-sm overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={stage.progress !== null ? Math.round(stage.progress * 100) : undefined} aria-label="İlerleme">
+          <div className="mx-auto mt-5 h-2 max-w-sm overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={stage.progress !== null ? Math.round(stage.progress * 100) : undefined} aria-label={tt('İlerleme')}>
             {stage.progress !== null ? (
               <motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" animate={{ width: `${Math.round(stage.progress * 100)}%` }} transition={{ duration: 0.2 }} />
             ) : (
@@ -166,10 +166,10 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
             )}
           </div>
           {stage.progress !== null && <p className="num mt-2 text-[12.5px] text-subtle">%{Math.round(stage.progress * 100)}</p>}
-          <p className="mt-4 text-[12.5px] text-subtle">Dosya yalnızca bu cihazda işleniyor.</p>
+          <p className="mt-4 text-[12.5px] text-subtle">{tt('Dosya yalnızca bu cihazda işleniyor.')}</p>
           {stage.cancellable && (
             <Button variant="ghost" className="mt-4" icon={<X className="size-4" />} onClick={flow.cancelReading}>
-              İptal et
+              {tt('İptal et')}
             </Button>
           )}
         </Card>
@@ -177,16 +177,16 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
 
       {stage.k === 'error' && (
         <Card className="mx-auto max-w-xl p-6">
-          <Alert tone="danger" icon={<TriangleAlert />} title="Dosya okunamadı">
+          <Alert tone="danger" icon={<TriangleAlert />} title={tt('Dosya okunamadı')}>
             {stage.message}
           </Alert>
           <div className="mt-4 flex flex-wrap gap-2">
             {stage.canRetry && (
               <Button variant="primary" icon={<RotateCw className="size-4" />} onClick={flow.retry}>
-                Yeniden dene
+                {tt('Yeniden dene')}
               </Button>
             )}
-            <Button onClick={flow.reset}>Başka dosya seç</Button>
+            <Button onClick={flow.reset}>{tt('Başka dosya seç')}</Button>
           </div>
         </Card>
       )}
@@ -210,7 +210,7 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
           <div className="mb-3 flex flex-wrap items-center gap-2 text-[13px] text-muted">
             <FileIcon kind={info.kind} />
             <span className="font-medium text-ink">{info.name}</span>
-            <span>· {(info.size / 1024).toFixed(0)} KB</span>
+            <span>{ttf('· {0} KB', (info.size / 1024).toFixed(0))}</span>
             {flow.accountAlias && <span>· {flow.accountAlias}</span>}
           </div>
           <ReviewStep review={review} onRowsChange={(rows) => flow.setReview({ ...review, rows })} onSave={save} onCancel={flow.reset} saving={saving} accountAlias={flow.accountAlias} />
@@ -223,13 +223,13 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
             <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }} className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-accent-soft text-accent">
               <CircleCheck className="size-9" />
             </motion.div>
-            <h2 className="font-display text-xl font-semibold">{stage.count} işlem kaydedildi</h2>
+            <h2 className="font-display text-xl font-semibold">{ttf('{0} işlem kaydedildi', stage.count)}</h2>
             <p className="num mt-1 text-sm text-muted">
-              Gider {formatKurus(stage.expenseKurus)} · İade {formatKurus(stage.refundKurus)}
-              {stage.skipped > 0 && ` · ${stage.skipped} satır kaydedilmedi`}
+              {tt('Gider')} {formatKurus(stage.expenseKurus)} {tt('· İade')} {formatKurus(stage.refundKurus)}
+              {stage.skipped > 0 && ttf(' · {0} satır kaydedilmedi', stage.skipped)}
             </p>
             {stage.months.length > 0 && (
-              <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label="İşlemlerin eklendiği aylar">
+              <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label={tt('İşlemlerin eklendiği aylar')}>
                 {stage.months.map((m) => (
                   <button
                     key={m.month}
@@ -240,23 +240,22 @@ export function ImportFlow({ embedded, onLeave, onDirtyChange }: { embedded?: bo
                     }}
                     className="num rounded-full border border-line-strong px-3 py-1 text-[13px] text-muted hover:text-ink"
                   >
-                    {periodLabel(m.month, cycle)}: {m.count} işlem
-                  </button>
+                    {ttf('{0}: {1} işlem', periodLabel(m.month, cycle), m.count)}</button>
                 ))}
               </div>
             )}
-            <p className="mt-3 text-[12.5px] text-subtle">Dosyanın kendisi saklanmadı.</p>
+            <p className="mt-3 text-[12.5px] text-subtle">{tt('Dosyanın kendisi saklanmadı.')}</p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               <Button variant="primary" onClick={() => navigate('/')}>
-                {stage.months[0] ? `Panele git (${periodLabel(stage.months[0].month, cycle)})` : 'Panele git'}
+                {stage.months[0] ? ttf('Panele git ({0})', periodLabel(stage.months[0].month, cycle)) : tt('Panele git')}
               </Button>
-              <Button onClick={() => navigate(`/islemler?aktarim=${stage.importId}`)}>Aktarılan işlemler</Button>
+              <Button onClick={() => navigate(`/islemler?aktarim=${stage.importId}`)}>{tt('Aktarılan işlemler')}</Button>
               <Button variant="ghost" icon={<FileUp className="size-4" />} onClick={flow.reset}>
-                Yeni dosya
+                {tt('Yeni dosya')}
               </Button>
             </div>
             <Link to="/aktarimlar" onClick={onLeave} className="mt-4 inline-flex items-center gap-1 text-[13px] text-muted hover:text-ink">
-              <Undo2 className="size-3.5" /> Yanlışlık mı var? Aktarım geçmişinden geri alabilirsiniz.
+              <Undo2 className="size-3.5" /> {tt('Yanlışlık mı var? Aktarım geçmişinden geri alabilirsiniz.')}
             </Link>
           </Card>
         </motion.div>
@@ -320,10 +319,10 @@ function SelectStep({
           drag ? 'border-accent bg-accent-soft' : 'border-line-strong bg-surface hover:border-accent/60',
         )}
       >
-        <input ref={inputRef} type="file" accept={ACCEPT} className="sr-only" onChange={(e) => void handle(e.target.files)} aria-label="İçe aktarılacak dosyayı seçin" />
+        <input ref={inputRef} type="file" accept={ACCEPT} className="sr-only" onChange={(e) => void handle(e.target.files)} aria-label={tt('İçe aktarılacak dosyayı seçin')} />
         <div className="mb-3 grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent">{busy ? <Loader2 className="size-6 animate-spin" /> : <FileUp className="size-6" />}</div>
-        <p className="font-display text-base font-semibold text-ink">Ekstre veya ekran görüntüsü seçin</p>
-        <p className="mt-1 text-[13px] text-muted">PDF, CSV, Excel, PNG, JPEG</p>
+        <p className="font-display text-base font-semibold text-ink">{tt('Ekstre veya ekran görüntüsü seçin')}</p>
+        <p className="mt-1 text-[13px] text-muted">{tt('PDF, CSV, Excel, PNG, JPEG')}</p>
       </label>
       {error && (
         <Alert tone="danger" icon={<TriangleAlert />}>
@@ -332,15 +331,15 @@ function SelectStep({
       )}
       <details className="group rounded-2xl border border-line bg-surface px-3 py-2 open:pb-3">
         <summary className="cursor-pointer select-none list-none py-1 text-[13px] font-medium text-muted marker:hidden hover:text-ink">
-          <span className="inline-block transition-transform group-open:rotate-90">›</span> Kart adı ve ödeme aracı{payment ? ` · ${PAYMENT_LABEL[payment]}` : ''}
+          <span className="inline-block transition-transform group-open:rotate-90">›</span> {tt('Kart adı ve ödeme aracı')}{payment ? ` · ${PAYMENT_LABEL[payment]}` : ''}
         </summary>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Kart/hesap takma adı" htmlFor="imp-alias" optional hint="Kart numarası girmeyin.">
-            <Input id="imp-alias" value={alias} maxLength={40} onChange={(e) => setAlias(e.target.value.replace(/\d{12,}/g, ''))} placeholder="Ör. Maaş kartı" />
+          <Field label={tt('Kart/hesap takma adı')} htmlFor="imp-alias" optional hint={tt('Kart numarası girmeyin.')}>
+            <Input id="imp-alias" value={alias} maxLength={40} onChange={(e) => setAlias(e.target.value.replace(/\d{12,}/g, ''))} placeholder={tt('Ör. Maaş kartı')} />
           </Field>
-          <Field label="Ödeme aracı" htmlFor="imp-pay" optional>
+          <Field label={tt('Ödeme aracı')} htmlFor="imp-pay" optional>
             <Select id="imp-pay" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod | '')}>
-              <option value="">Belirtilmedi</option>
+              <option value="">{tt('Belirtilmedi')}</option>
               {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((p) => (
                 <option key={p} value={p}>
                   {PAYMENT_LABEL[p]}
@@ -353,15 +352,15 @@ function SelectStep({
       <div className="flex items-start gap-2 px-1 text-[12.5px] text-subtle">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" />
         <div className="min-w-0">
-          Dosya yalnızca bu cihazda okunur, saklanmaz.
-          <More label="Sınırlar" className="mt-0.5">
+          {tt('Dosya yalnızca bu cihazda okunur, saklanmaz.')}
+          <More label={tt('Sınırlar')} className="mt-0.5">
             <ul className="space-y-1">
-              <li>PDF: en çok {IMPORT_LIMITS.maxPdfBytes / 1048576} MB, {IMPORT_LIMITS.maxPdfPages} sayfa (OCR en çok {IMPORT_LIMITS.maxOcrPdfPages} sayfa).</li>
-              <li>CSV / Excel: en çok {IMPORT_LIMITS.maxSheetBytes / 1048576} MB, {IMPORT_LIMITS.maxRows.toLocaleString('tr-TR')} satır.</li>
-              <li>Görsel: en çok {IMPORT_LIMITS.maxImageBytes / 1048576} MB.</li>
+              <li>{ttf('PDF: en çok {0} MB, {1} sayfa (OCR en çok {2} sayfa).', IMPORT_LIMITS.maxPdfBytes / 1048576, IMPORT_LIMITS.maxPdfPages, IMPORT_LIMITS.maxOcrPdfPages)}</li>
+              <li>{ttf('CSV / Excel: en çok {0} MB, {1} satır.', IMPORT_LIMITS.maxSheetBytes / 1048576, IMPORT_LIMITS.maxRows.toLocaleString('tr-TR'))}</li>
+              <li>{ttf('Görsel: en çok {0} MB.', IMPORT_LIMITS.maxImageBytes / 1048576)}</li>
               <li>
                 <a href="./ornek-dosyalar/" className="font-medium text-accent hover:underline" target="_blank" rel="noopener">
-                  Sentetik örnek dosyalar
+                  {tt('Sentetik örnek dosyalar')}
                 </a>
               </li>
             </ul>
@@ -381,7 +380,7 @@ function PasswordStep({ incorrect, fileName, onSubmit, onCancel }: { incorrect: 
           <KeyRound className="size-5" />
         </div>
         <div>
-          <h2 className="font-display text-lg font-semibold">PDF parola korumalı</h2>
+          <h2 className="font-display text-lg font-semibold">{tt('PDF parola korumalı')}</h2>
           <p className="text-[13px] text-muted">{fileName}</p>
         </div>
       </div>
@@ -391,15 +390,15 @@ function PasswordStep({ incorrect, fileName, onSubmit, onCancel }: { incorrect: 
           if (pw) onSubmit(pw)
         }}
       >
-        <Field label="Parola" htmlFor="pdf-pw" error={incorrect ? 'Parola hatalı, tekrar deneyin.' : undefined} hint="Parola saklanmaz.">
+        <Field label={tt('Parola')} htmlFor="pdf-pw" error={incorrect ? tt('Parola hatalı, tekrar deneyin.') : undefined} hint={tt('Parola saklanmaz.')}>
           <Input id="pdf-pw" type="password" autoComplete="off" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} aria-invalid={incorrect} />
         </Field>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" onClick={onCancel}>
-            Vazgeç
+            {tt('Vazgeç')}
           </Button>
           <Button type="submit" variant="primary" disabled={!pw}>
-            Aç
+            {tt('Aç')}
           </Button>
         </div>
       </form>

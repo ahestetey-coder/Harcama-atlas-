@@ -3,6 +3,7 @@ import { monthsToTarget, SCENARIOS, targetCapital, type IncomeStability, type Jo
 import { monthLabel } from './dates'
 import { addMonthsClamped, type DuePayment } from './recurring'
 import type { IsoDate } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 /**
  * Plus+ koç: borç kapatma, acil durum birikimi ve yatırıma ayrılacak tutar planı.
@@ -31,8 +32,8 @@ export interface CoachDebt {
 export type DebtStrategy = 'avalanche' | 'snowball'
 
 export const STRATEGY_LABEL: Record<DebtStrategy, string> = {
-  avalanche: 'Önce en yüksek faiz',
-  snowball: 'Önce en küçük borç',
+  avalanche: tt('Önce en yüksek faiz'),
+  snowball: tt('Önce en küçük borç'),
 }
 
 /** Asgari ödeme bilinmiyorsa: aylık faiz + bakiyenin %3'ü (borcun kapanabilmesi için). */
@@ -222,21 +223,21 @@ export function buildCoachPlan(input: CoachInput): CoachPlan {
     const end = payoff?.months ?? null
     phases.push({
       id: 'debt',
-      title: 'Borçları kapat',
+      title: tt('Borçları kapat'),
       startMonth: 0,
       endMonth: end,
       monthlyKurus: Math.max(monthly, minimums),
-      detail: input.strategy === 'avalanche' ? 'Asgariler ödenir, kalan tutar en yüksek faizli borca gider.' : 'Asgariler ödenir, kalan tutar en küçük borca gider.',
+      detail: input.strategy === 'avalanche' ? tt('Asgariler ödenir, kalan tutar en yüksek faizli borca gider.') : tt('Asgariler ödenir, kalan tutar en küçük borca gider.'),
     })
     at = end ?? MAX_MONTHS
   }
   if (emGap > 0 && monthly > 0 && at < MAX_MONTHS) {
     const m = Math.ceil(emGap / monthly)
-    phases.push({ id: 'emergency', title: 'Acil durum birikimini tamamla', startMonth: at, endMonth: at + m, monthlyKurus: monthly, detail: `${emMonths} aylık zorunlu gider kadar kolay ulaşılır birikim.` })
+    phases.push({ id: 'emergency', title: tt('Acil durum birikimini tamamla'), startMonth: at, endMonth: at + m, monthlyKurus: monthly, detail: ttf('{0} aylık zorunlu gider kadar kolay ulaşılır birikim.', emMonths) })
     at += m
   }
   if (monthly > 0 && at < MAX_MONTHS) {
-    phases.push({ id: 'invest', title: 'Düzenli yatırım', startMonth: at, endMonth: null, monthlyKurus: monthly, detail: 'Her ay bu tutarı yatırıma ayırın; hangi araçlara dağıtacağınız size kalmış.' })
+    phases.push({ id: 'invest', title: tt('Düzenli yatırım'), startMonth: at, endMonth: null, monthlyKurus: monthly, detail: tt('Her ay bu tutarı yatırıma ayırın; hangi araçlara dağıtacağınız size kalmış.') })
   }
 
   const goal = targetCapital(profile)
@@ -279,7 +280,7 @@ export function restructure(debts: CoachDebt[], ids: string[], newMonthlyRatePct
   const bal = picked.reduce((s, d) => s + d.balanceKurus, 0)
   const r = newMonthlyRatePct / 100
   const payment = Math.ceil(r > 0 ? (bal * r) / (1 - Math.pow(1 + r, -termMonths)) : bal / termMonths)
-  const newDebt: CoachDebt = { id: 'yeni', name: 'Yapılandırılan kredi', balanceKurus: bal, monthlyRatePct: newMonthlyRatePct, minPaymentKurus: payment }
+  const newDebt: CoachDebt = { id: 'yeni', name: tt('Yapılandırılan kredi'), balanceKurus: bal, monthlyRatePct: newMonthlyRatePct, minPaymentKurus: payment }
   const rest = debts.filter((d) => !ids.includes(d.id))
   const budget = Math.max(monthlyBudgetKurus, payment + rest.reduce((s, d) => s + d.minPaymentKurus, 0))
   const before = simulateDebts(debts, Math.max(monthlyBudgetKurus, debts.reduce((s, d) => s + d.minPaymentKurus, 0)), strategy)
@@ -331,46 +332,46 @@ export function coachMessages(i: MessageInput): CoachMessage[] {
     out.push({
       id: 'web-test',
       tone: 'plan',
-      title: 'Web testindeki haritan hazır',
-      body: `Web testine göre ${w.total} duraklı rotanın ${w.level}. seviyesindesin${w.stage ? `; sıradaki durak: ${w.stage}` : ''}${w.years ? ` ve özgürlük yılın şimdilik ${w.years} arası görünüyor` : ''}. Bu aralıklarla yapılmış bir tahmin; gerçek rakamlarını 5 dakikada netleştir, planını rotana göre hazırlayayım.`,
-      link: { to: '/yolculuk', label: 'Rotamı netleştir' },
+      title: tt('Web testindeki haritan hazır'),
+      body: ttf('Web testine göre {0} duraklı rotanın {1}. seviyesindesin{2}{3}. Bu aralıklarla yapılmış bir tahmin; gerçek rakamlarını 5 dakikada netleştir, planını rotana göre hazırlayayım.', w.total, w.level, w.stage ? ttf('; sıradaki durak: {0}', w.stage) : '', w.years ? ttf(' ve özgürlük yılın şimdilik {0} arası görünüyor', w.years) : ''),
+      link: { to: '/yolculuk', label: tt('Rotamı netleştir') },
     })
     return out
   }
   if (!i.hasProfile) {
-    out.push({ id: 'survey', tone: 'plan', title: 'Sizi tanıyalım', body: 'Finansal Yolculuğum sayfasında rotanızı belirleyin; gelirinizi, giderlerinizi, borcunuzu ve hedefinizi öğrenip planınızı rotanıza göre hazırlayayım.', link: { to: '/yolculuk', label: 'Rotamı belirle' } })
+    out.push({ id: 'survey', tone: 'plan', title: tt('Sizi tanıyalım'), body: tt('Finansal Yolculuğum sayfasında rotanızı belirleyin; gelirinizi, giderlerinizi, borcunuzu ve hedefinizi öğrenip planınızı rotanıza göre hazırlayayım.'), link: { to: '/yolculuk', label: tt('Rotamı belirle') } })
     return out
   }
   const p = i.plan
   if (p && p.shortfallKurus > 0) {
-    out.push({ id: `shortfall-${i.month}`, tone: 'warn', title: 'Asgari ödemeler bütçeyi aşıyor', body: `Borçların aylık asgari ödemeleri, ayırabildiğiniz tutardan ${tl(p.shortfallKurus)} fazla. Giderleri kısmak veya borcu daha uzun vadeyle yapılandırmak gerekiyor.` })
+    out.push({ id: `shortfall-${i.month}`, tone: 'warn', title: tt('Asgari ödemeler bütçeyi aşıyor'), body: ttf('Borçların aylık asgari ödemeleri, ayırabildiğiniz tutardan {0} fazla. Giderleri kısmak veya borcu daha uzun vadeyle yapılandırmak gerekiyor.', tl(p.shortfallKurus)) })
   } else if (p && p.surplusKurus <= 0) {
-    out.push({ id: `deficit-${i.month}`, tone: 'warn', title: 'Gider gelirin üstünde', body: `Ortalama gideriniz gelirinizden ${tl(-p.surplusKurus + 1)} fazla. Plan, önce bu açığı kapatmakla başlar.`, link: { to: '/butce', label: 'Bütçe planı' } })
+    out.push({ id: `deficit-${i.month}`, tone: 'warn', title: tt('Gider gelirin üstünde'), body: ttf('Ortalama gideriniz gelirinizden {0} fazla. Plan, önce bu açığı kapatmakla başlar.', tl(-p.surplusKurus + 1)), link: { to: '/butce', label: tt('Bütçe planı') } })
   }
   for (const w of i.budget?.warnings.slice(0, 2) ?? []) {
     const over = w.status.state === 'over'
-    const what = w.kind === 'total' ? 'Aylık bütçe' : w.kind === 'week' ? 'Haftalık bütçe' : 'Bir kategori limiti'
+    const what = w.kind === 'total' ? tt('Aylık bütçe') : w.kind === 'week' ? tt('Haftalık bütçe') : tt('Bir kategori limiti')
     out.push({
       id: `budget-${i.month}-${w.kind}-${w.categoryId ?? ''}-${w.status.state}`,
       tone: 'warn',
-      title: over ? `${what} aşıldı` : `${what} dolmak üzere`,
-      body: over ? `${tl(w.status.spentKurus - w.status.effectiveKurus)} aşım var. Bu ay plana ayrılan tutar bundan etkilenebilir.` : `Limitin %${Math.round(w.status.ratio * 100)}'i kullanıldı; kalan ${tl(w.status.effectiveKurus - w.status.spentKurus)}.`,
-      link: { to: '/butce', label: 'Bütçeye bak' },
+      title: over ? ttf('{0} aşıldı', what) : ttf('{0} dolmak üzere', what),
+      body: over ? ttf('{0} aşım var. Bu ay plana ayrılan tutar bundan etkilenebilir.', tl(w.status.spentKurus - w.status.effectiveKurus)) : ttf('Limitin %{0}\'i kullanıldı; kalan {1}.', Math.round(w.status.ratio * 100), tl(w.status.effectiveKurus - w.status.spentKurus)),
+      link: { to: '/butce', label: tt('Bütçeye bak') },
     })
   }
   for (const d of i.due.slice(0, 2)) {
-    out.push({ id: `due-${d.id}-${d.date}`, tone: 'info', title: `${d.name} ödemesi yaklaşıyor`, body: `${tl(d.amountKurus)}, son gün ${d.date.split('-').reverse().join('.')}.`, link: { to: '/borclar?bolum=odemeler', label: 'Ödemeler' } })
+    out.push({ id: `due-${d.id}-${d.date}`, tone: 'info', title: ttf('{0} ödemesi yaklaşıyor', d.name), body: ttf('{0}, son gün {1}.', tl(d.amountKurus), d.date.split('-').reverse().join('.')), link: { to: '/borclar?bolum=odemeler', label: tt('Ödemeler') } })
   }
   if (i.route?.current)
     out.push({
       id: `route-${i.route.current.id}-${i.month}`,
       tone: 'plan',
-      title: `Rotanızda sıradaki: ${i.route.current.title}`,
-      body: `Seviye ${i.route.level}/${i.route.total}. ${i.route.current.next}.`,
-      link: { to: '/yolculuk', label: 'Rotama git' },
+      title: ttf('Rotanızda sıradaki: {0}', i.route.current.title),
+      body: ttf('Seviye {0}/{1}. {2}.', i.route.level, i.route.total, i.route.current.next),
+      link: { to: '/yolculuk', label: tt('Rotama git') },
     })
-  else if (i.route) out.push({ id: 'route-done', tone: 'win', title: 'Rotanın sonuna ulaştınız', body: 'Finansal özgürlük rotasındaki bütün aşamaları tamamladınız. Hedefinizi testte güncelleyebilirsiniz.', link: { to: '/yolculuk', label: 'Rotama git' } })
-  for (const name of i.closedDebts) out.push({ id: `closed-${name}`, tone: 'win', title: `${name} kapandı!`, body: 'Bu borca giden tutar artık sıradaki hedefe akıyor.' })
+  else if (i.route) out.push({ id: 'route-done', tone: 'win', title: tt('Rotanın sonuna ulaştınız'), body: tt('Finansal özgürlük rotasındaki bütün aşamaları tamamladınız. Hedefinizi testte güncelleyebilirsiniz.'), link: { to: '/yolculuk', label: tt('Rotama git') } })
+  for (const name of i.closedDebts) out.push({ id: `closed-${name}`, tone: 'win', title: ttf('{0} kapandı!', name), body: tt('Bu borca giden tutar artık sıradaki hedefe akıyor.') })
   if (p) {
     const phase = p.phases[0]
     if (phase?.id === 'debt' && p.payoff) {
@@ -378,13 +379,13 @@ export function coachMessages(i: MessageInput): CoachMessage[] {
       out.push({
         id: `plan-debt-${i.month}`,
         tone: 'plan',
-        title: 'Bu ayın planı',
-        body: `Borçlara toplam ${tl(phase.monthlyKurus)} ödeyin. ${first ? `İlk kapanacak borç: ${first.name}${first.paidOffMonth ? ` (${monthLabel(addMonthsClamped(i.today, first.paidOffMonth - 1).slice(0, 7))})` : ''}.` : ''}`,
+        title: tt('Bu ayın planı'),
+        body: ttf('Borçlara toplam {0} ödeyin. {1}', tl(phase.monthlyKurus), first ? ttf('İlk kapanacak borç: {0}{1}.', first.name, first.paidOffMonth ? ` (${monthLabel(addMonthsClamped(i.today, first.paidOffMonth - 1).slice(0, 7))})` : '') : ''),
       })
     } else if (phase?.id === 'emergency') {
-      out.push({ id: `plan-em-${i.month}`, tone: 'plan', title: 'Bu ayın planı', body: `Acil durum birikimine ${tl(phase.monthlyKurus)} ekleyin; ${tl(p.emergencyGapKurus)} kaldı.`, link: { to: '/yatirimlar', label: 'Yatırımlarım' } })
+      out.push({ id: `plan-em-${i.month}`, tone: 'plan', title: tt('Bu ayın planı'), body: ttf('Acil durum birikimine {0} ekleyin; {1} kaldı.', tl(phase.monthlyKurus), tl(p.emergencyGapKurus)), link: { to: '/yatirimlar', label: tt('Yatırımlarım') } })
     } else if (phase?.id === 'invest') {
-      out.push({ id: `plan-inv-${i.month}`, tone: 'plan', title: 'Bu ayın planı', body: `Yatırıma ${tl(phase.monthlyKurus)} ayırın ve Yatırımlarım'a ekleyin.`, link: { to: '/yatirimlar', label: 'Yatırımlarım' } })
+      out.push({ id: `plan-inv-${i.month}`, tone: 'plan', title: tt('Bu ayın planı'), body: ttf('Yatırıma {0} ayırın ve Yatırımlarım\'a ekleyin.', tl(phase.monthlyKurus)), link: { to: '/yatirimlar', label: tt('Yatırımlarım') } })
     }
   }
   return out
@@ -395,47 +396,47 @@ export function coachMessages(i: MessageInput): CoachMessage[] {
 export type QuestionId = 'debtFree' | 'invest' | 'emergency' | 'route' | 'budget'
 
 export const QUESTIONS: Array<{ id: QuestionId; text: string }> = [
-  { id: 'debtFree', text: 'Borcum ne zaman biter?' },
-  { id: 'invest', text: 'Her ay ne kadar yatırıma ayırmalıyım?' },
-  { id: 'emergency', text: 'Acil durum birikimim yeterli mi?' },
-  { id: 'route', text: 'Hedefime ne zaman ulaşırım?' },
-  { id: 'budget', text: 'Bu ay bütçem nasıl gidiyor?' },
+  { id: 'debtFree', text: tt('Borcum ne zaman biter?') },
+  { id: 'invest', text: tt('Her ay ne kadar yatırıma ayırmalıyım?') },
+  { id: 'emergency', text: tt('Acil durum birikimim yeterli mi?') },
+  { id: 'route', text: tt('Hedefime ne zaman ulaşırım?') },
+  { id: 'budget', text: tt('Bu ay bütçem nasıl gidiyor?') },
 ]
 
-const monthsText = (m: number) => (m < 12 ? `${m} ay` : m % 12 === 0 ? `${m / 12} yıl` : `${Math.floor(m / 12)} yıl ${m % 12} ay`)
+const monthsText = (m: number) => (m < 12 ? `${m} ay` : m % 12 === 0 ? ttf('{0} yıl', m / 12) : ttf('{0} yıl {1} ay', Math.floor(m / 12), m % 12))
 
 export function answer(q: QuestionId, p: CoachPlan, facts: JourneyFacts, budget: BudgetStatus | null, today: IsoDate): string {
   switch (q) {
     case 'debtFree': {
-      if (!p.debts.length) return 'Kayıtlı borcunuz yok. Borçlarım sayfasında borç eklerseniz kapatma planını hemen çıkarırım.'
+      if (!p.debts.length) return tt('Kayıtlı borcunuz yok. Borçlarım sayfasında borç eklerseniz kapatma planını hemen çıkarırım.')
       return debtFreeAnswer(p, today)
     }
     case 'invest': {
-      if (p.monthlyPlanKurus <= 0) return 'Şu an gider gelirin üstünde, yatırıma ayrılacak tutar yok. Önce bütçe dengesini kuralım.'
+      if (p.monthlyPlanKurus <= 0) return tt('Şu an gider gelirin üstünde, yatırıma ayrılacak tutar yok. Önce bütçe dengesini kuralım.')
       const inv = p.phases.find((x) => x.id === 'invest')
-      const when = inv && inv.startMonth > 0 ? ` ${monthsText(inv.startMonth)} sonra, borç${p.emergencyGapKurus > 0 ? ' ve acil durum birikimi' : ''} tamamlanınca başlar.` : ' Hemen başlayabilirsiniz.'
-      const buf = p.bufferKurus > 0 ? ` Gelir düzeniniz nedeniyle ${tl(p.bufferKurus)} tampon olarak bırakıldı.` : ''
-      return `Ayda ${tl(p.monthlyPlanKurus)} ayırabilirsiniz.${when}${buf} Hangi araca yatıracağınızı ben söylemem; risk ve likidite için Finansal bilgi sayfasına bakabilirsiniz.`
+      const when = inv && inv.startMonth > 0 ? ttf(' {0} sonra, borç{1} tamamlanınca başlar.', monthsText(inv.startMonth), p.emergencyGapKurus > 0 ? tt(' ve acil durum birikimi') : '') : tt(' Hemen başlayabilirsiniz.')
+      const buf = p.bufferKurus > 0 ? ttf(' Gelir düzeniniz nedeniyle {0} tampon olarak bırakıldı.', tl(p.bufferKurus)) : ''
+      return ttf('Ayda {0} ayırabilirsiniz.{1}{2} Hangi araca yatıracağınızı ben söylemem; risk ve likidite için Finansal bilgi sayfasına bakabilirsiniz.', tl(p.monthlyPlanKurus), when, buf)
     }
     case 'emergency': {
-      if (p.emergencyGapKurus <= 0) return `Evet. Hızlı kullanılabilir birikiminiz (${tl(facts.liquidKurus)}) ${tl(p.emergencyTargetKurus)} hedefini karşılıyor.`
-      return `Henüz değil: ${tl(facts.liquidKurus)} var, hedef ${tl(p.emergencyTargetKurus)}. ${tl(p.emergencyGapKurus)} eksik.`
+      if (p.emergencyGapKurus <= 0) return ttf('Evet. Hızlı kullanılabilir birikiminiz ({0}) {1} hedefini karşılıyor.', tl(facts.liquidKurus), tl(p.emergencyTargetKurus))
+      return ttf('Henüz değil: {0} var, hedef {1}. {2} eksik.', tl(facts.liquidKurus), tl(p.emergencyTargetKurus), tl(p.emergencyGapKurus))
     }
     case 'route': {
-      if (p.targetMonths === null) return 'Bu tempoyla hedef birikime ulaşılmıyor. Planı değiştirmek için Senaryolar sayfasını deneyin.'
-      if (p.targetMonths === 0) return 'Hedef birikiminize şimdiden ulaşmışsınız.'
-      return `Orta varsayımla (yıllık %${SCENARIOS.mid.realReturnPct} reel getiri) hedef birikime (${tl(p.goalKurus)}) yaklaşık ${monthsText(p.targetMonths)} içinde ulaşırsınız. Bu bir tahmindir, garanti değildir.`
+      if (p.targetMonths === null) return tt('Bu tempoyla hedef birikime ulaşılmıyor. Planı değiştirmek için Senaryolar sayfasını deneyin.')
+      if (p.targetMonths === 0) return tt('Hedef birikiminize şimdiden ulaşmışsınız.')
+      return ttf('Orta varsayımla (yıllık %{0} reel getiri) hedef birikime ({1}) yaklaşık {2} içinde ulaşırsınız. Bu bir tahmindir, garanti değildir.', SCENARIOS.mid.realReturnPct, tl(p.goalKurus), monthsText(p.targetMonths))
     }
     case 'budget': {
       const t = budget?.total
-      if (!t) return 'Aylık bütçe belirlemediniz. Bütçe planı sayfasından bir tutar girerseniz gidişatı takip ederim.'
+      if (!t) return tt('Aylık bütçe belirlemediniz. Bütçe planı sayfasından bir tutar girerseniz gidişatı takip ederim.')
       const f = budget?.forecast
-      return `Bu dönem ${tl(t.spentKurus)} harcandı, bütçenin %${Math.round(t.ratio * 100)}'i.${f ? ` Bu hızla dönem sonu tahmini ${tl(f.projectedKurus)}.` : ''}`
+      return ttf('Bu dönem {0} harcandı, bütçenin %{1}\'i.{2}', tl(t.spentKurus), Math.round(t.ratio * 100), f ? ttf(' Bu hızla dönem sonu tahmini {0}.', tl(f.projectedKurus)) : '')
     }
   }
 }
 
-const endText = (e: DebtEnd) => (e.date ? monthLabel(e.date.slice(0, 7)) : 'bu ödemeyle kapanmıyor')
+const endText = (e: DebtEnd) => (e.date ? monthLabel(e.date.slice(0, 7)) : tt('bu ödemeyle kapanmıyor'))
 
 /** "Borcum ne zaman biter?": önce planlanan ödemelerle her borcun bitiş tarihi, sonra plana göre hızlandırma. */
 export function debtFreeAnswer(p: CoachPlan, today: IsoDate): string {
@@ -443,11 +444,11 @@ export function debtFreeAnswer(p: CoachPlan, today: IsoDate): string {
   const last = lastDebtEnd(ends)
   const head =
     ends.length === 1
-      ? `Planlanan ödemelerle ${ends[0].name} için son ödeme: ${endText(ends[0])}.`
-      : `Planlanan ödemelerle son ödeme tarihleri: ${ends.map((e) => `${e.name}, ${endText(e)}`).join('; ')}.${last ? ` Hepsi bittiğinde: ${monthLabel(last.slice(0, 7))}.` : ''}`
-  if (!p.payoff?.months) return `${head} Bu ödemelerle borçların hepsi kapanmıyor; faiz, ödemeden hızlı büyüyor. Aylık ödemeyi artırmak veya daha düşük faizle yapılandırmak gerekiyor.`
+      ? ttf('Planlanan ödemelerle {0} için son ödeme: {1}.', ends[0].name, endText(ends[0]))
+      : ttf('Planlanan ödemelerle son ödeme tarihleri: {0}.{1}', ends.map((e) => `${e.name}, ${endText(e)}`).join('; '), last ? ttf(' Hepsi bittiğinde: {0}.', monthLabel(last.slice(0, 7))) : '')
+  if (!p.payoff?.months) return ttf('{0} Bu ödemelerle borçların hepsi kapanmıyor; faiz, ödemeden hızlı büyüyor. Aylık ödemeyi artırmak veya daha düşük faizle yapılandırmak gerekiyor.', head)
   const planEnd = addMonthsClamped(today, p.payoff.months - 1)
   if (!last || planEnd.slice(0, 7) >= last.slice(0, 7)) return head
-  const s = p.interestSavedKurus > 0 ? `, ${tl(p.interestSavedKurus)} daha az faiz ödersiniz` : ''
-  return `${head} Plana göre ayda ${tl(p.phases[0].monthlyKurus)} ayırırsanız borçsuz olma tarihi ${monthLabel(planEnd.slice(0, 7))} olur${s}.`
+  const s = p.interestSavedKurus > 0 ? ttf(', {0} daha az faiz ödersiniz', tl(p.interestSavedKurus)) : ''
+  return ttf('{0} Plana göre ayda {1} ayırırsanız borçsuz olma tarihi {2} olur{3}.', head, tl(p.phases[0].monthlyKurus), monthLabel(planEnd.slice(0, 7)), s)
 }

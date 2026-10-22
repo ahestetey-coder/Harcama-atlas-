@@ -5,6 +5,7 @@ import { FEATURE_PLAN, PLAN_LABEL, type Feature, type Plan } from '../domain/pla
 import { cn } from '../lib/cn'
 import { usePlan } from '../state/plan'
 import { Card } from './ui/primitives'
+import { tt, ttf } from '../lib/i18n'
 
 /** Küçük "Plus" / "Plus+" etiketi. */
 export function PlanBadge({ plan, className }: { plan: Plan; className?: string }) {
@@ -39,7 +40,7 @@ export function PlanGate({ feature, title, children, points }: { feature: Featur
           <PlanBadge plan={need} />
         </div>
         <h2 className="mt-4 font-display text-xl font-bold text-ink">{title}</h2>
-        <p className="mt-1 text-sm text-muted">Bu özellik {PLAN_LABEL[need]} paketinde yer alır.</p>
+        <p className="mt-1 text-sm text-muted">{ttf('Bu özellik {0} paketinde yer alır.', PLAN_LABEL[need])}</p>
         <ul className="mt-4 space-y-2 text-sm text-ink">
           {points.map((p) => (
             <li key={p} className="flex gap-2">
@@ -52,7 +53,7 @@ export function PlanGate({ feature, title, children, points }: { feature: Featur
           to="/paketler"
           className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 px-5 text-sm font-semibold text-white shadow-[0_8px_20px_-10px_rgb(5_150_105/0.8)] hover:brightness-110"
         >
-          <Sparkles className="size-4" /> Paketleri incele
+          <Sparkles className="size-4" /> {tt('Paketleri incele')}
         </Link>
       </div>
     </Card>

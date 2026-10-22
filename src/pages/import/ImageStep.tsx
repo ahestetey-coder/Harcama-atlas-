@@ -2,6 +2,7 @@ import { Crop, RotateCw, ScanText, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Alert, Button, Card, Checkbox } from '../../components/ui/primitives'
 import { prepareImage, type ImageAdjustments } from '../../import/image'
+import { tt } from '../../lib/i18n'
 
 /** Görsel hazırlama: döndürme, kırpma ve iyileştirme; sonuç OCR'a gider. */
 export function ImageStep({ bitmap, onRun, onCancel }: { bitmap: ImageBitmap; onRun: (adj: ImageAdjustments) => void; onCancel: () => void }) {
@@ -43,12 +44,12 @@ export function ImageStep({ bitmap, onRun, onCancel }: { bitmap: ImageBitmap; on
       <Card className="overflow-hidden p-3">
         {cropMode ? (
           <div>
-            <p className="mb-2 px-1 text-[13px] text-muted">İşlemlerin bulunduğu alanı sürükleyerek seçin.</p>
+            <p className="mb-2 px-1 text-[13px] text-muted">{tt('İşlemlerin bulunduğu alanı sürükleyerek seçin.')}</p>
             <div className="relative">
               <canvas
                 ref={srcCanvas}
                 className="block h-auto max-h-[70vh] w-full touch-none rounded-xl object-contain"
-                aria-label="Kırpılacak görsel"
+                aria-label={tt('Kırpılacak görsel')}
                 onPointerDown={(e) => {
                   e.currentTarget.setPointerCapture(e.pointerId)
                   drag.current = toImageCoords(e)
@@ -73,7 +74,7 @@ export function ImageStep({ bitmap, onRun, onCancel }: { bitmap: ImageBitmap; on
             </div>
             <div className="mt-3 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setCropMode(false)}>
-                Vazgeç
+                {tt('Vazgeç')}
               </Button>
               <Button
                 variant="primary"
@@ -83,49 +84,49 @@ export function ImageStep({ bitmap, onRun, onCancel }: { bitmap: ImageBitmap; on
                   setCropMode(false)
                 }}
               >
-                Kırpmayı uygula
+                {tt('Kırpmayı uygula')}
               </Button>
             </div>
           </div>
         ) : (
-          <canvas ref={previewCanvas} className="mx-auto block h-auto max-h-[70vh] max-w-full rounded-xl" aria-label="OCR'a gönderilecek görüntünün önizlemesi" />
+          <canvas ref={previewCanvas} className="mx-auto block h-auto max-h-[70vh] max-w-full rounded-xl" aria-label={tt('OCR\'a gönderilecek görüntünün önizlemesi')} />
         )}
       </Card>
       <Card className="flex flex-col gap-4 p-5">
         <div>
-          <h2 className="font-display text-base font-semibold">Görseli hazırlayın</h2>
-          <p className="mt-1 text-[13px] text-muted">Görsel yalnızca bu cihazda okunur.</p>
+          <h2 className="font-display text-base font-semibold">{tt('Görseli hazırlayın')}</h2>
+          <p className="mt-1 text-[13px] text-muted">{tt('Görsel yalnızca bu cihazda okunur.')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button icon={<RotateCw className="size-4" />} onClick={() => setAdj((a) => ({ ...a, rotation: (a.rotation + 90) % 360 }))}>
-            Döndür
+            {tt('Döndür')}
           </Button>
           <Button icon={<Crop className="size-4" />} onClick={() => setCropMode(true)}>
-            Kırp
+            {tt('Kırp')}
           </Button>
           {adj.crop && (
             <Button variant="ghost" icon={<X className="size-4" />} onClick={() => setAdj((a) => ({ ...a, crop: null }))}>
-              Kırpmayı kaldır
+              {tt('Kırpmayı kaldır')}
             </Button>
           )}
         </div>
         <Checkbox
           label={
             <span className="inline-flex items-center gap-1.5">
-              <Sparkles className="size-4 text-accent" /> Görüntüyü iyileştir
+              <Sparkles className="size-4 text-accent" /> {tt('Görüntüyü iyileştir')}
             </span>
           }
-          description="Kontrastı artırır, koyu temayı çevirir."
+          description={tt('Kontrastı artırır, koyu temayı çevirir.')}
           checked={adj.enhance}
           onChange={(v) => setAdj((a) => ({ ...a, enhance: v }))}
         />
-        <Alert tone="info">Okunamayan tarih veya tutar incelemede sorulur.</Alert>
+        <Alert tone="info">{tt('Okunamayan tarih veya tutar incelemede sorulur.')}</Alert>
         <div className="mt-auto flex flex-col gap-2">
           <Button variant="primary" size="lg" icon={<ScanText className="size-5" />} onClick={() => onRun(adj)} disabled={cropMode}>
-            Metni oku
+            {tt('Metni oku')}
           </Button>
           <Button variant="ghost" onClick={onCancel}>
-            Başka dosya seç
+            {tt('Başka dosya seç')}
           </Button>
         </div>
       </Card>

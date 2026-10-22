@@ -11,6 +11,7 @@ import { cn } from '../lib/cn'
 import { toUserMessage } from '../data/repository'
 import { useRepo } from '../state/data'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 const shortTl = (k: number) => {
   const v = k / 100
@@ -47,48 +48,46 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
   // Simülasyon ve rota ile aynı: orta senaryoyla varış yaşı
   const midAge = v.route.mid === null ? null : v.age + Math.ceil(v.route.mid / 12)
   const late = midAge === null || midAge > v.targetAge
-  const debtDate = v.debtFreeMonth === null ? 'Kapanmıyor' : v.debtFreeMonth === 0 ? 'Borç yok' : reachDateLabel(v.debtFreeMonth, today)
+  const debtDate = v.debtFreeMonth === null ? tt('Kapanmıyor') : v.debtFreeMonth === 0 ? tt('Borç yok') : reachDateLabel(v.debtFreeMonth, today)
   const nextEnds = [...v.debtEnds.filter((d) => d.month !== null).map((d) => ({ name: d.name, month: d.month!, freed: d.freedKurus })), ...v.recurringEnds.map((r) => ({ name: r.name, month: r.month, freed: r.freedKurus }))].sort((a, b) => a.month - b.month)
   const steps = freedomSteps(v, inBase)
   const step = v.netKurus < v.leanKurus ? (steps.find((x) => !x.done) ?? null) : null
   const levels = [
-    ...steps.map((x) => ({ key: x.id, label: x.title, stage: 'Ara adım', value: x.targetKurus })),
-    { key: 'lean', label: `Lean FI · sade (%${LEAN_FACTOR * 100})`, stage: 'Finansal güvence', value: v.leanKurus },
-    { key: 'fi', label: 'FI · hedefiniz', stage: 'Finansal bağımsızlık', value: v.fiKurus },
-    { key: 'fat', label: `Fat FI · rahat (%${FAT_FACTOR * 100})`, stage: 'Finansal özgürlük', value: v.fatKurus },
+    ...steps.map((x) => ({ key: x.id, label: x.title, stage: tt('Ara adım'), value: x.targetKurus })),
+    { key: 'lean', label: ttf('Lean FI · sade (%{0})', LEAN_FACTOR * 100), stage: tt('Finansal güvence'), value: v.leanKurus },
+    { key: 'fi', label: tt('FI · hedefiniz'), stage: tt('Finansal bağımsızlık'), value: v.fiKurus },
+    { key: 'fat', label: ttf('Fat FI · rahat (%{0})', FAT_FACTOR * 100), stage: tt('Finansal özgürlük'), value: v.fatKurus },
   ]
 
   return (
-    <section className="flex flex-col gap-4" aria-label="Özgürlük hedefi">
+    <section className="flex flex-col gap-4" aria-label={tt('Özgürlük hedefi')}>
       <Card className="p-5">
         {step ? (
           <>
-            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">Sıradaki özgürlük adımınız · {step.title}</div>
+            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">{ttf('Sıradaki özgürlük adımınız · {0}', step.title)}</div>
             <div className="num mt-1 font-display text-[34px] font-bold leading-none text-ink">{inBase(step.targetKurus)}</div>
             <p className="mt-1.5 text-[13px] text-muted">
               {step.what}. {step.leftText}
-              {step.etaMonths != null && `, bu hızla ~${durationLabel(step.etaMonths)}`}.
+              {step.etaMonths != null && ttf(', bu hızla ~{0}', durationLabel(step.etaMonths))}.
             </p>
-            <p className="mt-1 text-[12.5px] text-subtle">Tam bağımsızlık hedefi {inBase(v.fiKurus)}; oraya bu küçük adımlarla gidilir. Bugünün parasıyla.</p>
+            <p className="mt-1 text-[12.5px] text-subtle">{ttf('Tam bağımsızlık hedefi {0}; oraya bu küçük adımlarla gidilir. Bugünün parasıyla.', inBase(v.fiKurus))}</p>
           </>
         ) : (
           <>
-            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">Finansal özgürlük hedefiniz</div>
+            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">{tt('Finansal özgürlük hedefiniz')}</div>
             <div className="num mt-1 font-display text-[34px] font-bold leading-none text-ink">{inBase(v.fiKurus)}</div>
-            <p className="mt-1.5 text-[13px] text-muted">Bugünün parasıyla.</p>
+            <p className="mt-1.5 text-[13px] text-muted">{tt('Bugünün parasıyla.')}</p>
           </>
         )}
         <More>
-          Yıllık {formatKurus(v.annualNeedKurus)} çekim ÷ %{v.withdrawal.usedPct.toLocaleString('tr-TR')} çekim oranı ({v.retirementYears} yıllık çekim süresi
-          {v.withdrawal.custom ? `; önerilen %${v.withdrawal.recommendedPct.toLocaleString('tr-TR')}` : ', süreye göre önerilen'}).
-        </More>
-        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3" role="group" aria-label="Canlı özet">
-          <Mini label="Hedef birikim" value={base === 'TRY' ? shortTl(v.fiKurus) + ' ₺' : inBase(v.fiKurus)} />
-          <Mini label="Bugünkü hızla" value={midAge === null ? 'Ulaşılamıyor' : `${midAge} yaşında`} tone={late ? 'warn' : 'good'} />
-          <Mini label="Tasarruf oranı" value={`%${Math.round(v.savingRate * 100)}`} />
+          {ttf('Yıllık {0} çekim ÷ %{1} çekim oranı ({2} yıllık çekim süresi {3}).', formatKurus(v.annualNeedKurus), v.withdrawal.usedPct.toLocaleString('tr-TR'), v.retirementYears, v.withdrawal.custom ? ttf('; önerilen %{0}', v.withdrawal.recommendedPct.toLocaleString('tr-TR')) : tt(', süreye göre önerilen'))}</More>
+        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3" role="group" aria-label={tt('Canlı özet')}>
+          <Mini label={tt('Hedef birikim')} value={base === 'TRY' ? shortTl(v.fiKurus) + ' ₺' : inBase(v.fiKurus)} />
+          <Mini label={tt('Bugünkü hızla')} value={midAge === null ? tt('Ulaşılamıyor') : ttf('{0} yaşında', midAge)} tone={late ? 'warn' : 'good'} />
+          <Mini label={tt('Tasarruf oranı')} value={`%${Math.round(v.savingRate * 100)}`} />
         </div>
         <OwnGoal profile={profile} rates={rates} plan={plan} inBase={inBase} />
-        <ol className="mt-4 flex flex-col gap-1.5" aria-label="Seviyeler">
+        <ol className="mt-4 flex flex-col gap-1.5" aria-label={tt('Seviyeler')}>
           {levels.map((l, i) => {
             const done = v.netKurus >= l.value
             const focus = step ? l.key === step.id : l.key === 'fi'
@@ -101,7 +100,7 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
                   <div className="truncate text-[13.5px] font-medium text-ink">{l.label}</div>
                   <div className={cn('text-[11.5px]', done ? 'font-medium text-accent' : 'text-subtle')}>
                     {l.stage}
-                    {done ? ' · ulaşıldı' : focus ? ' · sıradaki' : ''}
+                    {done ? tt(' · ulaşıldı') : focus ? tt(' · sıradaki') : ''}
                   </div>
                 </div>
                 <div className="num shrink-0 text-[15px] font-semibold text-ink">{inBase(l.value)}</div>
@@ -112,82 +111,79 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
       </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Kpi icon={<PiggyBank className="size-4" />} label={`${v.targetAge} yaşında bağımsız olmak için`} tone={v.gapKurus > 0 ? 'warn' : 'good'} value={`${Math.round(v.requiredMonthlyKurus / 100).toLocaleString('tr-TR')} ₺/ay`}>
-          Şu an {Math.round(v.monthlySavingKurus / 100).toLocaleString('tr-TR')} ₺/ay
-          {v.gapKurus > 0 ? (midAge === null ? ' · bu hızla ulaşılamıyor' : ` · bu hızla ${midAge} yaşında`) : ' · yetiyor'}
+        <Kpi icon={<PiggyBank className="size-4" />} label={ttf('{0} yaşında bağımsız olmak için', v.targetAge)} tone={v.gapKurus > 0 ? 'warn' : 'good'} value={`${Math.round(v.requiredMonthlyKurus / 100).toLocaleString('tr-TR')} ₺/ay`}>
+          {ttf('Şu an {0} ₺/ay {1}', Math.round(v.monthlySavingKurus / 100).toLocaleString('tr-TR'), v.gapKurus > 0 ? (midAge === null ? tt(' · bu hızla ulaşılamıyor') : ttf(' · bu hızla {0} yaşında', midAge)) : tt(' · yetiyor'))}
         </Kpi>
-        <Kpi icon={<Hourglass className="size-4" />} label="Coast FI eşiği" tone={v.coastPassed ? 'good' : undefined} value={inBase(v.coastKurus)}>
-          {v.coastPassed ? 'Geçtiniz; eklemeseniz de yetiyor.' : `Net birikiminiz ${inBase(v.netKurus)}.`}
+        <Kpi icon={<Hourglass className="size-4" />} label={tt('Coast FI eşiği')} tone={v.coastPassed ? 'good' : undefined} value={inBase(v.coastKurus)}>
+          {v.coastPassed ? tt('Geçtiniz; eklemeseniz de yetiyor.') : ttf('Net birikiminiz {0}.', inBase(v.netKurus))}
         </Kpi>
-        <Kpi icon={<Gauge className="size-4" />} label="Başarı olasılığı" tone={v.successRate >= 0.8 ? 'good' : v.successRate < 0.6 ? 'warn' : undefined} value={`%${Math.round(v.successRate * 100)}`}>
-          Varsayıma dayalı benzetimdir, garanti değildir.
+        <Kpi icon={<Gauge className="size-4" />} label={tt('Başarı olasılığı')} tone={v.successRate >= 0.8 ? 'good' : v.successRate < 0.6 ? 'warn' : undefined} value={`%${Math.round(v.successRate * 100)}`}>
+          {tt('Varsayıma dayalı benzetimdir, garanti değildir.')}
         </Kpi>
-        <Kpi icon={<CalendarCheck className="size-4" />} label="Borçsuz olma tarihi" value={debtDate}>
+        <Kpi icon={<CalendarCheck className="size-4" />} label={tt('Borçsuz olma tarihi')} value={debtDate}>
           {nextEnds.length
             ? nextEnds
                 .slice(0, 3)
                 .map((e) => `${e.name}: ${reachDateLabel(e.month, today)} (+${formatKurus(e.freed)}/ay birikime)`)
                 .join(' · ')
-            : 'Biten borç ya da taksit yok.'}
-          {v.debtEnds.length > 0 && ` Sıra: ${strategy === 'avalanche' ? 'önce en yüksek faiz' : 'önce en küçük borç'}.`}
+            : tt('Biten borç ya da taksit yok.')}
+          {v.debtEnds.length > 0 && ttf(' Sıra: {0}.', strategy === 'avalanche' ? tt('önce en yüksek faiz') : tt('önce en küçük borç'))}
         </Kpi>
       </div>
 
-      <Card className="p-4 sm:p-5" aria-label="Kaldıraçlar">
-        <h3 className="font-display text-base font-semibold">Kaldıraçlarla oynayın</h3>
-        <p className="mt-0.5 text-[12.5px] text-muted">Değişiklikler kaydedilmez.</p>
+      <Card className="p-4 sm:p-5" aria-label={tt('Kaldıraçlar')}>
+        <h3 className="font-display text-base font-semibold">{tt('Kaldıraçlarla oynayın')}</h3>
+        <p className="mt-0.5 text-[12.5px] text-muted">{tt('Değişiklikler kaydedilmez.')}</p>
         <div className="mt-3 flex flex-col gap-4">
-          <Slider id="l-extra" label="Aylık ek birikim" value={extra / 100} min={0} max={Math.max(50000, Math.ceil(plan.levers.extraMonthlyKurus / 100 / 5000) * 5000 + 10000)} step={500} onChange={(x) => setExtra(x * 100)} display={(x) => `+${formatKurus(x * 100)}`} />
-          <Slider id="l-age" label="Hedef yaş" value={tAge} min={plan.age + 1} max={Math.max(plan.age + 2, plan.lifeAge - 1)} onChange={setTAge} display={(x) => `${x} yaş`} />
-          <Slider id="l-pct" label="Hedef harcama düzeyi" value={pct} min={50} max={160} step={5} onChange={setPct} display={(x) => `%${x}`} />
+          <Slider id="l-extra" label={tt('Aylık ek birikim')} value={extra / 100} min={0} max={Math.max(50000, Math.ceil(plan.levers.extraMonthlyKurus / 100 / 5000) * 5000 + 10000)} step={500} onChange={(x) => setExtra(x * 100)} display={(x) => `+${formatKurus(x * 100)}`} />
+          <Slider id="l-age" label={tt('Hedef yaş')} value={tAge} min={plan.age + 1} max={Math.max(plan.age + 2, plan.lifeAge - 1)} onChange={setTAge} display={(x) => ttf('{0} yaş', x)} />
+          <Slider id="l-pct" label={tt('Hedef harcama düzeyi')} value={pct} min={50} max={160} step={5} onChange={setPct} display={(x) => `%${x}`} />
         </div>
-        <ul className="mt-4 flex list-disc flex-col gap-1.5 pl-5 text-[13px] text-muted" aria-label="Tek başına yeterli değerler">
+        <ul className="mt-4 flex list-disc flex-col gap-1.5 pl-5 text-[13px] text-muted" aria-label={tt('Tek başına yeterli değerler')}>
           {plan.gapKurus > 0 ? (
             <>
               <li>
-                Ayda <strong className="text-ink">{formatKurus(plan.levers.extraMonthlyKurus)}</strong> ek birikim tek başına yeterli.
+                {tt('Ayda')} <strong className="text-ink">{formatKurus(plan.levers.extraMonthlyKurus)}</strong> {tt('ek birikim tek başına yeterli.')}
               </li>
-              <li>{plan.levers.targetAge !== null ? <>Hedef yaşı <strong className="text-ink">{plan.levers.targetAge}</strong> yapmak tek başına yeterli.</> : 'Bugünkü birikimle hiçbir hedef yaşta yetmiyor.'}</li>
+              <li>{plan.levers.targetAge !== null ? <>{tt('Hedef yaşı')} <strong className="text-ink">{plan.levers.targetAge}</strong> {tt('yapmak tek başına yeterli.')}</> : tt('Bugünkü birikimle hiçbir hedef yaşta yetmiyor.')}</li>
               <li>
-                Hedef harcama düzeyini <strong className="text-ink">%{Math.min(plan.spendPct, plan.levers.spendPct)}</strong> yapmak tek başına yeterli.
+                {tt('Hedef harcama düzeyini')} <strong className="text-ink">%{Math.min(plan.spendPct, plan.levers.spendPct)}</strong> {tt('yapmak tek başına yeterli.')}
               </li>
             </>
           ) : (
             <li>
-              Bugünkü hızınızla hedefin önündesiniz{plan.levers.targetAge !== null && plan.levers.targetAge < plan.targetAge ? `; ${plan.levers.targetAge} yaşında bırakmak da yetiyor` : ''}.
-            </li>
+              {ttf('Bugünkü hızınızla hedefin önündesiniz{0}.', plan.levers.targetAge !== null && plan.levers.targetAge < plan.targetAge ? ttf('; {0} yaşında bırakmak da yetiyor', plan.levers.targetAge) : '')}</li>
           )}
           {changed && (
             <li>
-              Bu ayarlarla: gereken {formatKurus(v.requiredMonthlyKurus)}/ay, başarı %{Math.round(v.successRate * 100)}, {midAge === null ? 'hedefe ulaşılamıyor' : `hedefe ${midAge} yaşında ulaşılır`}.
-            </li>
+              {ttf('Bu ayarlarla: gereken {0}/ay, başarı %{1}, {2}.', formatKurus(v.requiredMonthlyKurus), Math.round(v.successRate * 100), midAge === null ? tt('hedefe ulaşılamıyor') : ttf('hedefe {0} yaşında ulaşılır', midAge))}</li>
           )}
         </ul>
       </Card>
 
-      <Card className="p-4 sm:p-5" aria-label="Gelecekteki hedef">
+      <Card className="p-4 sm:p-5" aria-label={tt('Gelecekteki hedef')}>
         <h3 className="flex items-center gap-2 font-display text-base font-semibold">
-          <Target className="size-4 text-accent" /> Hedef tarihte ({ageDate(v.targetAge)}) hedefiniz
+          <Target className="size-4 text-accent" /> {tt('Hedef tarihte (')}{ageDate(v.targetAge)}{tt(') hedefiniz')}
         </h3>
         <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Future label="TL (nominal)" value={formatKurus(v.future.tlNominalKurus)} note={`Yıllık %${v.future.inflationPct.toLocaleString('tr-TR')} enflasyonla.`} />
+          <Future label={tt('TL (nominal)')} value={formatKurus(v.future.tlNominalKurus)} note={ttf('Yıllık %{0} enflasyonla.', v.future.inflationPct.toLocaleString('tr-TR'))} />
           <Future
             label="USD"
             value={v.future.usd === null ? '—' : `${v.future.usd.toLocaleString('tr-TR')} $`}
-            note={base === 'USD' ? 'Plan birimi USD: hedef bu tutarda sabit.' : 'Güncel kurla.'}
+            note={base === 'USD' ? tt('Plan birimi USD: hedef bu tutarda sabit.') : tt('Güncel kurla.')}
           />
           <Future
-            label="Gram altın"
+            label={tt('Gram altın')}
             value={v.future.goldGr === null ? '—' : `${v.future.goldGr.toLocaleString('tr-TR')} gr`}
-            note={base === 'XAU' ? 'Plan birimi altın: hedef bu miktarda sabit.' : 'Güncel gram fiyatıyla.'}
+            note={base === 'XAU' ? tt('Plan birimi altın: hedef bu miktarda sabit.') : tt('Güncel gram fiyatıyla.')}
           />
         </dl>
       </Card>
 
       <p className="text-[12.5px] text-muted">
-        Yatırım tavsiyesi değildir.{' '}
+        {tt('Yatırım tavsiyesi değildir.')}{' '}
         <Link to="/ogren#varsayimlar" className="inline-flex items-center gap-1 font-medium text-accent">
-          <BookOpen className="size-3.5" /> Varsayımlar ve kaynaklar
+          <BookOpen className="size-3.5" /> {tt('Varsayımlar ve kaynaklar')}
         </Link>
       </p>
     </section>
@@ -230,7 +226,7 @@ function OwnGoal({ profile, rates, plan, inBase }: { profile: JourneyProfile; ra
   const repo = useRepo()
   const { toast } = useUi()
   const base: PlanBase = profile.base ?? 'TRY'
-  const unit = base === 'USD' ? '$' : base === 'XAU' ? 'gr altın' : '₺'
+  const unit = base === 'USD' ? '$' : base === 'XAU' ? tt('gr altın') : '₺'
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const save = async (customFiKurus: number | undefined) => {
@@ -241,7 +237,7 @@ function OwnGoal({ profile, rates, plan, inBase }: { profile: JourneyProfile; ra
   }
   const submit = () => {
     const k = planAmountToKurus(Number(text.replace(/[^\d]/g, '')), profile, rates)
-    if (k === null) return toast('Geçerli bir tutar yazın.', { kind: 'error' })
+    if (k === null) return toast(tt('Geçerli bir tutar yazın.'), { kind: 'error' })
     void save(k)
   }
   if (open)
@@ -254,27 +250,27 @@ function OwnGoal({ profile, rates, plan, inBase }: { profile: JourneyProfile; ra
         }}
       >
         <label className="min-w-0 flex-1 text-[12.5px] text-muted">
-          Bağımsızlık hedefin ({unit})
-          <Input autoFocus inputMode="numeric" value={text} onChange={(e) => setText(e.target.value)} placeholder={`Örn. ${inBase(plan.fiKurus)}`} className="mt-1" />
+          {tt('Bağımsızlık hedefin (')}{unit})
+          <Input autoFocus inputMode="numeric" value={text} onChange={(e) => setText(e.target.value)} placeholder={ttf('Örn. {0}', inBase(plan.fiKurus))} className="mt-1" />
         </label>
         <Button size="sm" type="submit">
-          Kaydet
+          {tt('Kaydet')}
         </Button>
         <Button size="sm" variant="soft" type="button" onClick={() => setOpen(false)}>
-          Vazgeç
+          {tt('Vazgeç')}
         </Button>
       </form>
     )
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
-      <span className="text-muted">{plan.ownGoal ? `Kendi hedefin · önerilen ${inBase(plan.suggestedFiKurus)}` : 'Hedef senin harcamalarından önerildi'}</span>
+      <span className="text-muted">{plan.ownGoal ? ttf('Kendi hedefin · önerilen {0}', inBase(plan.suggestedFiKurus)) : tt('Hedef senin harcamalarından önerildi')}</span>
       <span className="flex gap-1">
         <button type="button" className="rounded-lg px-2 py-1 font-semibold text-accent hover:bg-accent-soft" onClick={() => setOpen(true)}>
-          {plan.ownGoal ? 'Hedefi değiştir' : 'Hedefi kendim belirle'}
+          {plan.ownGoal ? tt('Hedefi değiştir') : tt('Hedefi kendim belirle')}
         </button>
         {plan.ownGoal && (
           <button type="button" className="rounded-lg px-2 py-1 font-semibold text-muted hover:bg-surface-2" onClick={() => void save(undefined)}>
-            Önerilene dön
+            {tt('Önerilene dön')}
           </button>
         )}
       </span>

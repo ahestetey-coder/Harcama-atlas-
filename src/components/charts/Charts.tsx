@@ -2,6 +2,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, P
 import { formatDate } from '../../domain/dates'
 import { formatKurus, formatKurusCompact } from '../../domain/money'
 import { useReducedMotion } from '../../lib/hooks'
+import { tt, ttf } from '../../lib/i18n'
 
 export interface DonutSlice {
   id: string
@@ -133,7 +134,7 @@ export function DailyBars({ data, onSelect, highlightDay }: { data: DailyPoint[]
               if (!active || !payload?.length) return null
               const p = payload[0].payload as DailyPoint
               const lines: Array<[string, string]> = [['Gider', formatKurus(p.expenseKurus)]]
-              if (p.refundKurus) lines.push(['İade', formatKurus(p.refundKurus)])
+              if (p.refundKurus) lines.push([tt('İade'), formatKurus(p.refundKurus)])
               return <TooltipBox title={p.label} lines={lines} />
             }}
           />
@@ -177,10 +178,10 @@ export function WealthLine({ points }: { points: WealthPoint[] }) {
     <div>
       <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted" aria-hidden>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--asset-1)' }} /> Değer
+          <span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--asset-1)' }} /> {tt('Değer')}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> Yatırılan
+          <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> {tt('Yatırılan')}
         </span>
       </div>
       <div className="mt-2 h-48" aria-hidden>
@@ -216,8 +217,8 @@ export function WealthLine({ points }: { points: WealthPoint[] }) {
                   <TooltipBox
                     title={p.label}
                     lines={[
-                      ['Değer', formatKurus(p.valueKurus)],
-                      ['Yatırılan', formatKurus(p.contributedKurus)],
+                      [tt('Değer'), formatKurus(p.valueKurus)],
+                      [tt('Yatırılan'), formatKurus(p.contributedKurus)],
                       ['Fark', formatKurus(p.valueKurus - p.contributedKurus)],
                     ]}
                   />
@@ -230,12 +231,12 @@ export function WealthLine({ points }: { points: WealthPoint[] }) {
         </ResponsiveContainer>
       </div>
       <table className="sr-only">
-        <caption>Varlık değeri ve yatırılan tutar</caption>
+        <caption>{tt('Varlık değeri ve yatırılan tutar')}</caption>
         <thead>
           <tr>
-            <th>Tarih</th>
-            <th>Değer</th>
-            <th>Yatırılan</th>
+            <th>{tt('Tarih')}</th>
+            <th>{tt('Değer')}</th>
+            <th>{tt('Yatırılan')}</th>
           </tr>
         </thead>
         <tbody>
@@ -261,9 +262,9 @@ export interface ScenarioRow {
 }
 
 const SCENARIO_SERIES: Array<{ key: 'optimistic' | 'mid' | 'cautious'; label: string; color: string }> = [
-  { key: 'optimistic', label: 'Olumlu', color: 'var(--asset-1)' },
-  { key: 'mid', label: 'Orta', color: 'var(--asset-2)' },
-  { key: 'cautious', label: 'Temkinli', color: 'var(--asset-3)' },
+  { key: 'optimistic', label: tt('Olumlu'), color: 'var(--asset-1)' },
+  { key: 'mid', label: tt('Orta'), color: 'var(--asset-2)' },
+  { key: 'cautious', label: tt('Temkinli'), color: 'var(--asset-3)' },
 ]
 
 /** Üç senaryo ve hedef çizgisi (yıl ekseni). */
@@ -281,14 +282,14 @@ export function ScenarioLines({ rows, caption }: { rows: ScenarioRow[]; caption:
           </span>
         ))}
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> Hedef
+          <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> {tt('Hedef')}
         </span>
       </div>
       <div className="mt-2 h-60" aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--border)" />
-            <XAxis dataKey="year" type="number" domain={[0, last]} ticks={ticks} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? 'Bugün' : `${v}. yıl`)} />
+            <XAxis dataKey="year" type="number" domain={[0, last]} ticks={ticks} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? tt('Bugün') : ttf('{0}. yıl', v))} />
             <YAxis tickLine={false} axisLine={false} width={68} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => formatKurusCompact(v)} domain={['auto', 'auto']} />
             <Tooltip
               cursor={{ stroke: 'var(--border-strong)' }}
@@ -297,7 +298,7 @@ export function ScenarioLines({ rows, caption }: { rows: ScenarioRow[]; caption:
                 const p = payload[0].payload as ScenarioRow
                 return (
                   <TooltipBox
-                    title={p.year === 0 ? 'Bugün' : `${p.year}. yıl sonu`}
+                    title={p.year === 0 ? tt('Bugün') : ttf('{0}. yıl sonu', p.year)}
                     lines={[...SCENARIO_SERIES.map((s) => [s.label, formatKurus(p[s.key])] as [string, string]), ['Hedef', formatKurus(p.target)]]}
                   />
                 )
@@ -314,11 +315,11 @@ export function ScenarioLines({ rows, caption }: { rows: ScenarioRow[]; caption:
         <caption>{caption}</caption>
         <thead>
           <tr>
-            <th>Yıl</th>
+            <th>{tt('Yıl')}</th>
             {SCENARIO_SERIES.map((s) => (
               <th key={s.key}>{s.label}</th>
             ))}
-            <th>Hedef</th>
+            <th>{tt('Hedef')}</th>
           </tr>
         </thead>
         <tbody>
@@ -351,7 +352,7 @@ export function ExtraSavingLines({ rows, plusLabel, caption }: { rows: ExtraSavi
   const step = last <= 10 ? 1 : last <= 20 ? 2 : 5
   const ticks = rows.filter((r) => r.year % step === 0 || r.year === last).map((r) => r.year)
   const series = [
-    { key: 'base' as const, label: 'Bugünkü tempo', color: 'var(--asset-3)', dash: '6 5' },
+    { key: 'base' as const, label: tt('Bugünkü tempo'), color: 'var(--asset-3)', dash: '6 5' },
     { key: 'plus' as const, label: plusLabel, color: 'var(--asset-1)', dash: undefined },
   ]
   return (
@@ -363,14 +364,14 @@ export function ExtraSavingLines({ rows, plusLabel, caption }: { rows: ExtraSavi
           </span>
         ))}
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0 w-4 border-t-2 border-dotted" style={{ borderColor: 'var(--subtle)' }} /> Hedef
+          <span className="h-0 w-4 border-t-2 border-dotted" style={{ borderColor: 'var(--subtle)' }} /> {tt('Hedef')}
         </span>
       </div>
       <div className="mt-2 h-56" aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--border)" />
-            <XAxis dataKey="year" type="number" domain={[0, last]} ticks={ticks} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? 'Bugün' : `${v}. yıl`)} />
+            <XAxis dataKey="year" type="number" domain={[0, last]} ticks={ticks} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? tt('Bugün') : ttf('{0}. yıl', v))} />
             <YAxis tickLine={false} axisLine={false} width={68} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => formatKurusCompact(v)} domain={[0, 'auto']} />
             <Tooltip
               cursor={{ stroke: 'var(--border-strong)' }}
@@ -379,7 +380,7 @@ export function ExtraSavingLines({ rows, plusLabel, caption }: { rows: ExtraSavi
                 const p = payload[0].payload as ExtraSavingRow
                 return (
                   <TooltipBox
-                    title={p.year === 0 ? 'Bugün' : `${p.year}. yıl sonu`}
+                    title={p.year === 0 ? tt('Bugün') : ttf('{0}. yıl sonu', p.year)}
                     lines={[...series.map((s) => [s.label, p[s.key] === null ? 'Hedefte' : formatKurus(p[s.key]!)] as [string, string]), ['Hedef', formatKurus(p.target)]]}
                   />
                 )
@@ -396,11 +397,11 @@ export function ExtraSavingLines({ rows, plusLabel, caption }: { rows: ExtraSavi
         <caption>{caption}</caption>
         <thead>
           <tr>
-            <th>Yıl</th>
+            <th>{tt('Yıl')}</th>
             {series.map((s) => (
               <th key={s.key}>{s.label}</th>
             ))}
-            <th>Hedef</th>
+            <th>{tt('Hedef')}</th>
           </tr>
         </thead>
         <tbody>
@@ -428,11 +429,11 @@ export function DebtPayoffChart({ plan, minOnly }: { plan: number[]; minOnly: nu
     <div>
       <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted" aria-hidden>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--asset-1)' }} /> Bu planla
+          <span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--asset-1)' }} /> {tt('Bu planla')}
         </span>
         {minOnly && (
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> Yalnızca asgari ödeme
+            <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--subtle)' }} /> {tt('Yalnızca asgari ödeme')}
           </span>
         )}
       </div>
@@ -446,16 +447,16 @@ export function DebtPayoffChart({ plan, minOnly }: { plan: number[]; minOnly: nu
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} stroke="var(--border)" />
-            <XAxis dataKey="m" type="number" domain={[0, span - 1]} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? 'Bugün' : `${v}. ay`)} />
+            <XAxis dataKey="m" type="number" domain={[0, span - 1]} tickLine={false} axisLine={false} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => (v === 0 ? tt('Bugün') : ttf('{0}. ay', v))} />
             <YAxis tickLine={false} axisLine={false} width={64} tick={{ fill: 'var(--subtle)', fontSize: 11 }} tickFormatter={(v: number) => formatKurusCompact(v)} />
             <Tooltip
               cursor={{ stroke: 'var(--border-strong)' }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const p = payload[0].payload as (typeof rows)[number]
-                const lines: Array<[string, string]> = [['Bu planla', formatKurus(p.plan)]]
-                if (p.minOnly !== undefined) lines.push(['Yalnızca asgari', formatKurus(p.minOnly)])
-                return <TooltipBox title={p.m === 0 ? 'Bugün' : `${p.m}. ay sonu`} lines={lines} />
+                const lines: Array<[string, string]> = [[tt('Bu planla'), formatKurus(p.plan)]]
+                if (p.minOnly !== undefined) lines.push([tt('Yalnızca asgari'), formatKurus(p.minOnly)])
+                return <TooltipBox title={p.m === 0 ? tt('Bugün') : ttf('{0}. ay sonu', p.m)} lines={lines} />
               }}
             />
             {minOnly && <Area type="monotone" dataKey="minOnly" stroke="var(--subtle)" strokeWidth={2} strokeDasharray="4 4" fill="none" isAnimationActive={!reduced} />}

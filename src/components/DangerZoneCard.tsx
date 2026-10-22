@@ -8,6 +8,7 @@ import { clearLocalAccountData, resetLocalData } from '../state/data'
 import { useUi } from '../state/ui'
 import { ConfirmDialog } from './ui/Modal'
 import { Button, Card, Checkbox, Field, Input } from './ui/primitives'
+import { tt, ttf } from '../lib/i18n'
 
 /** Ayarlar'ın en altı: "Verilerimi sıfırla" ve altında "Hesabımı sil". */
 export function DangerZoneCard() {
@@ -20,7 +21,7 @@ export function DangerZoneCard() {
   const [wipeLocal, setWipeLocal] = useState(true)
   const [busy, setBusy] = useState(false)
   const user = auth.enabled ? auth.user : null
-  const word = kind === 'reset' ? 'SIFIRLA' : 'SİL'
+  const word = kind === 'reset' ? tt('SIFIRLA') : tt('SİL')
 
   const close = (o: boolean) => {
     if (busy || o) return
@@ -51,7 +52,7 @@ export function DangerZoneCard() {
     try {
       await auth.deleteAccount()
       if (wipeLocal) await clearLocalAccountData(user.id).catch(() => {})
-      toast('Hesabınız silindi.')
+      toast(tt('Hesabınız silindi.'))
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
       setBusy(false)
@@ -61,24 +62,24 @@ export function DangerZoneCard() {
   return (
     <Card className="p-5 lg:col-span-2">
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <TriangleAlert className="size-5 text-danger" /> Verileri sil
+        <TriangleAlert className="size-5 text-danger" /> {tt('Verileri sil')}
       </h2>
-      <p className="mt-1 text-sm text-muted">Bu işlemler geri alınamaz.</p>
+      <p className="mt-1 text-sm text-muted">{tt('Bu işlemler geri alınamaz.')}</p>
       <div className="mt-4 flex flex-col items-start gap-2">
         <Button className="text-danger" icon={<RotateCcw className="size-4" />} onClick={() => (setKind('reset'), setOpen(true))}>
-          Verilerimi sıfırla
+          {tt('Verilerimi sıfırla')}
         </Button>
         {user && (
           <Button className="text-danger" icon={<Trash2 className="size-4" />} onClick={() => (setKind('delete'), setOpen(true))}>
-            Hesabımı sil
+            {tt('Hesabımı sil')}
           </Button>
         )}
       </div>
       <ConfirmDialog
         open={open}
         onOpenChange={close}
-        title={kind === 'reset' ? 'Verileriniz sıfırlansın mı?' : 'Hesabınız silinsin mi?'}
-        confirmLabel={kind === 'reset' ? 'Verilerimi sıfırla' : 'Hesabımı kalıcı olarak sil'}
+        title={kind === 'reset' ? tt('Verileriniz sıfırlansın mı?') : tt('Hesabınız silinsin mi?')}
+        confirmLabel={kind === 'reset' ? tt('Verilerimi sıfırla') : tt('Hesabımı kalıcı olarak sil')}
         danger
         loading={busy}
         confirmDisabled={text.trim().toLocaleUpperCase('tr-TR') !== word}
@@ -86,22 +87,19 @@ export function DangerZoneCard() {
       >
         {kind === 'reset' ? (
           <p>
-            Harcamalarınız, gelirleriniz, bütçeniz, varlık ve borçlarınız, hedefleriniz ve test sonuçlarınız silinir; uygulama ilk günkü gibi açılır.
-            {user ? ' Kayıtlar buluttan ve hesabınızla girdiğiniz diğer cihazlardan da silinir; ortak gruplara eklediğiniz harcamalar da kalkar. Hesabınız, paketiniz ve grup üyelikleriniz kalır.' : ''} Geri alınamaz.
-          </p>
+            {ttf('Harcamalarınız, gelirleriniz, bütçeniz, varlık ve borçlarınız, hedefleriniz ve test sonuçlarınız silinir; uygulama ilk günkü gibi açılır. {0} Geri alınamaz.', user ? tt(' Kayıtlar buluttan ve hesabınızla girdiğiniz diğer cihazlardan da silinir; ortak gruplara eklediğiniz harcamalar da kalkar. Hesabınız, paketiniz ve grup üyelikleriniz kalır.') : '')}</p>
         ) : (
           <>
             <p>
-              Hesabınız ve buluttaki verileriniz kalıcı olarak silinir. Yöneticisi olduğunuz ortak gruplar, içindeki herkesin harcamalarıyla birlikte gider. Geri
-              alınamaz.
+              {tt('Hesabınız ve buluttaki verileriniz kalıcı olarak silinir. Yöneticisi olduğunuz ortak gruplar, içindeki herkesin harcamalarıyla birlikte gider. Geri alınamaz.')}
             </p>
-            <Checkbox className="mt-3" label="Bu cihazdaki kayıtlarımı da sil" checked={wipeLocal} onChange={setWipeLocal} />
+            <Checkbox className="mt-3" label={tt('Bu cihazdaki kayıtlarımı da sil')} checked={wipeLocal} onChange={setWipeLocal} />
           </>
         )}
         <p className="mt-3">
-          Onaylamak için aşağıya <strong className="text-ink">{word}</strong> yazın.
+          {tt('Onaylamak için aşağıya')} <strong className="text-ink">{word}</strong> {tt('yazın.')}
         </p>
-        <Field label="Onay" htmlFor="danger-confirm" className="mt-2">
+        <Field label={tt('Onay')} htmlFor="danger-confirm" className="mt-2">
           <Input id="danger-confirm" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" />
         </Field>
       </ConfirmDialog>

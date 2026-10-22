@@ -13,6 +13,7 @@ import type { SpendGroup } from '../domain/types'
 import { useCloud, useMembers } from '../state/cloud'
 import { useData } from '../state/data'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 export const SETUP_GUIDE_URL = 'https://github.com/ahestetey-coder/Harcama-atlas-/blob/main/BULUT-KURULUM.md'
 
@@ -25,10 +26,10 @@ export default function MembersPage() {
   const { isDemo } = useData()
   return (
     <div>
-      <PageHeader title="Üyeler ve paylaşım" subtitle="Grupları üyelerle paylaşın" />
+      <PageHeader title={tt('Üyeler ve paylaşım')} subtitle={tt('Grupları üyelerle paylaşın')} />
       {isDemo ? (
-        <Alert tone="warning" title="Demo modunda paylaşım kapalı">
-          Paylaşım gerçek verilerinizle çalışır. Demo modunu kapatıp tekrar deneyin.
+        <Alert tone="warning" title={tt('Demo modunda paylaşım kapalı')}>
+          {tt('Paylaşım gerçek verilerinizle çalışır. Demo modunu kapatıp tekrar deneyin.')}
         </Alert>
       ) : cloud.config === undefined ? null : !cloud.config ? (
         <ConfigCard />
@@ -59,31 +60,31 @@ export function ConfigCard() {
   return (
     <Card className="p-5">
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <CloudOff className="size-5 text-muted" /> Bulut bağlantısı kurulmamış
+        <CloudOff className="size-5 text-muted" /> {tt('Bulut bağlantısı kurulmamış')}
       </h2>
-      <p className="mt-2 text-sm text-muted">Paylaşım için ücretsiz bir Supabase projesi gerekir.</p>
+      <p className="mt-2 text-sm text-muted">{tt('Paylaşım için ücretsiz bir Supabase projesi gerekir.')}</p>
       <More>
-        Kurulum bir kez yapılır; adımlar{' '}
+        {tt('Kurulum bir kez yapılır; adımlar')}{' '}
         <a href={SETUP_GUIDE_URL} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
-          kurulum rehberinde
+          {tt('kurulum rehberinde')}
         </a>
-        . Davet bağlantısı geldiyse yalnızca onu açmanız yeterli.
+        {tt('. Davet bağlantısı geldiyse yalnızca onu açmanız yeterli.')}
       </More>
       <form onSubmit={save} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Proje adresi (Project URL)" htmlFor="cloud-url">
+        <Field label={tt('Proje adresi (Project URL)')} htmlFor="cloud-url">
           <Input id="cloud-url" placeholder="https://abcd.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} autoComplete="off" />
         </Field>
-        <Field label="Herkese açık anahtar (anon public key)" htmlFor="cloud-key">
+        <Field label={tt('Herkese açık anahtar (anon public key)')} htmlFor="cloud-key">
           <Input id="cloud-key" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
         </Field>
         {error && <p className="text-[13px] font-medium text-danger sm:col-span-2">{error}</p>}
         <div className="sm:col-span-2">
           <Button type="submit" variant="primary" icon={<Cloud className="size-4" />}>
-            Bağlan
+            {tt('Bağlan')}
           </Button>
         </div>
       </form>
-      <p className="mt-3 text-[12.5px] text-subtle">Gizli “service_role” anahtarını asla girmeyin.</p>
+      <p className="mt-3 text-[12.5px] text-subtle">{tt('Gizli “service_role” anahtarını asla girmeyin.')}</p>
     </Card>
   )
 }
@@ -109,16 +110,16 @@ function ProfileCard() {
       const groups = (await repo.db.groups.toArray()).filter((g) => g.cloudId)
       for (const g of groups) await cloud.backend.setDisplayName(g.cloudId!, n).catch(() => {})
     }
-    toast('Adınız kaydedildi.')
+    toast(tt('Adınız kaydedildi.'))
   }
   return (
     <Card className="p-5">
       <form onSubmit={save} className="flex flex-wrap items-end gap-3">
-        <Field label="Adınız (grup üyeleri sizi bu adla görür)" htmlFor="self-name" className="min-w-[220px] flex-1">
-          <Input id="self-name" value={name} maxLength={40} placeholder="Ör. Osman" onChange={(e) => setName(e.target.value)} />
+        <Field label={tt('Adınız (grup üyeleri sizi bu adla görür)')} htmlFor="self-name" className="min-w-[220px] flex-1">
+          <Input id="self-name" value={name} maxLength={40} placeholder={tt('Ör. Osman')} onChange={(e) => setName(e.target.value)} />
         </Field>
         <Button type="submit" disabled={!name.trim() || name.trim() === self?.name}>
-          Kaydet
+          {tt('Kaydet')}
         </Button>
       </form>
     </Card>
@@ -140,7 +141,7 @@ export function AuthCard({ intro }: { intro?: string }) {
     setInfo(undefined)
     try {
       if (mode === 'in') await cloud.signIn(email, password)
-      else if (!(await cloud.signUp(email, password))) setInfo('Hesap oluşturuldu. E-postanıza gelen doğrulama bağlantısına tıklayın, sonra buradan giriş yapın.')
+      else if (!(await cloud.signUp(email, password))) setInfo(tt('Hesap oluşturuldu. E-postanıza gelen doğrulama bağlantısına tıklayın, sonra buradan giriş yapın.'))
     } catch (err) {
       setError(errText(err))
     } finally {
@@ -150,24 +151,24 @@ export function AuthCard({ intro }: { intro?: string }) {
   return (
     <Card className="p-5">
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <KeyRound className="size-5 text-accent" /> {mode === 'in' ? 'Giriş yapın' : 'Hesap oluşturun'}
+        <KeyRound className="size-5 text-accent" /> {mode === 'in' ? tt('Giriş yapın') : tt('Hesap oluşturun')}
       </h2>
-      <p className="mt-1 text-sm text-muted">{intro ?? 'Paylaşım için bir hesap gerekir.'}</p>
+      <p className="mt-1 text-sm text-muted">{intro ?? tt('Paylaşım için bir hesap gerekir.')}</p>
       <form onSubmit={submit} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="E-posta" htmlFor="auth-email">
+        <Field label={tt('E-posta')} htmlFor="auth-email">
           <Input id="auth-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
-        <Field label="Parola" htmlFor="auth-password" hint={mode === 'up' ? 'En az 6 karakter, banka parolası olmasın.' : undefined}>
+        <Field label={tt('Parola')} htmlFor="auth-password" hint={mode === 'up' ? tt('En az 6 karakter, banka parolası olmasın.') : undefined}>
           <Input id="auth-password" type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
         </Field>
         {error && <p className="text-[13px] font-medium text-danger sm:col-span-2" role="alert">{error}</p>}
         {info && <p className="text-[13px] font-medium text-accent sm:col-span-2">{info}</p>}
         <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
           <Button type="submit" variant="primary" loading={busy}>
-            {mode === 'in' ? 'Giriş yap' : 'Hesap oluştur'}
+            {mode === 'in' ? tt('Giriş yap') : tt('Hesap oluştur')}
           </Button>
           <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
-            {mode === 'in' ? 'Hesabım yok, oluştur' : 'Hesabım var, giriş yap'}
+            {mode === 'in' ? tt('Hesabım yok, oluştur') : tt('Hesabım var, giriş yap')}
           </button>
         </div>
       </form>
@@ -184,16 +185,16 @@ function SessionCard() {
       <div className="min-w-0 flex-1 text-sm">
         <div className="truncate font-medium text-ink">{cloud.email}</div>
         <div className="text-[12.5px] text-muted" aria-live="polite">
-          {cloud.status === 'syncing' ? 'Eşitleniyor…' : cloud.lastError ? <span className="text-danger">{cloud.lastError}</span> : last ? `Otomatik eşitleniyor · son ${last}` : 'Otomatik eşitleniyor'}
+          {cloud.status === 'syncing' ? tt('Eşitleniyor…') : cloud.lastError ? <span className="text-danger">{cloud.lastError}</span> : last ? ttf('Otomatik eşitleniyor · son {0}', last) : tt('Otomatik eşitleniyor')}
         </div>
       </div>
       {cloud.lastError && cloud.status !== 'syncing' && (
         <Button size="sm" icon={<RefreshCw className="size-4" />} onClick={() => void cloud.sync()}>
-          Tekrar dene
+          {tt('Tekrar dene')}
         </Button>
       )}
       <Button size="sm" variant="ghost" icon={<LogOut className="size-4" />} onClick={() => void cloud.signOut()}>
-        Çıkış
+        {tt('Çıkış')}
       </Button>
     </Card>
   )
@@ -238,7 +239,7 @@ function GroupsCard() {
     run(g.id, async () => {
       await shareGroup(repo, cloud.backend!, g.id)
       await cloud.sync()
-      toast(`“${g.name}” paylaşıma açıldı. Şimdi üye davet edebilirsiniz.`)
+      toast(ttf('“{0}” paylaşıma açıldı. Şimdi üye davet edebilirsiniz.', g.name))
     })
 
   const makeInvite = (g: SpendGroup) =>
@@ -253,10 +254,10 @@ function GroupsCard() {
     <Card className="overflow-hidden">
       <div className="border-b border-line px-5 py-4">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <Users className="size-5 text-accent" /> Gruplar ve üyeler
+          <Users className="size-5 text-accent" /> {tt('Gruplar ve üyeler')}
         </h2>
-        <p className="mt-1 text-[13px] text-muted">Paylaşılan gruptaki harcamaları bütün üyeler görür.</p>
-        <More>Herkes yalnızca kendi harcamasını ekler, düzenler ve siler. Diğer kayıtlarınızı üyeler görmez.</More>
+        <p className="mt-1 text-[13px] text-muted">{tt('Paylaşılan gruptaki harcamaları bütün üyeler görür.')}</p>
+        <More>{tt('Herkes yalnızca kendi harcamasını ekler, düzenler ve siler. Diğer kayıtlarınızı üyeler görmez.')}</More>
       </div>
       <ul>
         {visible.map((g) => {
@@ -269,39 +270,39 @@ function GroupsCard() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="size-3 rounded-full" style={{ backgroundColor: g.color }} aria-hidden />
                 <span className="font-semibold text-ink">{g.name}</span>
-                {shared ? <Badge tone="accent">Paylaşılıyor</Badge> : <Badge>Yalnızca bu cihaz</Badge>}
+                {shared ? <Badge tone="accent">{tt('Paylaşılıyor')}</Badge> : <Badge>{tt('Yalnızca bu cihaz')}</Badge>}
                 <div className="ml-auto flex flex-wrap gap-2">
                   {shared ? (
                     <>
                       <Button size="sm" variant="primary" icon={<Link2 className="size-4" />} loading={busy === g.id} onClick={() => makeInvite(g)}>
-                        Üye davet et
+                        {tt('Üye davet et')}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setLeave(g)}>
-                        Paylaşımdan ayrıl
+                        {tt('Paylaşımdan ayrıl')}
                       </Button>
                     </>
                   ) : (
                     <Button size="sm" icon={<Share2 className="size-4" />} loading={busy === g.id} onClick={() => share(g)}>
-                      Paylaşıma aç
+                      {tt('Paylaşıma aç')}
                     </Button>
                   )}
                 </div>
               </div>
               {shared && (
-                <ul className="mt-3 flex flex-wrap gap-2" aria-label={`${g.name} üyeleri`}>
+                <ul className="mt-3 flex flex-wrap gap-2" aria-label={ttf('{0} üyeleri', g.name)}>
                   {groupMembers.map((m) => (
                     <li key={m.id} className="inline-flex items-center gap-1.5 rounded-full border border-line py-1 pl-2.5 pr-1.5 text-[13px]">
                       <span className="size-2 rounded-full" style={{ backgroundColor: m.color }} aria-hidden />
                       {m.id === selfId ? `${m.name} (siz)` : m.name}
-                      {cg?.owner_id === m.id && <Crown className="size-3.5 text-warning" aria-label="Grubu açan" />}
+                      {cg?.owner_id === m.id && <Crown className="size-3.5 text-warning" aria-label={tt('Grubu açan')} />}
                       {isOwner && m.id !== selfId && (
-                        <button type="button" aria-label={`${m.name} üyesini çıkar`} className="grid size-6 place-items-center rounded-full text-subtle hover:bg-surface-2 hover:text-danger" onClick={() => setKick({ group: g, memberId: m.id, name: m.name })}>
+                        <button type="button" aria-label={ttf('{0} üyesini çıkar', m.name)} className="grid size-6 place-items-center rounded-full text-subtle hover:bg-surface-2 hover:text-danger" onClick={() => setKick({ group: g, memberId: m.id, name: m.name })}>
                           <UserMinus className="size-3.5" />
                         </button>
                       )}
                     </li>
                   ))}
-                  {groupMembers.length <= 1 && <li className="self-center text-[12.5px] text-subtle">Henüz başka üye yok.</li>}
+                  {groupMembers.length <= 1 && <li className="self-center text-[12.5px] text-subtle">{tt('Henüz başka üye yok.')}</li>}
                 </ul>
               )}
             </li>
@@ -312,13 +313,13 @@ function GroupsCard() {
       <Modal
         open={!!invite}
         onOpenChange={(o) => !o && setInvite(null)}
-        title={`“${invite?.group.name}” için davet bağlantısı`}
-        description="7 gün geçerlidir; bağlantıyı alan herkes katılabilir."
+        title={ttf('“{0}” için davet bağlantısı', invite?.group.name)}
+        description={tt('7 gün geçerlidir; bağlantıyı alan herkes katılabilir.')}
         footer={
           <>
             {typeof navigator.share === 'function' && (
-              <Button icon={<Share2 className="size-4" />} onClick={() => navigator.share({ title: 'Harcama Atlası daveti', text: `“${invite!.group.name}” grubuna katıl`, url: invite!.link }).catch(() => {})}>
-                Paylaş
+              <Button icon={<Share2 className="size-4" />} onClick={() => navigator.share({ title: tt('Harcama Atlası daveti'), text: ttf('“{0}” grubuna katıl', invite!.group.name), url: invite!.link }).catch(() => {})}>
+                {tt('Paylaş')}
               </Button>
             )}
             <Button
@@ -327,42 +328,42 @@ function GroupsCard() {
               onClick={() =>
                 navigator.clipboard
                   .writeText(invite!.link)
-                  .then(() => toast('Bağlantı kopyalandı.'))
-                  .catch(() => toast('Kopyalanamadı; bağlantıyı elle seçip kopyalayın.', { kind: 'error' }))
+                  .then(() => toast(tt('Bağlantı kopyalandı.')))
+                  .catch(() => toast(tt('Kopyalanamadı; bağlantıyı elle seçip kopyalayın.'), { kind: 'error' }))
               }
             >
-              Kopyala
+              {tt('Kopyala')}
             </Button>
           </>
         }
       >
-        <textarea readOnly value={invite?.link ?? ''} aria-label="Davet bağlantısı" className="h-28 w-full resize-none rounded-xl border border-line bg-surface-2 p-3 font-mono text-base text-ink sm:text-[12px]" onFocus={(e) => e.currentTarget.select()} />
-        <p className="mt-2 text-[12.5px] text-subtle">Bağlantıda harcama bilgisi yoktur.</p>
+        <textarea readOnly value={invite?.link ?? ''} aria-label={tt('Davet bağlantısı')} className="h-28 w-full resize-none rounded-xl border border-line bg-surface-2 p-3 font-mono text-base text-ink sm:text-[12px]" onFocus={(e) => e.currentTarget.select()} />
+        <p className="mt-2 text-[12.5px] text-subtle">{tt('Bağlantıda harcama bilgisi yoktur.')}</p>
       </Modal>
 
       <ConfirmDialog
         open={!!leave}
         onOpenChange={(o) => !o && setLeave(null)}
-        title={`“${leave?.name}” paylaşımından ayrılınsın mı?`}
-        confirmLabel="Ayrıl"
+        title={ttf('“{0}” paylaşımından ayrılınsın mı?', leave?.name)}
+        confirmLabel={tt('Ayrıl')}
         danger
         onConfirm={() =>
           leave &&
           run(leave.id, async () => {
             await leaveGroup(repo, cloud.backend!, leave.id)
             setLeave(null)
-            toast('Paylaşımdan ayrıldınız. Kendi kayıtlarınız bu cihazda duruyor.')
+            toast(tt('Paylaşımdan ayrıldınız. Kendi kayıtlarınız bu cihazda duruyor.'))
           })
         }
       >
-        Buluttaki kendi harcamalarınız silinir, diğer üyelerin harcamaları bu cihazdan kaldırılır. Bu cihazdaki kendi kayıtlarınız silinmez.
+        {tt('Buluttaki kendi harcamalarınız silinir, diğer üyelerin harcamaları bu cihazdan kaldırılır. Bu cihazdaki kendi kayıtlarınız silinmez.')}
       </ConfirmDialog>
 
       <ConfirmDialog
         open={!!kick}
         onOpenChange={(o) => !o && setKick(null)}
-        title={`${kick?.name} gruptan çıkarılsın mı?`}
-        confirmLabel="Çıkar"
+        title={ttf('{0} gruptan çıkarılsın mı?', kick?.name)}
+        confirmLabel={tt('Çıkar')}
         danger
         onConfirm={() =>
           kick &&
@@ -370,11 +371,11 @@ function GroupsCard() {
             await cloud.backend!.removeMember(kick.group.cloudId!, kick.memberId)
             setKick(null)
             await cloud.sync()
-            toast(`${kick.name} gruptan çıkarıldı.`)
+            toast(ttf('{0} gruptan çıkarıldı.', kick.name))
           })
         }
       >
-        Bu üyenin gruptaki harcamaları buluttan ve diğer cihazlardan silinir. Kendi cihazındaki kayıtları silinmez.
+        {tt('Bu üyenin gruptaki harcamaları buluttan ve diğer cihazlardan silinir. Kendi cihazındaki kayıtları silinmez.')}
       </ConfirmDialog>
     </Card>
   )
@@ -387,20 +388,20 @@ function ConfigFooter() {
   const builtIn = cloud.config?.url === envCloudConfig()?.url
   return (
     <p className="px-1 text-[12.5px] text-subtle">
-      Bulut: {cloud.config ? new URL(cloud.config.url).host : '—'}
+      {tt('Bulut:')} {cloud.config ? new URL(cloud.config.url).host : '—'}
       {!builtIn && (
         <>
           {' · '}
           <button type="button" className="font-medium text-accent hover:underline" onClick={() => setOpen(true)}>
-            Bulut bağlantısını kaldır
+            {tt('Bulut bağlantısını kaldır')}
           </button>
         </>
       )}
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="Bulut bağlantısı kaldırılsın mı?"
-        confirmLabel="Kaldır"
+        title={tt('Bulut bağlantısı kaldırılsın mı?')}
+        confirmLabel={tt('Kaldır')}
         danger
         onConfirm={async () => {
           try {
@@ -411,7 +412,7 @@ function ConfigFooter() {
           setOpen(false)
         }}
       >
-        Oturumunuz kapanır ve eşitleme durur. Buluttaki veriler silinmez; tekrar bağlanınca eşitleme kaldığı yerden sürer.
+        {tt('Oturumunuz kapanır ve eşitleme durur. Buluttaki veriler silinmez; tekrar bağlanınca eşitleme kaldığı yerden sürer.')}
       </ConfirmDialog>
     </p>
   )

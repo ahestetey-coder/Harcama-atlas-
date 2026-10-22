@@ -2,6 +2,7 @@ import { Info, Loader2 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { forwardRef, useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
+import { tt } from '../../lib/i18n'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'soft'
 type Size = 'sm' | 'md' | 'lg'
@@ -106,7 +107,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
       ref={ref}
       className={cn(
         fieldBase,
-        "h-11 appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22%238a93a3%22><path d=%22M5.5 7.5 10 12l4.5-4.5%22 stroke=%22%238a93a3%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>')] bg-[length:18px] bg-[right_10px_center] bg-no-repeat pr-9 sm:h-10",
+        tt('h-11 appearance-none bg-[url(\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22%238a93a3%22><path d=%22M5.5 7.5 10 12l4.5-4.5%22 stroke=%22%238a93a3%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>\')] bg-[length:18px] bg-[right_10px_center] bg-no-repeat pr-9 sm:h-10'),
         className,
       )}
       {...rest}
@@ -141,7 +142,7 @@ export function Field({
     <div className={cn('flex flex-col gap-1.5', className)}>
       <label htmlFor={htmlFor} className="text-[13px] font-medium text-muted">
         {label}
-        {optional && <span className="ml-1 font-normal text-subtle">(isteğe bağlı)</span>}
+        {optional && <span className="ml-1 font-normal text-subtle">{tt('(isteğe bağlı)')}</span>}
       </label>
       {children}
       {error ? (
@@ -236,7 +237,7 @@ export function Segmented<T extends string>({
 }
 
 export function Spinner({ className }: { className?: string }) {
-  return <Loader2 className={cn('size-5 animate-spin text-accent', className)} aria-label="Yükleniyor" />
+  return <Loader2 className={cn('size-5 animate-spin text-accent', className)} aria-label={tt('Yükleniyor')} />
 }
 
 export function EmptyState({ icon, title, children, action, className }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; className?: string }) {
@@ -281,7 +282,7 @@ export function Skeleton({ className }: { className?: string }) {
  * Uzun açıklamaları gizler: yerinde tek satırlık "Nasıl çalışır?" bağlantısı görünür,
  * dokununca metin altında açılır. Sayfaları yazı kalabalığından kurtarmak için kullanılır.
  */
-export function More({ label = 'Nasıl çalışır?', children, className }: { label?: string; children: ReactNode; className?: string }) {
+export function More({ label = tt('Nasıl çalışır?'), children, className }: { label?: string; children: ReactNode; className?: string }) {
   const [open, setOpen] = useState(false)
   const id = useId()
   return (

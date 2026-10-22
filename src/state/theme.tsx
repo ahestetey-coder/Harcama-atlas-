@@ -3,6 +3,7 @@ import type { ThemePreference } from '../domain/types'
 import { readPref, writePref } from './prefs'
 import { syncNativeTheme } from '../lib/native'
 import { EMBED_THEME, onSiteTheme } from '../lib/embed'
+import { tt } from '../lib/i18n'
 
 interface ThemeCtx {
   preference: ThemePreference
@@ -55,6 +56,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme(): ThemeCtx {
   const c = useContext(Ctx)
-  if (!c) throw new Error('ThemeProvider eksik')
+  if (!c) throw new Error(tt('ThemeProvider eksik'))
   return c
 }

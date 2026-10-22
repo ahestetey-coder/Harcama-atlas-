@@ -48,15 +48,16 @@ import { usePlan } from '../state/plan'
 import { useBaseRates } from '../state/livePrices'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 export default function JourneyPage() {
   return (
     <div>
       <PageHeader
-        title="Finansal Özgürlük Yolculuğum"
+        title={tt('Finansal Özgürlük Yolculuğum')}
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Kişisel rotanız
+            <PlanBadge plan="plus" /> {tt('Kişisel rotanız')}
           </span>
         }
       />
@@ -78,12 +79,12 @@ function JourneyBody() {
       {!web && !has('journey') && <MapTestCta />}
       <PlanGate
         feature="journey"
-        title="Finansal Özgürlük Yolculuğum"
+        title={tt('Finansal Özgürlük Yolculuğum')}
         points={[
-          'Finansal Harita testi ve rota kurulumuyla kişisel hedefiniz',
-          'Uzman ölçütlerine dayanan 8 seviyeli rota',
-          'Planınızı TL, USD ya da gram altın bazında izleyin',
-          'Yatırımlarım, Borçlarım ve bu ayın gelir-giderini tek yerden görün',
+          tt('Finansal Harita testi ve rota kurulumuyla kişisel hedefiniz'),
+          tt('Uzman ölçütlerine dayanan 8 seviyeli rota'),
+          tt('Planınızı TL, USD ya da gram altın bazında izleyin'),
+          tt('Yatırımlarım, Borçlarım ve bu ayın gelir-giderini tek yerden görün'),
         ]}
       >
         <JourneyContent />
@@ -95,14 +96,14 @@ function JourneyBody() {
 /** Rotası olmayan kişiye: önce 10 soruluk Finansal Harita testi (her pakette açık), sonra rota kurulumu. */
 function MapTestCta() {
   return (
-    <Card className="relative mb-4 overflow-hidden p-5 sm:p-6" aria-label="Finansal Harita testi">
+    <Card className="relative mb-4 overflow-hidden p-5 sm:p-6" aria-label={tt('Finansal Harita testi')}>
       <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-amber-500/10 blur-3xl" aria-hidden />
-      <p className="relative text-[12px] font-medium uppercase tracking-[0.12em] text-muted">Finansal Harita testi · Ücretsiz</p>
-      <h2 className="relative mt-1 font-display text-2xl font-bold text-ink">Önce rotanı belirle</h2>
-      <p className="relative mt-1 text-[14px] text-muted">Finansal Yolculuğun bu testle başlar. 10 soruda konumunu ve özgürlük yılının aralığını gör; ardından 6 adımda gerçek rakamlarınla rotanı kur.</p>
+      <p className="relative text-[12px] font-medium uppercase tracking-[0.12em] text-muted">{tt('Finansal Harita testi · Ücretsiz')}</p>
+      <h2 className="relative mt-1 font-display text-2xl font-bold text-ink">{tt('Önce rotanı belirle')}</h2>
+      <p className="relative mt-1 text-[14px] text-muted">{tt('Finansal Yolculuğun bu testle başlar. 10 soruda konumunu ve özgürlük yılının aralığını gör; ardından 6 adımda gerçek rakamlarınla rotanı kur.')}</p>
       <div className="relative mt-4 flex flex-wrap items-center gap-3">
         <Link to="/finansal-harita" className="inline-flex h-12 items-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 px-5 text-[15px] font-semibold text-white shadow-[0_8px_20px_-10px_rgb(5_150_105/0.8)] hover:brightness-110">
-          Özgürlük rotamı çıkar <ArrowRight className="size-4" />
+          {tt('Özgürlük rotamı çıkar')} <ArrowRight className="size-4" />
         </Link>
       </div>
     </Card>
@@ -159,11 +160,11 @@ function JourneyContent() {
 
 type Tab = 'route' | 'investments' | 'debts' | 'month' | 'criteria'
 const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'route', label: 'Rota' },
-  { id: 'investments', label: 'Yatırımlarım' },
-  { id: 'debts', label: 'Borçlarım' },
-  { id: 'month', label: 'Bu ay' },
-  { id: 'criteria', label: 'Kriterler' },
+  { id: 'route', label: tt('Rota') },
+  { id: 'investments', label: tt('Yatırımlarım') },
+  { id: 'debts', label: tt('Borçlarım') },
+  { id: 'month', label: tt('Bu ay') },
+  { id: 'criteria', label: tt('Kriterler') },
 ]
 
 /** Tutar biçimleyiciler: kısa TL ve plan birimi. */
@@ -206,13 +207,13 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
     if (!fresh.length) return
     setCelebrate(fresh)
     const titles = j.stages.filter((s) => fresh.includes(s.id)).map((s) => s.title)
-    toast(`Kilometre taşı: ${titles.join(', ')} tamamlandı!`)
+    toast(ttf('Kilometre taşı: {0} tamamlandı!', titles.join(', ')))
     void repo.saveSettings({ journey: { ...profile, celebrated: [...profile.celebrated, ...fresh] } }).catch(() => {})
   }, [j, profile, repo, toast])
 
   const changeBase = async (b: PlanBase) => {
     const next = rebase(profile, b, rates)
-    if (!next) return toast(`${BASE_LABEL[b]} fiyatı henüz alınamadı.`, { kind: 'error' })
+    if (!next) return toast(ttf('{0} fiyatı henüz alınamadı.', BASE_LABEL[b]), { kind: 'error' })
     await repo.saveSettings({ journey: next }).catch((e: unknown) => toast(toUserMessage(e), { kind: 'error' }))
   }
 
@@ -224,7 +225,7 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
 
       {(!profile.targetAge || !profile.spending) && tested && (
         <Alert tone="info" icon={<Info className="size-4" />}>
-          Yeni sorular eklendi; testi yenileyebilirsiniz.
+          {tt('Yeni sorular eklendi; testi yenileyebilirsiniz.')}
         </Alert>
       )}
 
@@ -233,7 +234,7 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
 
       <FreedomResult profile={profile} facts={facts} rates={rates} plan={j.plan} strategy={strategy} today={today} />
 
-      <div role="tablist" aria-label="Yolculuk bölümleri" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+      <div role="tablist" aria-label={tt('Yolculuk bölümleri')} className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -258,16 +259,16 @@ function Dashboard({ profile, facts, rates, onRetake }: { profile: JourneyProfil
       </div>
 
       <div className="text-[12.5px] text-subtle">
-        <p>Tahmindir, garanti değildir. Yatırım tavsiyesi değildir.</p>
+        <p>{tt('Tahmindir, garanti değildir. Yatırım tavsiyesi değildir.')}</p>
         <More>
-          Tutarlar bugünün parasıyladır. Beklenen yıllık reel getiri {j.plan.risk.profile.label} profiline göre %{j.plan.realReturnPct.toLocaleString('tr-TR')}. Gereken birikim, garantili gelirle karşılanmayan yıllık giderin %{j.plan.withdrawal.usedPct.toLocaleString('tr-TR')} çekim oranına bölünmesiyle bulunur. Aşama süreleri, aylık birikimin tamamının o aşamaya ayrıldığı varsayımıyla hesaplanır.
-          {base !== 'TRY' && ` Hedefler ${BASE_LABEL[base]} bazında sabittir.`}{' '}
+          {tt('Tutarlar bugünün parasıyladır. Beklenen yıllık reel getiri')} {j.plan.risk.profile.label} {tt('profiline göre %')}{j.plan.realReturnPct.toLocaleString('tr-TR')}{tt('. Gereken birikim, garantili gelirle karşılanmayan yıllık giderin %')}{j.plan.withdrawal.usedPct.toLocaleString('tr-TR')} {tt('çekim oranına bölünmesiyle bulunur. Aşama süreleri, aylık birikimin tamamının o aşamaya ayrıldığı varsayımıyla hesaplanır.')}
+          {base !== 'TRY' && ttf(' Hedefler {0} bazında sabittir.', BASE_LABEL[base])}{' '}
           <Link to="/ogren#varsayimlar" className="font-medium text-accent">
-            Varsayımlar ve kaynaklar
+            {tt('Varsayımlar ve kaynaklar')}
           </Link>
           {' · '}
           <Link to="/senaryolar" className="font-medium text-accent">
-            Senaryolar
+            {tt('Senaryolar')}
           </Link>
         </More>
       </div>
@@ -292,39 +293,39 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
   const today = todayIso()
   const open = cur?.conditions.filter((c) => !c.done) ?? []
   return (
-    <Card className="relative overflow-hidden p-4" aria-label="Rota">
+    <Card className="relative overflow-hidden p-4" aria-label={tt('Rota')}>
       <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-accent/10 blur-3xl" aria-hidden />
       <div className="relative flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <Flag className="size-5 text-accent" /> {goalLabel} rotası
+          <Flag className="size-5 text-accent" /> {goalLabel} {tt('rotası')}
         </h2>
-        <Segmented label="Plan birimi" value={base} onChange={onBase} options={(Object.keys(BASE_LABEL) as PlanBase[]).map((b) => ({ value: b, label: BASE_LABEL[b] }))} />
+        <Segmented label={tt('Plan birimi')} value={base} onChange={onBase} options={(Object.keys(BASE_LABEL) as PlanBase[]).map((b) => ({ value: b, label: BASE_LABEL[b] }))} />
       </div>
       <div className="relative mt-3 flex items-center gap-3">
         <LevelRing position={j.position} total={j.stages.length} level={j.level} small />
         <div className="min-w-0 flex-1">
           <p className="text-[13px] text-muted">
             <span className="font-semibold text-ink">
-              Seviye {j.level}/{j.stages.length}
+              {ttf('Seviye {0}/{1}', j.level, j.stages.length)}
             </span>
             {cur ? (
               <>
                 {' '}
-                · sıradaki aşama <span className="font-semibold text-ink">{cur.title}</span>
+                {tt('· sıradaki aşama')} <span className="font-semibold text-ink">{cur.title}</span>
               </>
             ) : (
-              ' · bütün aşamaları tamamladınız'
+              tt(' · bütün aşamaları tamamladınız')
             )}
           </p>
           {cur?.step ? (
             <>
               <p className="mt-0.5 font-display text-[15px] font-semibold leading-snug text-ink">
-                <span className="text-accent">Sıradaki adım:</span> {cur.step.title} · {fmt.base(cur.step.targetKurus)}
+                <span className="text-accent">{tt('Sıradaki adım:')}</span> {cur.step.title} · {fmt.base(cur.step.targetKurus)}
               </p>
               <p className="mt-0.5 text-[12.5px] text-muted">
                 {cur.step.what}. <span className="font-medium text-ink">{cur.step.leftText}</span>
                 {cur.step.etaMonths !== undefined && (
-                  <span> · {cur.step.etaMonths === null ? 'bugünkü birikim hızıyla ulaşılamıyor' : `bu hızla ~${durationLabel(cur.step.etaMonths)} (${reachDateLabel(cur.step.etaMonths, today)})`}</span>
+                  <span> · {cur.step.etaMonths === null ? tt('bugünkü birikim hızıyla ulaşılamıyor') : ttf('bu hızla ~{0} ({1})', durationLabel(cur.step.etaMonths), reachDateLabel(cur.step.etaMonths, today))}</span>
                 )}
               </p>
               <StepLadder steps={j.steps} fmt={fmt} />
@@ -332,29 +333,29 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
           ) : cur ? (
             <>
               <p className="mt-0.5 font-display text-[15px] font-semibold leading-snug text-ink">
-                <span className="text-accent">Hedef:</span> {cur.goal}
+                <span className="text-accent">{tt('Hedef:')}</span> {cur.goal}
               </p>
               <p className="mt-0.5 text-[12.5px] text-muted">
-                {open.length > 1 ? `${open.length} koşul kaldı: ` : 'Kalan: '}
+                {open.length > 1 ? ttf('{0} koşul kaldı: ', open.length) : tt('Kalan: ')}
                 <span className="font-medium text-ink">{open.map((c) => c.leftText).join(' · ')}</span>
                 {cur.etaMonths !== undefined && (
-                  <span className="text-muted"> · {cur.etaMonths === null ? 'bugünkü birikim hızıyla ulaşılamıyor' : `bu hızla ~${durationLabel(cur.etaMonths)} (${reachDateLabel(cur.etaMonths, today)})`}</span>
+                  <span className="text-muted"> · {cur.etaMonths === null ? tt('bugünkü birikim hızıyla ulaşılamıyor') : ttf('bu hızla ~{0} ({1})', durationLabel(cur.etaMonths), reachDateLabel(cur.etaMonths, today))}</span>
                 )}
               </p>
             </>
           ) : (
-            <p className="mt-0.5 font-display text-[15px] font-semibold text-ink">Finansal özgürlüğe ulaştınız. Hedefinizi koruyun.</p>
+            <p className="mt-0.5 font-display text-[15px] font-semibold text-ink">{tt('Finansal özgürlüğe ulaştınız. Hedefinizi koruyun.')}</p>
           )}
         </div>
       </div>
       <div className="relative mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
         <Button size="sm" variant={tested ? 'soft' : 'primary'} icon={<ClipboardCheck className="size-4" />} onClick={onRetake} disabled={left === 0}>
-          {left === 0 ? 'Bu ayın test hakları bitti' : tested ? `Testi yenile · bu ay ${left} hak` : 'Testi yap'}
+          {left === 0 ? tt('Bu ayın test hakları bitti') : tested ? ttf('Testi yenile · bu ay {0} hak', left) : tt('Testi yap')}
         </Button>
         <Link to="/senaryolar" className="inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-[13px] font-semibold text-accent hover:bg-accent-soft">
-          Senaryoları dene <ArrowRight className="size-3.5" />
+          {tt('Senaryoları dene')} <ArrowRight className="size-3.5" />
         </Link>
-        <span className="ml-auto text-[12px] text-subtle">{saving > 0 ? `Aylık birikim ${fmt.tl(saving)}` : 'Şu an aylık birikim yok'}</span>
+        <span className="ml-auto text-[12px] text-subtle">{saving > 0 ? ttf('Aylık birikim {0}', fmt.tl(saving)) : tt('Şu an aylık birikim yok')}</span>
       </div>
     </Card>
   )
@@ -364,7 +365,7 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
 function StepLadder({ steps, fmt }: { steps: FreedomStep[]; fmt: Fmt }) {
   const next = steps.find((s) => !s.done)
   return (
-    <ol className="mt-2 flex flex-wrap gap-1.5" aria-label="Özgürlük adımları">
+    <ol className="mt-2 flex flex-wrap gap-1.5" aria-label={tt('Özgürlük adımları')}>
       {steps.map((s) => (
         <li
           key={s.id}
@@ -389,8 +390,8 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
   const today = todayIso()
   return (
     <Card className="p-4">
-      <h3 className="font-display text-base font-semibold">Rotanız</h3>
-      <ol className="mt-3" aria-label="Aşamalar">
+      <h3 className="font-display text-base font-semibold">{tt('Rotanız')}</h3>
+      <ol className="mt-3" aria-label={tt('Aşamalar')}>
         {j.stages.map((s, i) => {
           const isCur = j.current?.id === s.id
           const last = i === j.stages.length - 1
@@ -438,15 +439,14 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h4 className="font-semibold text-ink">{s.title}</h4>
-                      {s.done ? <Badge tone="accent">Tamamlandı</Badge> : isCur ? <Badge tone="info">Sıradaki</Badge> : <Badge tone="neutral">%{Math.round(s.progress * 100)}</Badge>}
+                      {s.done ? <Badge tone="accent">{tt('Tamamlandı')}</Badge> : isCur ? <Badge tone="info">{tt('Sıradaki')}</Badge> : <Badge tone="neutral">%{Math.round(s.progress * 100)}</Badge>}
                     </div>
                     <p className="mt-0.5 text-[13px] text-muted">
-                      <span className="font-medium text-ink">Hedef:</span> {s.goal}
+                      <span className="font-medium text-ink">{tt('Hedef:')}</span> {s.goal}
                     </p>
                     {!expanded && !s.done && (
                       <p className="mt-0.5 text-[12px] text-subtle">
-                        {openConds} koşul kaldı
-                        {s.etaMonths != null ? ` · bu hızla ~${durationLabel(s.etaMonths)}` : ''}
+                        {ttf('{0} koşul kaldı {1}', openConds, s.etaMonths != null ? ttf(' · bu hızla ~{0}', durationLabel(s.etaMonths)) : '')}
                       </p>
                     )}
                   </div>
@@ -455,8 +455,8 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
                 <AnimatePresence initial={false}>
                   {expanded && (
                     <motion.div initial={reduced ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={reduced ? undefined : { height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-                      <div className="mt-3 text-[12px] font-semibold uppercase tracking-wide text-muted">{s.done ? 'Koşullar' : 'Kalan koşullar'}</div>
-                      <ul className="mt-1.5 flex flex-col gap-2.5" aria-label={`${s.title} koşulları`}>
+                      <div className="mt-3 text-[12px] font-semibold uppercase tracking-wide text-muted">{s.done ? tt('Koşullar') : tt('Kalan koşullar')}</div>
+                      <ul className="mt-1.5 flex flex-col gap-2.5" aria-label={ttf('{0} koşulları', s.title)}>
                         {s.conditions.map((c, ci) => (
                           <ConditionRow key={ci} c={c} fmt={fmt} today={today} />
                         ))}
@@ -465,7 +465,7 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
                       {!s.done && (
                         <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-ink">
                           <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-accent" /> <span>
-                            <span className="font-medium">Sonraki adım:</span> {s.next}
+                            <span className="font-medium">{tt('Sonraki adım:')}</span> {s.next}
                           </span>
                         </p>
                       )}
@@ -484,7 +484,7 @@ function StageRoute({ j, fmt, celebrate }: { j: JourneyResult; fmt: Fmt; celebra
 }
 
 function ConditionRow({ c, fmt, today }: { c: Condition; fmt: Fmt; today: IsoDate }) {
-  const target = c.dir === 'atMost' ? (c.target === 0 ? fmt.cond(c, 0) : `en çok ${fmt.cond(c, c.target)}`) : c.unit === 'pct' ? `en az ${fmt.cond(c, c.target)}` : fmt.cond(c, c.target)
+  const target = c.dir === 'atMost' ? (c.target === 0 ? fmt.cond(c, 0) : ttf('en çok {0}', fmt.cond(c, c.target))) : c.unit === 'pct' ? ttf('en az {0}', fmt.cond(c, c.target)) : fmt.cond(c, c.target)
   return (
     <li className="flex gap-2.5">
       <span className="mt-0.5 shrink-0" aria-hidden>
@@ -499,8 +499,8 @@ function ConditionRow({ c, fmt, today }: { c: Condition; fmt: Fmt; today: IsoDat
         </div>
         <Bar value={c.progress} label={`${c.label} ilerlemesi`} className="mt-1" />
         <p className={cn('mt-1 text-[12px]', c.done ? 'text-accent' : 'text-muted')}>
-          {c.done ? '✓ Sağlanıyor' : c.leftText}
-          {!c.done && c.etaMonths !== undefined && <span className="text-subtle"> · {c.etaMonths === null ? 'bu birikim hızıyla ulaşılamıyor' : `bu hızla ~${durationLabel(c.etaMonths)} (${reachDateLabel(c.etaMonths, today)})`}</span>}
+          {c.done ? tt('✓ Sağlanıyor') : c.leftText}
+          {!c.done && c.etaMonths !== undefined && <span className="text-subtle"> · {c.etaMonths === null ? tt('bu birikim hızıyla ulaşılamıyor') : ttf('bu hızla ~{0} ({1})', durationLabel(c.etaMonths), reachDateLabel(c.etaMonths, today))}</span>}
         </p>
       </div>
     </li>
@@ -560,15 +560,15 @@ function InvestmentsTab({ facts, inBase }: { facts: JourneyFacts; inBase: (k: nu
   const p = useMemo(() => portfolio((assets ?? []).filter((a) => a.kind !== 'debt'), today), [assets, today])
   const count = (assets ?? []).filter((a) => a.kind !== 'debt' && !a.archived && holdingSummary(a, today).valueKurus > 0).length
   return (
-    <TabCard icon={<Wallet className="size-5 text-accent" />} title="Yatırımlarım" to="/yatirimlar" linkLabel="Tümünü aç">
+    <TabCard icon={<Wallet className="size-5 text-accent" />} title={tt('Yatırımlarım')} to="/yatirimlar" linkLabel={tt('Tümünü aç')}>
       {count === 0 ? (
-        <p className="text-sm text-muted">Henüz yatırım eklenmedi.</p>
+        <p className="text-sm text-muted">{tt('Henüz yatırım eklenmedi.')}</p>
       ) : (
         <>
-          <Stat label="Toplam yatırım" value={inBase(p.assetsKurus)} sub={`${count} kalem`} />
-          <Stat label="Hızlı kullanılabilir" value={formatKurus(facts.liquidKurus)} sub="Mevduat, nakit, döviz, altın, fon" />
-          <Stat label="Yatırdığınız (net)" value={formatKurus(facts.contributedKurus)} />
-          <Stat label="Piyasa kazancı / kaybı" value={`${facts.marketGainKurus >= 0 ? '+' : '−'}${formatKurus(Math.abs(facts.marketGainKurus))}`} tone={facts.marketGainKurus > 0 ? 'up' : facts.marketGainKurus < 0 ? 'down' : undefined} />
+          <Stat label={tt('Toplam yatırım')} value={inBase(p.assetsKurus)} sub={`${count} kalem`} />
+          <Stat label={tt('Hızlı kullanılabilir')} value={formatKurus(facts.liquidKurus)} sub={tt('Mevduat, nakit, döviz, altın, fon')} />
+          <Stat label={tt('Yatırdığınız (net)')} value={formatKurus(facts.contributedKurus)} />
+          <Stat label={tt('Piyasa kazancı / kaybı')} value={`${facts.marketGainKurus >= 0 ? '+' : '−'}${formatKurus(Math.abs(facts.marketGainKurus))}`} tone={facts.marketGainKurus > 0 ? 'up' : facts.marketGainKurus < 0 ? 'down' : undefined} />
         </>
       )}
     </TabCard>
@@ -581,15 +581,15 @@ function DebtsTab({ facts, profile }: { facts: JourneyFacts; profile: JourneyPro
   const pay = facts.monthlyDebtPaymentKurus ?? 0
   const dti = income > 0 ? pay / income : null
   return (
-    <TabCard icon={<CreditCard className="size-5 text-accent" />} title="Borçlarım" to="/borclar" linkLabel="Tümünü aç">
+    <TabCard icon={<CreditCard className="size-5 text-accent" />} title={tt('Borçlarım')} to="/borclar" linkLabel={tt('Tümünü aç')}>
       {facts.debtsKurus === 0 ? (
-        <p className="text-sm text-muted">Kayıtlı borç ya da kalan taksit yok.</p>
+        <p className="text-sm text-muted">{tt('Kayıtlı borç ya da kalan taksit yok.')}</p>
       ) : (
         <>
-          <Stat label="Toplam borç" value={formatKurus(facts.debtsKurus)} sub={installments > 0 ? `${formatKurus(installments)} kalan taksit dahil` : undefined} tone="down" />
-          <Stat label="Yüksek faizli borç" value={formatKurus(facts.consumerDebtKurus ?? 0)} sub="Kart, KMH, ihtiyaç, kişisel" />
-          <Stat label="Aylık borç ödemesi" value={formatKurus(pay)} />
-          <Stat label="Borç ödemesi / gelir" value={dti === null ? '—' : `%${Math.round(dti * 100)}`} sub={`Sınır %${DTI_LIMIT * 100}`} tone={dti !== null && dti > DTI_LIMIT ? 'down' : undefined} />
+          <Stat label={tt('Toplam borç')} value={formatKurus(facts.debtsKurus)} sub={installments > 0 ? ttf('{0} kalan taksit dahil', formatKurus(installments)) : undefined} tone="down" />
+          <Stat label={tt('Yüksek faizli borç')} value={formatKurus(facts.consumerDebtKurus ?? 0)} sub={tt('Kart, KMH, ihtiyaç, kişisel')} />
+          <Stat label={tt('Aylık borç ödemesi')} value={formatKurus(pay)} />
+          <Stat label={tt('Borç ödemesi / gelir')} value={dti === null ? '—' : `%${Math.round(dti * 100)}`} sub={ttf('Sınır %{0}', DTI_LIMIT * 100)} tone={dti !== null && dti > DTI_LIMIT ? 'down' : undefined} />
         </>
       )}
     </TabCard>
@@ -605,34 +605,34 @@ function MonthTab({ profile }: { profile: JourneyProfile }) {
   const income = s.incomeKurus > 0 ? s.incomeKurus : profile.monthlyIncomeKurus
   const left = income - s.netKurus
   return (
-    <TabCard icon={<Sparkles className="size-5 text-accent" />} title={`Bu ay · ${periodLabel(month, startDay)}`} to="/" linkLabel="Özete git">
-      <Stat label="Gelir" value={formatKurus(income)} sub={s.incomeKurus > 0 ? 'Kaydettiğiniz gelirler' : 'Testteki aylık gelir'} />
-      <Stat label="Harcama" value={formatKurus(s.netKurus)} sub="İadeler düşülmüş" />
-      <Stat label="Kalan" value={`${left < 0 ? '−' : ''}${formatKurus(Math.abs(left))}`} tone={left < 0 ? 'down' : 'up'} />
-      <Stat label="Birikim oranı" value={income > 0 ? `%${Math.max(0, Math.round((left / income) * 100))}` : '—'} sub="Rota ölçütü en az %20" />
+    <TabCard icon={<Sparkles className="size-5 text-accent" />} title={ttf('Bu ay · {0}', periodLabel(month, startDay))} to="/" linkLabel={tt('Özete git')}>
+      <Stat label={tt('Gelir')} value={formatKurus(income)} sub={s.incomeKurus > 0 ? tt('Kaydettiğiniz gelirler') : tt('Testteki aylık gelir')} />
+      <Stat label={tt('Harcama')} value={formatKurus(s.netKurus)} sub={tt('İadeler düşülmüş')} />
+      <Stat label={tt('Kalan')} value={`${left < 0 ? '−' : ''}${formatKurus(Math.abs(left))}`} tone={left < 0 ? 'down' : 'up'} />
+      <Stat label={tt('Birikim oranı')} value={income > 0 ? `%${Math.max(0, Math.round((left / income) * 100))}` : '—'} sub={tt('Rota ölçütü en az %20')} />
     </TabCard>
   )
 }
 
 function CriteriaTab({ j, profile, left, onRetake }: { j: JourneyResult; profile: JourneyProfile; left: number; onRetake: () => void }) {
   const answers: Array<[string, string]> = [
-    ['Yaş', profile.age ? String(profile.age) : '—'],
-    ['Bakmakla yükümlü', profile.dependents !== undefined ? `${profile.dependents} kişi` : '—'],
+    [tt('Yaş'), profile.age ? String(profile.age) : '—'],
+    [tt('Bakmakla yükümlü'), profile.dependents !== undefined ? ttf('{0} kişi', profile.dependents) : '—'],
     ['Konut', profile.housing ? HOUSING_LABEL[profile.housing] : '—'],
-    ['Aylık gelir', formatKurus(profile.monthlyIncomeKurus)],
-    ['Gelir düzeni', STABILITY_LABEL[profile.incomeStability]],
-    ['Pasif gelir', profile.passiveIncomeKurus ? formatKurus(profile.passiveIncomeKurus) : 'Yok'],
-    ['Zorunlu gider', formatKurus(profile.essentialMonthlyKurus)],
-    ['Hedef yaşam gideri', formatKurus(profile.targetMonthlyExpenseKurus)],
-    ['Risk tutumu', profile.risk ? RISK_LABEL[profile.risk].split(':')[0] : '—'],
-    ['Plan birimi', BASE_LABEL[profile.base ?? 'TRY']],
+    [tt('Aylık gelir'), formatKurus(profile.monthlyIncomeKurus)],
+    [tt('Gelir düzeni'), STABILITY_LABEL[profile.incomeStability]],
+    [tt('Pasif gelir'), profile.passiveIncomeKurus ? formatKurus(profile.passiveIncomeKurus) : 'Yok'],
+    [tt('Zorunlu gider'), formatKurus(profile.essentialMonthlyKurus)],
+    [tt('Hedef yaşam gideri'), formatKurus(profile.targetMonthlyExpenseKurus)],
+    [tt('Risk tutumu'), profile.risk ? RISK_LABEL[profile.risk].split(':')[0] : '—'],
+    [tt('Plan birimi'), BASE_LABEL[profile.base ?? 'TRY']],
   ]
   const lastTest = profile.tests?.at(-1)
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-5">
-        <h3 className="font-display text-base font-semibold">Finansal özgürlük ölçütleri</h3>
-        <ul className="mt-3 divide-y divide-line" aria-label="Ölçütler">
+        <h3 className="font-display text-base font-semibold">{tt('Finansal özgürlük ölçütleri')}</h3>
+        <ul className="mt-3 divide-y divide-line" aria-label={tt('Ölçütler')}>
           {[...j.stages.map((s) => ({ key: s.id, title: s.title, criterion: s.criterion, source: s.source, status: s.status, done: s.done as boolean | null })), ...j.checks.map((c) => ({ key: c.id, ...c }))].map((c) => (
             <li key={c.key} className="flex gap-3 py-3">
               <span className="mt-0.5 shrink-0" aria-hidden>
@@ -641,7 +641,7 @@ function CriteriaTab({ j, profile, left, onRetake }: { j: JourneyResult; profile
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-ink">{c.title}</span>
-                  <Badge tone={c.done === true ? 'accent' : c.done === false ? 'warning' : 'neutral'}>{c.done === true ? 'Sağlanıyor' : c.done === false ? 'Henüz değil' : 'Bilinmiyor'}</Badge>
+                  <Badge tone={c.done === true ? 'accent' : c.done === false ? 'warning' : 'neutral'}>{c.done === true ? tt('Sağlanıyor') : c.done === false ? tt('Henüz değil') : 'Bilinmiyor'}</Badge>
                 </div>
                 <p className="text-[12.5px] text-muted">{c.criterion}</p>
                 <p className="num text-[12.5px] text-ink">{c.status}</p>
@@ -651,16 +651,16 @@ function CriteriaTab({ j, profile, left, onRetake }: { j: JourneyResult; profile
           ))}
         </ul>
       </Card>
-      <Card className="p-5" aria-label="Test yanıtlarınız">
+      <Card className="p-5" aria-label={tt('Test yanıtlarınız')}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-display text-base font-semibold">Test yanıtlarınız</h3>
+          <h3 className="font-display text-base font-semibold">{tt('Test yanıtlarınız')}</h3>
           <Button size="sm" variant="soft" icon={<RotateCcw className="size-4" />} onClick={onRetake} disabled={left === 0}>
-            Testi yeniden yap
+            {tt('Testi yeniden yap')}
           </Button>
         </div>
         <p className="mt-0.5 text-[12.5px] text-muted">
-          {lastTest ? `Son test ${lastTest.split('-').reverse().join('.')}. ` : ''}
-          {left > 0 ? `Bu ay ${left} test hakkınız kaldı.` : 'Bu ayın test hakları bitti.'}
+          {lastTest ? ttf('Son test {0}. ', lastTest.split('-').reverse().join('.')) : ''}
+          {left > 0 ? ttf('Bu ay {0} test hakkınız kaldı.', left) : tt('Bu ayın test hakları bitti.')}
         </p>
         <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2">
           {answers.map(([k, v]) => (

@@ -14,6 +14,7 @@ import { usePersonalCycle } from '../state/cycle'
 import { useCategories, useCategoryMap, useGroupMap, useGroups, useRecurring, useRepo } from '../state/data'
 import { useAllRecurring, usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 /** Gelecek yük grafiği renkleri (açık ve koyu yüzeyde doğrulandı). */
 const COLOR_RECURRING = '#059669'
@@ -52,7 +53,7 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
   const accept = async (s: RecurringSuggestion) => {
     try {
       await repo.saveRecurring({ name: s.name, kind: 'subscription', amountKurus: s.amountKurus, categoryId: s.categoryId, cadence: 'monthly', startDate: s.startDate, reminderDays: 3, matchKey: s.key, active: true })
-      toast(`${s.name} düzenli ödemelere eklendi.`)
+      toast(ttf('{0} düzenli ödemelere eklendi.', s.name))
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
     }
@@ -61,7 +62,7 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
   const record = async (id: string, date: string, name: string) => {
     try {
       await repo.recordRecurring(id, date)
-      toast(`${name} gider olarak eklendi.`)
+      toast(ttf('{0} gider olarak eklendi.', name))
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
     }
@@ -72,11 +73,11 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {toRecord.length > 0 && (
-        <Card className="p-5 lg:col-span-2" aria-label="Eklenmeyi bekleyen grup giderleri">
+        <Card className="p-5 lg:col-span-2" aria-label={tt('Eklenmeyi bekleyen grup giderleri')}>
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <BellRing className="size-5 text-warning" /> Ödeme günü gelen grup giderleri
+            <BellRing className="size-5 text-warning" /> {tt('Ödeme günü gelen grup giderleri')}
           </h2>
-          <p className="mt-1 text-[13px] text-muted">Ekleyince grubun gideri olur.</p>
+          <p className="mt-1 text-[13px] text-muted">{tt('Ekleyince grubun gideri olur.')}</p>
           <ul className="mt-3 divide-y divide-line">
             {toRecord.map(({ item, date }) => (
               <li key={`${item.id}:${date}`} className="flex flex-wrap items-center gap-3 py-2.5">
@@ -91,7 +92,7 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
                   </div>
                 </div>
                 <Button size="sm" variant="soft" onClick={() => void record(item.id, date, item.name)}>
-                  Gider olarak ekle
+                  {tt('Gider olarak ekle')}
                 </Button>
               </li>
             ))}
@@ -99,11 +100,11 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
         </Card>
       )}
       {suggestions.length > 0 && (
-        <Card className="p-5 lg:col-span-2" aria-label="Önerilen düzenli ödemeler">
+        <Card className="p-5 lg:col-span-2" aria-label={tt('Önerilen düzenli ödemeler')}>
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Lightbulb className="size-5 text-warning" /> Her ay tekrarlanan harcamalar
+            <Lightbulb className="size-5 text-warning" /> {tt('Her ay tekrarlanan harcamalar')}
           </h2>
-          <p className="mt-1 text-[13px] text-muted">Ekleyin, ödeme gününden önce hatırlatalım.</p>
+          <p className="mt-1 text-[13px] text-muted">{tt('Ekleyin, ödeme gününden önce hatırlatalım.')}</p>
           <ul className="mt-3 divide-y divide-line">
             {suggestions.slice(0, 6).map((s) => (
               <li key={s.key} className="flex flex-wrap items-center gap-3 py-2.5">
@@ -111,14 +112,14 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-ink">{s.name}</div>
                   <div className="text-[12px] text-muted">
-                    Son {s.months} ayda her ay · {formatKurus(s.amountKurus)} · sıradaki {formatDate(s.startDate)}
+                    {ttf('Son {0} ayda her ay · {1} · sıradaki {2}', s.months, formatKurus(s.amountKurus), formatDate(s.startDate))}
                   </div>
                 </div>
                 <div className="flex gap-1.5">
                   <Button size="sm" variant="soft" onClick={() => void accept(s)}>
-                    Ekle
+                    {tt('Ekle')}
                   </Button>
-                  <IconButton label={`${s.name} önerisini gizle`} size="sm" onClick={() => void repo.dismissRecurring(s.key)}>
+                  <IconButton label={ttf('{0} önerisini gizle', s.name)} size="sm" onClick={() => void repo.dismissRecurring(s.key)}>
                     <X className="size-4" />
                   </IconButton>
                 </div>
@@ -130,20 +131,20 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
 
       <Card className="p-5">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <CalendarClock className="size-5 text-accent" /> Önümüzdeki 30 gün
+          <CalendarClock className="size-5 text-accent" /> {tt('Önümüzdeki 30 gün')}
         </h2>
         {upcoming.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">Yaklaşan ödeme yok.</p>
+          <p className="mt-2 text-sm text-muted">{tt('Yaklaşan ödeme yok.')}</p>
         ) : (
-          <ul className="mt-3 space-y-2" aria-label="Yaklaşan ödemeler">
+          <ul className="mt-3 space-y-2" aria-label={tt('Yaklaşan ödemeler')}>
             {upcoming.slice(0, 10).map((u) => (
               <li key={`${u.id}:${u.date}`} className="flex items-center gap-3 text-sm">
-                <span className="num w-[72px] shrink-0 text-[12.5px] text-muted">{u.date === today ? 'Bugün' : u.date === addDays(today, 1) ? 'Yarın' : formatDate(u.date).slice(0, 5)}</span>
+                <span className="num w-[72px] shrink-0 text-[12.5px] text-muted">{u.date === today ? tt('Bugün') : u.date === addDays(today, 1) ? tt('Yarın') : formatDate(u.date).slice(0, 5)}</span>
                 <span className="min-w-0 flex-1 truncate text-ink">{u.name}</span>
                 {u.remind && (
                   <Badge tone="warning" className="shrink-0">
                     <BellRing className="mr-1 inline size-3" />
-                    Yaklaştı
+                    {tt('Yaklaştı')}
                   </Badge>
                 )}
                 <span className="num shrink-0 font-medium">{formatKurus(u.amountKurus)}</span>
@@ -154,13 +155,13 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
       </Card>
 
       <Card className="p-5">
-        <h2 className="font-display text-base font-semibold">Gelecek dönemlerin ödeme yükü</h2>
+        <h2 className="font-display text-base font-semibold">{tt('Gelecek dönemlerin ödeme yükü')}</h2>
         <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted" aria-hidden>
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm" style={{ background: COLOR_RECURRING }} /> Düzenli ödemeler
+            <span className="size-2.5 rounded-sm" style={{ background: COLOR_RECURRING }} /> {tt('Düzenli ödemeler')}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm" style={{ background: COLOR_INSTALLMENT }} /> Taksitler
+            <span className="size-2.5 rounded-sm" style={{ background: COLOR_INSTALLMENT }} /> {tt('Taksitler')}
           </span>
         </div>
         <LoadBars rows={load} />
@@ -169,25 +170,25 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
       <Card className="p-5 lg:col-span-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Repeat className="size-5 text-accent" /> Abonelikler ve düzenli ödemeler
+            <Repeat className="size-5 text-accent" /> {tt('Abonelikler ve düzenli ödemeler')}
           </h2>
-          {monthlyTotal > 0 && <span className="num text-[12.5px] text-muted">aylık ≈ {formatKurus(monthlyTotal)}</span>}
+          {monthlyTotal > 0 && <span className="num text-[12.5px] text-muted">{ttf('aylık ≈ {0}', formatKurus(monthlyTotal))}</span>}
         </div>
         {items.length === 0 && debtItems.length === 0 ? (
           <EmptyState
             icon={<Repeat className="size-6" />}
-            title="Henüz düzenli ödeme yok"
+            title={tt('Henüz düzenli ödeme yok')}
             className="py-6"
             action={
               <Button size="sm" icon={<Plus className="size-4" />} onClick={() => onEdit({ kind: 'subscription' })}>
-                Düzenli ödeme ekle
+                {tt('Düzenli ödeme ekle')}
               </Button>
             }
           >
-            Kira, fatura veya abonelik ekleyin.
+            {tt('Kira, fatura veya abonelik ekleyin.')}
           </EmptyState>
         ) : (
-          <ul className="mt-2 divide-y divide-line" aria-label="Düzenli ödeme listesi">
+          <ul className="mt-2 divide-y divide-line" aria-label={tt('Düzenli ödeme listesi')}>
             {debtItems.map((it) => {
               const prog = progressOf(it, today)
               const next = upcomingPayments([it], [], today, 400)[0]
@@ -199,14 +200,14 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate font-medium text-ink">{it.name}</span>
-                      <Badge tone="danger">Borç taksiti</Badge>
+                      <Badge tone="danger">{tt('Borç taksiti')}</Badge>
                     </div>
                     <div className="text-[12px] text-muted">
-                      Aylık · {next ? `sıradaki ${formatDate(next.date)}` : 'bitti'} · {prog.remaining} taksit kaldı
+                      {tt('Aylık ·')} {next ? ttf('sıradaki {0}', formatDate(next.date)) : 'bitti'} · {prog.remaining} {tt('taksit kaldı')}
                     </div>
                   </div>
                   <span className="num shrink-0 font-semibold">{formatKurus(it.amountKurus)}</span>
-                  <IconButton label={`${it.name} düzenle`} size="sm" onClick={() => onEditDebt(it.id.slice(5))}>
+                  <IconButton label={ttf('{0} düzenle', it.name)} size="sm" onClick={() => onEditDebt(it.id.slice(5))}>
                     <Pencil className="size-4" />
                   </IconButton>
                 </li>
@@ -228,12 +229,12 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
                         {it.groupId && <GroupBadge group={groupMap.get(it.groupId)} />}
                       </div>
                       <div className="text-[12px] text-muted">
-                        {CADENCE_LABEL[it.cadence]} · {it.active ? (next ? `sıradaki ${formatDate(next.date)}` : 'bitti') : 'durduruldu'}
-                        {prog.remaining !== null && ` · ${prog.paid}/${it.occurrences} ödendi`}
+                        {CADENCE_LABEL[it.cadence]} · {it.active ? (next ? ttf('sıradaki {0}', formatDate(next.date)) : 'bitti') : 'durduruldu'}
+                        {prog.remaining !== null && ttf(' · {0}/{1} ödendi', prog.paid, it.occurrences)}
                       </div>
                     </div>
                     <span className="num shrink-0 font-semibold">{formatKurus(it.amountKurus)}</span>
-                    <IconButton label={`${it.name} düzenle`} size="sm" onClick={() => onEdit(it)}>
+                    <IconButton label={ttf('{0} düzenle', it.name)} size="sm" onClick={() => onEdit(it)}>
                       <Pencil className="size-4" />
                     </IconButton>
                     <IconButton label={`${it.name} sil`} size="sm" onClick={() => setDel(it)}>
@@ -249,27 +250,27 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
       <Card className="p-5 lg:col-span-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <CreditCard className="size-5 text-accent" /> Ekstredeki taksitler
+            <CreditCard className="size-5 text-accent" /> {tt('Ekstredeki taksitler')}
           </h2>
           <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => onEdit({ kind: 'installment', cadence: 'monthly', occurrences: 6 })}>
-            Taksit ekle
+            {tt('Taksit ekle')}
           </Button>
         </div>
-        <p className="mt-1 text-[12.5px] text-subtle">Ekstrelerinizden otomatik bulunur.</p>
+        <p className="mt-1 text-[12.5px] text-subtle">{tt('Ekstrelerinizden otomatik bulunur.')}</p>
         <More>
-          Ekstredeki “3/12 taksit” gibi satırlardan bulunur. Bu ayki taksit zaten giderdir; sonrakiler ödeme günü gelince aylık özete yansır. Aynı taksit iki kez sayılmaz.
+          {tt('Ekstredeki “3/12 taksit” gibi satırlardan bulunur. Bu ayki taksit zaten giderdir; sonrakiler ödeme günü gelince aylık özete yansır. Aynı taksit iki kez sayılmaz.')}
         </More>
         {plans.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">Devam eden taksit yok.</p>
+          <p className="mt-3 text-sm text-muted">{tt('Devam eden taksit yok.')}</p>
         ) : (
-          <ul className="mt-2 divide-y divide-line" aria-label="Devam eden taksitler">
+          <ul className="mt-2 divide-y divide-line" aria-label={tt('Devam eden taksitler')}>
             {plans.map((p) => (
               <li key={p.key} className="flex items-center gap-3 py-3">
                 <CategoryIcon category={p.categoryId ? catMap.get(p.categoryId) : undefined} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium text-ink">{p.name}</div>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-label={`${p.name} taksit ilerlemesi`} aria-valuemin={0} aria-valuemax={p.total} aria-valuenow={p.current}>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-label={ttf('{0} taksit ilerlemesi', p.name)} aria-valuemin={0} aria-valuemax={p.total} aria-valuenow={p.current}>
                       <div className="h-full rounded-full" style={{ width: `${(p.current / p.total) * 100}%`, background: COLOR_INSTALLMENT }} />
                     </div>
                     <span className="num shrink-0 text-[12px] text-muted">
@@ -277,12 +278,12 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
                     </span>
                   </div>
                   <div className="mt-1 text-[12px] text-muted">
-                    {p.remaining} taksit kaldı · son taksit ≈ {formatDate(p.nextDates[p.nextDates.length - 1])}
+                    {ttf('{0} taksit kaldı · son taksit ≈ {1}', p.remaining, formatDate(p.nextDates[p.nextDates.length - 1]))}
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="num font-semibold">{formatKurus(p.monthlyKurus)}</div>
-                  <div className="num text-[12px] text-muted">kalan {formatKurus(p.remainingKurus)}</div>
+                  <div className="num text-[12px] text-muted">{ttf('kalan {0}', formatKurus(p.remainingKurus))}</div>
                 </div>
               </li>
             ))}
@@ -293,8 +294,8 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
       <ConfirmDialog
         open={!!del}
         onOpenChange={(o) => !o && setDel(null)}
-        title="Düzenli ödeme silinsin mi?"
-        confirmLabel="Sil"
+        title={tt('Düzenli ödeme silinsin mi?')}
+        confirmLabel={tt('Sil')}
         danger
         onConfirm={async () => {
           if (!del) return
@@ -303,7 +304,7 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
           setDel(null)
         }}
       >
-        <p>{del?.name} listeden kaldırılır. Geçmiş işlemleriniz etkilenmez.</p>
+        <p>{del?.name} {tt('listeden kaldırılır. Geçmiş işlemleriniz etkilenmez.')}</p>
       </ConfirmDialog>
     </div>
   )
@@ -311,15 +312,15 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
 
 function LoadBars({ rows }: { rows: ReturnType<typeof futureLoad> }) {
   const max = Math.max(1, ...rows.map((r) => r.totalKurus))
-  if (rows.every((r) => r.totalKurus === 0)) return <p className="mt-3 text-sm text-muted">Önümüzdeki dönemlerde kayıtlı ödeme yok.</p>
+  if (rows.every((r) => r.totalKurus === 0)) return <p className="mt-3 text-sm text-muted">{tt('Önümüzdeki dönemlerde kayıtlı ödeme yok.')}</p>
   return (
     <table className="mt-3 w-full text-[13px]">
-      <caption className="sr-only">Önümüzdeki altı dönemin düzenli ödeme ve taksit toplamları</caption>
+      <caption className="sr-only">{tt('Önümüzdeki altı dönemin düzenli ödeme ve taksit toplamları')}</caption>
       <thead className="sr-only">
         <tr>
-          <th>Dönem</th>
-          <th>Dağılım</th>
-          <th>Toplam</th>
+          <th>{tt('Dönem')}</th>
+          <th>{tt('Dağılım')}</th>
+          <th>{tt('Toplam')}</th>
         </tr>
       </thead>
       <tbody>
@@ -336,7 +337,7 @@ function LoadBars({ rows }: { rows: ReturnType<typeof futureLoad> }) {
                     <div
                       className="h-full rounded-[4px] transition-opacity group-hover:opacity-90"
                       style={{ flexGrow: r.recurringKurus, background: COLOR_RECURRING }}
-                      title={`Düzenli ödemeler: ${formatKurus(r.recurringKurus)}`}
+                      title={ttf('Düzenli ödemeler: {0}', formatKurus(r.recurringKurus))}
                     />
                   )}
                   {r.installmentKurus > 0 && (
@@ -348,7 +349,7 @@ function LoadBars({ rows }: { rows: ReturnType<typeof futureLoad> }) {
                   )}
                 </div>
                 <span className="sr-only">
-                  Düzenli ödemeler {formatKurus(r.recurringKurus)}, taksitler {formatKurus(r.installmentKurus)}
+                  {ttf('Düzenli ödemeler {0}, taksitler {1}', formatKurus(r.recurringKurus), formatKurus(r.installmentKurus))}
                 </span>
               </td>
               <td className="num w-28 py-1.5 pl-2 text-right font-medium text-ink">{formatKurus(r.totalKurus)}</td>
@@ -395,10 +396,10 @@ export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClo
   const save = async () => {
     setError(undefined)
     const amt = parseUserAmount(f.amount)
-    if (!f.name.trim()) return setError('Bir ad girin.')
-    if (!amt.ok || amt.kurus <= 0) return setError('Geçerli bir tutar girin.')
+    if (!f.name.trim()) return setError(tt('Bir ad girin.'))
+    if (!amt.ok || amt.kurus <= 0) return setError(tt('Geçerli bir tutar girin.'))
     const count = installment ? Number(f.count) : null
-    if (installment && (!Number.isInteger(count) || count! < 1 || count! > 120)) return setError('Taksit sayısı 1 ile 120 arasında olmalı.')
+    if (installment && (!Number.isInteger(count) || count! < 1 || count! > 120)) return setError(tt('Taksit sayısı 1 ile 120 arasında olmalı.'))
     setBusy(true)
     try {
       await repo.saveRecurring({
@@ -429,16 +430,16 @@ export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClo
     <Modal
       open={!!draft}
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? (installment ? 'Taksit ekle' : 'Düzenli ödeme ekle') : 'Düzenli ödemeyi düzenle'}
+      title={isNew ? (installment ? tt('Taksit ekle') : tt('Düzenli ödeme ekle')) : tt('Düzenli ödemeyi düzenle')}
       size="sm"
       footer={
         <Button variant="primary" loading={busy} onClick={() => void save()}>
-          Kaydet
+          {tt('Kaydet')}
         </Button>
       }
     >
       <div className="flex flex-col gap-3">
-        <Field label="Tür" htmlFor="rec-kind">
+        <Field label={tt('Tür')} htmlFor="rec-kind">
           <Select id="rec-kind" value={f.kind} onChange={(e) => set('kind', e.target.value as RecurringKind)}>
             {(Object.keys(RECURRING_KIND_LABEL) as RecurringKind[]).map((k) => (
               <option key={k} value={k}>
@@ -447,19 +448,19 @@ export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClo
             ))}
           </Select>
         </Field>
-        <Field label="Ad" htmlFor="rec-name">
-          <Input id="rec-name" value={f.name} placeholder={installment ? 'Örn. Telefon' : 'Örn. Kira, internet, dijital yayın'} onChange={(e) => set('name', e.target.value)} />
+        <Field label={tt('Ad')} htmlFor="rec-name">
+          <Input id="rec-name" value={f.name} placeholder={installment ? tt('Örn. Telefon') : tt('Örn. Kira, internet, dijital yayın')} onChange={(e) => set('name', e.target.value)} />
         </Field>
-        <Field label={installment ? 'Aylık taksit tutarı (TL)' : 'Tutar (TL)'} htmlFor="rec-amount">
-          <Input id="rec-amount" inputMode="decimal" className="num" value={f.amount} placeholder="Örn. 229,99" onChange={(e) => set('amount', e.target.value)} />
+        <Field label={installment ? tt('Aylık taksit tutarı (TL)') : tt('Tutar (TL)')} htmlFor="rec-amount">
+          <Input id="rec-amount" inputMode="decimal" className="num" value={f.amount} placeholder={tt('Örn. 229,99')} onChange={(e) => set('amount', e.target.value)} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           {installment ? (
-            <Field label="Taksit sayısı" htmlFor="rec-count">
+            <Field label={tt('Taksit sayısı')} htmlFor="rec-count">
               <Input id="rec-count" inputMode="numeric" value={f.count} onChange={(e) => set('count', e.target.value.replace(/\D/g, ''))} />
             </Field>
           ) : (
-            <Field label="Sıklık" htmlFor="rec-cadence">
+            <Field label={tt('Sıklık')} htmlFor="rec-cadence">
               <Select id="rec-cadence" value={f.cadence} onChange={(e) => set('cadence', e.target.value as RecurringCadence)}>
                 {(Object.keys(CADENCE_LABEL) as RecurringCadence[]).map((c) => (
                   <option key={c} value={c}>
@@ -469,14 +470,14 @@ export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClo
               </Select>
             </Field>
           )}
-          <Field label={installment ? 'İlk taksit tarihi' : 'İlk ödeme tarihi'} htmlFor="rec-start">
+          <Field label={installment ? tt('İlk taksit tarihi') : tt('İlk ödeme tarihi')} htmlFor="rec-start">
             <Input id="rec-start" type="date" value={f.startDate} onChange={(e) => set('startDate', e.target.value)} />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Kategori" htmlFor="rec-cat">
+          <Field label={tt('Kategori')} htmlFor="rec-cat">
             <Select id="rec-cat" value={f.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
-              <option value="">Kategorisiz</option>
+              <option value="">{tt('Kategorisiz')}</option>
               {(categories ?? [])
                 .filter((c) => !c.archived)
                 .map((c) => (
@@ -486,18 +487,18 @@ export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClo
                 ))}
             </Select>
           </Field>
-          <Field label="Hatırlatma" htmlFor="rec-remind">
+          <Field label={tt('Hatırlatma')} htmlFor="rec-remind">
             <Select id="rec-remind" value={f.reminderDays} onChange={(e) => set('reminderDays', e.target.value)}>
-              <option value="0">Ödeme günü</option>
-              <option value="1">1 gün önce</option>
-              <option value="3">3 gün önce</option>
-              <option value="7">1 hafta önce</option>
+              <option value="0">{tt('Ödeme günü')}</option>
+              <option value="1">{tt('1 gün önce')}</option>
+              <option value="3">{tt('3 gün önce')}</option>
+              <option value="7">{tt('1 hafta önce')}</option>
             </Select>
           </Field>
         </div>
-        <Field label="Grup" htmlFor="rec-group" hint={f.groupId ? 'Ödeme günü grubun gideri olur.' : undefined}>
+        <Field label={tt('Grup')} htmlFor="rec-group" hint={f.groupId ? tt('Ödeme günü grubun gideri olur.') : undefined}>
           <Select id="rec-group" value={f.groupId} onChange={(e) => set('groupId', e.target.value)}>
-            <option value="">Grup yok (yalnızca hatırlatma)</option>
+            <option value="">{tt('Grup yok (yalnızca hatırlatma)')}</option>
             {(groups ?? [])
               .filter((g) => !g.archived)
               .map((g) => (
@@ -509,8 +510,8 @@ export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClo
         </Field>
         {!isNew && (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-ink">Etkin</span>
-            <Switch label="Etkin" checked={f.active} onChange={(v) => set('active', v)} />
+            <span className="text-sm text-ink">{tt('Etkin')}</span>
+            <Switch label={tt('Etkin')} checked={f.active} onChange={(v) => set('active', v)} />
           </div>
         )}
         {error && (

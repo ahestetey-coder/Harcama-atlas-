@@ -13,25 +13,26 @@ import { cn } from '../lib/cn'
 import { useGoals, useRepo } from '../state/data'
 import { useUi } from '../state/ui'
 import { useStartNew } from '../lib/useStartNew'
+import { tt, ttf } from '../lib/i18n'
 
 /** Hazır hedefler: ad, simge ve renk önerir; tutar ve tarihi kullanıcı girer. */
 const PRESETS = [
-  { name: 'Tatil', icon: 'plane', color: '#0ea5e9' },
-  { name: 'Araç', icon: 'car', color: '#6366f1' },
-  { name: 'Acil durum fonu', icon: 'heart-pulse', color: '#ef4444' },
-  { name: 'Ev', icon: 'home', color: '#f59e0b' },
-  { name: 'Eğitim', icon: 'graduation-cap', color: '#8b5cf6' },
-  { name: 'Diğer', icon: 'piggy-bank', color: '#10b981' },
+  { name: tt('Tatil'), icon: 'plane', color: '#0ea5e9' },
+  { name: tt('Araç'), icon: 'car', color: '#6366f1' },
+  { name: tt('Acil durum fonu'), icon: 'heart-pulse', color: '#ef4444' },
+  { name: tt('Ev'), icon: 'home', color: '#f59e0b' },
+  { name: tt('Eğitim'), icon: 'graduation-cap', color: '#8b5cf6' },
+  { name: tt('Diğer'), icon: 'piggy-bank', color: '#10b981' },
 ] as const
 
 const ICONS = ['piggy-bank', 'plane', 'car', 'home', 'heart-pulse', 'graduation-cap', 'gift', 'smartphone', 'baby', 'briefcase', 'sparkles']
 
 const STATUS: Record<GoalProgress['status'], { label: string; tone: 'accent' | 'warning' | 'danger' | 'neutral' | 'info' }> = {
-  done: { label: 'Tamamlandı', tone: 'accent' },
-  'on-track': { label: 'Yolunda', tone: 'accent' },
-  behind: { label: 'Geride', tone: 'warning' },
-  overdue: { label: 'Tarihi geçti', tone: 'danger' },
-  'no-date': { label: 'Tarihsiz', tone: 'neutral' },
+  done: { label: tt('Tamamlandı'), tone: 'accent' },
+  'on-track': { label: tt('Yolunda'), tone: 'accent' },
+  behind: { label: tt('Geride'), tone: 'warning' },
+  overdue: { label: tt('Tarihi geçti'), tone: 'danger' },
+  'no-date': { label: tt('Tarihsiz'), tone: 'neutral' },
 }
 
 type Draft = Partial<SavingsGoal>
@@ -43,22 +44,22 @@ export default function GoalsPage() {
   return (
     <div>
       <PageHeader
-        title="Birikim hedefleri"
+        title={tt('Birikim hedefleri')}
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plus" /> Ne kadar, ne zamana kadar
+            <PlanBadge plan="plus" /> {tt('Ne kadar, ne zamana kadar')}
           </span>
         }
         actions={
           <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEditing({})}>
-            Hedef ekle
+            {tt('Hedef ekle')}
           </Button>
         }
       />
       <PlanGate
         feature="goals"
-        title="Birikim hedefleri"
-        points={['Tatil, araç, acil durum fonu gibi hedefler oluşturun', 'Hedef tutarı ve tarihi belirleyin, ilerlemeyi görün', 'Hedefe yetişmek için ayda ne kadar ayırmanız gerektiğini öğrenin']}
+        title={tt('Birikim hedefleri')}
+        points={[tt('Tatil, araç, acil durum fonu gibi hedefler oluşturun'), tt('Hedef tutarı ve tarihi belirleyin, ilerlemeyi görün'), tt('Hedefe yetişmek için ayda ne kadar ayırmanız gerektiğini öğrenin')]}
       >
         <GoalsContent onEdit={setEditing} />
         <GoalEditor draft={editing} onClose={() => setEditing(null)} />
@@ -88,7 +89,7 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
   const archive = async (g: SavingsGoal, archived: boolean) => {
     try {
       await repo.saveGoal({ ...g, archived })
-      toast(archived ? `${g.name} arşivlendi.` : `${g.name} geri alındı.`)
+      toast(archived ? ttf('{0} arşivlendi.', g.name) : ttf('{0} geri alındı.', g.name))
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
     }
@@ -97,8 +98,8 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
   if (rows.length === 0)
     return (
       <Card className="p-5">
-        <EmptyState icon={<PiggyBank className="size-6" />} title="Henüz birikim hedefi yok" className="py-6">
-          Bir hedef seçin; tutarı ve tarihi siz belirleyin.
+        <EmptyState icon={<PiggyBank className="size-6" />} title={tt('Henüz birikim hedefi yok')} className="py-6">
+          {tt('Bir hedef seçin; tutarı ve tarihi siz belirleyin.')}
         </EmptyState>
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           {PRESETS.map((p) => (
@@ -113,14 +114,14 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
   return (
     <div className="flex flex-col gap-4">
       {active.length > 0 && (
-        <Card className="flex flex-wrap gap-x-8 gap-y-2 p-5" aria-label="Hedeflerin özeti">
+        <Card className="flex flex-wrap gap-x-8 gap-y-2 p-5" aria-label={tt('Hedeflerin özeti')}>
           <div>
-            <div className="text-[12.5px] text-muted">Toplam biriken</div>
+            <div className="text-[12.5px] text-muted">{tt('Toplam biriken')}</div>
             <div className="num font-display text-xl font-semibold">{formatKurus(saved)}</div>
           </div>
           {needed > 0 && (
             <div>
-              <div className="text-[12.5px] text-muted">Hedeflere yetişmek için aylık</div>
+              <div className="text-[12.5px] text-muted">{tt('Hedeflere yetişmek için aylık')}</div>
               <div className="num font-display text-xl font-semibold">{formatKurus(needed)}</div>
             </div>
           )}
@@ -134,8 +135,7 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
       {archived.length > 0 && (
         <div>
           <Button size="sm" variant="ghost" icon={<Archive className="size-4" />} onClick={() => setShowArchived((v) => !v)}>
-            Arşivdeki hedefler ({archived.length})
-          </Button>
+            {ttf('Arşivdeki hedefler ({0})', archived.length)}</Button>
           {showArchived && (
             <ul className="mt-2 divide-y divide-line rounded-2xl border border-line bg-surface">
               {archived.map(({ goal, p }) => (
@@ -143,7 +143,7 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
                   <CategoryIcon category={goal} size="sm" />
                   <span className="min-w-0 flex-1 truncate text-sm text-ink">{goal.name}</span>
                   <span className="num text-[12.5px] text-muted">{formatKurus(p.savedKurus)}</span>
-                  <IconButton label={`${goal.name} arşivden çıkar`} size="sm" onClick={() => void archive(goal, false)}>
+                  <IconButton label={ttf('{0} arşivden çıkar', goal.name)} size="sm" onClick={() => void archive(goal, false)}>
                     <ArchiveRestore className="size-4" />
                   </IconButton>
                   <IconButton label={`${goal.name} sil`} size="sm" onClick={() => setDel(goal)}>
@@ -155,14 +155,14 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
           )}
         </div>
       )}
-      <p className="text-[12.5px] text-subtle">Hedefler bu cihazda tutulur; bankada para taşınmaz.</p>
+      <p className="text-[12.5px] text-subtle">{tt('Hedefler bu cihazda tutulur; bankada para taşınmaz.')}</p>
 
       <MoveDialog moving={moving} onClose={() => setMoving(null)} />
       <ConfirmDialog
         open={!!del}
         onOpenChange={(o) => !o && setDel(null)}
-        title="Hedef silinsin mi?"
-        confirmLabel="Sil"
+        title={tt('Hedef silinsin mi?')}
+        confirmLabel={tt('Sil')}
         danger
         onConfirm={async () => {
           if (!del) return
@@ -171,7 +171,7 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
           setDel(null)
         }}
       >
-        <p>{del?.name} ve kayıtlı bütün para hareketleri silinir.</p>
+        <p>{del?.name} {tt('ve kayıtlı bütün para hareketleri silinir.')}</p>
       </ConfirmDialog>
     </div>
   )
@@ -189,9 +189,9 @@ function GoalCard({ goal, p, onEdit, onMove, onArchive, onDelete }: { goal: Savi
             <h2 className="truncate font-display text-base font-semibold">{goal.name}</h2>
             <Badge tone={st.tone}>{st.label}</Badge>
           </div>
-          <div className="text-[12.5px] text-muted">{goal.targetDate ? `${formatDate(goal.targetDate)} hedefi` : 'Tarih belirlenmedi'}</div>
+          <div className="text-[12.5px] text-muted">{goal.targetDate ? `${formatDate(goal.targetDate)} hedefi` : tt('Tarih belirlenmedi')}</div>
         </div>
-        <IconButton label={`${goal.name} düzenle`} size="sm" onClick={onEdit}>
+        <IconButton label={ttf('{0} düzenle', goal.name)} size="sm" onClick={onEdit}>
           <Pencil className="size-4" />
         </IconButton>
       </div>
@@ -210,32 +210,32 @@ function GoalCard({ goal, p, onEdit, onMove, onArchive, onDelete }: { goal: Savi
         <div className="h-full rounded-full transition-[width]" style={{ width: `${pct}%`, background: goal.color }} />
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px]">
-        <dt className="text-muted">Kalan</dt>
+        <dt className="text-muted">{tt('Kalan')}</dt>
         <dd className="num text-right font-medium text-ink">{formatKurus(p.remainingKurus)}</dd>
         {p.monthlyNeededKurus !== null && p.status !== 'done' && (
           <>
-            <dt className="text-muted">{p.status === 'overdue' ? 'Eksik kalan' : `Aylık gereken (${p.monthsLeft} ay)`}</dt>
+            <dt className="text-muted">{p.status === 'overdue' ? tt('Eksik kalan') : ttf('Aylık gereken ({0} ay)', p.monthsLeft)}</dt>
             <dd className="num text-right font-medium text-ink">{formatKurus(p.monthlyNeededKurus)}</dd>
           </>
         )}
-        <dt className="text-muted">Son 3 ay ortalaması</dt>
+        <dt className="text-muted">{tt('Son 3 ay ortalaması')}</dt>
         <dd className="num text-right font-medium text-ink">{formatKurus(p.monthlyAverageKurus)}</dd>
         {p.projectedMonth && p.status !== 'done' && (
           <>
-            <dt className="text-muted">Bu tempoyla</dt>
+            <dt className="text-muted">{tt('Bu tempoyla')}</dt>
             <dd className="text-right font-medium text-ink">{monthLabel(p.projectedMonth)}</dd>
           </>
         )}
       </dl>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button size="sm" variant="soft" icon={<Plus className="size-4" />} onClick={() => onMove(1)}>
-          Para ekle
+          {tt('Para ekle')}
         </Button>
         <Button size="sm" variant="ghost" icon={<Minus className="size-4" />} onClick={() => onMove(-1)} disabled={p.savedKurus === 0}>
-          Çek
+          {tt('Çek')}
         </Button>
         <span className="flex-1" />
-        <IconButton label={`${goal.name} arşivle`} size="sm" onClick={onArchive}>
+        <IconButton label={ttf('{0} arşivle', goal.name)} size="sm" onClick={onArchive}>
           <Archive className="size-4" />
         </IconButton>
         <IconButton label={`${goal.name} sil`} size="sm" onClick={onDelete}>
@@ -254,7 +254,7 @@ function History({ goal }: { goal: SavingsGoal }) {
   return (
     <div className="mt-3 border-t border-line pt-2">
       <button type="button" className="text-[12.5px] font-medium text-accent" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {open ? 'Hareketleri gizle' : `Hareketler (${list.length})`}
+        {open ? tt('Hareketleri gizle') : ttf('Hareketler ({0})', list.length)}
       </button>
       {open && (
         <ul className="mt-1 divide-y divide-line">
@@ -265,7 +265,7 @@ function History({ goal }: { goal: SavingsGoal }) {
                 {c.amountKurus > 0 ? '+' : '−'}
                 {formatKurus(Math.abs(c.amountKurus))}
               </span>
-              <IconButton label="Hareketi sil" size="sm" onClick={() => void repo.removeGoalContribution(goal.id, c.id)}>
+              <IconButton label={tt('Hareketi sil')} size="sm" onClick={() => void repo.removeGoalContribution(goal.id, c.id)}>
                 <Trash2 className="size-3.5" />
               </IconButton>
             </li>
@@ -295,11 +295,11 @@ function MoveDialog({ moving, onClose }: { moving: Moving; onClose: () => void }
   const save = async () => {
     if (!moving) return
     const amt = parseUserAmount(amount)
-    if (!amt.ok || amt.kurus <= 0) return setError('Geçerli bir tutar girin.')
+    if (!amt.ok || amt.kurus <= 0) return setError(tt('Geçerli bir tutar girin.'))
     setBusy(true)
     try {
       await repo.addGoalContribution(moving.goal.id, { date, amountKurus: amt.kurus * moving.dir })
-      toast(moving.dir > 0 ? `${moving.goal.name} hedefine ${formatKurus(amt.kurus)} eklendi.` : `${moving.goal.name} hedefinden ${formatKurus(amt.kurus)} çekildi.`)
+      toast(moving.dir > 0 ? ttf('{0} hedefine {1} eklendi.', moving.goal.name, formatKurus(amt.kurus)) : ttf('{0} hedefinden {1} çekildi.', moving.goal.name, formatKurus(amt.kurus)))
       onClose()
     } catch (e) {
       setError(toUserMessage(e))
@@ -311,19 +311,19 @@ function MoveDialog({ moving, onClose }: { moving: Moving; onClose: () => void }
     <Modal
       open={!!moving}
       onOpenChange={(o) => !o && onClose()}
-      title={moving?.dir === -1 ? 'Hedeften para çek' : 'Hedefe para ekle'}
+      title={moving?.dir === -1 ? tt('Hedeften para çek') : tt('Hedefe para ekle')}
       size="sm"
       footer={
         <Button variant="primary" loading={busy} onClick={() => void save()}>
-          Kaydet
+          {tt('Kaydet')}
         </Button>
       }
     >
       <div className="flex flex-col gap-3">
-        <Field label="Tutar (TL)" htmlFor="goal-move-amount" error={error}>
+        <Field label={tt('Tutar (TL)')} htmlFor="goal-move-amount" error={error}>
           <Input id="goal-move-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" autoFocus />
         </Field>
-        <Field label="Tarih" htmlFor="goal-move-date">
+        <Field label={tt('Tarih')} htmlFor="goal-move-date">
           <Input id="goal-move-date" type="date" value={date} max={todayIso()} onChange={(e) => setDate(e.target.value)} />
         </Field>
       </div>
@@ -356,12 +356,12 @@ function GoalEditor({ draft, onClose }: { draft: Draft | null; onClose: () => vo
   const save = async () => {
     setError(undefined)
     const amt = parseUserAmount(f.target)
-    if (!f.name.trim()) return setError('Hedefe bir ad verin.')
-    if (!amt.ok || amt.kurus <= 0) return setError('Geçerli bir hedef tutarı girin.')
+    if (!f.name.trim()) return setError(tt('Hedefe bir ad verin.'))
+    if (!amt.ok || amt.kurus <= 0) return setError(tt('Geçerli bir hedef tutarı girin.'))
     setBusy(true)
     try {
       await repo.saveGoal({ id: draft?.id, name: f.name, icon: f.icon, color: f.color, targetKurus: amt.kurus, targetDate: f.date || null })
-      toast(isNew ? 'Hedef eklendi.' : 'Kaydedildi.')
+      toast(isNew ? tt('Hedef eklendi.') : 'Kaydedildi.')
       onClose()
     } catch (e) {
       setError(toUserMessage(e))
@@ -373,17 +373,17 @@ function GoalEditor({ draft, onClose }: { draft: Draft | null; onClose: () => vo
     <Modal
       open={!!draft}
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? 'Birikim hedefi ekle' : 'Hedefi düzenle'}
+      title={isNew ? tt('Birikim hedefi ekle') : tt('Hedefi düzenle')}
       size="sm"
       footer={
         <Button variant="primary" loading={busy} onClick={() => void save()}>
-          Kaydet
+          {tt('Kaydet')}
         </Button>
       }
     >
       <div className="flex flex-col gap-3">
         {isNew && (
-          <div className="flex flex-wrap gap-1.5" aria-label="Hazır hedefler">
+          <div className="flex flex-wrap gap-1.5" aria-label={tt('Hazır hedefler')}>
             {PRESETS.filter((p) => p.name !== 'Diğer').map((p) => (
               <Button key={p.name} size="sm" variant={f.name === p.name ? 'soft' : 'ghost'} onClick={() => setF((x) => ({ ...x, name: p.name, icon: p.icon, color: p.color }))}>
                 {p.name}
@@ -391,17 +391,17 @@ function GoalEditor({ draft, onClose }: { draft: Draft | null; onClose: () => vo
             ))}
           </div>
         )}
-        <Field label="Hedefin adı" htmlFor="goal-name">
-          <Input id="goal-name" value={f.name} maxLength={60} onChange={(e) => set('name', e.target.value)} placeholder="Örn. Yaz tatili" />
+        <Field label={tt('Hedefin adı')} htmlFor="goal-name">
+          <Input id="goal-name" value={f.name} maxLength={60} onChange={(e) => set('name', e.target.value)} placeholder={tt('Örn. Yaz tatili')} />
         </Field>
-        <Field label="Hedef tutar (TL)" htmlFor="goal-target" error={error}>
+        <Field label={tt('Hedef tutar (TL)')} htmlFor="goal-target" error={error}>
           <Input id="goal-target" inputMode="decimal" value={f.target} onChange={(e) => set('target', e.target.value)} placeholder="0,00" />
         </Field>
-        <Field label="Hedef tarihi" htmlFor="goal-date" optional>
+        <Field label={tt('Hedef tarihi')} htmlFor="goal-date" optional>
           <Input id="goal-date" type="date" value={f.date} min={todayIso()} onChange={(e) => set('date', e.target.value)} />
         </Field>
         <fieldset>
-          <legend className="mb-1.5 text-[13px] font-medium text-ink">Simge ve renk</legend>
+          <legend className="mb-1.5 text-[13px] font-medium text-ink">{tt('Simge ve renk')}</legend>
           <div className="flex flex-wrap gap-1.5">
             {ICONS.map((ic) => (
               <button

@@ -1,3 +1,4 @@
+import { tt, ttf } from '../lib/i18n'
 /**
  * Para tutarları her yerde tam sayı kuruş olarak tutulur.
  * Ayrıştırma belirsiz biçimleri sessizce yorumlamaz; `ambiguous` döner.
@@ -40,15 +41,15 @@ export function detectCurrency(text: string): string | undefined {
 
 /** Tek bir tutar metnini kuruşa çevirir. */
 export function parseAmount(input: string | number | null | undefined, hint: NumberFormatHint = 'auto'): AmountParseResult {
-  if (input === null || input === undefined) return { ok: false, reason: 'empty', message: 'Tutar boş.' }
+  if (input === null || input === undefined) return { ok: false, reason: 'empty', message: tt('Tutar boş.') }
   if (typeof input === 'number') {
-    if (!Number.isFinite(input)) return { ok: false, reason: 'invalid', message: 'Tutar sayı değil.' }
+    if (!Number.isFinite(input)) return { ok: false, reason: 'invalid', message: tt('Tutar sayı değil.') }
     const kurus = Math.round(input * 100)
     return { ok: true, kurus, negative: kurus < 0 }
   }
   // Boşluk türleri ve Unicode eksi/tire (−, –, —) sadeleştirilir.
   let s = String(input).replace(/\u00a0|\u202f/g, ' ').replace(/[\u2212\u2013\u2014]/g, '-').trim()
-  if (!s) return { ok: false, reason: 'empty', message: 'Tutar boş.' }
+  if (!s) return { ok: false, reason: 'empty', message: tt('Tutar boş.') }
 
   const currency = detectCurrency(s)
   s = s.replace(/₺|\$|€|£/g, '').replace(/\b(TL|TRY|YTL|USD|EUR|EURO|GBP|CHF)\b/gi, '').trim()
@@ -76,7 +77,7 @@ export function parseAmount(input: string | number | null | undefined, hint: Num
   // Rakam grupları arasındaki boşluk ve kesme işaretleri: "1 234,56", "1'234.56"
   s = s.replace(/(\d)[ '](?=\d{3}\b)/g, '$1')
 
-  if (!/^\d[\d.,]*$/.test(s)) return { ok: false, reason: 'invalid', message: `"${String(input).trim()}" tutar olarak okunamadı.` }
+  if (!/^\d[\d.,]*$/.test(s)) return { ok: false, reason: 'invalid', message: ttf('"{0}" tutar olarak okunamadı.', String(input).trim()) }
 
   const lastDot = s.lastIndexOf('.')
   const lastComma = s.lastIndexOf(',')
@@ -87,9 +88,9 @@ export function parseAmount(input: string | number | null | undefined, hint: Num
   let note: string | undefined
 
   const toResult = (ip: string, dp: string): AmountParseResult => {
-    if (dp.length > 2) return { ok: false, reason: 'invalid', message: `"${String(input).trim()}" ikiden fazla ondalık basamak içeriyor.` }
+    if (dp.length > 2) return { ok: false, reason: 'invalid', message: ttf('"{0}" ikiden fazla ondalık basamak içeriyor.', String(input).trim()) }
     const kurus = Number(ip || '0') * 100 + Number((dp + '00').slice(0, 2))
-    if (!Number.isSafeInteger(kurus)) return { ok: false, reason: 'invalid', message: 'Tutar çok büyük.' }
+    if (!Number.isSafeInteger(kurus)) return { ok: false, reason: 'invalid', message: tt('Tutar çok büyük.') }
     return { ok: true, kurus: negative ? -kurus : kurus, negative, currency, note }
   }
   const validGroups = (ip: string, sep: string) => new RegExp(`^\\d{1,3}(\\${sep}\\d{3})+$`).test(ip)
@@ -99,14 +100,14 @@ export function parseAmount(input: string | number | null | undefined, hint: Num
     if (lastComma > lastDot) {
       intPart = s.slice(0, lastComma)
       decPart = s.slice(lastComma + 1)
-      if (!validGroups(intPart, '.')) return { ok: false, reason: 'invalid', message: `"${s}" geçerli bir Türkçe tutar değil.` }
+      if (!validGroups(intPart, '.')) return { ok: false, reason: 'invalid', message: ttf('"{0}" geçerli bir Türkçe tutar değil.', s) }
       intPart = intPart.replace(/\./g, '')
     } else {
       intPart = s.slice(0, lastDot)
       decPart = s.slice(lastDot + 1)
-      if (!validGroups(intPart, ',')) return { ok: false, reason: 'invalid', message: `"${s}" geçerli bir tutar değil.` }
+      if (!validGroups(intPart, ',')) return { ok: false, reason: 'invalid', message: ttf('"{0}" geçerli bir tutar değil.', s) }
       intPart = intPart.replace(/,/g, '')
-      if (hint !== 'en') note = 'İngilizce sayı biçimi (1,234.56) olarak yorumlandı.'
+      if (hint !== 'en') note = tt('İngilizce sayı biçimi (1,234.56) olarak yorumlandı.')
     }
     return toResult(intPart, decPart)
   }
@@ -124,19 +125,19 @@ export function parseAmount(input: string | number | null | undefined, hint: Num
 
   if (count > 1) {
     // "1.234.567" → yalnızca binlik ayırıcı olabilir.
-    if (!validGroups(s, sep)) return { ok: false, reason: 'invalid', message: `"${s}" geçerli bir tutar değil.` }
+    if (!validGroups(s, sep)) return { ok: false, reason: 'invalid', message: ttf('"{0}" geçerli bir tutar değil.', s) }
     return toResult(s.split(sep).join(''), '')
   }
   if (after.length !== 3) {
     // "150,5" / "150,50" / "150.50": tek ayırıcı ve 1–2 hane → ondalık
-    if (after.length > 3) return { ok: false, reason: 'invalid', message: `"${s}" geçerli bir tutar değil.` }
-    if (!trDecimal && hint !== 'en') note = 'Nokta ondalık ayırıcı olarak yorumlandı.'
+    if (after.length > 3) return { ok: false, reason: 'invalid', message: ttf('"{0}" geçerli bir tutar değil.', s) }
+    if (!trDecimal && hint !== 'en') note = tt('Nokta ondalık ayırıcı olarak yorumlandı.')
     return toResult(before, after)
   }
   // Tek ayırıcı ve ardından tam 3 hane: "1.234" veya "12,345" → binlik mi ondalık mı?
   if (thousandsMeaningHint) return toResult(before + after, '')
-  if (decimalMeaningHint) return { ok: false, reason: 'invalid', message: `"${s}" üç ondalık basamak içeriyor.` }
-  if (before === '0') return { ok: false, reason: 'invalid', message: `"${s}" üç ondalık basamak içeriyor.` }
+  if (decimalMeaningHint) return { ok: false, reason: 'invalid', message: ttf('"{0}" üç ondalık basamak içeriyor.', s) }
+  if (before === '0') return { ok: false, reason: 'invalid', message: ttf('"{0}" üç ondalık basamak içeriyor.', s) }
   const asThousands = Number(before + after) * 100
   const asDecimal = Number(before) * 100 + Math.round(Number(after) / 10)
   return {

@@ -2,6 +2,7 @@ import { formatDate } from './dates'
 import { formatKurus } from './money'
 import { normalizeText } from './normalize'
 import type { GroupSettlement, SpendGroup, Transaction } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 /**
  * "Tümü" görünümü kişiseldir.
@@ -55,7 +56,7 @@ export function settlementTx(g: SpendGroup, s: GroupSettlement, selfId: string, 
   // Satırın tarihi dönemin son günü; dönem bitmeden paylaştırıldıysa paylaştırıldığı gün
   const settledOn = s.createdAt.slice(0, 10)
   const date = settledOn < s.start ? s.start : settledOn < s.end ? settledOn : s.end
-  const description = `${g.name} paylaşımı · ${diff > 0 ? 'borç' : 'alacak'}`
+  const description = ttf('{0} paylaşımı · {1}', g.name, diff > 0 ? tt('borç') : 'alacak')
   return {
     id: `pay:${g.id}:${s.start}`,
     date,
@@ -66,7 +67,7 @@ export function settlementTx(g: SpendGroup, s: GroupSettlement, selfId: string, 
     categoryId: null,
     groupId: g.id,
     memberId: selfId,
-    note: `${settlementRangeText(s)} · payınız ${formatKurus(share)}, ödediğiniz ${formatKurus(paidKurus)} · toplam ${formatKurus(s.totalKurus)}, ${Object.keys(s.shares).length} kişi`,
+    note: ttf('{0} · payınız {1}, ödediğiniz {2} · toplam {3}, {4} kişi', settlementRangeText(s), formatKurus(share), formatKurus(paidKurus), formatKurus(s.totalKurus), Object.keys(s.shares).length),
     source: 'settlement',
     createdAt: s.createdAt,
     updatedAt: s.createdAt,

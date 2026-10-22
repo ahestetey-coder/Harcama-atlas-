@@ -15,6 +15,7 @@ import { UiProvider } from './state/ui'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { captureLeadCodeFromUrl, WebTestLinker } from './state/webTest'
 import { NotificationScheduler } from './state/notifications'
+import { tt } from './lib/i18n'
 
 const loaders = {
   transactions: () => import('./pages/TransactionsPage'),
@@ -121,9 +122,9 @@ function Layout() {
 function NotFound() {
   return (
     <div className="py-20 text-center">
-      <h1 className="text-2xl font-bold">Sayfa bulunamadı</h1>
+      <h1 className="text-2xl font-bold">{tt('Sayfa bulunamadı')}</h1>
       <a href="#/" className="mt-4 inline-block text-accent hover:underline">
-        Panele dön
+        {tt('Panele dön')}
       </a>
     </div>
   )

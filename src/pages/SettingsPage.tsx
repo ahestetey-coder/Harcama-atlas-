@@ -21,6 +21,7 @@ import { useBudgetSetup } from '../state/budget'
 import { useData, useSettings } from '../state/data'
 import { useTheme } from '../state/theme'
 import { useUi } from '../state/ui'
+import { getLang, setLang, tt, ttf, type Lang } from '../lib/i18n'
 
 export default function SettingsPage() {
   const { preference, setPreference } = useTheme()
@@ -53,58 +54,68 @@ export default function SettingsPage() {
     let k: number | null = null
     if (budget.trim()) {
       const p = parseUserAmount(budget)
-      if (!p.ok || p.kurus <= 0) return setBudgetErr('Geçerli bir tutar girin.')
+      if (!p.ok || p.kurus <= 0) return setBudgetErr(tt('Geçerli bir tutar girin.'))
       k = p.kurus
     }
     setBudgetErr(undefined)
     await repo.saveSettings({ monthlyBudgetKurus: k, budgetMode: 'manual' })
-    toast(k ? 'Bütçe kaydedildi.' : 'Bütçe kaldırıldı.')
+    toast(k ? tt('Bütçe kaydedildi.') : tt('Bütçe kaldırıldı.'))
   }
 
-  const ocrLabel = { ready: 'Çevrimdışı kullanıma hazır', partial: 'Kısmen indirildi', missing: 'Henüz indirilmedi', unsupported: 'Bu tarayıcıda önbellek durumu görülemiyor' }
+  const ocrLabel = { ready: tt('Çevrimdışı kullanıma hazır'), partial: tt('Kısmen indirildi'), missing: tt('Henüz indirilmedi'), unsupported: tt('Bu tarayıcıda önbellek durumu görülemiyor') }
 
   return (
     <div>
-      <PageHeader title="Ayarlar" subtitle={`${APP_CONFIG.name} · sürüm 1.0`} />
+      <PageHeader title={tt('Ayarlar')} subtitle={ttf('{0} · sürüm 1.0', APP_CONFIG.name)} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AccountCard />
         <PlanCard />
         <Card className="p-5">
-          <h2 className="font-display text-base font-semibold">Görünüm</h2>
+          <h2 className="font-display text-base font-semibold">{tt('Görünüm')}</h2>
           <Segmented<ThemePreference>
-            label="Tema"
+            label={tt('Tema')}
             value={preference}
             onChange={setPreference}
             className="mt-4 w-full"
             options={[
-              { value: 'system', label: 'Sistem', icon: <Monitor className="size-4" /> },
-              { value: 'light', label: 'Açık', icon: <Sun className="size-4" /> },
-              { value: 'dark', label: 'Koyu', icon: <Moon className="size-4" /> },
+              { value: 'system', label: tt('Sistem'), icon: <Monitor className="size-4" /> },
+              { value: 'light', label: tt('Açık'), icon: <Sun className="size-4" /> },
+              { value: 'dark', label: tt('Koyu'), icon: <Moon className="size-4" /> },
+            ]}
+          />
+          <Segmented<Lang>
+            label={tt('Dil')}
+            value={getLang()}
+            onChange={(v) => v !== getLang() && setLang(v)}
+            className="mt-4 w-full"
+            options={[
+              { value: 'tr', label: 'Türkçe' },
+              { value: 'en', label: 'English' },
             ]}
           />
         </Card>
 
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Target className="size-5 text-accent" /> Bütçe ve varsayılanlar
+            <Target className="size-5 text-accent" /> {tt('Bütçe ve varsayılanlar')}
           </h2>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {budgetSetup?.mode === 'auto' && budgetSetup.auto ? (
               <div className="text-sm">
-                <div className="font-medium text-ink">Aylık bütçe</div>
+                <div className="font-medium text-ink">{tt('Aylık bütçe')}</div>
                 <p className="mt-1 text-muted">
-                  Koç belirliyor: <span className="num font-semibold text-ink">{formatKurus(budgetSetup.auto.totalKurus)}</span>.{' '}
+                  {tt('Koç belirliyor:')} <span className="num font-semibold text-ink">{formatKurus(budgetSetup.auto.totalKurus)}</span>.{' '}
                   <Link to="/butce" className="font-medium text-accent hover:underline">
-                    Bütçe sayfasından değiştirin
+                    {tt('Bütçe sayfasından değiştirin')}
                   </Link>
                 </p>
               </div>
             ) : (
-              <Field label="Aylık bütçe (TL)" htmlFor="set-budget" optional error={budgetErr}>
-                <Input id="set-budget" className="num" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} onBlur={saveBudget} placeholder="Ör. 30.000" />
+              <Field label={tt('Aylık bütçe (TL)')} htmlFor="set-budget" optional error={budgetErr}>
+                <Input id="set-budget" className="num" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} onBlur={saveBudget} placeholder={tt('Ör. 30.000')} />
               </Field>
             )}
-            <Field label="Varsayılan ödeme aracı" htmlFor="set-pay" optional>
+            <Field label={tt('Varsayılan ödeme aracı')} htmlFor="set-pay" optional>
               <Select
                 id="set-pay"
                 value={settings?.defaultPaymentMethod ?? ''}
@@ -113,7 +124,7 @@ export default function SettingsPage() {
                   toast('Kaydedildi.')
                 }}
               >
-                <option value="">Belirtilmedi</option>
+                <option value="">{tt('Belirtilmedi')}</option>
                 {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((p) => (
                   <option key={p} value={p}>
                     {PAYMENT_LABEL[p]}
@@ -130,72 +141,70 @@ export default function SettingsPage() {
 
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Repeat className="size-5 text-accent" /> Ay döngüsü
+            <Repeat className="size-5 text-accent" /> {tt('Ay döngüsü')}
           </h2>
-          <p className="mt-1 text-sm text-muted">Ayınız hangi gün başlıyor?</p>
+          <p className="mt-1 text-sm text-muted">{tt('Ayınız hangi gün başlıyor?')}</p>
           <More>
-            Maaşınız ayın 15’inde yatıyorsa 15 seçin; ay, 15’inden sonraki ayın 14’üne kadar sayılır. Maaş hafta sonuna denk gelirse önceki iş günü yatar; ayınız maaş
-            gününde başlıyorsa o gelir yine yeni ayınıza sayılır.
+            {tt('Maaşınız ayın 15’inde yatıyorsa 15 seçin; ay, 15’inden sonraki ayın 14’üne kadar sayılır. Maaş hafta sonuna denk gelirse önceki iş günü yatar; ayınız maaş gününde başlıyorsa o gelir yine yeni ayınıza sayılır.')}
           </More>
           {hasSalary && (
             <div className="mt-4 flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-ink" aria-hidden>
-                Maaş gününe göre
+                {tt('Maaş gününe göre')}
               </span>
               <Switch
-                label="Maaş gününe göre"
+                label={tt('Maaş gününe göre')}
                 checked={followSalary}
                 onChange={async (on) => {
                   await repo.saveSettings({ cycleSource: on ? 'salary' : 'manual' })
                   const d = personalCycleDay({ ...settings, cycleSource: on ? 'salary' : 'manual' })
-                  toast(on ? `Ayınız artık her ayın ${d}. gününde başlıyor.` : d > 1 ? `Ay döngünüz her ayın ${d}’i olarak ayarlandı.` : 'Takvim ayına dönüldü.')
+                  toast(on ? ttf('Ayınız artık her ayın {0}. gününde başlıyor.', d) : d > 1 ? ttf('Ay döngünüz her ayın {0}’i olarak ayarlandı.', d) : tt('Takvim ayına dönüldü.'))
                 }}
               />
             </div>
           )}
-          <Field label="Kişisel ay döngünüz" htmlFor="set-cycle" className="mt-4">
+          <Field label={tt('Kişisel ay döngünüz')} htmlFor="set-cycle" className="mt-4">
             <CycleSelect
               id="set-cycle"
               value={followSalary ? personalCycleDay(settings ?? {}) : (settings?.cycleStartDay ?? 1)}
               disabled={followSalary}
               onChange={async (d) => {
                 await repo.saveSettings({ cycleStartDay: d && d > 1 ? d : undefined, cycleSource: 'manual' })
-                toast(d && d > 1 ? `Ay döngünüz her ayın ${d}’i olarak ayarlandı.` : 'Takvim ayına dönüldü.')
+                toast(d && d > 1 ? ttf('Ay döngünüz her ayın {0}’i olarak ayarlandı.', d) : tt('Takvim ayına dönüldü.'))
               }}
             />
           </Field>
-          <p className="mt-2 text-[12.5px] text-subtle">Gruplar kendi döngüsünü kullanabilir.</p>
+          <p className="mt-2 text-[12.5px] text-subtle">{tt('Gruplar kendi döngüsünü kullanabilir.')}</p>
         </Card>
 
         <Card className="p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-                <FlaskConical className="size-5 text-accent" /> Demo modu
+                <FlaskConical className="size-5 text-accent" /> {tt('Demo modu')}
               </h2>
-              <p className="mt-1 text-sm text-muted">Örnek verilerle deneyin; gerçek kayıtlarınız etkilenmez.</p>
+              <p className="mt-1 text-sm text-muted">{tt('Örnek verilerle deneyin; gerçek kayıtlarınız etkilenmez.')}</p>
             </div>
-            <Switch checked={isDemo} onChange={setDemo} label="Demo modu" />
+            <Switch checked={isDemo} onChange={setDemo} label={tt('Demo modu')} />
           </div>
           {isDemo && (
             <Button size="sm" className="mt-3" icon={<RotateCcw className="size-4" />} onClick={() => setResetOpen(true)}>
-              Demo verisini sıfırla
+              {tt('Demo verisini sıfırla')}
             </Button>
           )}
         </Card>
 
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <ScanText className="size-5 text-accent" /> Çevrimdışı OCR
+            <ScanText className="size-5 text-accent" /> {tt('Çevrimdışı OCR')}
           </h2>
-          <p className="mt-1 text-sm text-muted">Belgeleri internetsiz okumak için.</p>
+          <p className="mt-1 text-sm text-muted">{tt('Belgeleri internetsiz okumak için.')}</p>
           <More>
-            Görsel ve taranmış PDF’ler cihazınızda okunur (Tesseract, Türkçe/İngilizce); belgeleriniz sunucuya gönderilmez. İndirmezseniz ilk kullanımda otomatik
-            indirilir (internet gerekir).
+            {tt('Görsel ve taranmış PDF’ler cihazınızda okunur (Tesseract, Türkçe/İngilizce); belgeleriniz sunucuya gönderilmez. İndirmezseniz ilk kullanımda otomatik indirilir (internet gerekir).')}
           </More>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <Badge tone={ocr?.status === 'ready' ? 'accent' : 'warning'}>{ocr ? ocrLabel[ocr.status] : 'Kontrol ediliyor…'}</Badge>
-            {ocr?.bytes && <span className="num text-muted">İndirme boyutu ≈ {(ocr.bytes / 1048576).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} MB</span>}
+            <Badge tone={ocr?.status === 'ready' ? 'accent' : 'warning'}>{ocr ? ocrLabel[ocr.status] : tt('Kontrol ediliyor…')}</Badge>
+            {ocr?.bytes && <span className="num text-muted">{ttf('İndirme boyutu ≈ {0} MB', (ocr.bytes / 1048576).toLocaleString('tr-TR', { maximumFractionDigits: 1 }))}</span>}
           </div>
           {ocr?.status !== 'ready' && ocr?.status !== 'unsupported' && (
             <Button
@@ -207,7 +216,7 @@ export default function SettingsPage() {
                 try {
                   setDl({ done: 0, total: 1 })
                   await downloadOcrAssets((done, total) => setDl({ done, total }))
-                  toast('OCR dosyaları indirildi; görsel okuma artık çevrimdışı çalışır.')
+                  toast(tt('OCR dosyaları indirildi; görsel okuma artık çevrimdışı çalışır.'))
                 } catch (e) {
                   toast(e instanceof Error ? e.message : toUserMessage(e), { kind: 'error' })
                 } finally {
@@ -216,27 +225,27 @@ export default function SettingsPage() {
                 }
               }}
             >
-              {dl ? `İndiriliyor ${dl.done}/${dl.total}` : 'Çevrimdışı kullanım için indir'}
+              {dl ? ttf('İndiriliyor {0}/{1}', dl.done, dl.total) : tt('Çevrimdışı kullanım için indir')}
             </Button>
           )}
         </Card>
 
         <Card className="p-5 lg:col-span-2">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <CloudOff className="size-5 text-accent" /> Senkronizasyon ve gizlilik
+            <CloudOff className="size-5 text-accent" /> {tt('Senkronizasyon ve gizlilik')}
           </h2>
-          <p className="mt-1 text-sm text-muted">Kayıtlarınız hesabınızda saklanır; aynı hesapla girdiğiniz her cihazda görünür. Sizden başka kimse göremez.</p>
-          <More label="Gizlilik ayrıntıları">
+          <p className="mt-1 text-sm text-muted">{tt('Kayıtlarınız hesabınızda saklanır; aynı hesapla girdiğiniz her cihazda görünür. Sizden başka kimse göremez.')}</p>
+          <More label={tt('Gizlilik ayrıntıları')}>
             <ul className="list-disc space-y-1 pl-5">
-              <li>İnternet yokken de çalışır; bağlantı gelince kendiliğinden eşitlenir.</li>
-              <li>Reklam veya izleme kullanılmaz. Koçun yapay zekâ sohbeti yalnızca izin verirseniz, özet bilgilerle çalışır.</li>
-              <li>PDF, Excel, CSV ve görseller cihazınızda okunur, sunucuya gönderilmez.</li>
-              <li>Kart numarası, CVV veya banka parolası istenmez.</li>
-              <li>İlk açılıştan sonra çevrimdışı çalışır.</li>
+              <li>{tt('İnternet yokken de çalışır; bağlantı gelince kendiliğinden eşitlenir.')}</li>
+              <li>{tt('Reklam veya izleme kullanılmaz. Koçun yapay zekâ sohbeti yalnızca izin verirseniz, özet bilgilerle çalışır.')}</li>
+              <li>{tt('PDF, Excel, CSV ve görseller cihazınızda okunur, sunucuya gönderilmez.')}</li>
+              <li>{tt('Kart numarası, CVV veya banka parolası istenmez.')}</li>
+              <li>{tt('İlk açılıştan sonra çevrimdışı çalışır.')}</li>
             </ul>
           </More>
           <a href={APP_CONFIG.privacyUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[13px] font-medium text-accent hover:underline">
-            Gizlilik politikasının tamamı
+            {tt('Gizlilik politikasının tamamı')}
           </a>
         </Card>
 
@@ -245,20 +254,20 @@ export default function SettingsPage() {
       <ConfirmDialog
         open={resetOpen}
         onOpenChange={setResetOpen}
-        title="Demo verisi sıfırlansın mı?"
-        confirmLabel="Sıfırla"
+        title={tt('Demo verisi sıfırlansın mı?')}
+        confirmLabel={tt('Sıfırla')}
         onConfirm={async () => {
           const { resetDemoData } = await import('../data/demo')
           try {
             await resetDemoData(repo)
-            toast('Demo verisi yeniden oluşturuldu.')
+            toast(tt('Demo verisi yeniden oluşturuldu.'))
           } catch (e) {
             toast(toUserMessage(e), { kind: 'error' })
           }
           setResetOpen(false)
         }}
       >
-        Demo veritabanı silinip örnek verilerle yeniden doldurulur. Gerçek verilerinize dokunulmaz.
+        {tt('Demo veritabanı silinip örnek verilerle yeniden doldurulur. Gerçek verilerinize dokunulmaz.')}
       </ConfirmDialog>
     </div>
   )
@@ -268,13 +277,13 @@ function PlanCard() {
   const { plan, preview } = usePlan()
   return (
     <Card className="p-5">
-      <h2 className="font-display text-base font-semibold">Paket</h2>
+      <h2 className="font-display text-base font-semibold">{tt('Paket')}</h2>
       <p className="mt-1 text-sm text-muted">
-        Kullandığınız paket: <strong className="text-ink">{PLAN_LABEL[plan]}</strong>
-        {preview ? ' (önizleme)' : ''}
+        {tt('Kullandığınız paket:')} <strong className="text-ink">{PLAN_LABEL[plan]}</strong>
+        {preview ? tt(' (önizleme)') : ''}
       </p>
       <Link to="/paketler" className="mt-3 inline-block text-[13px] font-medium text-accent hover:underline">
-        Paketleri karşılaştır
+        {tt('Paketleri karşılaştır')}
       </Link>
     </Card>
   )

@@ -1,3 +1,4 @@
+import { tt } from '../lib/i18n'
 /**
  * Paketler: Ücretsiz, Plus, Plus+. Mevcut bütün özellikler ücretsizdir; Plus ve Plus+ yeni
  * özellikler ekler. Bir özelliğin hangi paketle açıldığı yalnızca burada tanımlanır.
@@ -7,7 +8,7 @@ export type Plan = 'free' | 'plus' | 'plusplus'
 export const PLAN_ORDER: Plan[] = ['free', 'plus', 'plusplus']
 
 export const PLAN_LABEL: Record<Plan, string> = {
-  free: 'Ücretsiz',
+  free: tt('Ücretsiz'),
   plus: 'Plus',
   plusplus: 'Plus+',
 }

@@ -7,6 +7,7 @@ import type { Housing, JourneyProfile } from './journey'
 export type IsoDate = string
 /** Takvim ayı: 'YYYY-AA'. */
 export type MonthKey = string
+import { tt } from '../lib/i18n'
 
 /** gider, iade, kart ödemesi/transfer */
 export type TxType = 'expense' | 'refund' | 'transfer' | 'income'
@@ -232,10 +233,10 @@ export type IncomeKind = 'salary' | 'rent' | 'other'
 export type IncomeCadence = RecurringCadence | 'once'
 
 export const INCOME_CADENCE_LABEL: Record<IncomeCadence, string> = {
-  monthly: 'Aylık',
-  weekly: 'Haftalık',
-  yearly: 'Yıllık',
-  once: 'Tek sefer',
+  monthly: tt('Aylık'),
+  weekly: tt('Haftalık'),
+  yearly: tt('Yıllık'),
+  once: tt('Tek sefer'),
 }
 
 /** Düzenli gelir. Yalnızca bu cihazda tutulur; gerçek gelir kaydı girilirse o ayın planlı geliri düşer. */
@@ -254,9 +255,9 @@ export interface RecurringIncome {
 }
 
 export const INCOME_KIND_LABEL: Record<IncomeKind, string> = {
-  salary: 'Maaş',
-  rent: 'Kira geliri',
-  other: 'Ek gelir',
+  salary: tt('Maaş'),
+  rent: tt('Kira geliri'),
+  other: tt('Ek gelir'),
 }
 
 export interface CoachSettings {
@@ -323,27 +324,27 @@ export interface RecurringPayment {
 
 export const RECURRING_KIND_LABEL: Record<RecurringKind, string> = {
   subscription: 'Abonelik',
-  bill: 'Düzenli ödeme',
+  bill: tt('Düzenli ödeme'),
   installment: 'Taksit',
 }
 
 export const CADENCE_LABEL: Record<RecurringCadence, string> = {
-  weekly: 'Haftalık',
-  monthly: 'Aylık',
-  yearly: 'Yıllık',
+  weekly: tt('Haftalık'),
+  monthly: tt('Aylık'),
+  yearly: tt('Yıllık'),
 }
 
 export const TX_TYPE_LABEL: Record<TxType, string> = {
   expense: 'Gider',
-  refund: 'İade',
-  transfer: 'Kart ödemesi / Transfer',
+  refund: tt('İade'),
+  transfer: tt('Kart ödemesi / Transfer'),
   income: 'Gelir',
 }
 
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   cash: 'Nakit',
-  debit: 'Banka kartı',
-  credit: 'Kredi kartı',
+  debit: tt('Banka kartı'),
+  credit: tt('Kredi kartı'),
 }
 
 export const SOURCE_LABEL: Record<TxSource, string> = {
@@ -351,11 +352,11 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   pdf: 'PDF',
   csv: 'CSV',
   xlsx: 'Excel',
-  image: 'Görsel',
+  image: tt('Görsel'),
   demo: 'Demo',
-  shared: 'Üyeden',
-  settlement: 'Paylaşım',
-  planned: 'Planlı taksit',
+  shared: tt('Üyeden'),
+  settlement: tt('Paylaşım'),
+  planned: tt('Planlı taksit'),
 }
 
 /** Planlı satırlara elle verilen grubu uygular (planlı satırlar her açılışta yeniden üretilir). */

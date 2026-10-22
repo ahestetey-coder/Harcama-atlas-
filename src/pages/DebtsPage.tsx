@@ -20,6 +20,7 @@ import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 import { ActionDialog, AssetEditor, HoldingRow, type Acting, type Editing } from './AssetsPage'
 import { PaymentsContent, RecurringEditor, type Draft } from './PaymentsSection'
+import { tt, ttf } from '../lib/i18n'
 
 type Section = 'borclar' | 'odemeler'
 
@@ -47,7 +48,7 @@ export default function DebtsPage() {
   return (
     <div>
       <PageHeader
-        title="Borçlar ve ödemeler"
+        title={tt('Borçlar ve ödemeler')}
         subtitle={
           <span className="inline-flex items-center gap-2">
             <PlanBadge plan="plus" />
@@ -56,38 +57,38 @@ export default function DebtsPage() {
         actions={
           section === 'odemeler' ? (
             <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setDraft({ kind: 'subscription' })}>
-              Ödeme ekle
+              {tt('Ödeme ekle')}
             </Button>
           ) : (
             <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEditing({ kind: 'debt', debtType: 'card' })}>
-              Borç ekle
+              {tt('Borç ekle')}
             </Button>
           )
         }
       />
       <Segmented
-        label="Bölüm"
+        label={tt('Bölüm')}
         className="mb-4 w-full sm:w-auto"
         value={section}
         onChange={go}
         options={[
-          { value: 'borclar', label: 'Borçlarım', icon: <Landmark className="size-4" /> },
-          { value: 'odemeler', label: 'Düzenli ödemeler', icon: <Repeat className="size-4" /> },
+          { value: 'borclar', label: tt('Borçlarım'), icon: <Landmark className="size-4" /> },
+          { value: 'odemeler', label: tt('Düzenli ödemeler'), icon: <Repeat className="size-4" /> },
         ]}
       />
       {section === 'borclar' ? (
         <PlanGate
           feature="assets"
-          title="Borçlarım"
-          points={['Borçlarınızı türüne göre (kart, kredi, KMH, kişisel…) kaydedin', 'Aylık taksitli borçlar düzenli ödemelere eklenir, kalan borç kendiliğinden azalır', 'Aylık borç ödemenizi ve borç/gelir oranınızı izleyin']}
+          title={tt('Borçlarım')}
+          points={[tt('Borçlarınızı türüne göre (kart, kredi, KMH, kişisel…) kaydedin'), tt('Aylık taksitli borçlar düzenli ödemelere eklenir, kalan borç kendiliğinden azalır'), tt('Aylık borç ödemenizi ve borç/gelir oranınızı izleyin')]}
         >
           <DebtsContent onEdit={setEditing} />
         </PlanGate>
       ) : (
         <PlanGate
           feature="subscriptions"
-          title="Düzenli ödemeler ve taksitler"
-          points={['Abonelik, kira ve faturaları kaydedin; ödeme gününden önce hatırlatılın', 'Ekstredeki ve borçlarınızdaki taksitleri ve gelecek ayların yükünü görün', 'Ödeme günü gelen taksitler aylık özete gider olarak yansır']}
+          title={tt('Düzenli ödemeler ve taksitler')}
+          points={[tt('Abonelik, kira ve faturaları kaydedin; ödeme gününden önce hatırlatılın'), tt('Ekstredeki ve borçlarınızdaki taksitleri ve gelecek ayların yükünü görün'), tt('Ödeme günü gelen taksitler aylık özete gider olarak yansır')]}
         >
           <PaymentsContent onEdit={setDraft} onEditDebt={editDebt} />
         </PlanGate>
@@ -136,8 +137,8 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
   if (debts.length === 0 && installmentsKurus === 0)
     return (
       <Card className="p-5">
-        <EmptyState icon={<Landmark className="size-6" />} title="Kayıtlı borç yok" className="py-6">
-          Borcunuzu türünü seçerek ekleyin.
+        <EmptyState icon={<Landmark className="size-6" />} title={tt('Kayıtlı borç yok')} className="py-6">
+          {tt('Borcunuzu türünü seçerek ekleyin.')}
         </EmptyState>
         <AddChips onEdit={onEdit} />
       </Card>
@@ -145,20 +146,20 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card className="p-5 lg:col-span-2" aria-label="Borç özeti">
-        <h2 className="mb-3 font-display text-base font-semibold">Özet</h2>
+      <Card className="p-5 lg:col-span-2" aria-label={tt('Borç özeti')}>
+        <h2 className="mb-3 font-display text-base font-semibold">{tt('Özet')}</h2>
         <div className="flex flex-wrap gap-x-10 gap-y-4">
           <div>
-            <div className="text-[12.5px] text-muted">Toplam borç</div>
+            <div className="text-[12.5px] text-muted">{tt('Toplam borç')}</div>
             <div className="num font-display text-2xl font-semibold text-danger">{formatKurus(total)}</div>
-            <div className="mt-0.5 text-[12px] text-subtle">Kalan taksitler dahil</div>
+            <div className="mt-0.5 text-[12px] text-subtle">{tt('Kalan taksitler dahil')}</div>
           </div>
-          <Figure label="Aylık borç ödemesi" value={formatKurus(monthly)} sub="Asgari ödemeler ve bu dönemin taksitleri" />
-          <Figure label="Yüksek faizli borç" value={formatKurus(consumer)} sub="Kart, KMH, ihtiyaç, kişisel" />
+          <Figure label={tt('Aylık borç ödemesi')} value={formatKurus(monthly)} sub={tt('Asgari ödemeler ve bu dönemin taksitleri')} />
+          <Figure label={tt('Yüksek faizli borç')} value={formatKurus(consumer)} sub={tt('Kart, KMH, ihtiyaç, kişisel')} />
           <Figure
-            label="Borç ödemesi / gelir"
+            label={tt('Borç ödemesi / gelir')}
             value={dti === null ? '—' : `%${Math.round(dti * 100)}`}
-            sub={dti === null ? 'Gelir, yolculuk testinde girilir' : dti <= DTI_LIMIT ? `%${DTI_LIMIT * 100} sınırının altında` : `%${DTI_LIMIT * 100} sınırının üstünde`}
+            sub={dti === null ? tt('Gelir, yolculuk testinde girilir') : dti <= DTI_LIMIT ? ttf('%{0} sınırının altında', DTI_LIMIT * 100) : ttf('%{0} sınırının üstünde', DTI_LIMIT * 100)}
             tone={dti !== null && dti > DTI_LIMIT ? 'down' : undefined}
           />
         </div>
@@ -169,11 +170,11 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 font-display text-base font-semibold">
               {t === 'card' ? <CreditCard className="size-5 text-accent" /> : <Landmark className="size-5 text-accent" />} {DEBT_TYPE_LABEL[t]}
-              {CONSUMER_DEBT.includes(t) && <Badge tone="warning">Yüksek faiz</Badge>}
+              {CONSUMER_DEBT.includes(t) && <Badge tone="warning">{tt('Yüksek faiz')}</Badge>}
             </h2>
             <span className="num text-[13px] font-semibold text-ink">{formatKurus(rows.filter((r) => r.type === t).reduce((s, r) => s + r.s.valueKurus, 0))}</span>
           </div>
-          <ul className="mt-2 divide-y divide-line" aria-label={`${DEBT_TYPE_LABEL[t]} borçları`}>
+          <ul className="mt-2 divide-y divide-line" aria-label={ttf('{0} borçları', DEBT_TYPE_LABEL[t])}>
             {rows
               .filter((r) => r.type === t)
               .map((r) => (
@@ -183,22 +184,22 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
         </Card>
       ))}
 
-      <Card className="p-5 lg:col-span-2" aria-label="Kart taksitleri">
+      <Card className="p-5 lg:col-span-2" aria-label={tt('Kart taksitleri')}>
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <CalendarClock className="size-5 text-accent" /> Kart ve elle eklenen taksitler
+          <CalendarClock className="size-5 text-accent" /> {tt('Kart ve elle eklenen taksitler')}
         </h2>
         {installmentsKurus === 0 ? (
           <p className="mt-2 text-sm text-muted">
-            Kalan taksit yok. Elle eklemek için{' '}
+            {tt('Kalan taksit yok. Elle eklemek için')}{' '}
             <Link to="/borclar?bolum=odemeler" className="font-medium text-accent">
-              Düzenli ödemeler
+              {tt('Düzenli ödemeler')}
             </Link>
             .
           </p>
         ) : (
           <>
-            <p className="mt-0.5 text-[12.5px] text-muted">Toplam kalan {formatKurus(installmentsKurus)}.</p>
-            <ul className="mt-3 grid grid-cols-6 items-end gap-1.5 sm:grid-cols-12" aria-label="Dönemlere göre taksit yükü">
+            <p className="mt-0.5 text-[12.5px] text-muted">{ttf('Toplam kalan {0}.', formatKurus(installmentsKurus))}</p>
+            <ul className="mt-3 grid grid-cols-6 items-end gap-1.5 sm:grid-cols-12" aria-label={tt('Dönemlere göre taksit yükü')}>
               {load.map((l) => {
                 const [, m] = l.month.split('-').map(Number)
                 return (
@@ -212,13 +213,13 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
                 )
               })}
             </ul>
-            <ul className="mt-3 divide-y divide-line" aria-label="Taksitli alışverişler">
+            <ul className="mt-3 divide-y divide-line" aria-label={tt('Taksitli alışverişler')}>
               {plans.map((p) => (
                 <li key={p.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium text-ink">{p.name}</div>
                     <div className="text-[12px] text-muted">
-                      Kredi kartı ekstresinden · {p.current}/{p.total} taksit · son taksit {formatDate(p.nextDates.at(-1) ?? p.lastDate)}
+                      {ttf('Kredi kartı ekstresinden · {0}/{1} taksit · son taksit {2}', p.current, p.total, formatDate(p.nextDates.at(-1) ?? p.lastDate))}
                     </div>
                   </div>
                   <div className="text-right">
@@ -235,7 +236,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
                   <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium text-ink">{r.name}</div>
-                      <div className="text-[12px] text-muted">Elle eklenen taksit</div>
+                      <div className="text-[12px] text-muted">{tt('Elle eklenen taksit')}</div>
                     </div>
                     <div className="text-right">
                       <div className="num font-semibold">{formatKurus(left * r.amountKurus)}</div>
@@ -252,7 +253,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
       </Card>
 
       <Card className="p-5 lg:col-span-2">
-        <h2 className="font-display text-base font-semibold">Türe göre borç ekle</h2>
+        <h2 className="font-display text-base font-semibold">{tt('Türe göre borç ekle')}</h2>
         <AddChips onEdit={onEdit} />
       </Card>
 
@@ -260,8 +261,8 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
       <ConfirmDialog
         open={!!del}
         onOpenChange={(o) => !o && setDel(null)}
-        title="Borç silinsin mi?"
-        confirmLabel="Sil"
+        title={tt('Borç silinsin mi?')}
+        confirmLabel={tt('Sil')}
         danger
         onConfirm={async () => {
           if (!del) return
@@ -274,7 +275,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
           setDel(null)
         }}
       >
-        {del?.name} ve bütün hareketleri kalıcı olarak silinir.
+        {del?.name} {tt('ve bütün hareketleri kalıcı olarak silinir.')}
       </ConfirmDialog>
     </div>
   )
