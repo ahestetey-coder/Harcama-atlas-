@@ -72,6 +72,33 @@ const guide = [
     ],
   },
   {
+    id: 'yatirimlar',
+    title: t('Yatırımlarını ekle', 'Add your investments'),
+    chip: 'Plus',
+    img: 'yatirim-ekle-light',
+    dark: 'yatirim-ekle-dark',
+    intro: t('Altın, döviz, mevduat, fon, BIST hisse, yabancı hisse/ETF, kripto ve emtia ekleyebilirsin. Fiyatı olanlar kendiliğinden güncellenir.', 'You can add gold, currencies, deposits, funds, BIST stocks, foreign stocks/ETFs, crypto and commodities. Anything with a market price updates on its own.'),
+    steps: [
+      t('Alt çubuktan Yatırım’a geç ve Yatırım ekle’ye dokun.', 'Go to Investments from the bottom bar and tap Add investment.'),
+      t('Türünü seç. Adını yazınca sembol önerilir; altında hazır seçenekler de var.', 'Pick the type. As you type a name, the symbol is suggested; there are ready-made options too.'),
+      t('Miktarı, birim alış fiyatını ve alış tarihini gir; toplam maliyet hemen hesaplanır.', 'Enter the quantity, unit purchase price and purchase date; the total cost is calculated right away.'),
+      t('Kaydet. Sonraki alış ve satışları Alış / satış (telefonda İşlem) düğmesiyle eklersin.', 'Save. Add later purchases and sales with the Buy / sell button.'),
+    ],
+  },
+  {
+    id: 'kar-zarar',
+    title: t('Güncel değeri ve kâr/zararı izle', 'Track current value and profit/loss'),
+    chip: 'Plus',
+    img: 'yatirim-liste-light',
+    dark: 'yatirim-liste-dark',
+    intro: t('Her yatırımın maliyetini, güncel değerini ve kâr/zararını tek listede görürsün. Fiyatları elle yenilemen gerekmez.', 'See the cost, current value and profit/loss of every investment in one list. You never need to refresh prices by hand.'),
+    steps: [
+      t('Fiyatlar uygulama açılınca ve açık kaldıkça 15 dakikada bir kendiliğinden güncellenir.', 'Prices update by themselves when you open the app and every 15 minutes while it stays open.'),
+      t('Her satırda güncel değer ile kâr ya da zarar, tutar ve yüzde olarak yazar.', 'Each row shows the current value and the profit or loss as an amount and a percentage.'),
+      t('Üstteki Özet kartında toplamı TL ya da $ USD olarak gör; Dağılım grafiği paranın nerede durduğunu gösterir.', 'See the total in TL or $ USD on the Summary card at the top; the Mix chart shows where your money sits.'),
+    ],
+  },
+  {
     id: 'rota',
     title: t('Testi çöz, rotanı netleştir', 'Take the test, sharpen your route'),
     chip: t('Ücretsiz · Plus', 'Free · Plus'),
@@ -92,8 +119,21 @@ const guide = [
     intro: t('Koç senin rakamlarınla konuşur: borç kapatma sırası, ayrılacak birikim, sıradaki durak.', 'The coach talks with your numbers: which debt to pay first, how much to save, your next stop.'),
     steps: [
       t('Alt çubuktan Koç’a geç.', 'Go to Coach from the bottom bar.'),
-      t('Kısa anketi doldur; koç seni tanısın.', 'Fill in the short survey so the coach gets to know you.'),
+      t('Kısa anketi doldur; koç seni tanısın. Gelirin, borçların ve yatırımların planına girer.', 'Fill in the short survey so the coach gets to know you. Your income, debts and investments go into its plan.'),
       t('Sorunu yaz ya da önerilen mesajlardan birini seç. Koç yatırım tavsiyesi vermez.', 'Type your question or pick a suggested message. The coach does not give investment advice.'),
+    ],
+  },
+  {
+    id: 'bilgi',
+    title: t('Finansal bilgiyle öğren', 'Learn with financial know-how'),
+    chip: 'Plus+',
+    img: 'finansal-bilgi-light',
+    dark: 'finansal-bilgi-dark',
+    intro: t('Risk, likidite, enflasyon, çeşitlendirme gibi temel kavramlar kısa ve sade anlatılır; ekonomi gündemi de burada.', 'Key ideas like risk, liquidity, inflation and diversification are explained briefly and plainly; the economic agenda is here too.'),
+    steps: [
+      t('Menü’den Finansal bilgi’yi aç.', 'Open Financial know-how from the Menu.'),
+      t('Temel kavramlar’da merak ettiğin başlığa dokun; açıklama hemen altında açılır.', 'Tap any topic under Key concepts; the explanation opens right below it.'),
+      t('Kafana takılanı koça sor; senin rakamlarınla örnek verir. Genel bilgidir, yatırım tavsiyesi değildir.', 'Ask the coach about anything unclear; it answers with examples from your own numbers. General information, not investment advice.'),
     ],
   },
 ]
@@ -101,7 +141,7 @@ const guide = [
 
 <Site
   title={t('Nasıl kullanılır · Harcama Atlası', 'Guide · Harcama Atlası')}
-  description={t('Harcama Atlası’nı adım adım kullanmayı öğren: harcama ekleme, içe aktarma, bütçe, borçlar, Finansal Harita testi ve koç.', 'Learn Harcama Atlası step by step: adding and importing spending, budget, debts, the Financial Map test and the coach.')}
+  description={t('Harcama Atlası’nı adım adım kullanmayı öğren: harcama ekleme, içe aktarma, bütçe, borçlar, yatırımlar, Finansal Harita testi ve koç.', 'Learn Harcama Atlası step by step: adding and importing spending, budget, debts, investments, the Financial Map test and the coach.')}
 >
   <section class="wrap head">
     <p class="eyebrow reveal">{t('Rehber', 'Guide')}</p>
