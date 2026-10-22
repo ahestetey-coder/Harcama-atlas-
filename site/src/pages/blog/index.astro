@@ -23,6 +23,7 @@ const jsonLd = {
     {
       posts.map((p, i) => (
         <a class="card post reveal" href={`/blog/${p.id}`} style={`--d:${Math.min(i, 3)}`}>
+          {p.data.cover && <img class="thumb" src={p.data.cover} alt="" width="1376" height="768" loading="lazy" />}
           <div class="tags">{p.data.tags.slice(0, 2).map((t) => <span class="chip">{t}</span>)}</div>
           <h2>{p.data.title}</h2>
           <p>{p.data.description}</p>
@@ -57,6 +58,16 @@ const jsonLd = {
   .post:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow);
+  }
+  .thumb {
+    width: calc(100% + 3rem);
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    margin: -1.5rem -1.5rem 0.75rem;
+    border-radius: inherit;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
   }
   .post h2 {
     margin: 0.25rem 0 0;

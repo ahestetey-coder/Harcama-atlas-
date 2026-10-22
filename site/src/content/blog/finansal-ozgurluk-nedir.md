@@ -4,6 +4,8 @@ description: 'Finansal özgürlük için ne kadar birikim gerekir? 4 yüzde kura
 date: 2026-10-18
 tags: ['Finansal özgürlük', 'Birikim']
 cta: test
+cover: '/blog/finansal-ozgurluk-nedir/kapak.jpg'
+coverAlt: 'Ege kıyısında bir balkonda kahvesini içerek dinlenen biri'
 ---
 
 **Finansal özgürlük**, yaşamını sürdürmek için çalışmak zorunda olmadığın noktadır. Birikimin ve yatırımların, giderlerini karşılayacak kadar düzenli getiri sağlar. Çalışmaya devam edebilirsin, ama artık zorunda değilsin.
@@ -22,6 +24,8 @@ Aylık 30.000 TL harcıyorsan yıllık giderin 360.000 TL'dir. Hedefin yaklaşı
 
 Finansal özgürlük tek bir çizgi değil, birbirini izleyen duraklardır.
 
+![Zirveye uzanan patikada duraklar ve yürüyen bir kişi](/blog/finansal-ozgurluk-nedir/1.jpg)
+
 **Bir yıllık özgürlük.** Bir yıllık giderin kadar birikimin var. İşini kaybetsen ya da ara vermek istesen bir yıl boyunca rahatsın. Çoğu insan için ilk büyük eşik budur.
 
 **Coast FI.** Bugünkü birikimin, hiç ekleme yapmasan bile emeklilik yaşına kadar büyüyüp hedefe ulaşacak kadar. Bu noktadan sonra yalnızca güncel giderlerini karşılayacak kadar kazanman yeter.
@@ -37,6 +41,8 @@ Finansal özgürlük tek bir çizgi değil, birbirini izleyen duraklardır.
 Süreyi en çok belirleyen şey gelirin değil, **birikim oranın**dır. Gelirinin %10'unu biriktiren biri ile %40'ını biriktiren biri arasında onlarca yıl fark olabilir. Çünkü yüksek birikim oranı iki şeyi aynı anda yapar: birikimi hızlandırır ve ihtiyaç duyduğun hedefi küçültür.
 
 Bu yüzden ilk adım genellikle harcamaları görmek ve birikim oranını ölçmektir. Gelir artışı, yüksek faizli borçların kapanması ve düzenli yatırım da süreyi kısaltır.
+
+![Madeni para yığınından filizlenen fide ve giderek büyüyen yığınlar](/blog/finansal-ozgurluk-nedir/2.jpg)
 
 ## Nereden başlamalı?
 
