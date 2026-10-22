@@ -11,13 +11,29 @@ interface Props {
   jsonLd?: object
   /** Hesap ve ödeme sayfaları arama motorlarında listelenmez. */
   noindex?: boolean
+  /** Paylaşım görseli (site köküne göre yol) */
+  image?: string
+  /** Blog yazılarında 'article' */
+  ogType?: 'website' | 'article'
 }
-const { title, description, jsonLd, noindex } = Astro.props
+const { title, description, jsonLd, noindex, image = '/og.png', ogType = 'website' } = Astro.props
+const site = Astro.site ?? new URL(Astro.url.origin)
+// Cloudflare Pages klasör sayfalarını sondaki eğik çizgiyle sunar
+const canonical = new URL(Astro.url.pathname.replace(/\/?$/, '/'), site).href
+const ogImage = new URL(image, site).href
+const siteLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'Organization', '@id': `${site.href}#org`, name: 'Harcama Atlası', url: site.href, logo: new URL('/apple-touch-icon.png', site).href },
+    { '@type': 'WebSite', '@id': `${site.href}#site`, name: 'Harcama Atlası', url: site.href, inLanguage: 'tr-TR', publisher: { '@id': `${site.href}#org` } },
+  ],
+}
 const path = Astro.url.pathname.replace(/\/$/, '') || '/'
 const nav = [
   { href: '/#nasil', label: 'Nasıl çalışır' },
   { href: '/fiyatlar', label: 'Fiyatlar' },
   { href: '/nasil-kullanilir', label: 'Nasıl kullanılır' },
+  { href: '/blog', label: 'Blog' },
   { href: '/#sss', label: 'SSS' },
 ]
 ---
@@ -29,7 +45,19 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    {noindex && <meta name="robots" content="noindex" />}
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content="Harcama Atlası" />
+    <meta property="og:locale" content="tr_TR" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="sitemap" href="/sitemap.xml" />
+    <link rel="alternate" type="application/rss+xml" title="Harcama Atlası Blog" href="/blog/rss.xml" />
     <meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0d1722" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -48,6 +76,7 @@ const nav = [
         document.addEventListener('astro:after-swap', apply)
       })()
     </script>
+    <script type="application/ld+json" set:html={JSON.stringify(siteLd)} />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
     <ClientRouter />
   </head>
@@ -59,7 +88,7 @@ const nav = [
           <Brand id="logo-ust" size={34} />
         </a>
         <nav class="links" aria-label="Ana menü">
-          {nav.map((n) => <a href={n.href} aria-current={path === n.href ? 'page' : undefined}>{n.label}</a>)}
+          {nav.map((n) => <a href={n.href} aria-current={path === n.href || (n.href === '/blog' && path.startsWith('/blog/')) ? 'page' : undefined}>{n.label}</a>)}
         </nav>
         <div class="actions">
           <button class="icon-btn" type="button" data-theme-toggle aria-label="Temayı değiştir">
@@ -104,6 +133,7 @@ const nav = [
           <a href="/test">Finansal Harita testi</a>
           <a href="/fiyatlar">Fiyatlar</a>
           <a href="/nasil-kullanilir">Nasıl kullanılır</a>
+          <a href="/blog">Blog</a>
           <a href="/hesap/abonelik">Aboneliğim</a>
         </nav>
         <nav aria-label="Yasal">
@@ -112,6 +142,7 @@ const nav = [
           <a href="/yasal/gizlilik">Gizlilik Politikası</a>
           <a href="/yasal/cerez">Çerez Politikası</a>
           <a href="/yasal/kullanim-kosullari">Kullanım Koşulları</a>
+          <a href="/yasal/on-bilgilendirme">Ön Bilgilendirme Formu</a>
           <a href="/yasal/mesafeli-satis">Mesafeli Satış Sözleşmesi</a>
           <a href="/yasal/iptal-iade">İptal ve İade</a>
         </nav>

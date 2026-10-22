@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const pages = ['/', '/fiyatlar/', '/nasil-kullanilir/', '/test/', '/giris/']
+const pages = ['/', '/fiyatlar/', '/nasil-kullanilir/', '/test/', '/giris/', '/blog/', '/blog/finansal-ozgurluk-nedir/', '/yasal/kvkk/', '/yasal/mesafeli-satis/']
 
 // Testler gerçek veritabanına gitmez; fiyatlar sayfadaki varsayılanlarla kalır
 test.beforeEach(async ({ page }) => {
@@ -77,4 +77,30 @@ test('test sayfası uygulamadaki testi gömülü modda açar', async ({ page }) 
   expect(src).toContain('?gomulu=1&tema=')
   expect(src).toContain('#/harita')
   await expect(page.getByRole('link', { name: 'yeni sekmede aç' })).toHaveAttribute('href', /#\/harita$/)
+})
+
+test('yasal sayfalar: taslak uyarısı ve doldurulacak alanlar', async ({ page }) => {
+  for (const slug of ['kvkk', 'gizlilik', 'cerez', 'kullanim-kosullari', 'on-bilgilendirme', 'mesafeli-satis', 'iptal-iade']) {
+    const res = await page.goto(`/yasal/${slug}/`)
+    expect(res?.status()).toBe(200)
+    await expect(page.getByRole('note')).toContainText('taslak')
+  }
+  await expect(page.locator('.fill').first()).toBeVisible()
+})
+
+test('SEO: canonical, paylaşım görseli, site haritası ve blog', async ({ page, request }) => {
+  await page.goto('/fiyatlar/')
+  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href', 'https://harcama-atlas.pages.dev/fiyatlar/')
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://harcama-atlas.pages.dev/og.png')
+  await page.goto('/giris/')
+  await expect(page.locator('link[rel=canonical]')).toHaveCount(0)
+  const sitemap = await (await request.get('/sitemap.xml')).text()
+  expect(sitemap).toContain('/yasal/kvkk/')
+  expect(sitemap).toContain('/blog/50-30-20-butce-kurali/')
+  expect(sitemap).not.toContain('/giris')
+  expect(await (await request.get('/robots.txt')).text()).toContain('Sitemap:')
+  await page.goto('/blog/')
+  await page.getByRole('link', { name: /50\/30\/20 kuralı/ }).click()
+  await expect(page.locator('h1')).toHaveText(/50\/30\/20/)
+  await expect(page.getByRole('link', { name: 'Paketleri gör' })).toHaveAttribute('href', '/fiyatlar')
 })

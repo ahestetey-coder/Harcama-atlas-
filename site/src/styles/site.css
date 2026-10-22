@@ -356,3 +356,71 @@ a {
     transform: rotate(360deg);
   }
 }
+
+/* Uzun metin: yasal sayfalar ve blog */
+.prose {
+  max-width: 46rem;
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+.prose h1 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-size: clamp(2rem, 4.5vw, 2.9rem);
+  margin: 0 0 0.5rem;
+}
+.prose h2 {
+  font-size: 1.3rem;
+  letter-spacing: -0.015em;
+  margin: 2.4rem 0 0.6rem;
+}
+.prose h3 {
+  font-size: 1.08rem;
+  margin: 1.6rem 0 0.4rem;
+}
+.prose p,
+.prose li {
+  color: var(--ink-2);
+}
+.prose strong {
+  color: var(--ink);
+}
+.prose a {
+  color: var(--route);
+}
+.prose ul,
+.prose ol {
+  padding-left: 1.3rem;
+}
+.prose li {
+  margin: 0.3rem 0;
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.93rem;
+  margin: 1rem 0;
+  display: block;
+  overflow-x: auto;
+}
+.prose th,
+.prose td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.6rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+}
+.prose th {
+  color: var(--ink);
+}
+.prose blockquote {
+  margin: 1.2rem 0;
+  padding: 0.8rem 1.1rem;
+  border-left: 3px solid var(--brand);
+  background: var(--brand-soft);
+  border-radius: 0 0.6rem 0.6rem 0;
+}
+.prose blockquote p {
+  margin: 0;
+}

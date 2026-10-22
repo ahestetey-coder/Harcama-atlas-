@@ -1,0 +1,110 @@
+---
+import Site from './Site.astro'
+import { LEGAL_DRAFT, LEGAL_UPDATED } from '../data/company'
+
+interface Props {
+  title: string
+  description: string
+}
+const { title, description } = Astro.props
+const path = Astro.url.pathname.replace(/\/$/, '')
+const docs = [
+  { href: '/yasal/kvkk', label: 'KVKK Aydınlatma Metni' },
+  { href: '/yasal/gizlilik', label: 'Gizlilik Politikası' },
+  { href: '/yasal/cerez', label: 'Çerez Politikası' },
+  { href: '/yasal/kullanim-kosullari', label: 'Kullanım Koşulları' },
+  { href: '/yasal/on-bilgilendirme', label: 'Ön Bilgilendirme Formu' },
+  { href: '/yasal/mesafeli-satis', label: 'Mesafeli Satış Sözleşmesi' },
+  { href: '/yasal/iptal-iade', label: 'İptal ve İade' },
+]
+---
+
+<Site title={`${title} · Harcama Atlası`} description={description}>
+  <div class="wrap legal">
+    <nav class="side" aria-label="Yasal metinler">
+      <p class="eyebrow">Yasal</p>
+      {docs.map((d) => <a href={d.href} aria-current={path === d.href ? 'page' : undefined}>{d.label}</a>)}
+    </nav>
+    <article class="prose">
+      <h1>{title}</h1>
+      <p class="meta">Son güncelleme: {LEGAL_UPDATED}</p>
+      {
+        LEGAL_DRAFT && (
+          <p class="draft" role="note">
+            Bu metin taslaktır ve hukuki incelemeden geçmemiştir. Sarı işaretli alanlar şirket bilgileri belli olunca doldurulacaktır.
+          </p>
+        )
+      }
+      <slot />
+    </article>
+  </div>
+</Site>
+
+<style>
+  .legal {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: 3rem;
+    padding-top: 3rem;
+  }
+  .side {
+    position: sticky;
+    top: 5.5rem;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .side .eyebrow {
+    margin: 0 0 0.75rem;
+  }
+  .side a {
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.6rem;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 0.93rem;
+  }
+  .side a:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+  .side a[aria-current='page'] {
+    background: var(--brand-soft);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .meta {
+    color: var(--ink-2);
+    font-size: 0.9rem;
+  }
+  .draft {
+    padding: 0.85rem 1rem;
+    border: 1px solid rgb(234 179 8 / 0.45);
+    border-radius: 0.8rem;
+    background: rgb(250 204 21 / 0.12);
+    font-size: 0.93rem;
+  }
+  @media (max-width: 860px) {
+    .legal {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      padding-top: 1.5rem;
+    }
+    .side {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .side .eyebrow {
+      width: 100%;
+      margin-bottom: 0.25rem;
+    }
+    .side a {
+      border: 1px solid var(--line);
+      font-size: 0.85rem;
+      padding: 0.35rem 0.7rem;
+    }
+  }
+</style>

@@ -1,0 +1,23 @@
+---
+import { COMPANY } from '../data/company'
+
+interface Props {
+  k: keyof typeof COMPANY
+  /** Boşken görünecek açıklama */
+  label: string
+}
+const { k, label } = Astro.props
+const value = COMPANY[k]
+---
+
+{value ? <span>{value}</span> : <span class="fill" title="Şirket bilgisi girilince dolacak">[{label}]</span>}
+
+<style>
+  .fill {
+    padding: 0 0.3em;
+    border-radius: 0.3em;
+    background: rgb(250 204 21 / 0.28);
+    color: var(--ink);
+    font-weight: 600;
+  }
+</style>
