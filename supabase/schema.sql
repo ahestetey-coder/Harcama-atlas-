@@ -1091,8 +1091,8 @@ create table if not exists public.ha_web_prices (
   primary key (plan, period)
 );
 insert into public.ha_web_prices (plan, period, amount_kurus, trial_days) values
-  ('plus', 'monthly', 9999, 0),
-  ('plus', 'yearly', 95990, 0),
+  ('plus', 'monthly', 9999, 7),
+  ('plus', 'yearly', 95990, 7),
   ('plusplus', 'monthly', 19999, 7),
   ('plusplus', 'yearly', 191990, 7)
 on conflict (plan, period) do nothing;

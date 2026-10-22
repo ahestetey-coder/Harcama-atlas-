@@ -29,6 +29,7 @@ export const PLANS: PlanInfo[] = [
     tagline: 'Bütçeni planla, varlıklarını tek yerde gör',
     monthlyKurus: 9999,
     highlights: ['Rotamı netleştir: gerçek rakamlarla kesin özgürlük yılı', 'Koçun otomatik bütçesi ve kategori limitleri', 'Borçlar, taksitler ve düzenli ödemeler', 'Yatırımlarım: altın, döviz, fon, hisse, kripto'],
+    trial: '7 gün ücretsiz dene',
   },
   {
     id: 'plus_plus',

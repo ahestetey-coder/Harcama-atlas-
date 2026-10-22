@@ -139,15 +139,25 @@ Deno.serve(async (req) => {
       return json({ url: urls.general?.overview, cancelUrl: urls.subscriptions?.[0]?.cancel_subscription, paymentUrl: urls.subscriptions?.[0]?.update_subscription_payment_method })
     }
 
-    if (body.action === 'change') {
+    if (body.action === 'change' || body.action === 'preview') {
       const plan = body.plan
       const period = body.period
       if ((plan !== 'plus' && plan !== 'plusplus') || (period !== 'monthly' && period !== 'yearly')) return json({ error: 'Geçersiz paket' }, 400)
       if (plan === sub.plan && period === sub.period) return json({ ok: true, unchanged: true })
       const { data: price } = await db.from('ha_web_prices').select('paddle_price_id, active').eq('plan', plan).eq('period', period).maybeSingle()
       if (!price?.paddle_price_id || !price.active) return json({ error: 'Bu paket şu an satışta değil' }, 409)
-      // Denemedeki abonelik değişirse deneme biter ve yeni paket hemen ücretlendirilir
-      await api('PATCH', `/subscriptions/${sub.id}`, { items: [{ price_id: price.paddle_price_id, quantity: 1 }], proration_billing_mode: 'prorated_immediately' })
+      // Yükseltmede yenileme tarihine kalan günlerin farkı hemen alınır, düşürmede kalan tutar sonraki ödemelere sayılır.
+      // Denemedeyken ödeme yoktur: paket hemen değişir, deneme sürer, yeni fiyat deneme bitince alınır.
+      const change = {
+        items: [{ price_id: price.paddle_price_id, quantity: 1 }],
+        proration_billing_mode: sub.status === 'trialing' ? 'do_not_bill' : 'prorated_immediately',
+      }
+      if (body.action === 'preview') {
+        const p = await api('PATCH', `/subscriptions/${sub.id}/preview`, change)
+        const r = (p.update_summary as { result?: { action?: string; amount?: string } } | null)?.result
+        return json({ action: r?.action ?? 'none', amount_kurus: Number(r?.amount ?? 0), trialing: sub.status === 'trialing' })
+      }
+      await api('PATCH', `/subscriptions/${sub.id}`, change)
       return json({ ok: true })
     }
 

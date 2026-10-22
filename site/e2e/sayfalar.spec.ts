@@ -34,7 +34,7 @@ test('fiyatlar: yıllık seçilince fiyat ve ödeme bağlantısı değişir', as
   await expect(plus.getByText('₺99,99')).toBeVisible()
   await page.getByRole('button', { name: /Yıllık/ }).click()
   await expect(plus.getByText('₺959,90')).toBeVisible()
-  await expect(plus.getByRole('link', { name: /Plus'a geç/ })).toHaveAttribute('href', '/odeme?plan=plus&period=yearly')
+  await expect(plus.getByRole('link', { name: /7 gün ücretsiz dene/ })).toHaveAttribute('href', '/odeme?plan=plus&period=yearly')
   await expect(page.getByRole('row', { name: /Rotamı netleştir/ })).toBeVisible()
 })
 

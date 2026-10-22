@@ -16,7 +16,7 @@ import Site from '../../layouts/Site.astro'
 
     <div class="card change" data-change hidden>
       <h2>Paketi değiştir</h2>
-      <p class="muted">Yeni paket hemen başlar; kalan süre için fark orantılı hesaplanır.</p>
+      <p class="muted">Yeni paket hemen başlar. Yükseltirsen yenileme tarihine kalan günlerin farkı bugün alınır; tutarı onaylamadan önce görürsün.</p>
       <div class="opts" data-opts></div>
       <p class="notice" data-change-msg role="status" aria-live="polite"></p>
     </div>
@@ -139,9 +139,22 @@ import Site from '../../layouts/Site.astro'
             const plan = b.dataset.plan as Plan
             const period = b.dataset.period as Period
             const msg = $('[data-change-msg]')
-            if (!confirm(`${PLAN_LABEL[plan]} · ${PERIOD_LABEL[period]} paketine geçilsin mi? Fark hemen kartından alınır ya da iade edilir.`)) return
             b.disabled = true
             try {
+              // Önce Paddle'dan bugünkü fark sorulur, kişi tutarı görüp onaylar
+              const pv = await billing<{ action: string; amount_kurus: number; trialing: boolean }>({ action: 'preview', plan, period })
+              const name = `${PLAN_LABEL[plan]} · ${PERIOD_LABEL[period]}`
+              const cost = pv.trialing
+                ? 'Denemen sürüyor; bugün ücret alınmaz, yeni fiyat deneme bitince alınır.'
+                : pv.action === 'charge' && pv.amount_kurus > 0
+                  ? `Yenileme tarihine kalan süre için bugün ${formatTl(pv.amount_kurus)} fark alınır.`
+                  : pv.action === 'credit' && pv.amount_kurus > 0
+                    ? `Kalan süren için ${formatTl(pv.amount_kurus)} sonraki ödemelerinden düşülür.`
+                    : 'Bugün ek ücret alınmaz.'
+              if (!confirm(`${name} paketine geçilsin mi?\n\n${cost}`)) {
+                b.disabled = false
+                return
+              }
               await billing({ action: 'change', plan, period })
               msg.dataset.tone = 'ok'
               msg.textContent = 'Paketin değişiyor. Birkaç saniye içinde burada görünecek.'
