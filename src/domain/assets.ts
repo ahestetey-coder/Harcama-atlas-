@@ -1,5 +1,6 @@
 import { nthDue, progressOf } from './recurring'
 import type { IsoDate, RecurringPayment } from './types'
+import { tt } from '../lib/i18n'
 
 /**
  * Plus "Varlıklarım": varlıklar ve borçlar. Döviz TCMB kurundan, sembolü girilen hisse, ETF, fon, kripto ve
@@ -12,16 +13,16 @@ export const ASSET_KINDS: Exclude<AssetKind, 'debt'>[] = ['deposit', 'fx', 'fund
 
 export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
   deposit: 'Mevduat',
-  fx: 'Döviz',
+  fx: tt('Döviz'),
   fund: 'Fon',
-  gold: 'Altın',
+  gold: tt('Altın'),
   commodity: 'Emtia',
-  stock: 'Hisse (BIST)',
-  foreign: 'Yabancı hisse / ETF',
+  stock: tt('Hisse (BIST)'),
+  foreign: tt('Yabancı hisse / ETF'),
   cash: 'Nakit',
-  other: 'Diğer',
+  other: tt('Diğer'),
   crypto: 'Kripto',
-  debt: 'Borç',
+  debt: tt('Borç'),
 }
 
 /** Varsayılan birimler (kullanıcı değiştirebilir). */
@@ -71,23 +72,23 @@ export interface AssetQuote {
 }
 
 export const QUOTE_MARKET_LABEL: Record<QuoteMarket, string> = {
-  bist: 'Borsa İstanbul',
-  us: 'Yabancı borsa',
+  bist: tt('Borsa İstanbul'),
+  us: tt('Yabancı borsa'),
   tefas: 'TEFAS',
   crypto: 'Kripto',
-  gold: 'Altın (ons)',
+  gold: tt('Altın (ons)'),
   commodity: 'Emtia',
 }
 
 /** Emtialar: sembol, ad, birim ve adın tanınması için desen. Fiyat vadeli işlem fiyatından birime çevrilir. */
 export const COMMODITIES: { symbol: string; name: string; unit: string; match: RegExp }[] = [
-  { symbol: 'XAG', name: 'Gümüş', unit: 'gram', match: /gümüş|gumus|silver/i },
-  { symbol: 'XPT', name: 'Platin', unit: 'gram', match: /platin/i },
-  { symbol: 'XPD', name: 'Paladyum', unit: 'gram', match: /paladyum|palladium/i },
-  { symbol: 'BRENT', name: 'Brent petrol', unit: 'varil', match: /brent/i },
-  { symbol: 'WTI', name: 'Ham petrol (WTI)', unit: 'varil', match: /wti|ham petrol|petrol/i },
-  { symbol: 'COPPER', name: 'Bakır', unit: 'kg', match: /bakır|bakir|copper/i },
-  { symbol: 'NATGAS', name: 'Doğal gaz', unit: 'MMBtu', match: /doğal ?gaz|dogal ?gaz|natural gas/i },
+  { symbol: 'XAG', name: tt('Gümüş'), unit: 'gram', match: /gümüş|gumus|silver/i },
+  { symbol: 'XPT', name: tt('Platin'), unit: 'gram', match: /platin/i },
+  { symbol: 'XPD', name: tt('Paladyum'), unit: 'gram', match: /paladyum|palladium/i },
+  { symbol: 'BRENT', name: tt('Brent petrol'), unit: 'varil', match: /brent/i },
+  { symbol: 'WTI', name: tt('Ham petrol (WTI)'), unit: 'varil', match: /wti|ham petrol|petrol/i },
+  { symbol: 'COPPER', name: tt('Bakır'), unit: 'kg', match: /bakır|bakir|copper/i },
+  { symbol: 'NATGAS', name: tt('Doğal gaz'), unit: 'MMBtu', match: /doğal ?gaz|dogal ?gaz|natural gas/i },
 ]
 
 /** Sembolü sadeleştirir; geçersizse null. */
@@ -124,14 +125,14 @@ export type DebtType = 'card' | 'loan' | 'overdraft' | 'mortgage' | 'auto' | 'pe
 export const DEBT_TYPES: DebtType[] = ['card', 'loan', 'overdraft', 'mortgage', 'auto', 'personal', 'tax', 'other']
 
 export const DEBT_TYPE_LABEL: Record<DebtType, string> = {
-  card: 'Kredi kartı',
-  loan: 'İhtiyaç kredisi',
-  overdraft: 'Kredili mevduat (KMH)',
-  mortgage: 'Konut kredisi',
-  auto: 'Taşıt kredisi',
-  personal: 'Kişisel borç',
-  tax: 'Vergi / SGK borcu',
-  other: 'Diğer borç',
+  card: tt('Kredi kartı'),
+  loan: tt('İhtiyaç kredisi'),
+  overdraft: tt('Kredili mevduat (KMH)'),
+  mortgage: tt('Konut kredisi'),
+  auto: tt('Taşıt kredisi'),
+  personal: tt('Kişisel borç'),
+  tax: tt('Vergi / SGK borcu'),
+  other: tt('Diğer borç'),
 }
 
 /** Genellikle aylık taksitle ödenen borç türleri (eklemede varsayılan ödeme şekli). */

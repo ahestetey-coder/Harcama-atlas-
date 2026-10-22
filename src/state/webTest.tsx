@@ -8,6 +8,7 @@ import { useAuth } from './auth'
 import { routeProfile } from '../domain/routeSetup'
 import { useRepo, useSettings } from './data'
 import { useUi } from './ui'
+import { tt } from '../lib/i18n'
 
 /** Adresteki ?kod=ATL-… (ör. #/yolculuk?kod=…) girişten sonra kullanılmak üzere saklanır. */
 export function captureLeadCodeFromUrl(hash = window.location.hash) {
@@ -57,7 +58,7 @@ export function WebTestLinker() {
       clearPendingLeadCode()
       if (!lead) return
       await saveWebTest(repo, lead)
-      toast("Web'deki finansal haritan hesabına bağlandı.")
+      toast(tt('Web\'deki finansal haritan hesabına bağlandı.'))
       if (!routeProfile(settings?.journey)) navigate('/yolculuk')
     }
     run().catch(() => {

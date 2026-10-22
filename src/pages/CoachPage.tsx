@@ -21,25 +21,26 @@ import { useAuth } from '../state/auth'
 import { coachMemoryText, coachSummary, DEFAULT_SHARE, MEMORY_MAX, useCoach, useReports, type CoachDebtInfo, type CoachState } from '../state/coach'
 import { useRepo } from '../state/data'
 import { useUi } from '../state/ui'
+import { dateLocale, tt, ttf } from '../lib/i18n'
 
 export default function CoachPage() {
   return (
     <div>
       <PageHeader
-        title="Koçum"
+        title={tt('Koçum')}
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plusplus" /> Kişisel planınız
+            <PlanBadge plan="plusplus" /> {tt('Kişisel planınız')}
           </span>
         }
       />
       <PlanGate
         feature="aiCoach"
-        title="Finans koçu"
+        title={tt('Finans koçu')}
         points={[
-          'Borçlarınızı en az faizle kapatma sırası ve yapılandırma hesabı',
-          'Gelir ve giderinize göre her ay yatırıma ayrılacak tutar',
-          'Bütçe, ödeme günü ve kilometre taşlarında size özel mesajlar',
+          tt('Borçlarınızı en az faizle kapatma sırası ve yapılandırma hesabı'),
+          tt('Gelir ve giderinize göre her ay yatırıma ayrılacak tutar'),
+          tt('Bütçe, ödeme günü ve kilometre taşlarında size özel mesajlar'),
         ]}
       >
         <CoachContent />
@@ -73,7 +74,7 @@ function CoachContent() {
         </div>
         <div className="flex flex-col gap-4 lg:col-span-2">{state.plan && <DebtPanel state={state} plan={state.plan} onChange={save} />}</div>
       </div>
-      <p className="text-[12.5px] text-subtle">Koç yatırım tavsiyesi vermez; tahminler garanti değildir.</p>
+      <p className="text-[12.5px] text-subtle">{tt('Koç yatırım tavsiyesi vermez; tahminler garanti değildir.')}</p>
     </div>
   )
 }
@@ -82,9 +83,9 @@ function CoachContent() {
 
 const monthName = (offset: number) => {
   const d = addMonthsClamped(todayIso(), offset)
-  return new Date(`${d}T00:00:00`).toLocaleDateString('tr-TR', { month: 'short', year: 'numeric' })
+  return new Date(`${d}T00:00:00`).toLocaleDateString(dateLocale(), { month: 'short', year: 'numeric' })
 }
-const monthsText = (m: number) => (m < 12 ? `${m} ay` : m % 12 === 0 ? `${m / 12} yıl` : `${Math.floor(m / 12)} yıl ${m % 12} ay`)
+const monthsText = (m: number) => (m < 12 ? `${m} ay` : m % 12 === 0 ? ttf('{0} yıl', m / 12) : ttf('{0} yıl {1} ay', Math.floor(m / 12), m % 12))
 
 function useCountUp(value: number, duration = 1.2): number {
   const reduced = useReducedMotion()
@@ -121,7 +122,7 @@ function CoachOrb({ size = 84, talking = false }: { size?: number; talking?: boo
       <div className="absolute inset-[3px] rounded-full bg-slate-950" />
       <motion.div
         className="absolute inset-[10%] rounded-full"
-        style={{ background: 'radial-gradient(circle at 35% 30%, #a7f3d0, #10b981 45%, #0e7490 80%)', boxShadow: '0 0 40px rgba(16,185,129,.55)' }}
+        style={{ background: 'radial-gradient(circle at 35% 30%, #a7f3d0, #10b981 45%, #0e7490 80%)', boxShadow: tt('0 0 40px rgba(16,185,129,.55)') }}
         animate={reduced ? undefined : { scale: talking ? [1, 1.08, 0.98, 1.06, 1] : [1, 1.04, 1] }}
         transition={{ duration: talking ? 0.9 : 3.2, repeat: Infinity, ease: 'easeInOut' }}
       />
@@ -133,10 +134,10 @@ function CoachOrb({ size = 84, talking = false }: { size?: number; talking?: boo
           <motion.span
             key={i}
             className="absolute left-1/2 top-1/2 size-1.5 rounded-full bg-white"
-            style={{ boxShadow: '0 0 8px #fff' }}
+            style={{ boxShadow: tt('0 0 8px #fff') }}
             animate={{ rotate: 360 }}
             transition={{ duration: 5 + i * 2, repeat: Infinity, ease: 'linear', delay: i }}
-            transformTemplate={({ rotate }) => `translate(-50%, -50%) rotate(${rotate}) translateX(${size / 2 + 4}px)`}
+            transformTemplate={({ rotate }) => ttf('translate(-50%, -50%) rotate({0}) translateX({1}px)', rotate, size / 2 + 4)}
           />
         ))}
     </div>
@@ -164,16 +165,16 @@ function Hero({ state }: { state: CoachState }) {
   const debtFree = p?.payoff?.months ?? null
   const invest = p?.phases.find((x) => x.id === 'invest')
   const line = !p
-    ? 'Sizi tanıyınca borçtan yatırıma uzanan planınızı çıkaracağım.'
+    ? tt('Sizi tanıyınca borçtan yatırıma uzanan planınızı çıkaracağım.')
     : p.surplusKurus <= 0
-      ? 'Önce gelir ve gider dengesini kuralım; sonra her şey daha kolay.'
+      ? tt('Önce gelir ve gider dengesini kuralım; sonra her şey daha kolay.')
       : phase?.id === 'debt'
-        ? 'İlk hedefimiz borçları en az faizle kapatmak.'
+        ? tt('İlk hedefimiz borçları en az faizle kapatmak.')
         : phase?.id === 'emergency'
-          ? 'Borcunuz yok. Önce güvence birikimi, sonra yatırım.'
-          : 'Borcunuz yok ve güvenceniz hazır. Her ay düzenli yatırım zamanı.'
+          ? tt('Borcunuz yok. Önce güvence birikimi, sonra yatırım.')
+          : tt('Borcunuz yok ve güvenceniz hazır. Her ay düzenli yatırım zamanı.')
   return (
-    <section aria-label="Koç özeti" className="relative overflow-hidden rounded-3xl bg-slate-950 p-5 text-white shadow-float sm:p-7">
+    <section aria-label={tt('Koç özeti')} className="relative overflow-hidden rounded-3xl bg-slate-950 p-5 text-white shadow-float sm:p-7">
       <div aria-hidden className="pointer-events-none absolute inset-0">
         {[
           ['#10b981', '-10%', '-30%', 0],
@@ -188,37 +189,37 @@ function Hero({ state }: { state: CoachState }) {
             transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut', delay: d as number }}
           />
         ))}
-        <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+        <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: tt('18px 18px') }} />
       </div>
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
         <CoachOrb />
         <div className="min-w-0 flex-1">
           <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-[13px] font-medium uppercase tracking-[0.14em] text-emerald-300">
-            Finans koçun
+            {tt('Finans koçun')}
           </motion.p>
           <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="mt-1 font-display text-xl font-semibold leading-snug sm:text-2xl">
             {line}
           </motion.h2>
           {!p && (
             <Link to="/yolculuk" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-50">
-              Kısa ankete başla <ArrowRight className="size-4" />
+              {tt('Kısa ankete başla')} <ArrowRight className="size-4" />
             </Link>
           )}
         </div>
       </div>
       {p && (
         <div className="relative mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <HeroStat label="Bu ay plana" delay={0.15}>
+          <HeroStat label={tt('Bu ay plana')} delay={0.15}>
             <CountUp kurus={Math.max(0, p.monthlyPlanKurus)} />
           </HeroStat>
-          <HeroStat label="Borçsuz olma" delay={0.25}>
-            {p.debts.length === 0 ? 'Borç yok' : debtFree ? monthName(debtFree - 1) : 'Kapanmıyor'}
+          <HeroStat label={tt('Borçsuz olma')} delay={0.25}>
+            {p.debts.length === 0 ? tt('Borç yok') : debtFree ? monthName(debtFree - 1) : tt('Kapanmıyor')}
           </HeroStat>
-          <HeroStat label="Yatırım başlangıcı" delay={0.35}>
-            {invest ? (invest.startMonth === 0 ? 'Bu ay' : monthName(invest.startMonth)) : '—'}
+          <HeroStat label={tt('Yatırım başlangıcı')} delay={0.35}>
+            {invest ? (invest.startMonth === 0 ? tt('Bu ay') : monthName(invest.startMonth)) : '—'}
           </HeroStat>
-          <HeroStat label="Hedef birikim" delay={0.45}>
-            {p.targetMonths === null ? 'Ulaşılamıyor' : p.targetMonths === 0 ? 'Ulaşıldı' : `~${monthName(p.targetMonths).split(' ')[1]}`}
+          <HeroStat label={tt('Hedef birikim')} delay={0.45}>
+            {p.targetMonths === null ? tt('Ulaşılamıyor') : p.targetMonths === 0 ? tt('Ulaşıldı') : `~${monthName(p.targetMonths).split(' ')[1]}`}
           </HeroStat>
         </div>
       )}
@@ -244,16 +245,16 @@ function Timeline({ plan }: { plan: CoachPlan }) {
   const reduced = useReducedMotion()
   if (plan.surplusKurus <= 0 && plan.debts.length === 0) {
     return (
-      <Alert tone="warning" icon={<AlertTriangle className="size-4" />} title="Önce bütçe dengesi">
-        Gideriniz gelirinizi aşıyor; plana ayrılacak tutar yok.
+      <Alert tone="warning" icon={<AlertTriangle className="size-4" />} title={tt('Önce bütçe dengesi')}>
+        {tt('Gideriniz gelirinizi aşıyor; plana ayrılacak tutar yok.')}
       </Alert>
     )
   }
-  const goal: CoachPhase = { id: 'invest', title: 'Hedef birikim', startMonth: plan.targetMonths ?? 0, endMonth: null, monthlyKurus: 0, detail: formatKurus(plan.goalKurus) }
+  const goal: CoachPhase = { id: 'invest', title: tt('Hedef birikim'), startMonth: plan.targetMonths ?? 0, endMonth: null, monthlyKurus: 0, detail: formatKurus(plan.goalKurus) }
   return (
-    <Card className="p-5" aria-label="Planın">
+    <Card className="p-5" aria-label={tt('Planın')}>
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <Flag className="size-5 text-accent" /> Planın
+        <Flag className="size-5 text-accent" /> {tt('Planın')}
       </h2>
       <ol className="relative mt-5 grid grid-cols-1 gap-5 md:grid-cols-[repeat(auto-fit,minmax(0,1fr))] md:gap-3">
         {plan.phases.map((ph, i) => (
@@ -271,7 +272,7 @@ function Timeline({ plan }: { plan: CoachPlan }) {
           <div>
             <div className="font-semibold text-ink">{goal.title}</div>
             <div className="num text-[12.5px] text-muted">{goal.detail}</div>
-            <div className="text-[12.5px] text-muted">{plan.targetMonths === null ? 'Bu tempoyla ulaşılmıyor' : plan.targetMonths === 0 ? 'Ulaşıldı' : `Tahmini ${monthName(plan.targetMonths)} (orta varsayım)`}</div>
+            <div className="text-[12.5px] text-muted">{plan.targetMonths === null ? tt('Bu tempoyla ulaşılmıyor') : plan.targetMonths === 0 ? tt('Ulaşıldı') : ttf('Tahmini {0} (orta varsayım)', monthName(plan.targetMonths))}</div>
           </div>
         </motion.li>
       </ol>
@@ -282,7 +283,7 @@ function Timeline({ plan }: { plan: CoachPlan }) {
 function PhaseNode({ ph, i, current, reduced }: { ph: CoachPhase; i: number; current: boolean; reduced: boolean }) {
   const Icon = PHASE_ICON[ph.id]
   const color = PHASE_COLOR[ph.id]
-  const range = ph.endMonth === null ? `${ph.startMonth === 0 ? 'Bu ay' : monthName(ph.startMonth)} ve sonrası` : `${ph.startMonth === 0 ? 'Bu ay' : monthName(ph.startMonth)} – ${monthName(Math.max(ph.endMonth - 1, ph.startMonth))}`
+  const range = ph.endMonth === null ? ttf('{0} ve sonrası', ph.startMonth === 0 ? tt('Bu ay') : monthName(ph.startMonth)) : `${ph.startMonth === 0 ? tt('Bu ay') : monthName(ph.startMonth)} – ${monthName(Math.max(ph.endMonth - 1, ph.startMonth))}`
   return (
     <motion.li initial={reduced ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.25, type: 'spring', stiffness: 200, damping: 20 }} className="relative flex gap-3 md:flex-col">
       {/* bağlantı çizgisi */}
@@ -295,17 +296,17 @@ function PhaseNode({ ph, i, current, reduced }: { ph: CoachPhase; i: number; cur
           transition={{ delay: 0.4 + i * 0.25, duration: 0.6 }}
         />
       </span>
-      <span className="relative z-10 grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-lg" style={{ background: color, boxShadow: `0 8px 24px ${color}55` }}>
+      <span className="relative z-10 grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-lg" style={{ background: color, boxShadow: ttf('0 8px 24px {0}55', color) }}>
         <Icon className="size-5" />
-        {current && !reduced && <motion.span className="absolute inset-0 rounded-2xl" style={{ border: `2px solid ${color}` }} animate={{ scale: [1, 1.35], opacity: [0.8, 0] }} transition={{ duration: 1.6, repeat: Infinity }} />}
+        {current && !reduced && <motion.span className="absolute inset-0 rounded-2xl" style={{ border: ttf('2px solid {0}', color) }} animate={{ scale: [1, 1.35], opacity: [0.8, 0] }} transition={{ duration: 1.6, repeat: Infinity }} />}
       </span>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-ink">{ph.title}</span>
-          {current && <Badge tone="accent">Şimdi</Badge>}
+          {current && <Badge tone="accent">{tt('Şimdi')}</Badge>}
         </div>
         <div className="text-[12.5px] text-muted">{range}</div>
-        <div className="num mt-0.5 text-[13px] font-medium text-ink">Ayda {formatKurus(ph.monthlyKurus)}</div>
+        <div className="num mt-0.5 text-[13px] font-medium text-ink">{ttf('Ayda {0}', formatKurus(ph.monthlyKurus))}</div>
         <div className="text-[12px] text-subtle">{ph.detail}</div>
       </div>
     </motion.li>
@@ -343,7 +344,7 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
   const read = state.messages.filter((m) => m.read)
   const [draft, setDraft] = useState('')
   const aiReady = !!backend && !!user && state.settings.aiConsent
-  const aiHint = !backend || !user ? 'Serbest soru için hesabınızla giriş yapın' : !state.settings.aiConsent ? 'Serbest soru için aşağıdan yapay zekâ iznini açın' : 'Koça bir şey sorun…'
+  const aiHint = !backend || !user ? tt('Serbest soru için hesabınızla giriş yapın') : !state.settings.aiConsent ? tt('Serbest soru için aşağıdan yapay zekâ iznini açın') : tt('Koça bir şey sorun…')
   const [shown, setShown] = useState(reduced ? unread.length : 0)
   const [thread, setThread] = useState<Bubble[]>([])
   const [typing, setTyping] = useState(false)
@@ -393,7 +394,7 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
           .catch(() => {})
       }
     } catch (e) {
-      setThread((t) => [...t, { key: `c-${t.length}`, from: 'coach', text: e instanceof Error ? e.message : 'Koç şu an yanıt veremiyor.', error: true }])
+      setThread((t) => [...t, { key: `c-${t.length}`, from: 'coach', text: e instanceof Error ? e.message : tt('Koç şu an yanıt veremiyor.'), error: true }])
     } finally {
       setTyping(false)
     }
@@ -404,13 +405,13 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
 
   const pending = shown < unread.length || typing
   return (
-    <Card className="flex flex-col p-0" aria-label="Koç mesajları">
+    <Card className="flex flex-col p-0" aria-label={tt('Koç mesajları')}>
       <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
         <CoachOrb size={36} talking={pending} />
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-ink">Koç</div>
+          <div className="font-semibold text-ink">{tt('Koç')}</div>
           <div className="text-[12px] text-muted">
-            {pending ? 'yazıyor…' : unread.length ? `${unread.length} yeni mesaj` : aiReady ? 'Çevrimiçi' : 'Çevrimiçi · cihazınızda çalışıyor'}
+            {pending ? tt('yazıyor…') : unread.length ? ttf('{0} yeni mesaj', unread.length) : aiReady ? tt('Çevrimiçi') : tt('Çevrimiçi · cihazınızda çalışıyor')}
           </div>
         </div>
         {thread.length > 0 && (
@@ -418,14 +419,14 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
               setThread([])
               setSummarizedUpTo(0)
             }}>
-            Sohbeti sil
+            {tt('Sohbeti sil')}
           </Button>
         )}
       </div>
       <div className="flex max-h-[560px] min-h-[340px] flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 sm:px-5" role="log" aria-live="polite">
         {read.length > 0 && (
           <button type="button" onClick={() => setShowOld((v) => !v)} className="mx-auto inline-flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1 text-[12px] text-muted hover:text-ink">
-            Önceki mesajlar ({read.length}) <ChevronDown className={cn('size-3.5 transition-transform', showOld && 'rotate-180')} />
+            {tt('Önceki mesajlar (')}{read.length}) <ChevronDown className={cn('size-3.5 transition-transform', showOld && 'rotate-180')} />
           </button>
         )}
         {showOld && read.map((m) => <CoachBubble key={m.id} msg={m} dim />)}
@@ -441,7 +442,7 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
       </div>
       <div className="border-t border-line px-4 py-3 sm:px-5">
         {state.plan && (
-          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2" aria-label="Hazır sorular">
+          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2" aria-label={tt('Hazır sorular')}>
             {QUESTIONS.map((q) => (
               <button
                 key={q.id}
@@ -462,10 +463,10 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
             void send()
           }}
         >
-          <Input aria-label="Koça yazın" disabled={!aiReady} value={draft} maxLength={1000} onChange={(e) => setDraft(e.target.value)} placeholder={aiHint} className="flex-1" />
-          <Button type="submit" variant="primary" disabled={!aiReady || !draft.trim() || typing} icon={<Send className="size-4" />} aria-label="Gönder" />
+          <Input aria-label={tt('Koça yazın')} disabled={!aiReady} value={draft} maxLength={1000} onChange={(e) => setDraft(e.target.value)} placeholder={aiHint} className="flex-1" />
+          <Button type="submit" variant="primary" disabled={!aiReady || !draft.trim() || typing} icon={<Send className="size-4" />} aria-label={tt('Gönder')} />
         </form>
-        {remaining != null && <p className="mt-1.5 text-[12px] text-subtle">Bugün {remaining} soru hakkınız kaldı.</p>}
+        {remaining != null && <p className="mt-1.5 text-[12px] text-subtle">{ttf('Bugün {0} soru hakkınız kaldı.', remaining)}</p>}
       </div>
     </Card>
   )
@@ -503,7 +504,7 @@ function CoachBubble({ msg, text, dim, error, onDismiss }: { msg?: CoachMessage;
                 )}
                 {onDismiss && (
                   <button type="button" onClick={onDismiss} className="inline-flex items-center gap-1 text-[12.5px] text-subtle hover:text-ink">
-                    <CheckCheck className="size-3.5" /> Okudum
+                    <CheckCheck className="size-3.5" /> {tt('Okudum')}
                   </button>
                 )}
               </div>
@@ -534,16 +535,16 @@ function NewsBubble({ r, onDismiss }: { r: Report; onDismiss: () => void }) {
                 <span className="text-[13px] font-medium text-ink">{t.title}</span>
               </div>
               <div className="mt-0.5 line-clamp-2 text-[12.5px] text-muted">{t.sections.ne_oldu?.text}</div>
-              <div className="mt-0.5 text-[11.5px] text-subtle">{t.sources.length} kaynak · ilk kaynak {t.sources[0]?.institution}</div>
+              <div className="mt-0.5 text-[11.5px] text-subtle">{ttf('{0} kaynak · ilk kaynak {1}', t.sources.length, t.sources[0]?.institution)}</div>
             </li>
           ))}
         </ul>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <Link to="/ogren" className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-accent hover:underline">
-            Raporun tamamı ve kaynaklar <ArrowRight className="size-3.5" />
+            {tt('Raporun tamamı ve kaynaklar')} <ArrowRight className="size-3.5" />
           </Link>
           <button type="button" onClick={onDismiss} className="inline-flex items-center gap-1 text-[12.5px] text-subtle hover:text-ink">
-            <CheckCheck className="size-3.5" /> Okudum
+            <CheckCheck className="size-3.5" /> {tt('Okudum')}
           </button>
         </div>
       </div>
@@ -561,7 +562,7 @@ function MyBubble({ text }: { text: string }) {
 
 function TypingBubble() {
   return (
-    <motion.div {...bubbleMotion} className="flex items-center gap-2" aria-label="Koç yazıyor">
+    <motion.div {...bubbleMotion} className="flex items-center gap-2" aria-label={tt('Koç yazıyor')}>
       <div className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 text-white">
         <Bot className="size-4" />
       </div>
@@ -581,16 +582,16 @@ function DebtPanel({ state, plan, onChange }: { state: CoachState; plan: CoachPl
   const debts = state.debts
   if (!debts.length) {
     return (
-      <Card className="p-5" aria-label="Borç planı">
+      <Card className="p-5" aria-label={tt('Borç planı')}>
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <PiggyBank className="size-5 text-accent" /> Borç yok, yatırıma hazır
+          <PiggyBank className="size-5 text-accent" /> {tt('Borç yok, yatırıma hazır')}
         </h2>
         <p className="mt-1 text-[13px] text-muted">
-          Kayıtlı borcunuz bulunmuyor. Plan doğrudan {plan.emergencyGapKurus > 0 ? 'acil durum birikimi ve ardından ' : ''}yatırımla başlıyor: ayda <span className="num font-semibold text-ink">{formatKurus(plan.monthlyPlanKurus)}</span>.
+          {tt('Kayıtlı borcunuz bulunmuyor. Plan doğrudan')} {plan.emergencyGapKurus > 0 ? tt('acil durum birikimi ve ardından ') : ''}{tt('yatırımla başlıyor: ayda')} <span className="num font-semibold text-ink">{formatKurus(plan.monthlyPlanKurus)}</span>.
         </p>
-        {plan.bufferKurus > 0 && <p className="mt-1 text-[12.5px] text-subtle">Gelir düzeniniz nedeniyle ayda {formatKurus(plan.bufferKurus)} tampon olarak bırakıldı.</p>}
+        {plan.bufferKurus > 0 && <p className="mt-1 text-[12.5px] text-subtle">{ttf('Gelir düzeniniz nedeniyle ayda {0} tampon olarak bırakıldı.', formatKurus(plan.bufferKurus))}</p>}
         <Link to="/borclar" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-accent">
-          Borç eklemek için Borçlarım <ArrowRight className="size-3.5" />
+          {tt('Borç eklemek için Borçlarım')} <ArrowRight className="size-3.5" />
         </Link>
       </Card>
     )
@@ -598,40 +599,39 @@ function DebtPanel({ state, plan, onChange }: { state: CoachState; plan: CoachPl
   const months = plan.payoff?.months ?? null
   const missing = debts.filter((d) => d.missingRate || d.estimatedMin)
   return (
-    <Card className="p-5" aria-label="Borç planı">
+    <Card className="p-5" aria-label={tt('Borç planı')}>
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <Landmark className="size-5 text-accent" /> Borç kapatma planı
+        <Landmark className="size-5 text-accent" /> {tt('Borç kapatma planı')}
       </h2>
       <div className="mt-3 flex flex-col gap-3">
         <Segmented<DebtStrategy>
-          label="Ödeme sırası"
+          label={tt('Ödeme sırası')}
           value={state.settings.strategy}
           onChange={(v) => onChange({ strategy: v })}
           options={(Object.keys(STRATEGY_LABEL) as DebtStrategy[]).map((k) => ({ value: k, label: STRATEGY_LABEL[k] }))}
         />
-        <LabeledSwitch label="Borç ödemelerim aylık giderlerime dahil" hint="Kart ve kredi taksitleri zaten sayılıyor. Diğer borç ödemelerini de gider olarak giriyorsanız açın." checked={state.settings.debtsInExpenses} onChange={(v) => onChange({ debtsInExpenses: v })} />
+        <LabeledSwitch label={tt('Borç ödemelerim aylık giderlerime dahil')} hint={tt('Kart ve kredi taksitleri zaten sayılıyor. Diğer borç ödemelerini de gider olarak giriyorsanız açın.')} checked={state.settings.debtsInExpenses} onChange={(v) => onChange({ debtsInExpenses: v })} />
       </div>
       {plan.shortfallKurus > 0 && (
         <Alert tone="danger" className="mt-3" icon={<AlertTriangle className="size-4" />}>
-          Asgari ödemeler ayırabildiğiniz tutardan {formatKurus(plan.shortfallKurus)} fazla. Aşağıdaki yapılandırma hesabını deneyin.
-        </Alert>
+          {ttf('Asgari ödemeler ayırabildiğiniz tutardan {0} fazla. Aşağıdaki yapılandırma hesabını deneyin.', formatKurus(plan.shortfallKurus))}</Alert>
       )}
       <div className="mt-4 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-2xl bg-surface-2 p-3">
-          <div className="text-[12px] text-muted">Borçsuz olma</div>
-          <div className="font-display text-lg font-semibold">{months ? monthsText(months) : 'Kapanmıyor'}</div>
+          <div className="text-[12px] text-muted">{tt('Borçsuz olma')}</div>
+          <div className="font-display text-lg font-semibold">{months ? monthsText(months) : tt('Kapanmıyor')}</div>
         </div>
         <div className="rounded-2xl bg-surface-2 p-3">
-          <div className="text-[12px] text-muted">Toplam faiz</div>
+          <div className="text-[12px] text-muted">{tt('Toplam faiz')}</div>
           <CountUp kurus={plan.payoff?.totalInterestKurus ?? 0} className="font-display text-lg font-semibold" />
         </div>
       </div>
       {plan.interestSavedKurus > 0 && (
         <motion.p initial={reduced ? false : { opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="mt-2 rounded-xl bg-accent-soft px-3 py-2 text-[12.5px] font-medium text-accent-strong dark:text-accent">
-          Yalnızca asgari ödemeye göre <CountUp kurus={plan.interestSavedKurus} /> daha az faiz.
+          {tt('Yalnızca asgari ödemeye göre')} <CountUp kurus={plan.interestSavedKurus} /> {tt('daha az faiz.')}
         </motion.p>
       )}
-      <ul className="mt-4 flex flex-col gap-3" aria-label="Borçlar ve kapanma sırası">
+      <ul className="mt-4 flex flex-col gap-3" aria-label={tt('Borçlar ve kapanma sırası')}>
         {[...debts]
           .map((d) => ({ d, r: plan.payoff?.debts.find((x) => x.id === d.id) }))
           .sort((a, b) => (a.r?.paidOffMonth ?? 1e9) - (b.r?.paidOffMonth ?? 1e9))
@@ -642,9 +642,9 @@ function DebtPanel({ state, plan, onChange }: { state: CoachState; plan: CoachPl
       {plan.payoff && <DebtPayoffChart plan={plan.payoff.balances} minOnly={plan.minOnly?.balances ?? null} />}
       {missing.length > 0 && (
         <p className="mt-2 text-[12px] text-warning">
-          {missing.map((d) => d.name).join(', ')} için faiz veya aylık ödeme girilmedi; tahmin kullanıldı.{' '}
+          {missing.map((d) => d.name).join(', ')} {tt('için faiz veya aylık ödeme girilmedi; tahmin kullanıldı.')}{' '}
           <Link to="/borclar" className="font-semibold underline">
-            Düzenle
+            {tt('Düzenle')}
           </Link>
         </p>
       )}
@@ -672,7 +672,7 @@ function DebtRow({ d, month, total, i, reduced }: { d: CoachDebtInfo; month: num
         />
       </div>
       <div className="mt-0.5 text-[12px] text-subtle">
-        {d.fixed ? 'Taksit planına göre' : `Aylık %${d.monthlyRatePct.toLocaleString('tr-TR')} faiz`} · {month ? `${monthName(month - 1)} kapanır` : 'bu tempoyla kapanmıyor'}
+        {d.fixed ? tt('Taksit planına göre') : ttf('Aylık %{0} faiz', d.monthlyRatePct.toLocaleString('tr-TR'))} · {month ? ttf('{0} kapanır', monthName(month - 1)) : tt('bu tempoyla kapanmıyor')}
       </div>
     </li>
   )
@@ -691,16 +691,16 @@ function Restructure({ state, plan }: { state: CoachState; plan: CoachPlan }) {
   return (
     <div className="mt-4 rounded-2xl border border-line">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[13.5px] font-semibold text-ink">
-        <Calculator className="size-4 text-accent" /> Yapılandırma hesabı
+        <Calculator className="size-4 text-accent" /> {tt('Yapılandırma hesabı')}
         <ChevronDown className={cn('ml-auto size-4 text-subtle transition-transform', open && 'rotate-180')} />
       </button>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="flex flex-col gap-3 px-4 pb-4">
-              <p className="text-[12.5px] text-muted">Bankanın teklif ettiği faiz ve vadeyi girin.</p>
+              <p className="text-[12.5px] text-muted">{tt('Bankanın teklif ettiği faiz ve vadeyi girin.')}</p>
               <fieldset className="flex flex-wrap gap-1.5">
-                <legend className="sr-only">Yapılandırılacak borçlar</legend>
+                <legend className="sr-only">{tt('Yapılandırılacak borçlar')}</legend>
                 {candidates.map((d) => {
                   const on = ids.includes(d.id)
                   return (
@@ -711,26 +711,25 @@ function Restructure({ state, plan }: { state: CoachState; plan: CoachPlan }) {
                 })}
               </fieldset>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Yeni aylık faiz (%)" htmlFor="rs-rate">
+                <Field label={tt('Yeni aylık faiz (%)')} htmlFor="rs-rate">
                   <Input id="rs-rate" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} />
                 </Field>
-                <Field label="Vade (ay)" htmlFor="rs-term">
+                <Field label={tt('Vade (ay)')} htmlFor="rs-term">
                   <Input id="rs-term" inputMode="numeric" value={term} onChange={(e) => setTerm(e.target.value.replace(/\D/g, ''))} />
                 </Field>
               </div>
               {res && (
-                <div className="grid grid-cols-2 gap-2 text-[12.5px]" aria-label="Yapılandırma sonucu">
+                <div className="grid grid-cols-2 gap-2 text-[12.5px]" aria-label={tt('Yapılandırma sonucu')}>
                   <div className="rounded-xl bg-surface-2 p-2.5">
-                    <div className="text-muted">Yeni aylık taksit</div>
+                    <div className="text-muted">{tt('Yeni aylık taksit')}</div>
                     <div className="num font-semibold text-ink">{formatKurus(res.newPaymentKurus)}</div>
                   </div>
                   <div className={cn('rounded-xl p-2.5', res.savedKurus > 0 ? 'bg-accent-soft' : 'bg-danger-soft')}>
-                    <div className="text-muted">{res.savedKurus > 0 ? 'Faiz tasarrufu' : 'Ek faiz'}</div>
+                    <div className="text-muted">{res.savedKurus > 0 ? tt('Faiz tasarrufu') : tt('Ek faiz')}</div>
                     <CountUp kurus={Math.abs(res.savedKurus)} className={cn('font-semibold', res.savedKurus > 0 ? 'text-accent-strong dark:text-accent' : 'text-danger')} />
                   </div>
                   <p className="col-span-2 text-subtle">
-                    Toplam faiz {formatKurus(res.oldInterestKurus)} yerine {formatKurus(res.newInterestKurus)}. Masraf ve vergiler hariç.
-                  </p>
+                    {ttf('Toplam faiz {0} yerine {1}. Masraf ve vergiler hariç.', formatKurus(res.oldInterestKurus), formatKurus(res.newInterestKurus))}</p>
                 </div>
               )}
             </div>
@@ -746,28 +745,28 @@ function Restructure({ state, plan }: { state: CoachState; plan: CoachPlan }) {
 function AiCard({ consent, onChange }: { consent: boolean; onChange: (v: boolean) => void }) {
   const { toast } = useUi()
   return (
-    <Card className="relative overflow-hidden p-5" aria-label="Yapay zekâ sohbeti">
+    <Card className="relative overflow-hidden p-5" aria-label={tt('Yapay zekâ sohbeti')}>
       <div aria-hidden className="absolute -right-10 -top-10 size-32 rounded-full bg-gradient-to-br from-violet-500/25 to-fuchsia-500/10 blur-2xl" />
       <h2 className="relative flex items-center gap-2 font-display text-base font-semibold">
-        <Sparkles className="size-5 text-violet-500" /> Yapay zekâ sohbeti
-        <Badge tone={consent ? 'accent' : 'neutral'}>{consent ? 'Açık' : 'Kapalı'}</Badge>
+        <Sparkles className="size-5 text-violet-500" /> {tt('Yapay zekâ sohbeti')}
+        <Badge tone={consent ? 'accent' : 'neutral'}>{consent ? tt('Açık') : tt('Kapalı')}</Badge>
       </h2>
-      <p className="relative mt-1 text-[13px] text-muted">İzin verirseniz serbest soruları OpenAI ile yanıtlarız.</p>
-      <More label="Neler gönderilir?" className="relative">
-        <div className="font-medium text-ink">Gönderilecek özet bilgiler</div>
-        <p>Yalnızca "Koçun hafızası" kartında açık bıraktığınız toplamlar ve notlarınız. Borç adları gönderilmez.</p>
+      <p className="relative mt-1 text-[13px] text-muted">{tt('İzin verirseniz serbest soruları OpenAI ile yanıtlarız.')}</p>
+      <More label={tt('Neler gönderilir?')} className="relative">
+        <div className="font-medium text-ink">{tt('Gönderilecek özet bilgiler')}</div>
+        <p>{tt('Yalnızca "Koçun hafızası" kartında açık bıraktığınız toplamlar ve notlarınız. Borç adları gönderilmez.')}</p>
         <div className="mt-1.5 flex items-center gap-1 font-medium text-ink">
-          <Lock className="size-3.5" /> Hiç gönderilmeyenler
+          <Lock className="size-3.5" /> {tt('Hiç gönderilmeyenler')}
         </div>
-        <p>Ekstreler, tek tek işlemler, iş yeri adları, kart ve hesap bilgileri. Sohbet sunucuda saklanmaz. Hesapları uygulama yapar; yapay zekâ ürün önermez.</p>
+        <p>{tt('Ekstreler, tek tek işlemler, iş yeri adları, kart ve hesap bilgileri. Sohbet sunucuda saklanmaz. Hesapları uygulama yapar; yapay zekâ ürün önermez.')}</p>
       </More>
       <div className="relative mt-3">
         <LabeledSwitch
-          label="Özet bilgilerimin yapay zekâ sohbeti için kullanılmasına izin veriyorum"
+          label={tt('Özet bilgilerimin yapay zekâ sohbeti için kullanılmasına izin veriyorum')}
           checked={consent}
           onChange={(v) => {
             onChange(v)
-            toast(v ? 'İzin verildi. Koça serbest soru sorabilirsiniz.' : 'İzin geri alındı.')
+            toast(v ? tt('İzin verildi. Koça serbest soru sorabilirsiniz.') : tt('İzin geri alındı.'))
           }}
         />
       </div>
@@ -777,14 +776,14 @@ function AiCard({ consent, onChange }: { consent: boolean; onChange: (v: boolean
 
 // ---------- Hafıza ----------
 
-const MEMORY_KIND: Record<CoachMemoryKind, string> = { hedef: 'Hedef', tercih: 'Tercih', not: 'Not', sohbet: 'Sohbet özeti' }
+const MEMORY_KIND: Record<CoachMemoryKind, string> = { hedef: 'Hedef', tercih: 'Tercih', not: 'Not', sohbet: tt('Sohbet özeti') }
 
 const SHARE_ROWS: Array<{ key: keyof CoachShare; label: string; value: (s: CoachState) => string }> = [
-  { key: 'income', label: 'Gelir', value: (s) => (s.profile ? `${formatKurus(s.profile.monthlyIncomeKurus)} / ay` : s.incomes.some((i) => i.active) ? 'Düzenli gelirleriniz' : 'Yolculuk anketinde girilmedi') },
-  { key: 'expenses', label: 'Giderler', value: (s) => `${s.facts.averageExpenseKurus ? `Ortalama ${formatKurus(s.facts.averageExpenseKurus)} / ay` : 'Henüz yeterli kayıt yok'}${s.recurring.some((r) => r.active) ? ' · düzenli ödemeler (adları gönderilmez)' : ''}` },
-  { key: 'debts', label: 'Borçlar', value: (s) => (s.debts.length ? `${s.debts.length} borç, toplam ${formatKurus(s.debts.reduce((n, d) => n + d.balanceKurus, 0))} (adları gönderilmez)` : 'Borç yok') },
-  { key: 'goals', label: 'Birikim ve hedefler', value: (s) => `Hızlı kullanılabilir ${formatKurus(s.facts.liquidKurus)}${s.plan?.goalKurus ? ` · hedef ${formatKurus(s.plan.goalKurus)}` : ''}` },
-  { key: 'budget', label: 'Bu dönemin bütçesi', value: (s) => (s.budget?.total ? `${formatKurus(s.budget.total.spentKurus)} / ${formatKurus(s.budget.total.effectiveKurus)}` : 'Bütçe yok') },
+  { key: 'income', label: tt('Gelir'), value: (s) => (s.profile ? `${formatKurus(s.profile.monthlyIncomeKurus)} / ay` : s.incomes.some((i) => i.active) ? tt('Düzenli gelirleriniz') : tt('Yolculuk anketinde girilmedi')) },
+  { key: 'expenses', label: tt('Giderler'), value: (s) => `${s.facts.averageExpenseKurus ? ttf('Ortalama {0} / ay', formatKurus(s.facts.averageExpenseKurus)) : tt('Henüz yeterli kayıt yok')}${s.recurring.some((r) => r.active) ? tt(' · düzenli ödemeler (adları gönderilmez)') : ''}` },
+  { key: 'debts', label: tt('Borçlar'), value: (s) => (s.debts.length ? ttf('{0} borç, toplam {1} (adları gönderilmez)', s.debts.length, formatKurus(s.debts.reduce((n, d) => n + d.balanceKurus, 0))) : tt('Borç yok')) },
+  { key: 'goals', label: tt('Birikim ve hedefler'), value: (s) => ttf('Hızlı kullanılabilir {0}{1}', formatKurus(s.facts.liquidKurus), s.plan?.goalKurus ? ttf(' · hedef {0}', formatKurus(s.plan.goalKurus)) : '') },
+  { key: 'budget', label: tt('Bu dönemin bütçesi'), value: (s) => (s.budget?.total ? `${formatKurus(s.budget.total.spentKurus)} / ${formatKurus(s.budget.total.effectiveKurus)}` : tt('Bütçe yok')) },
 ]
 
 function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Partial<CoachSettings>) => void }) {
@@ -803,17 +802,17 @@ function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Part
     setText('')
   }
   return (
-    <Card className="p-5" aria-label="Koçun hafızası">
+    <Card className="p-5" aria-label={tt('Koçun hafızası')}>
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <Brain className="size-5 text-accent" /> Koçun hafızası
+        <Brain className="size-5 text-accent" /> {tt('Koçun hafızası')}
       </h2>
-      <p className="mt-1 text-[13px] text-muted">Koç sizi bu bilgilerle tanır.</p>
-      <More label="Gizlilik">
-        Hafıza yalnızca bu cihazda durur, ortak raporlara karışmaz. Soru sorduğunuzda yalnızca açık olanlar gönderilir. İstediğinizi kapatıp silebilirsiniz.
+      <p className="mt-1 text-[13px] text-muted">{tt('Koç sizi bu bilgilerle tanır.')}</p>
+      <More label={tt('Gizlilik')}>
+        {tt('Hafıza yalnızca bu cihazda durur, ortak raporlara karışmaz. Soru sorduğunuzda yalnızca açık olanlar gönderilir. İstediğinizi kapatıp silebilirsiniz.')}
       </More>
 
       <div className="mt-3 rounded-xl border border-line">
-        <div className="border-b border-line px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-subtle">Uygulamadan alınan bilgiler</div>
+        <div className="border-b border-line px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-subtle">{tt('Uygulamadan alınan bilgiler')}</div>
         <ul>
           {SHARE_ROWS.map((r) => (
             <li key={r.key} className="flex items-center gap-3 border-b border-line px-3 py-2 last:border-0">
@@ -821,7 +820,7 @@ function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Part
                 <div className="text-[13px] font-medium text-ink">{r.label}</div>
                 <div className={cn('text-[12px]', share[r.key] ? 'text-muted' : 'text-subtle line-through')}>{r.value(state)}</div>
               </div>
-              <Switch label={`${r.label} koça gönderilsin`} checked={share[r.key]} onChange={(v) => onChange({ share: { ...share, [r.key]: v } })} />
+              <Switch label={ttf('{0} koça gönderilsin', r.label)} checked={share[r.key]} onChange={(v) => onChange({ share: { ...share, [r.key]: v } })} />
             </li>
           ))}
         </ul>
@@ -829,24 +828,24 @@ function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Part
 
       <div className="mt-3 rounded-xl border border-line">
         <div className="flex items-center justify-between border-b border-line px-3 py-2">
-          <span className="text-[12px] font-semibold uppercase tracking-wide text-subtle">Notlar ({memory.length})</span>
+          <span className="text-[12px] font-semibold uppercase tracking-wide text-subtle">{ttf('Notlar ({0})', memory.length)}</span>
           {memory.length > 0 && (
             <button
               type="button"
               className="inline-flex items-center gap-1 text-[12px] text-subtle hover:text-danger"
               onClick={() => {
                 setMemory([])
-                toast('Hafıza notları silindi.')
+                toast(tt('Hafıza notları silindi.'))
               }}
             >
-              <Trash2 className="size-3.5" /> Tümünü sil
+              <Trash2 className="size-3.5" /> {tt('Tümünü sil')}
             </button>
           )}
         </div>
         {memory.length === 0 ? (
-          <p className="px-3 py-3 text-[12.5px] text-subtle">Henüz not yok.</p>
+          <p className="px-3 py-3 text-[12.5px] text-subtle">{tt('Henüz not yok.')}</p>
         ) : (
-          <ul aria-label="Hafıza notları">
+          <ul aria-label={tt('Hafıza notları')}>
             {memory.map((m) => (
               <li key={m.id} className="flex items-start gap-2 border-b border-line px-3 py-2 last:border-0">
                 <Badge tone={m.kind === 'sohbet' ? 'info' : 'neutral'}>{MEMORY_KIND[m.kind]}</Badge>
@@ -860,18 +859,18 @@ function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Part
                       setEditing(null)
                     }}
                   >
-                    <Input aria-label="Notu düzelt" autoFocus value={editing.text} maxLength={400} onChange={(e) => setEditing({ id: m.id, text: e.target.value })} className="flex-1" />
+                    <Input aria-label={tt('Notu düzelt')} autoFocus value={editing.text} maxLength={400} onChange={(e) => setEditing({ id: m.id, text: e.target.value })} className="flex-1" />
                     <Button size="sm" type="submit" variant="primary">
-                      Kaydet
+                      {tt('Kaydet')}
                     </Button>
                   </form>
                 ) : (
                   <>
                     <span className="min-w-0 flex-1 text-[13px] text-ink">{m.text}</span>
-                    <button type="button" aria-label="Notu düzelt" className="p-1 text-subtle hover:text-ink" onClick={() => setEditing({ id: m.id, text: m.text })}>
+                    <button type="button" aria-label={tt('Notu düzelt')} className="p-1 text-subtle hover:text-ink" onClick={() => setEditing({ id: m.id, text: m.text })}>
                       <Pencil className="size-3.5" />
                     </button>
-                    <button type="button" aria-label="Notu sil" className="p-1 text-subtle hover:text-danger" onClick={() => setMemory(memory.filter((x) => x.id !== m.id))}>
+                    <button type="button" aria-label={tt('Notu sil')} className="p-1 text-subtle hover:text-danger" onClick={() => setMemory(memory.filter((x) => x.id !== m.id))}>
                       <Trash2 className="size-3.5" />
                     </button>
                   </>
@@ -887,14 +886,14 @@ function MemoryCard({ state, onChange }: { state: CoachState; onChange: (p: Part
             add()
           }}
         >
-          <Select aria-label="Not türü" value={kind} onChange={(e) => setKind(e.target.value as CoachMemoryKind)} className="sm:w-32">
-            <option value="hedef">Hedef</option>
-            <option value="tercih">Tercih</option>
-            <option value="not">Not</option>
+          <Select aria-label={tt('Not türü')} value={kind} onChange={(e) => setKind(e.target.value as CoachMemoryKind)} className="sm:w-32">
+            <option value="hedef">{tt('Hedef')}</option>
+            <option value="tercih">{tt('Tercih')}</option>
+            <option value="not">{tt('Not')}</option>
           </Select>
-          <Input aria-label="Hafızaya not ekle" value={text} maxLength={400} onChange={(e) => setText(e.target.value)} placeholder="ör. 2 yıl içinde ev için peşinat biriktirmek istiyorum" className="flex-1" />
+          <Input aria-label={tt('Hafızaya not ekle')} value={text} maxLength={400} onChange={(e) => setText(e.target.value)} placeholder={tt('ör. 2 yıl içinde ev için peşinat biriktirmek istiyorum')} className="flex-1" />
           <Button type="submit" icon={<Plus className="size-4" />} disabled={!text.trim() || memory.length >= MEMORY_MAX}>
-            Ekle
+            {tt('Ekle')}
           </Button>
         </form>
       </div>

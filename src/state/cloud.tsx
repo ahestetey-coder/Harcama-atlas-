@@ -9,6 +9,7 @@ import { UserFacingError } from '../data/repository'
 import { useAuth } from './auth'
 import { useData, useMemberList, useSettings } from './data'
 import { useUi } from './ui'
+import { tt } from '../lib/i18n'
 
 export type CloudStatus = 'off' | 'loading' | 'signed-out' | 'idle' | 'syncing' | 'error'
 
@@ -200,7 +201,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (mail: string, password: string) => {
-      if (!backend) throw new UserFacingError('Önce bulut ayarını girin.')
+      if (!backend) throw new UserFacingError(tt('Önce bulut ayarını girin.'))
       const { error } = await backend.client.auth.signInWithPassword({ email: mail.trim(), password })
       if (error) throw new UserFacingError(cloudErrorMessage(error))
     },
@@ -209,7 +210,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(
     async (mail: string, password: string) => {
-      if (!backend) throw new UserFacingError('Önce bulut ayarını girin.')
+      if (!backend) throw new UserFacingError(tt('Önce bulut ayarını girin.'))
       const { data, error } = await backend.client.auth.signUp({
         email: mail.trim(),
         password,
@@ -238,7 +239,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
 
 export function useCloud(): CloudCtx {
   const c = useContext(Ctx)
-  if (!c) throw new Error('CloudProvider eksik')
+  if (!c) throw new Error(tt('CloudProvider eksik'))
   return c
 }
 
@@ -266,7 +267,7 @@ export function useMemberFilter(): { value: string; set: (m: string) => void; op
     const others = members.filter((m) => m.id !== selfId && m.groupIds.length > 0).sort((a, b) => a.name.localeCompare(b.name, 'tr'))
     if (!others.length || !selfId) return []
     const self = map.get(selfId)
-    return [{ id: selfId, name: 'Siz', color: self?.color ?? '#94a3b8' }, ...others.map((m) => ({ id: m.id, name: m.name, color: m.color }))]
+    return [{ id: selfId, name: tt('Siz'), color: self?.color ?? '#94a3b8' }, ...others.map((m) => ({ id: m.id, name: m.name, color: m.color }))]
   }, [members, map, selfId])
   const valid = !memberFilter || options.some((o) => o.id === memberFilter)
   useEffect(() => {

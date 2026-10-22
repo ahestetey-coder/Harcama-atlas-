@@ -11,6 +11,7 @@ import { useStartNew } from '../lib/useStartNew'
 import { useCloud, useMembers } from '../state/cloud'
 import { useGroups, useRepo, useTransactions } from '../state/data'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 /**
  * Harcama grupları: kategoriden bağımsız ikinci gruplama (Bireysel, Ortak, İş…).
@@ -38,7 +39,7 @@ export function GroupsTab() {
   const toggleArchive = async (g: SpendGroup) => {
     try {
       await repo.updateGroup(g.id, { archived: !g.archived })
-      toast(g.archived ? `“${g.name}” yeniden etkin.` : `“${g.name}” arşivlendi. Mevcut kayıtlar korunur; yeni kayıtlarda seçilemez.`)
+      toast(g.archived ? ttf('“{0}” yeniden etkin.', g.name) : ttf('“{0}” arşivlendi. Mevcut kayıtlar korunur; yeni kayıtlarda seçilemez.', g.name))
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
     }
@@ -50,15 +51,13 @@ export function GroupsTab() {
       <div className="min-w-0 flex-1">
         <div className="truncate font-medium">{g.name}</div>
         <div className="num text-[12.5px] text-subtle">
-          {usage.get(g.id) ?? 0} işlem
-          {g.cycleStartDay ? ` · ${g.cycleStartDay}. gün döngüsü` : ''}
-          {g.cloudId ? ' · paylaşılan' : ''}
+          {ttf('{0} işlem {1}{2}', usage.get(g.id) ?? 0, g.cycleStartDay ? ttf(' · {0}. gün döngüsü', g.cycleStartDay) : '', g.cloudId ? tt(' · paylaşılan') : '')}
         </div>
       </div>
-      <IconButton label={`${g.name} düzenle`} size="sm" onClick={() => setEdit(g)}>
+      <IconButton label={ttf('{0} düzenle', g.name)} size="sm" onClick={() => setEdit(g)}>
         <Pencil className="size-4" />
       </IconButton>
-      <IconButton label={g.archived ? `${g.name} arşivden çıkar` : `${g.name} arşivle`} size="sm" onClick={() => toggleArchive(g)}>
+      <IconButton label={g.archived ? ttf('{0} arşivden çıkar', g.name) : ttf('{0} arşivle', g.name)} size="sm" onClick={() => toggleArchive(g)}>
         {g.archived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
       </IconButton>
       <IconButton label={`${g.name} sil`} size="sm" className="hover:text-danger" onClick={() => setDel(g)}>
@@ -74,18 +73,18 @@ export function GroupsTab() {
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1 text-[13px] text-muted">
           <p>
-            Gruplar kategoriden ayrıdır.<span className="num"> Grupsuz işlem: {ungrouped}.</span>
+            {tt('Gruplar kategoriden ayrıdır.')}<span className="num"> {ttf('Grupsuz işlem: {0}.', ungrouped)}</span>
           </p>
-          <More>Bir market alışverişi hem “Market” kategorisinde hem “Ortak” grubunda olabilir. Panelde ve işlemlerde gruba göre filtreleyebilirsiniz.</More>
+          <More>{tt('Bir market alışverişi hem “Market” kategorisinde hem “Ortak” grubunda olabilir. Panelde ve işlemlerde gruba göre filtreleyebilirsiniz.')}</More>
         </div>
         <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEdit('new')}>
-          Grup ekle
+          {tt('Grup ekle')}
         </Button>
       </div>
       {active.length === 0 ? (
         <Card>
-          <EmptyState icon={<Plus className="size-6" />} title="Henüz grup yok">
-            Harcamalarınızı “Ortak” veya “İş” gibi ayırın.
+          <EmptyState icon={<Plus className="size-6" />} title={tt('Henüz grup yok')}>
+            {tt('Harcamalarınızı “Ortak” veya “İş” gibi ayırın.')}
           </EmptyState>
         </Card>
       ) : (
@@ -95,7 +94,7 @@ export function GroupsTab() {
       )}
       {archived.length > 0 && (
         <>
-          <h2 className="mb-2 mt-6 px-1 text-sm font-semibold text-muted">Arşivdeki gruplar</h2>
+          <h2 className="mb-2 mt-6 px-1 text-sm font-semibold text-muted">{tt('Arşivdeki gruplar')}</h2>
           <Card className="overflow-hidden opacity-80">
             <ul>{archived.map(renderRow)}</ul>
           </Card>
@@ -105,14 +104,14 @@ export function GroupsTab() {
       <ConfirmDialog
         open={!!del}
         onOpenChange={(o) => !o && setDel(null)}
-        title={`“${del?.name}” grubu silinsin mi?`}
-        confirmLabel="Sil"
+        title={ttf('“{0}” grubu silinsin mi?', del?.name)}
+        confirmLabel={tt('Sil')}
         danger
         onConfirm={async () => {
           if (!del) return
           try {
             const n = await repo.deleteGroup(del.id)
-            toast(`“${del.name}” silindi.${n ? ` ${n} işlem grupsuz kaldı.` : ''}`)
+            toast(ttf('“{0}” silindi.{1}', del.name, n ? ttf(' {0} işlem grupsuz kaldı.', n) : ''))
             setDel(null)
           } catch (e) {
             toast(toUserMessage(e), { kind: 'error' })
@@ -121,10 +120,10 @@ export function GroupsTab() {
       >
         {delCount > 0 ? (
           <p>
-            Bu grupta <strong className="text-ink">{delCount} işlem</strong> var. İşlemler silinmez, yalnızca grupsuz kalır.
+            {tt('Bu grupta')} <strong className="text-ink">{ttf('{0} işlem', delCount)}</strong> {tt('var. İşlemler silinmez, yalnızca grupsuz kalır.')}
           </p>
         ) : (
-          'Bu grup hiçbir işlemde kullanılmıyor.'
+          tt('Bu grup hiçbir işlemde kullanılmıyor.')
         )}
       </ConfirmDialog>
     </>
@@ -159,7 +158,7 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
       if (group) await repo.updateGroup(group.id, { name, color })
       const saved = group ?? (await repo.addGroup({ name, color }))
       if (canSetCycle && (cycle ?? null) !== (saved.cycleStartDay ?? null)) await setGroupCycle(repo, cloud.backend, saved.id, cycle)
-      toast(group ? 'Grup güncellendi.' : 'Grup eklendi.')
+      toast(group ? tt('Grup güncellendi.') : tt('Grup eklendi.'))
       onClose()
     } catch (e) {
       setError(toUserMessage(e))
@@ -169,14 +168,14 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
     <Modal
       open={!!value}
       onOpenChange={(o) => !o && onClose()}
-      title={group ? 'Grubu düzenle' : 'Yeni grup'}
+      title={group ? tt('Grubu düzenle') : tt('Yeni grup')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Vazgeç
+            {tt('Vazgeç')}
           </Button>
           <Button variant="primary" onClick={save}>
-            Kaydet
+            {tt('Kaydet')}
           </Button>
         </>
       }
@@ -188,11 +187,11 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
           void save()
         }}
       >
-        <Field label="Ad" htmlFor="group-name" error={error} hint="Ör. Ortak, İş, Tatil">
+        <Field label={tt('Ad')} htmlFor="group-name" error={error} hint={tt('Ör. Ortak, İş, Tatil')}>
           <Input id="group-name" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} autoFocus />
         </Field>
         <fieldset>
-          <legend className="mb-1.5 text-[13px] font-medium text-muted">Renk</legend>
+          <legend className="mb-1.5 text-[13px] font-medium text-muted">{tt('Renk')}</legend>
           <div className="flex flex-wrap gap-2">
             {CATEGORY_COLORS.map((c) => (
               <button
@@ -208,17 +207,17 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
           </div>
         </fieldset>
         <Field
-          label="Ay döngüsü"
+          label={tt('Ay döngüsü')}
           htmlFor="group-cycle"
           hint={
             !canSetCycle
-              ? `Yalnızca grup yöneticisi${ownerName ? ` (${ownerName})` : ''} değiştirebilir.`
+              ? ttf('Yalnızca grup yöneticisi{0} değiştirebilir.', ownerName ? ` (${ownerName})` : '')
               : group?.cloudId
-                ? 'Bütün üyeler için geçerlidir.'
-                : 'Bu grubun ayı bu gün başlar.'
+                ? tt('Bütün üyeler için geçerlidir.')
+                : tt('Bu grubun ayı bu gün başlar.')
           }
         >
-          <CycleSelect id="group-cycle" value={cycle} onChange={setCycle} inheritLabel="Kişisel ayarı kullan" disabled={!canSetCycle} />
+          <CycleSelect id="group-cycle" value={cycle} onChange={setCycle} inheritLabel={tt('Kişisel ayarı kullan')} disabled={!canSetCycle} />
         </Field>
       </form>
     </Modal>

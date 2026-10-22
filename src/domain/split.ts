@@ -1,4 +1,5 @@
 import { isSpending, type Transaction } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 export interface SplitMember {
   id: string
@@ -37,9 +38,9 @@ export interface SplitResult {
 export type SplitMethod = 'equal' | 'percent' | 'weights' | 'amounts'
 
 export const SPLIT_METHOD_LABEL: Record<SplitMethod, string> = {
-  equal: 'Eşit',
-  percent: 'Yüzde',
-  weights: 'Ağırlık',
+  equal: tt('Eşit'),
+  percent: tt('Yüzde'),
+  weights: tt('Ağırlık'),
   amounts: 'Tutar',
 }
 
@@ -60,7 +61,7 @@ function paidBy(members: SplitMember[], txs: Transaction[], selfId: string | nul
   for (const t of txs) {
     if (!isSpending(t)) continue
     const id = t.memberId ?? selfId ?? 'self'
-    if (!people.has(id)) people.set(id, { id, name: 'Grup üyesi', color: '#94a3b8' })
+    if (!people.has(id)) people.set(id, { id, name: tt('Grup üyesi'), color: '#94a3b8' })
     paid.set(id, (paid.get(id) ?? 0) + (t.type === 'expense' ? t.amountKurus : -t.amountKurus))
   }
   const list = [...people.values()]
@@ -88,16 +89,16 @@ function byWeights(total: number, ids: string[], weights: number[], tieOrder: st
 export function sharesFor(total: number, allIds: string[], rule: SplitRule, tieOrder: string[] = allIds): { shares: Map<string, number>; error?: string } {
   const ids = rule.participants ? allIds.filter((id) => rule.participants!.includes(id)) : allIds
   const equal = () => byWeights(total, ids, ids.map(() => 1), tieOrder)
-  if (ids.length === 0) return { shares: byWeights(total, allIds, allIds.map(() => 1), tieOrder), error: 'Paylaşıma en az bir kişi katılmalı.' }
+  if (ids.length === 0) return { shares: byWeights(total, allIds, allIds.map(() => 1), tieOrder), error: tt('Paylaşıma en az bir kişi katılmalı.') }
   if (rule.method === 'equal') return { shares: equal() }
   const v = (id: string) => rule.values[id] ?? 0
   if (rule.method === 'percent') {
     const sum = ids.reduce((s, id) => s + v(id), 0)
-    if (Math.abs(sum - 100) > 0.001) return { shares: equal(), error: `Yüzdelerin toplamı 100 olmalı (şu an ${sum.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}).` }
+    if (Math.abs(sum - 100) > 0.001) return { shares: equal(), error: ttf('Yüzdelerin toplamı 100 olmalı (şu an {0}).', sum.toLocaleString('tr-TR', { maximumFractionDigits: 2 })) }
     return { shares: byWeights(total, ids, ids.map(v), tieOrder) }
   }
   if (rule.method === 'weights') {
-    if (ids.some((id) => v(id) <= 0)) return { shares: equal(), error: 'Her katılımcının ağırlığı sıfırdan büyük olmalı.' }
+    if (ids.some((id) => v(id) <= 0)) return { shares: equal(), error: tt('Her katılımcının ağırlığı sıfırdan büyük olmalı.') }
     return { shares: byWeights(total, ids, ids.map(v), tieOrder) }
   }
   // amounts: tutarı girilmeyen katılımcılar kalanı eşit böler
@@ -105,8 +106,8 @@ export function sharesFor(total: number, allIds: string[], rule: SplitRule, tieO
   const free = ids.filter((id) => rule.values[id] == null)
   const fixedSum = fixed.reduce((s, id) => s + v(id), 0)
   const tl = (k: number) => `${(k / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`
-  if (free.length === 0 && fixedSum !== total) return { shares: equal(), error: `Tutarların toplamı ${tl(total)} olmalı (şu an ${tl(fixedSum)}).` }
-  if (fixedSum > total) return { shares: equal(), error: `Girilen tutarlar toplam gideri (${tl(total)}) aşıyor.` }
+  if (free.length === 0 && fixedSum !== total) return { shares: equal(), error: ttf('Tutarların toplamı {0} olmalı (şu an {1}).', tl(total), tl(fixedSum)) }
+  if (fixedSum > total) return { shares: equal(), error: ttf('Girilen tutarlar toplam gideri ({0}) aşıyor.', tl(total)) }
   const shares = new Map(fixed.map((id) => [id, v(id)]))
   if (free.length) for (const [id, s] of byWeights(total - fixedSum, free, free.map(() => 1), tieOrder)) shares.set(id, s)
   return { shares }
@@ -165,7 +166,7 @@ export function splitEqually(members: SplitMember[], txs: Transaction[], selfId:
 /** Kayıtlı paylarla (yöneticinin paylaştırması) sonuç: ödenenler canlı, paylar sabit. */
 export function splitWithShares(members: SplitMember[], txs: Transaction[], selfId: string | null, shares: Record<string, number>): SplitResult {
   const { paid, list, total } = paidBy(members, txs, selfId)
-  for (const id of Object.keys(shares)) if (!list.some((m) => m.id === id)) list.push({ id, name: 'Grup üyesi', color: '#94a3b8' })
+  for (const id of Object.keys(shares)) if (!list.some((m) => m.id === id)) list.push({ id, name: tt('Grup üyesi'), color: '#94a3b8' })
   return build(list, paid, total, new Map(Object.entries(shares)), (id) => (shares[id] ?? 0) > 0)
 }
 

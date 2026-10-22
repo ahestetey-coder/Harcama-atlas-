@@ -1,6 +1,7 @@
 ---
 import Site from './Site.astro'
-import { LEGAL_DRAFT, LEGAL_UPDATED } from '../data/company'
+import { LEGAL_DRAFT, LEGAL_UPDATED, LEGAL_UPDATED_EN } from '../data/company'
+import { counterpart, langOf, localize, translator } from '../lib/i18n'
 
 interface Props {
   title: string
@@ -8,27 +9,38 @@ interface Props {
 }
 const { title, description } = Astro.props
 const path = Astro.url.pathname.replace(/\/$/, '')
+const lang = langOf(path)
+const t = translator(lang)
 const docs = [
-  { href: '/yasal/kvkk', label: 'KVKK Aydınlatma Metni' },
-  { href: '/yasal/acik-riza', label: 'Açık Rıza Metni' },
-  { href: '/yasal/gizlilik', label: 'Gizlilik Politikası' },
-  { href: '/yasal/cerez', label: 'Çerez Politikası' },
-  { href: '/yasal/kullanim-kosullari', label: 'Kullanım Koşulları' },
-  { href: '/yasal/on-bilgilendirme', label: 'Ön Bilgilendirme Formu' },
-  { href: '/yasal/mesafeli-satis', label: 'Mesafeli Satış Sözleşmesi' },
-  { href: '/yasal/iptal-iade', label: 'İptal ve İade' },
-]
+  { href: '/yasal/kvkk', label: t('KVKK Aydınlatma Metni', 'KVKK Privacy Notice') },
+  { href: '/yasal/acik-riza', label: t('Açık Rıza Metni', 'Explicit Consent') },
+  { href: '/yasal/gizlilik', label: t('Gizlilik Politikası', 'Privacy Policy') },
+  { href: '/yasal/cerez', label: t('Çerez Politikası', 'Cookie Policy') },
+  { href: '/yasal/kullanim-kosullari', label: t('Kullanım Koşulları', 'Terms of Use') },
+  { href: '/yasal/on-bilgilendirme', label: t('Ön Bilgilendirme Formu', 'Pre-Information Form') },
+  { href: '/yasal/mesafeli-satis', label: t('Mesafeli Satış Sözleşmesi', 'Distance Sales Agreement') },
+  { href: '/yasal/iptal-iade', label: t('İptal ve İade', 'Cancellation and Refunds') },
+].map((d) => ({ ...d, href: localize(d.href, lang) }))
+const original = counterpart(path).href
 ---
 
 <Site title={`${title} · Harcama Atlası`} description={description}>
   <div class="wrap legal">
-    <nav class="side" aria-label="Yasal metinler">
-      <p class="eyebrow">Yasal</p>
+    <nav class="side" aria-label={t('Yasal metinler', 'Legal documents')}>
+      <p class="eyebrow">{t('Yasal', 'Legal')}</p>
       {docs.map((d) => <a href={d.href} aria-current={path === d.href ? 'page' : undefined}>{d.label}</a>)}
     </nav>
     <article class="prose">
       <h1>{title}</h1>
-      <p class="meta">Son güncelleme: {LEGAL_UPDATED}</p>
+      <p class="meta">{t('Son güncelleme', 'Last updated')}: {lang === 'en' ? LEGAL_UPDATED_EN : LEGAL_UPDATED}</p>
+      {
+        lang === 'en' && (
+          <p class="draft" role="note">
+            This English text is a courtesy translation. The <a href={original} lang="tr" hreflang="tr">Turkish original</a> is the legally binding version and prevails in
+            case of any difference.
+          </p>
+        )
+      }
       {
         LEGAL_DRAFT && (
           <p class="draft" role="note">

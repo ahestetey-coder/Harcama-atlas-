@@ -1,41 +1,44 @@
 ---
 import Site from '../layouts/Site.astro'
 import Brand from '../components/Brand.astro'
+import { langOf, translator } from '../lib/i18n'
+
+const t = translator(langOf(Astro.url.pathname))
 ---
 
-<Site title="Giriş · Harcama Atlası" description="Harcama Atlası hesabına giriş yap ya da yeni hesap oluştur. Uygulamayla aynı hesap." noindex>
+<Site title={t('Giriş · Harcama Atlası', 'Sign in · Harcama Atlası')} description={t('Harcama Atlası hesabına giriş yap ya da yeni hesap oluştur. Uygulamayla aynı hesap.', 'Sign in to your Harcama Atlası account or create a new one. The same account as the app.')} noindex>
   <section class="wrap auth">
     <div class="card panel reveal">
       <div class="top">
         <Brand id="logo-giris" size={40} wordmark={false} />
-        <h1 data-title>Hesabına giriş yap</h1>
-        <p class="muted" data-sub>Uygulamayla aynı hesap. Paketin ve verilerin her yerde aynı.</p>
+        <h1 data-title>{t('Hesabına giriş yap', 'Sign in to your account')}</h1>
+        <p class="muted" data-sub>{t('Uygulamayla aynı hesap. Paketin ve verilerin her yerde aynı.', 'The same account as the app. Your plan and data are the same everywhere.')}</p>
       </div>
 
-      <div class="tabs" role="tablist" aria-label="Giriş ya da kayıt">
-        <button type="button" role="tab" aria-selected="true" data-mode="giris">Giriş yap</button>
-        <button type="button" role="tab" aria-selected="false" data-mode="kayit">Hesap oluştur</button>
+      <div class="tabs" role="tablist" aria-label={t('Giriş ya da kayıt', 'Sign in or sign up')}>
+        <button type="button" role="tab" aria-selected="true" data-mode="giris">{t('Giriş yap', 'Sign in')}</button>
+        <button type="button" role="tab" aria-selected="false" data-mode="kayit">{t('Hesap oluştur', 'Create account')}</button>
       </div>
 
       <form class="form" data-form novalidate>
         <div class="field" data-only="kayit" hidden>
-          <label for="ad">Adın</label>
+          <label for="ad">{t('Adın', 'Your name')}</label>
           <input class="input" id="ad" name="ad" autocomplete="given-name" maxlength="60" />
         </div>
         <div class="field">
-          <label for="eposta">E-posta</label>
+          <label for="eposta">{t('E-posta', 'Email')}</label>
           <input class="input" id="eposta" name="eposta" type="email" autocomplete="email" required inputmode="email" />
         </div>
         <div class="field">
-          <label for="sifre">Şifre</label>
+          <label for="sifre">{t('Şifre', 'Password')}</label>
           <input class="input" id="sifre" name="sifre" type="password" autocomplete="current-password" required minlength="6" />
         </div>
         <p class="notice" data-msg role="status" aria-live="polite"></p>
-        <button class="btn btn-route btn-block" type="submit" data-submit>Giriş yap</button>
-        <button class="link" type="button" data-forgot>Şifremi unuttum</button>
+        <button class="btn btn-route btn-block" type="submit" data-submit>{t('Giriş yap', 'Sign in')}</button>
+        <button class="link" type="button" data-forgot>{t('Şifremi unuttum', 'Forgot my password')}</button>
       </form>
 
-      <div class="or"><span>ya da</span></div>
+      <div class="or"><span>{t('ya da', 'or')}</span></div>
       <button class="btn btn-ghost btn-block" type="button" data-google>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
           ><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h6a5.1 5.1 0 0 1-2.2 3.4v2.8h3.6c2-1.9 3.2-4.7 3.2-8.2z"></path><path
@@ -46,20 +49,21 @@ import Brand from '../components/Brand.astro'
             fill="#EA4335"
             d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 7l3.7 2.9C6.7 7.3 9.1 5.4 12 5.4z"></path></svg
         >
-        Google ile devam et
+        {t('Google ile devam et', 'Continue with Google')}
       </button>
     </div>
   </section>
 </Site>
 
 <script>
-  import { authMessage, currentUser, safeNext, supa } from '../lib/account'
+  import { authMessage, currentUser, local, safeNext, supa, tr } from '../lib/account'
   import { APP_URL } from '../lib/config'
 
   async function init() {
     const form = document.querySelector<HTMLFormElement>('[data-form]')
     if (!form || form.dataset.ready) return
     form.dataset.ready = '1'
+    const t = tr()
     const next = safeNext(new URLSearchParams(location.search).get('sonra'))
     if (await currentUser()) return location.replace(next)
 
@@ -67,16 +71,16 @@ import Brand from '../components/Brand.astro'
     const submit = document.querySelector<HTMLButtonElement>('[data-submit]')!
     const pass = form.querySelector<HTMLInputElement>('#sifre')!
     let mode: 'giris' | 'kayit' = new URLSearchParams(location.search).get('kayit') ? 'kayit' : 'giris'
-    const say = (t: string, tone: 'ok' | 'danger' = 'danger') => {
-      msg.textContent = t
+    const say = (text: string, tone: 'ok' | 'danger' = 'danger') => {
+      msg.textContent = text
       msg.dataset.tone = tone
     }
     const setMode = (m: typeof mode) => {
       mode = m
       document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === m)))
       document.querySelectorAll<HTMLElement>('[data-only]').forEach((el) => (el.hidden = el.dataset.only !== m))
-      document.querySelector('[data-title]')!.textContent = m === 'giris' ? 'Hesabına giriş yap' : 'Hesabını oluştur'
-      submit.textContent = m === 'giris' ? 'Giriş yap' : 'Hesap oluştur'
+      document.querySelector('[data-title]')!.textContent = m === 'giris' ? t('Hesabına giriş yap', 'Sign in to your account') : t('Hesabını oluştur', 'Create your account')
+      submit.textContent = m === 'giris' ? t('Giriş yap', 'Sign in') : t('Hesap oluştur', 'Create account')
       pass.autocomplete = m === 'giris' ? 'current-password' : 'new-password'
       ;(document.querySelector('[data-forgot]') as HTMLElement).hidden = m !== 'giris'
       say('')
@@ -86,15 +90,19 @@ import Brand from '../components/Brand.astro'
 
     const busy = (on: boolean) => {
       submit.disabled = on
-      submit.innerHTML = on ? '<span class="spin" aria-hidden="true"></span> Bekle…' : mode === 'giris' ? 'Giriş yap' : 'Hesap oluştur'
+      submit.innerHTML = on
+        ? `<span class="spin" aria-hidden="true"></span> ${t('Bekle…', 'Please wait…')}`
+        : mode === 'giris'
+          ? t('Giriş yap', 'Sign in')
+          : t('Hesap oluştur', 'Create account')
     }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
       const email = (form.querySelector('#eposta') as HTMLInputElement).value.trim()
       const password = pass.value
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say('Geçerli bir e-posta yaz.')
-      if (password.length < 6) return say('Şifre en az 6 karakter olmalı.')
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say(t('Geçerli bir e-posta yaz.', 'Enter a valid email.'))
+      if (password.length < 6) return say(t('Şifre en az 6 karakter olmalı.', 'Password must be at least 6 characters.'))
       busy(true)
       try {
         if (mode === 'giris') {
@@ -106,11 +114,11 @@ import Brand from '../components/Brand.astro'
         const { data, error } = await supa().auth.signUp({
           email,
           password,
-          options: { data: name ? { full_name: name } : undefined, emailRedirectTo: `${location.origin}/giris?sonra=${encodeURIComponent(next)}` },
+          options: { data: name ? { full_name: name } : undefined, emailRedirectTo: `${location.origin}${local('/giris')}?sonra=${encodeURIComponent(next)}` },
         })
         if (error) throw error
         if (data.session) return location.replace(next)
-        say('Hesabın oluşturuldu. E-postana gelen bağlantıya dokunarak doğrula, sonra giriş yap.', 'ok')
+        say(t('Hesabın oluşturuldu. E-postana gelen bağlantıya dokunarak doğrula, sonra giriş yap.', 'Your account is created. Verify it with the link we emailed you, then sign in.'), 'ok')
         setTimeout(() => setMode('giris'), 50)
       } catch (err) {
         say(authMessage(err))
@@ -121,14 +129,14 @@ import Brand from '../components/Brand.astro'
 
     document.querySelector('[data-forgot]')?.addEventListener('click', async () => {
       const email = (form.querySelector('#eposta') as HTMLInputElement).value.trim()
-      if (!email) return say('Önce e-postanı yaz.')
+      if (!email) return say(t('Önce e-postanı yaz.', 'Enter your email first.'))
       // Şifre yenileme uygulamanın kendi ekranında yapılır
-      const { error } = await supa().auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL}?sifre=yenile&e=${encodeURIComponent(email)}` })
-      say(error ? authMessage(error) : 'Şifre yenileme bağlantısını e-postana gönderdik.', error ? 'danger' : 'ok')
+      const { error } = await supa().auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL}?sifre=yenile&e=${encodeURIComponent(email)}${document.documentElement.lang === 'en' ? '&dil=en' : ''}` })
+      say(error ? authMessage(error) : t('Şifre yenileme bağlantısını e-postana gönderdik.', 'We emailed you a password reset link.'), error ? 'danger' : 'ok')
     })
 
     document.querySelector('[data-google]')?.addEventListener('click', async () => {
-      const { error } = await supa().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/giris?sonra=${encodeURIComponent(next)}` } })
+      const { error } = await supa().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}${local('/giris')}?sonra=${encodeURIComponent(next)}` } })
       if (error) say(authMessage(error))
     })
   }

@@ -1,3 +1,4 @@
+import { tt } from '../lib/i18n'
 import { PRIORITY } from '../domain/rules'
 import type { Category, Member, Rule, RuleMatchMode, SpendGroup } from '../domain/types'
 
@@ -6,25 +7,25 @@ export const OTHER_CATEGORY_ID = 'cat-diger'
 type SeedCategory = Pick<Category, 'id' | 'name' | 'icon' | 'color'> & { system?: boolean }
 
 export const DEFAULT_CATEGORIES: SeedCategory[] = [
-  { id: 'cat-market', name: 'Market', icon: 'shopping-cart', color: '#059669' },
-  { id: 'cat-akaryakit', name: 'Akaryakıt', icon: 'fuel', color: '#d97706' },
-  { id: 'cat-restoran', name: 'Restoran/Kafe', icon: 'coffee', color: '#db2777' },
-  { id: 'cat-ulasim', name: 'Ulaşım', icon: 'bus', color: '#2563eb' },
-  { id: 'cat-faturalar', name: 'Faturalar', icon: 'receipt', color: '#0891b2' },
-  { id: 'cat-kira', name: 'Kira/Ev', icon: 'home', color: '#7c3aed' },
-  { id: 'cat-saglik', name: 'Sağlık', icon: 'heart-pulse', color: '#dc2626' },
-  { id: 'cat-egitim', name: 'Eğitim', icon: 'graduation-cap', color: '#65a30d' },
-  { id: 'cat-giyim', name: 'Giyim', icon: 'shirt', color: '#c026d3' },
-  { id: 'cat-bebek', name: 'Bebek/Çocuk', icon: 'baby', color: '#f43f5e' },
-  { id: 'cat-eglence', name: 'Eğlence', icon: 'clapperboard', color: '#4f46e5' },
-  { id: 'cat-abonelik', name: 'Abonelikler', icon: 'repeat', color: '#0d9488' },
-  { id: 'cat-banka', name: 'Banka Ücreti/Faiz', icon: 'landmark', color: '#475569' },
-  { id: OTHER_CATEGORY_ID, name: 'Diğer', icon: 'shapes', color: '#94a3b8', system: true },
+  { id: 'cat-market', name: tt('Market'), icon: 'shopping-cart', color: '#059669' },
+  { id: 'cat-akaryakit', name: tt('Akaryakıt'), icon: 'fuel', color: '#d97706' },
+  { id: 'cat-restoran', name: tt('Restoran/Kafe'), icon: 'coffee', color: '#db2777' },
+  { id: 'cat-ulasim', name: tt('Ulaşım'), icon: 'bus', color: '#2563eb' },
+  { id: 'cat-faturalar', name: tt('Faturalar'), icon: 'receipt', color: '#0891b2' },
+  { id: 'cat-kira', name: tt('Kira/Ev'), icon: 'home', color: '#7c3aed' },
+  { id: 'cat-saglik', name: tt('Sağlık'), icon: 'heart-pulse', color: '#dc2626' },
+  { id: 'cat-egitim', name: tt('Eğitim'), icon: 'graduation-cap', color: '#65a30d' },
+  { id: 'cat-giyim', name: tt('Giyim'), icon: 'shirt', color: '#c026d3' },
+  { id: 'cat-bebek', name: tt('Bebek/Çocuk'), icon: 'baby', color: '#f43f5e' },
+  { id: 'cat-eglence', name: tt('Eğlence'), icon: 'clapperboard', color: '#4f46e5' },
+  { id: 'cat-abonelik', name: tt('Abonelikler'), icon: 'repeat', color: '#0d9488' },
+  { id: 'cat-banka', name: tt('Banka Ücreti/Faiz'), icon: 'landmark', color: '#475569' },
+  { id: OTHER_CATEGORY_ID, name: tt('Diğer'), icon: 'shapes', color: '#94a3b8', system: true },
 ]
 
 export const DEFAULT_GROUPS: Pick<SpendGroup, 'id' | 'name' | 'color'>[] = [
-  { id: 'grp-bireysel', name: 'Bireysel', color: '#2563eb' },
-  { id: 'grp-ortak', name: 'Ortak', color: '#059669' },
+  { id: 'grp-bireysel', name: tt('Bireysel'), color: '#2563eb' },
+  { id: 'grp-ortak', name: tt('Ortak'), color: '#059669' },
 ]
 
 export function buildDefaultGroups(now: string): SpendGroup[] {

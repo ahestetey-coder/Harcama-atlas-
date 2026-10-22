@@ -1,55 +1,59 @@
 ---
 import Site from '../layouts/Site.astro'
-import { PLANS } from '../data/plans'
+import { plansFor } from '../data/plans'
+import { langOf, localize, translator } from '../lib/i18n'
 
+const lang = langOf(Astro.url.pathname)
+const t = translator(lang)
+const L = (p: string) => localize(p, lang)
 // Paket özellikleri statik; fiyat, deneme süresi ve kampanya kodu sayfa açılınca veritabanından okunur.
-const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p) => [p.id === 'plus_plus' ? 'plusplus' : 'plus', p.highlights]))
+const features = Object.fromEntries(plansFor(lang).filter((p) => p.id !== 'free').map((p) => [p.id === 'plus_plus' ? 'plusplus' : 'plus', p.highlights]))
 ---
 
-<Site title="Ödeme · Harcama Atlası" description="Harcama Atlası Plus ya da Plus+ aboneliğini başlat." noindex>
+<Site title={t('Ödeme · Harcama Atlası', 'Checkout · Harcama Atlası')} description={t('Harcama Atlası Plus ya da Plus+ aboneliğini başlat.', 'Start your Harcama Atlası Plus or Plus+ subscription.')} noindex>
   <section class="wrap pay" data-pay data-features={JSON.stringify(features)}>
-    <a class="back" href="/fiyatlar">← Paketlere dön</a>
-    <h1 class="h-section">Aboneliğini başlat</h1>
+    <a class="back" href={L('/fiyatlar')}>{t('← Paketlere dön', '← Back to plans')}</a>
+    <h1 class="h-section">{t('Aboneliğini başlat', 'Start your subscription')}</h1>
 
     <div class="state card" data-state="loading">
       <span class="spin" aria-hidden="true"></span>
-      <span>Hazırlanıyor…</span>
+      <span>{t('Hazırlanıyor…', 'Getting ready…')}</span>
     </div>
 
     <div class="state card" data-state="closed" hidden>
-      <h2>Web ödemesi çok yakında</h2>
-      <p class="muted">Ödeme altyapısı son kontrollerden geçiyor. Bu sırada uygulamayı ücretsiz kullanmaya başlayabilirsin.</p>
-      <a class="btn btn-route" href="/test">Finansal Harita testini çöz</a>
+      <h2>{t('Web ödemesi çok yakında', 'Web payments are coming soon')}</h2>
+      <p class="muted">{t('Ödeme altyapısı son kontrollerden geçiyor. Bu sırada uygulamayı ücretsiz kullanmaya başlayabilirsin.', 'Our payment system is going through final checks. Meanwhile you can start using the app for free.')}</p>
+      <a class="btn btn-route" href={L('/test')}>{t('Finansal Harita testini çöz', 'Take the Financial Map test')}</a>
     </div>
 
     <div class="state card" data-state="has-sub" hidden>
-      <h2>Zaten bir aboneliğin var</h2>
-      <p class="muted">Paketini ya da ödeme dönemini abonelik sayfandan değiştirebilirsin.</p>
-      <a class="btn btn-route" href="/hesap/abonelik">Aboneliğime git</a>
+      <h2>{t('Zaten bir aboneliğin var', 'You already have a subscription')}</h2>
+      <p class="muted">{t('Paketini ya da ödeme dönemini abonelik sayfandan değiştirebilirsin.', 'You can change your plan or billing period on your subscription page.')}</p>
+      <a class="btn btn-route" href={L('/hesap/abonelik')}>{t('Aboneliğime git', 'Go to my subscription')}</a>
     </div>
 
     <div class="grid" data-state="ready" hidden>
       <div class="left">
         <div class="card block">
-          <p class="label">Paket</p>
-          <div class="seg" role="radiogroup" aria-label="Paket">
+          <p class="label">{t('Paket', 'Plan')}</p>
+          <div class="seg" role="radiogroup" aria-label={t('Paket', 'Plan')}>
             <button type="button" role="radio" data-plan="plus">Plus</button>
             <button type="button" role="radio" data-plan="plusplus">Plus+</button>
           </div>
-          <p class="label">Ödeme dönemi</p>
-          <div class="seg" role="radiogroup" aria-label="Ödeme dönemi">
-            <button type="button" role="radio" data-period="monthly">Aylık</button>
-            <button type="button" role="radio" data-period="yearly">Yıllık <span class="save" data-save></span></button>
+          <p class="label">{t('Ödeme dönemi', 'Billing period')}</p>
+          <div class="seg" role="radiogroup" aria-label={t('Ödeme dönemi', 'Billing period')}>
+            <button type="button" role="radio" data-period="monthly">{t('Aylık', 'Monthly')}</button>
+            <button type="button" role="radio" data-period="yearly">{t('Yıllık', 'Yearly')} <span class="save" data-save></span></button>
           </div>
           <ul class="feat" data-feat></ul>
         </div>
 
         <div class="card block">
           <div class="field">
-            <label for="kod">Kampanya kodu</label>
+            <label for="kod">{t('Kampanya kodu', 'Promo code')}</label>
             <div class="code-row">
-              <input class="input" id="kod" autocomplete="off" autocapitalize="characters" maxlength="20" placeholder="Varsa yaz" />
-              <button class="btn btn-ghost" type="button" data-apply>Uygula</button>
+              <input class="input" id="kod" autocomplete="off" autocapitalize="characters" maxlength="20" placeholder={t('Varsa yaz', 'If you have one')} />
+              <button class="btn btn-ghost" type="button" data-apply>{t('Uygula', 'Apply')}</button>
             </div>
           </div>
           <p class="notice" data-code-msg role="status" aria-live="polite"></p>
@@ -57,32 +61,41 @@ const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p)
       </div>
 
       <aside class="card summary">
-        <p class="label">Özet</p>
-        <div class="line"><span data-sum-name>Plus · Aylık</span><b data-sum-price></b></div>
-        <div class="line disc" data-disc-line hidden><span data-disc-name>Kampanya</span><b data-disc-amount></b></div>
-        <div class="total"><span data-total-label>Bugün ödenecek</span><b data-total></b></div>
+        <p class="label">{t('Özet', 'Summary')}</p>
+        <div class="line"><span data-sum-name>Plus · {t('Aylık', 'Monthly')}</span><b data-sum-price></b></div>
+        <div class="line disc" data-disc-line hidden><span data-disc-name>{t('Kampanya', 'Promo')}</span><b data-disc-amount></b></div>
+        <div class="total"><span data-total-label>{t('Bugün ödenecek', 'Due today')}</span><b data-total></b></div>
         <p class="trial" data-trial hidden></p>
         <p class="small muted" data-renew></p>
         <label class="consent">
           <input type="checkbox" data-consent />
-          <span>
-            <a href="/yasal/on-bilgilendirme" target="_blank">Ön bilgilendirme formunu</a> ve <a href="/yasal/mesafeli-satis" target="_blank">mesafeli satış sözleşmesini</a> okudum, kabul ediyorum.
-          </span>
+          {
+            lang === 'en' ? (
+              <span>
+                I have read and accept the <a href={L('/yasal/on-bilgilendirme')} target="_blank">pre-information form</a> and the <a href={L('/yasal/mesafeli-satis')} target="_blank">distance sales agreement</a>.
+              </span>
+            ) : (
+              <span>
+                <a href="/yasal/on-bilgilendirme" target="_blank">Ön bilgilendirme formunu</a> ve <a href="/yasal/mesafeli-satis" target="_blank">mesafeli satış sözleşmesini</a> okudum, kabul ediyorum.
+              </span>
+            )
+          }
         </label>
         <p class="notice" data-tone="danger" data-pay-msg role="alert"></p>
-        <button class="btn btn-route btn-block" type="button" data-checkout>Ödemeye geç</button>
+        <button class="btn btn-route btn-block" type="button" data-checkout>{t('Ödemeye geç', 'Continue to payment')}</button>
         <p class="small muted secure">
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 10V8a6 6 0 1 1 12 0v2m-13 0h14v11H5z" fill="none" stroke="currentColor" stroke-width="2"></path></svg>
-          Ödeme Paddle güvencesiyle alınır. Kart bilgilerin bize ulaşmaz. İstediğin zaman iptal edebilirsin.
+          {t('Ödeme Paddle güvencesiyle alınır. Kart bilgilerin bize ulaşmaz. İstediğin zaman iptal edebilirsin.', 'Payments are processed securely by Paddle. Your card details never reach us. Cancel any time.')}
         </p>
-        <p class="small muted" data-sandbox hidden>Deneme ortamı: gerçek ödeme alınmaz. Test kartı: 4242 4242 4242 4242.</p>
+        <p class="small muted" data-sandbox hidden>{t('Deneme ortamı: gerçek ödeme alınmaz. Test kartı: 4242 4242 4242 4242.', 'Test environment: no real payment is taken. Test card: 4242 4242 4242 4242.')}</p>
       </aside>
     </div>
   </section>
 </Site>
 
 <script>
-  import { formatTl, isLive, loadBilling, mySubscription, PERIOD_LABEL, PLAN_LABEL, requireUser, supa, toPeriod, toPlan, type Period, type Plan, type WebPrice } from '../lib/account'
+  import { formatTl, isLive, loadBilling, local, mySubscription, periodLabel, PLAN_LABEL, requireUser, supa, toPeriod, toPlan, tr, type Period, type Plan, type WebPrice } from '../lib/account'
+  import { pageLang } from '../lib/i18n'
 
   type PaddleGlobal = {
     Environment: { set: (e: string) => void }
@@ -96,8 +109,9 @@ const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p)
     return new Promise((res, rej) => {
       const s = document.createElement('script')
       s.src = 'https://cdn.paddle.com/paddle/v2/paddle.js'
-      s.onload = () => (w.Paddle ? res(w.Paddle) : rej(new Error('Paddle yüklenemedi')))
-      s.onerror = () => rej(new Error('Ödeme sayfası yüklenemedi. Bağlantını kontrol et.'))
+      const t = tr()
+      s.onload = () => (w.Paddle ? res(w.Paddle) : rej(new Error(t('Paddle yüklenemedi', 'Paddle could not be loaded'))))
+      s.onerror = () => rej(new Error(t('Ödeme sayfası yüklenemedi. Bağlantını kontrol et.', 'The payment page could not be loaded. Check your connection.')))
       document.head.append(s)
     })
   }
@@ -106,6 +120,7 @@ const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p)
     const root = document.querySelector<HTMLElement>('[data-pay]')
     if (!root || root.dataset.ready) return
     root.dataset.ready = '1'
+    const t = tr()
     const show = (name: string) => root.querySelectorAll<HTMLElement>('[data-state]').forEach((el) => (el.hidden = el.dataset.state !== name))
     const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!
 
@@ -138,27 +153,33 @@ const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p)
       })
       const m = priceOf(plan, 'monthly')
       const y = priceOf(plan, 'yearly')
-      $('[data-save]').textContent = m && y && y.amount_kurus < m.amount_kurus * 12 ? `%${Math.round((1 - y.amount_kurus / (m.amount_kurus * 12)) * 100)} indirim` : ''
+      $('[data-save]').textContent = m && y && y.amount_kurus < m.amount_kurus * 12 ? t(`%${Math.round((1 - y.amount_kurus / (m.amount_kurus * 12)) * 100)} indirim`, `${Math.round((1 - y.amount_kurus / (m.amount_kurus * 12)) * 100)}% off`) : ''
       $('[data-feat]').innerHTML = (features[plan] ?? []).map((f) => `<li>${f.replace(/</g, '&lt;')}</li>`).join('')
 
       const discount = coupon ? Math.round((p.amount_kurus * coupon.pct) / 100) : 0
       const net = p.amount_kurus - discount
-      $('[data-sum-name]').textContent = `${PLAN_LABEL[plan]} · ${PERIOD_LABEL[period]}`
+      $('[data-sum-name]').textContent = `${PLAN_LABEL[plan]} · ${periodLabel(period)}`
       $('[data-sum-price]').textContent = formatTl(p.amount_kurus)
       $('[data-disc-line]').hidden = !coupon
-      $('[data-disc-name]').textContent = coupon ? `Kampanya ${coupon.code} (%${coupon.pct})` : ''
+      $('[data-disc-name]').textContent = coupon ? t(`Kampanya ${coupon.code} (%${coupon.pct})`, `Promo ${coupon.code} (${coupon.pct}%)`) : ''
       $('[data-disc-amount]').textContent = coupon ? `−${formatTl(discount)}` : ''
       const trial = p.trial_days > 0 && !usedTrial
-      $('[data-total-label]').textContent = trial ? 'Bugün ödenecek' : 'Toplam'
+      $('[data-total-label]').textContent = trial ? t('Bugün ödenecek', 'Due today') : t('Toplam', 'Total')
       $('[data-total]').textContent = trial ? formatTl(0) : formatTl(net)
       const trialUsed = p.trial_days > 0 && usedTrial
       $('[data-trial]').hidden = !trial && !trialUsed
       $('[data-trial]').textContent = trial
-        ? `${p.trial_days} gün ücretsiz. Deneme bitince ${formatTl(net)} alınır; bitmeden iptal edersen ücret alınmaz.`
+        ? t(
+            `${p.trial_days} gün ücretsiz. Deneme bitince ${formatTl(net)} alınır; bitmeden iptal edersen ücret alınmaz.`,
+            `${p.trial_days} days free. ${formatTl(net)} is charged when the trial ends; cancel before then and you pay nothing.`,
+          )
         : trialUsed
-          ? 'Ücretsiz denemeni daha önce kullandın; ödeme bugün alınır.'
+          ? t('Ücretsiz denemeni daha önce kullandın; ödeme bugün alınır.', 'You have already used your free trial; payment is taken today.')
           : ''
-      $('[data-renew]').textContent = `Abonelik her ${period === 'monthly' ? 'ay' : 'yıl'} yenilenir. Fiyatlara KDV dahildir.`
+      $('[data-renew]').textContent =
+        period === 'monthly'
+          ? t('Abonelik her ay yenilenir. Fiyatlara KDV dahildir.', 'The subscription renews every month. Prices include VAT.')
+          : t('Abonelik her yıl yenilenir. Fiyatlara KDV dahildir.', 'The subscription renews every year. Prices include VAT.')
       const url = new URL(location.href)
       url.searchParams.set('plan', plan === 'plusplus' ? 'plus_plus' : 'plus')
       url.searchParams.set('period', period)
@@ -194,11 +215,11 @@ const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p)
       const { data, error } = await supa().rpc('ha_check_coupon', { p_code: code, p_plan: plan, p_period: period })
       if (error || !data) {
         codeMsg.dataset.tone = 'danger'
-        codeMsg.textContent = error ? (/Çok fazla/.test(error.message) ? error.message : 'Kod denetlenemedi. Tekrar dene.') : 'Bu kod geçersiz ya da bu pakette kullanılamıyor.'
+        codeMsg.textContent = error ? (/Çok fazla/.test(error.message) ? t(error.message, 'Too many attempts. Try again in a little while.') : t('Kod denetlenemedi. Tekrar dene.', 'The code could not be checked. Try again.')) : t('Bu kod geçersiz ya da bu pakette kullanılamıyor.', 'This code is invalid or cannot be used with this plan.')
       } else {
         coupon = { code, pct: Number(data) }
         codeMsg.dataset.tone = 'ok'
-        codeMsg.textContent = `Kod uygulandı: %${coupon.pct} indirim.`
+        codeMsg.textContent = t(`Kod uygulandı: %${coupon.pct} indirim.`, `Code applied: ${coupon.pct}% off.`)
       }
       render()
     })
@@ -210,20 +231,20 @@ const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p)
     btn.addEventListener('click', async () => {
       payMsg.textContent = ''
       if (!$<HTMLInputElement>('[data-consent]').checked) {
-        payMsg.textContent = 'Devam etmek için ön bilgilendirme formunu ve sözleşmeyi onayla.'
+        payMsg.textContent = t('Devam etmek için ön bilgilendirme formunu ve sözleşmeyi onayla.', 'To continue, accept the pre-information form and the agreement.')
         return
       }
       btn.disabled = true
-      btn.innerHTML = '<span class="spin" aria-hidden="true"></span> Ödeme açılıyor…'
+      btn.innerHTML = `<span class="spin" aria-hidden="true"></span> ${t('Ödeme açılıyor…', 'Opening checkout…')}`
       try {
         const Paddle = await loadPaddle()
         if (settings.environment === 'sandbox') Paddle.Environment.set('sandbox')
         const dark = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)
         Paddle.Initialize({
           token: settings.client_token,
-          checkout: { settings: { displayMode: 'overlay', theme: dark ? 'dark' : 'light', locale: 'tr', allowLogout: false } },
+          checkout: { settings: { displayMode: 'overlay', theme: dark ? 'dark' : 'light', locale: pageLang(), allowLogout: false } },
           eventCallback: (ev: { name?: string }) => {
-            if (ev.name === 'checkout.completed') location.assign('/hesap/abonelik?tamam=1')
+            if (ev.name === 'checkout.completed') location.assign(`${local('/hesap/abonelik')}?tamam=1`)
           },
         })
         Paddle.Checkout.open({
@@ -237,7 +258,7 @@ const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p)
         payMsg.textContent = (e as Error).message
       } finally {
         btn.disabled = false
-        btn.textContent = 'Ödemeye geç'
+        btn.textContent = t('Ödemeye geç', 'Continue to payment')
       }
     })
 

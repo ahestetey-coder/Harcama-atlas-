@@ -1,5 +1,6 @@
 ---
 import { COMPANY } from '../data/company'
+import { langOf } from '../lib/i18n'
 
 interface Props {
   k: keyof typeof COMPANY
@@ -8,9 +9,20 @@ interface Props {
 }
 const { k, label } = Astro.props
 const value = COMPANY[k]
+const EN: Record<keyof typeof COMPANY, string> = {
+  unvan: 'Company name',
+  adres: 'Address',
+  mersis: 'MERSIS no',
+  vergiDairesi: 'Tax office',
+  vergiNo: 'Tax no',
+  kep: 'Registered email (KEP)',
+  eposta: 'Email',
+  telefon: 'Phone',
+}
+const en = langOf(Astro.url.pathname) === 'en'
 ---
 
-{value ? <span>{value}</span> : <span class="fill" title="Şirket bilgisi girilince dolacak">[{label}]</span>}
+{value ? <span>{value}</span> : <span class="fill" title={en ? 'Filled in once company details are set' : 'Şirket bilgisi girilince dolacak'}>[{en ? EN[k] : label}]</span>}
 
 <style>
   .fill {

@@ -5,11 +5,12 @@ import { isNativeApp } from '../lib/native'
 import { notifyPermission, requestNotifyPermission, sendTestNotification, setNotifyPrefs, useNotifyPrefs, usePlannedNotifications, type NotifyPermission } from '../state/notifications'
 import { useUi } from '../state/ui'
 import { Button, Card, Switch } from './ui/primitives'
+import { dateLocale, tt, ttf } from '../lib/i18n'
 
 const KINDS: NotifyKind[] = ['payments', 'income', 'budget', 'spending']
 
 function when(d: Date): string {
-  return d.toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleString(dateLocale(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 }
 
 /** Ayarlar: mobil uygulamada bildirim tercihleri. Web'de gösterilmez. */
@@ -38,16 +39,16 @@ function NativeNotificationsCard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <Bell className="size-5 text-accent" /> Bildirimler
+            <Bell className="size-5 text-accent" /> {tt('Bildirimler')}
           </h2>
-          <p className="mt-1 text-sm text-muted">Hatırlatmalar telefonunda kurulur, internet gerekmez.</p>
+          <p className="mt-1 text-sm text-muted">{tt('Hatırlatmalar telefonunda kurulur, internet gerekmez.')}</p>
         </div>
-        <Switch checked={prefs.enabled} onChange={(on) => void enable(on)} label="Bildirimler" />
+        <Switch checked={prefs.enabled} onChange={(on) => void enable(on)} label={tt('Bildirimler')} />
       </div>
 
       {prefs.enabled && perm === 'denied' && (
         <p className="mt-3 rounded-xl bg-warning-soft px-3 py-2 text-[13px] text-ink">
-          Bildirim izni kapalı. Telefonun Ayarlar &gt; Harcama Atlası &gt; Bildirimler bölümünden açabilirsin.
+          {tt('Bildirim izni kapalı. Telefonun Ayarlar &gt; Harcama Atlası &gt; Bildirimler bölümünden açabilirsin.')}
         </p>
       )}
 
@@ -69,7 +70,7 @@ function NativeNotificationsCard() {
         <div className="mt-4 text-[13px]">
           {planned.length ? (
             <>
-              <div className="font-medium text-ink">Sıradaki bildirimler ({planned.length})</div>
+              <div className="font-medium text-ink">{ttf('Sıradaki bildirimler ({0})', planned.length)}</div>
               <ul className="mt-1 space-y-0.5 text-muted">
                 {planned.slice(0, 3).map((n) => (
                   <li key={n.key} className="truncate">
@@ -79,7 +80,7 @@ function NativeNotificationsCard() {
               </ul>
             </>
           ) : (
-            <p className="text-subtle">Şimdilik kurulacak bildirim yok. Ödeme, gelir veya harcama ekledikçe hatırlatmalar kurulur.</p>
+            <p className="text-subtle">{tt('Şimdilik kurulacak bildirim yok. Ödeme, gelir veya harcama ekledikçe hatırlatmalar kurulur.')}</p>
           )}
         </div>
       )}
@@ -91,11 +92,11 @@ function NativeNotificationsCard() {
         onClick={async () => {
           const p = await sendTestNotification().catch(() => 'unsupported' as const)
           setPerm(p)
-          if (p === 'granted') toast('Deneme bildirimi 5 saniye içinde gelecek. Uygulamayı arka plana alabilirsin.')
-          else toast('Bildirim izni verilmedi.', { kind: 'error' })
+          if (p === 'granted') toast(tt('Deneme bildirimi 5 saniye içinde gelecek. Uygulamayı arka plana alabilirsin.'))
+          else toast(tt('Bildirim izni verilmedi.'), { kind: 'error' })
         }}
       >
-        Deneme bildirimi gönder
+        {tt('Deneme bildirimi gönder')}
       </Button>
     </Card>
   )

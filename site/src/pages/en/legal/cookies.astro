@@ -1,0 +1,37 @@
+---
+import Legal from '../../../layouts/Legal.astro'
+---
+
+<Legal title="Cookie Policy" description="Cookies and browser storage used on the Harcama Atlası website and app.">
+  <p>
+    Cookies and similar browser storage (localStorage, IndexedDB) let a website save small pieces of information on your device. Harcama Atlası uses them only to make the site and
+    the app work.
+  </p>
+
+  <h2>What we use</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Purpose</th><th>Duration</th></tr></thead>
+    <tbody>
+      <tr><td>ha-cerez-onayi</td><td>Essential (preference)</td><td>Remembering whether you accepted or rejected analytics</td><td>Until you delete it</td></tr>
+      <tr><td>ha-site-theme</td><td>Essential (preference)</td><td>Remembering your light or dark theme choice</td><td>Until you delete it</td></tr>
+      <tr><td>sb-…-auth-token</td><td>Essential</td><td>Keeping you signed in if you signed in</td><td>Until you sign out</td></tr>
+      <tr><td>App database (IndexedDB)</td><td>Essential</td><td>Keeping your records on the device and working offline</td><td>Until you delete it</td></tr>
+      <tr><td>Paddle cookies</td><td>Essential (third party)</td><td>Only on the checkout page, to complete payment securely and prevent fraud</td><td>As set by Paddle</td></tr>
+      <tr><td>Cloudflare</td><td>Essential (third party)</td><td>Protecting the site against attacks</td><td>For the session</td></tr>
+    </tbody>
+  </table>
+  <p>Essential cookies do not require consent. We do not use advertising cookies.</p>
+
+  <h2>Analytics cookies (only with consent)</h2>
+  <p>
+    To improve the site we may collect visit statistics with PostHog (EU server): which pages are opened, where visitors come from, device and browser type. This only starts if
+    you choose “Accept” in the box at the bottom of the screen, and it uses a cookie named <code>ph_…</code> and browser storage (up to 1 year). Sessions are not recorded and
+    financial records in the app are never included. You can change your decision at any time via the “Cookie preferences” link at the bottom of the page.
+  </p>
+
+  <h2>Managing cookies</h2>
+  <p>
+    You can delete or block cookies and site data in your browser settings. If you block essential ones, parts such as sign-in and checkout may not work. For more on your
+    personal data, see the <a href="/en/legal/kvkk">KVKK Privacy Notice</a>.
+  </p>
+</Legal>

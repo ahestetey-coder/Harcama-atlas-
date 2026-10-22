@@ -1,5 +1,6 @@
 import { normalizeText, tokenize } from './normalize'
 import type { Rule, RuleMatchMode } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 export const MIN_PREFIX_LEN = 4
 export const MIN_CONTAINS_LEN = 5
@@ -21,11 +22,11 @@ export interface RuleEvaluation {
 
 export function validateRulePattern(pattern: string, mode: RuleMatchMode): string | null {
   const n = normalizeText(pattern)
-  if (!n) return 'Eşleşme ifadesi boş olamaz.'
+  if (!n) return tt('Eşleşme ifadesi boş olamaz.')
   const compact = n.replace(/ /g, '')
-  if (mode === 'prefix' && compact.length < MIN_PREFIX_LEN) return `"Kelime başı" eşleşmesi için en az ${MIN_PREFIX_LEN} harf gerekir.`
+  if (mode === 'prefix' && compact.length < MIN_PREFIX_LEN) return ttf('"Kelime başı" eşleşmesi için en az {0} harf gerekir.', MIN_PREFIX_LEN)
   if (mode === 'contains' && compact.length < MIN_CONTAINS_LEN)
-    return `"İçinde geçer" eşleşmesi için en az ${MIN_CONTAINS_LEN} harf gerekir; kısa ifadeler başka iş yeri adlarının içinde yanlış eşleşebilir.`
+    return ttf('"İçinde geçer" eşleşmesi için en az {0} harf gerekir; kısa ifadeler başka iş yeri adlarının içinde yanlış eşleşebilir.', MIN_CONTAINS_LEN)
   return null
 }
 
@@ -104,11 +105,11 @@ export function findRuleConflicts(rules: Rule[]): RuleConflict[] {
       const nb = normalizeText(b.pattern)
       if (!na || !nb) continue
       if (na === nb) {
-        out.push({ a, b, reason: 'Aynı ifade iki farklı kategoriye yönlendiriyor.' })
+        out.push({ a, b, reason: tt('Aynı ifade iki farklı kategoriye yönlendiriyor.') })
       } else if (ruleMatches(a, nb)) {
-        out.push({ a, b, reason: `"${b.pattern}" içeren açıklamalar "${a.pattern}" kuralıyla da eşleşir.` })
+        out.push({ a, b, reason: ttf('"{0}" içeren açıklamalar "{1}" kuralıyla da eşleşir.', b.pattern, a.pattern) })
       } else if (ruleMatches(b, na)) {
-        out.push({ a: b, b: a, reason: `"${a.pattern}" içeren açıklamalar "${b.pattern}" kuralıyla da eşleşir.` })
+        out.push({ a: b, b: a, reason: ttf('"{0}" içeren açıklamalar "{1}" kuralıyla da eşleşir.', a.pattern, b.pattern) })
       }
     }
   }

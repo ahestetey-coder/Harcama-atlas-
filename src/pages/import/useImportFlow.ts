@@ -10,6 +10,7 @@ import { ImportError, parseCsv, parseXlsx } from '../../import/sheet'
 import { parseStatement } from '../../import/statement'
 import type { DocLine, DraftRow, IgnoredLine, PageInfo, SheetTable, StatementTotal } from '../../import/types'
 import { useData } from '../../state/data'
+import { tt, ttf } from '../../lib/i18n'
 
 export interface FileInfo {
   name: string
@@ -118,7 +119,7 @@ export function useImportFlow() {
     async (fi: FileInfo) => {
       const ac = new AbortController()
       abortRef.current = ac
-      setStage({ k: 'reading', label: 'PDF okunuyor', progress: null, cancellable: true })
+      setStage({ k: 'reading', label: tt('PDF okunuyor'), progress: null, cancellable: true })
       try {
         const buffer = await fi.file.arrayBuffer()
         const doc = await readPdf(buffer, {
@@ -130,7 +131,7 @@ export function useImportFlow() {
               st.k === 'reading'
                 ? {
                     ...st,
-                    label: p.phase === 'ocr' ? `Taranmış sayfa ${p.page}/${p.pages} OCR ile okunuyor` : `Sayfa ${p.page}/${p.pages} okunuyor`,
+                    label: p.phase === 'ocr' ? ttf('Taranmış sayfa {0}/{1} OCR ile okunuyor', p.page, p.pages) : ttf('Sayfa {0}/{1} okunuyor', p.page, p.pages),
                     progress: p.phase === 'text' ? p.page / p.pages : st.progress,
                   }
                 : st,
@@ -143,8 +144,8 @@ export function useImportFlow() {
         const ocrPages = doc.pages.filter((p) => p.mode === 'ocr')
         const notes: string[] = [...(out.notes ?? [])]
         const skipped = doc.pages.filter((p) => p.mode === 'skipped')
-        if (skipped.length) notes.push(`${skipped.length} sayfa okunamadı: ${skipped.map((p) => `s.${p.page} (${p.note})`).join(', ')}`)
-        if (ocrPages.length) notes.push(`${ocrPages.map((p) => p.page).join(', ')}. sayfa(lar) metin içermediği için OCR ile okundu.`)
+        if (skipped.length) notes.push(ttf('{0} sayfa okunamadı: {1}', skipped.length, skipped.map((p) => `s.${p.page} (${p.note})`).join(', ')))
+        if (ocrPages.length) notes.push(ttf('{0}. sayfa(lar) metin içermediği için OCR ile okundu.', ocrPages.map((p) => p.page).join(', ')))
         await toReview({
           ...out,
           lines: doc.lines,
@@ -158,10 +159,10 @@ export function useImportFlow() {
         await ocrRef.current?.dispose()
         ocrRef.current = null
         if (e instanceof PdfPasswordError) return setStage({ k: 'password', incorrect: e.incorrect })
-        if (e instanceof OcrCancelledError || (e as Error)?.name === 'AbortError') return setStage({ k: 'error', message: 'Okuma iptal edildi. Kaydedilmiş hiçbir şey yok.', canRetry: true })
+        if (e instanceof OcrCancelledError || (e as Error)?.name === 'AbortError') return setStage({ k: 'error', message: tt('Okuma iptal edildi. Kaydedilmiş hiçbir şey yok.'), canRetry: true })
         // Yalnızca hata türü/mesajı yazılır; belge içeriği yazılmaz.
         if (!(e instanceof ImportError)) console.warn('PDF okuma hatası:', (e as Error)?.name, (e as Error)?.message)
-        setStage({ k: 'error', message: e instanceof ImportError ? e.message : 'PDF okunurken beklenmeyen bir hata oluştu.', canRetry: !(e instanceof ImportError) })
+        setStage({ k: 'error', message: e instanceof ImportError ? e.message : tt('PDF okunurken beklenmeyen bir hata oluştu.'), canRetry: !(e instanceof ImportError) })
       }
     },
     [ocrFactory, toReview],
@@ -171,7 +172,7 @@ export function useImportFlow() {
     async (bitmap: ImageBitmap, adj: ImageAdjustments) => {
       lastAdjust.current = adj
       const canvas = prepareImage(bitmap, adj)
-      setStage({ k: 'reading', label: 'Görsel OCR ile okunuyor', progress: 0, cancellable: true })
+      setStage({ k: 'reading', label: tt('Görsel OCR ile okunuyor'), progress: 0, cancellable: true })
       try {
         const s = await ocrFactory()
         const res = await s.recognize(canvas, 1)
@@ -181,7 +182,7 @@ export function useImportFlow() {
         const doc = { kind: 'image' as const, lines: res.lines, pages: [{ page: 1, mode: 'ocr' as const, textItems: 0, ocrConfidence: res.meanConfidence }], rawText: res.text, usedOcr: true }
         const out = parseStatement(doc)
         const notes: string[] = [...(out.notes ?? [])]
-        if (res.wordCount === 0) notes.push('Görselde metin bulunamadı. Kırpma veya iyileştirme ile yeniden deneyin.')
+        if (res.wordCount === 0) notes.push(tt('Görselde metin bulunamadı. Kırpma veya iyileştirme ile yeniden deneyin.'))
         await toReview({ ...out, lines: doc.lines, pages: doc.pages, parserVerified: false, notes, usedOcr: true, ocrConfidence: res.meanConfidence })
       } catch (e) {
         await ocrRef.current?.dispose()
@@ -190,7 +191,7 @@ export function useImportFlow() {
           setStage({ k: 'image', bitmap })
           return
         }
-        setStage({ k: 'error', message: 'OCR tamamlanamadı. OCR dosyaları yüklenemediyse internet bağlantısını kontrol edin veya Ayarlar’dan indirin; sonra yeniden deneyin.', canRetry: true })
+        setStage({ k: 'error', message: tt('OCR tamamlanamadı. OCR dosyaları yüklenemediyse internet bağlantısını kontrol edin veya Ayarlar’dan indirin; sonra yeniden deneyin.'), canRetry: true })
       }
     },
     [ocrFactory, toReview],
@@ -201,16 +202,16 @@ export function useImportFlow() {
       setInfo(fi)
       if (fi.kind === 'pdf') return runPdf(fi)
       if (fi.kind === 'image') {
-        setStage({ k: 'reading', label: 'Görsel açılıyor', progress: null, cancellable: false })
+        setStage({ k: 'reading', label: tt('Görsel açılıyor'), progress: null, cancellable: false })
         try {
           const bitmap = await loadImage(fi.file)
           setStage({ k: 'image', bitmap })
         } catch (e) {
-          setStage({ k: 'error', message: e instanceof ImportError ? e.message : 'Görsel açılamadı.', canRetry: false })
+          setStage({ k: 'error', message: e instanceof ImportError ? e.message : tt('Görsel açılamadı.'), canRetry: false })
         }
         return
       }
-      setStage({ k: 'reading', label: fi.kind === 'csv' ? 'CSV okunuyor' : 'Excel okunuyor', progress: null, cancellable: false })
+      setStage({ k: 'reading', label: fi.kind === 'csv' ? tt('CSV okunuyor') : tt('Excel okunuyor'), progress: null, cancellable: false })
       try {
         let tables: SheetTable[]
         let notes: string[] = []
@@ -220,11 +221,11 @@ export function useImportFlow() {
           notes = r.encodingNotes
         } else tables = await parseXlsx(fi.file)
         const nonEmpty = tables.filter((t) => t.rows.length > 0)
-        if (!nonEmpty.length) throw new ImportError('Dosyada veri bulunamadı.')
+        if (!nonEmpty.length) throw new ImportError(tt('Dosyada veri bulunamadı.'))
         const idx = Math.max(0, tables.indexOf(nonEmpty[0]))
         setStage({ k: 'mapping', tables, sheetIndex: idx, mapping: guessMapping(tables[idx]), notes })
       } catch (e) {
-        setStage({ k: 'error', message: e instanceof ImportError ? e.message : 'Dosya okunamadı.', canRetry: false })
+        setStage({ k: 'error', message: e instanceof ImportError ? e.message : tt('Dosya okunamadı.'), canRetry: false })
       }
     },
     [runPdf],
@@ -235,13 +236,13 @@ export function useImportFlow() {
     async (file: File): Promise<string | null> => {
       const kind = detectKind(file)
       if (!kind) {
-        if (/\.xls$/i.test(file.name)) return 'Eski Excel (.xls) biçimi desteklenmiyor. Dosyayı Excel’de “.xlsx” olarak kaydedip yükleyin.'
-        if (/\.xlsm$/i.test(file.name)) return 'Makro içeren Excel dosyaları (.xlsm) güvenlik nedeniyle kabul edilmez. “.xlsx” olarak kaydedin.'
-        return 'Desteklenmeyen dosya türü. PDF, CSV, XLSX, PNG veya JPEG yükleyin.'
+        if (/\.xls$/i.test(file.name)) return tt('Eski Excel (.xls) biçimi desteklenmiyor. Dosyayı Excel’de “.xlsx” olarak kaydedip yükleyin.')
+        if (/\.xlsm$/i.test(file.name)) return tt('Makro içeren Excel dosyaları (.xlsm) güvenlik nedeniyle kabul edilmez. “.xlsx” olarak kaydedin.')
+        return tt('Desteklenmeyen dosya türü. PDF, CSV, XLSX, PNG veya JPEG yükleyin.')
       }
       const limit = kindLimit(kind)
-      if (file.size > limit) return `Dosya çok büyük (${(file.size / 1048576).toFixed(1)} MB). Bu tür için sınır ${(limit / 1048576).toFixed(0)} MB.`
-      if (file.size === 0) return 'Dosya boş.'
+      if (file.size > limit) return ttf('Dosya çok büyük ({0} MB). Bu tür için sınır {1} MB.', (file.size / 1048576).toFixed(1), (limit / 1048576).toFixed(0))
+      if (file.size === 0) return tt('Dosya boş.')
       const hash = await sha256(await file.arrayBuffer())
       const fi: FileInfo = { name: file.name, size: file.size, kind, hash, file }
       setInfo(fi)
@@ -285,7 +286,7 @@ export function useImportFlow() {
         totals: [],
         lines: [],
         pages: [],
-        parserLabel: info?.kind === 'xlsx' ? `Excel sütun eşleştirme (${table.name})` : 'CSV sütun eşleştirme',
+        parserLabel: info?.kind === 'xlsx' ? ttf('Excel sütun eşleştirme ({0})', table.name) : tt('CSV sütun eşleştirme'),
         parserVerified: true,
         notes,
         usedOcr: false,

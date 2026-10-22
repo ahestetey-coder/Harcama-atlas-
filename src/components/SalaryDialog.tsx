@@ -8,6 +8,7 @@ import { useRepo, useSettings } from '../state/data'
 import { useUi } from '../state/ui'
 import { Modal } from './ui/Modal'
 import { Button, Field, Input, Select, Switch } from './ui/primitives'
+import { tt, ttf } from '../lib/i18n'
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
 
@@ -48,15 +49,15 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const save = async (e?: FormEvent) => {
     e?.preventDefault()
     const p = parseUserAmount(amount)
-    if (!p.ok || p.kurus <= 0) return setError({ at: 'amount', message: 'Geçerli bir tutar girin. Örnek: 45.000' })
-    if (!day) return setError({ at: 'day', message: 'Maaş gününü seçin.' })
+    if (!p.ok || p.kurus <= 0) return setError({ at: 'amount', message: tt('Geçerli bir tutar girin. Örnek: 45.000') })
+    if (!day) return setError({ at: 'day', message: tt('Maaş gününü seçin.') })
     setError(undefined)
     setBusy(true)
     try {
       const before = personalCycleDay(settings ?? {})
       const cycleDay = Math.min(MAX_CYCLE_START_DAY, day)
       await repo.saveSalary({ amountKurus: p.kurus, day, followCycle: following })
-      toast(following && cycleDay !== before ? `Ayınız artık her ayın ${cycleDay}. gününde başlıyor.` : 'Maaş kaydedildi.')
+      toast(following && cycleDay !== before ? ttf('Ayınız artık her ayın {0}. gününde başlıyor.', cycleDay) : tt('Maaş kaydedildi.'))
       onOpenChange(false)
     } catch (err) {
       setError({ at: 'form', message: toUserMessage(err) })
@@ -69,21 +70,21 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     <Modal
       open={open}
       onOpenChange={(o) => !busy && onOpenChange(o)}
-      title="Maaş"
+      title={tt('Maaş')}
       size="sm"
       footer={
         <Button variant="primary" loading={busy} onClick={() => void save()}>
-          Kaydet
+          {tt('Kaydet')}
         </Button>
       }
     >
       <form onSubmit={(e) => void save(e)} noValidate className="flex flex-col gap-3">
-        <Field label="Net maaş (TL)" htmlFor="salary-amount" error={error?.at === 'amount' ? error.message : undefined}>
+        <Field label={tt('Net maaş (TL)')} htmlFor="salary-amount" error={error?.at === 'amount' ? error.message : undefined}>
           <Input
             id="salary-amount"
             inputMode="decimal"
             className="num"
-            placeholder="Örn. 45.000"
+            placeholder={tt('Örn. 45.000')}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             aria-invalid={error?.at === 'amount'}
@@ -91,13 +92,13 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           />
         </Field>
         <Field
-          label="Maaş günü"
+          label={tt('Maaş günü')}
           htmlFor="salary-day"
-          hint={following && day !== null && day > MAX_CYCLE_START_DAY ? "Ay döngüsü 28'inde başlar." : undefined}
+          hint={following && day !== null && day > MAX_CYCLE_START_DAY ? tt('Ay döngüsü 28\'inde başlar.') : undefined}
           error={error?.at === 'day' ? error.message : undefined}
         >
           <Select id="salary-day" value={day ?? ''} onChange={(e) => setDay(e.target.value ? Number(e.target.value) : null)} aria-invalid={error?.at === 'day'}>
-            {day === null && <option value="">Seçin…</option>}
+            {day === null && <option value="">{tt('Seçin…')}</option>}
             {DAYS.map((d) => (
               <option key={d} value={d}>
                 {d}
@@ -106,8 +107,8 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           </Select>
         </Field>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-ink">Ayım maaş günümde başlasın</span>
-          <Switch label="Ayım maaş günümde başlasın" checked={following} onChange={setFollow} />
+          <span className="text-sm text-ink">{tt('Ayım maaş günümde başlasın')}</span>
+          <Switch label={tt('Ayım maaş günümde başlasın')} checked={following} onChange={setFollow} />
         </div>
         {error?.at === 'form' && (
           <p role="alert" className="text-[13px] text-danger">

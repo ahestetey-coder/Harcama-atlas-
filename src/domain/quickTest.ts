@@ -9,6 +9,7 @@
 import { SAVING_GROWTH_PCT } from './assumptions'
 import type { CoachDebt } from './coach'
 import { buildFreedomPlan, buildJourney, SPEND_GROUPS, type FreedomPlan, type JourneyFacts, type JourneyGoal, type JourneyProfile, type JourneyResult, type SpendBreakdown, type StageId } from './journey'
+import { tt } from '../lib/i18n'
 
 export const QUICK_TEST_VERSION = 1
 
@@ -44,112 +45,112 @@ export const QUICK_QUESTIONS = [
   {
     id: 'amac',
     kind: 'cards',
-    title: 'Finansal özgürlük sana ne ifade ediyor?',
-    hint: 'Rotanın varış noktasını bu belirler.',
+    title: tt('Finansal özgürlük sana ne ifade ediyor?'),
+    hint: tt('Rotanın varış noktasını bu belirler.'),
     options: [
-      { id: 'calismadan_gecinmek', label: 'Çalışmasam da geçinebilmek', icon: 'sun' },
-      { id: 'borcsuz', label: 'Hiç borcum olmaması', icon: 'unlink' },
-      { id: 'erken_emeklilik', label: 'Erken emekli olmak', icon: 'hourglass' },
-      { id: 'guvence', label: 'Ailemi güvenceye almak', icon: 'shield' },
+      { id: 'calismadan_gecinmek', label: tt('Çalışmasam da geçinebilmek'), icon: 'sun' },
+      { id: 'borcsuz', label: tt('Hiç borcum olmaması'), icon: 'unlink' },
+      { id: 'erken_emeklilik', label: tt('Erken emekli olmak'), icon: 'hourglass' },
+      { id: 'guvence', label: tt('Ailemi güvenceye almak'), icon: 'shield' },
     ] as Opt<QuickGoal>[],
   },
-  { id: 'hayal', kind: 'slider', title: 'Ayda ne kadar pasif gelir seni özgür hissettirir?', hint: 'Bugünün fiyatlarıyla düşün.', min: 10000, max: 500000, step: 5000, def: 60000 },
+  { id: 'hayal', kind: 'slider', title: tt('Ayda ne kadar pasif gelir seni özgür hissettirir?'), hint: tt('Bugünün fiyatlarıyla düşün.'), min: 10000, max: 500000, step: 5000, def: 60000 },
   {
     id: 'gelir',
     kind: 'list',
-    title: 'Hanene her ay giren net gelir ne kadar?',
-    hint: 'Maaş ve ek gelirler dahil.',
+    title: tt('Hanene her ay giren net gelir ne kadar?'),
+    hint: tt('Maaş ve ek gelirler dahil.'),
     options: [
-      { id: 'g1', label: '25.000 TL altı' },
+      { id: 'g1', label: tt('25.000 TL altı') },
       { id: 'g2', label: '25.000 – 50.000 TL' },
       { id: 'g3', label: '50.000 – 100.000 TL' },
       { id: 'g4', label: '100.000 – 200.000 TL' },
-      { id: 'g5', label: '200.000 TL üstü' },
+      { id: 'g5', label: tt('200.000 TL üstü') },
     ] as Opt<IncomeBand>[],
   },
   {
     id: 'kalan',
     kind: 'list',
-    title: 'Ay sonunda elinde ne kalıyor?',
-    hint: 'Tüm harcama ve taksitlerden sonra.',
+    title: tt('Ay sonunda elinde ne kalıyor?'),
+    hint: tt('Tüm harcama ve taksitlerden sonra.'),
     options: [
-      { id: 'eksi', label: 'Ay sonunu getiremiyorum' },
-      { id: 'az', label: "Çok az, gelirimin %10'undan az" },
-      { id: 'orta', label: "Gelirimin %10–20'si" },
-      { id: 'iyi', label: "Gelirimin %20'sinden fazlası" },
+      { id: 'eksi', label: tt('Ay sonunu getiremiyorum') },
+      { id: 'az', label: tt('Çok az, gelirimin %10\'undan az') },
+      { id: 'orta', label: tt('Gelirimin %10–20\'si') },
+      { id: 'iyi', label: tt('Gelirimin %20\'sinden fazlası') },
     ] as Opt<LeftBand>[],
   },
   {
     id: 'borc',
     kind: 'list',
-    title: 'Borç tarafında durumun hangisine yakın?',
-    hint: 'Kredi kartı, kredi, KMH dahil.',
+    title: tt('Borç tarafında durumun hangisine yakın?'),
+    hint: tt('Kredi kartı, kredi, KMH dahil.'),
     options: [
-      { id: 'yok', label: 'Hiç borcum yok', icon: 'check' },
-      { id: 'kart_tam', label: 'Sadece kart, her ay tamamını ödüyorum', icon: 'card' },
-      { id: 'kredi_rahat', label: 'Kredi taksitlerim var, rahat ödüyorum', icon: 'calendar' },
-      { id: 'zor', label: 'Taksitler zorluyor, kartta asgari ödediğim oluyor', icon: 'alert' },
+      { id: 'yok', label: tt('Hiç borcum yok'), icon: 'check' },
+      { id: 'kart_tam', label: tt('Sadece kart, her ay tamamını ödüyorum'), icon: 'card' },
+      { id: 'kredi_rahat', label: tt('Kredi taksitlerim var, rahat ödüyorum'), icon: 'calendar' },
+      { id: 'zor', label: tt('Taksitler zorluyor, kartta asgari ödediğim oluyor'), icon: 'alert' },
     ] as Opt<DebtState>[],
   },
   {
     id: 'acil',
     kind: 'list',
-    title: 'Gelirin yarın kesilse kaç ay idare edersin?',
-    hint: 'Sadece hemen ulaşabildiğin parayla.',
+    title: tt('Gelirin yarın kesilse kaç ay idare edersin?'),
+    hint: tt('Sadece hemen ulaşabildiğin parayla.'),
     options: [
-      { id: 'a0', label: '1 aydan az' },
-      { id: 'a1', label: '1 – 3 ay' },
-      { id: 'a3', label: '3 – 6 ay' },
-      { id: 'a6', label: '6 aydan fazla' },
+      { id: 'a0', label: tt('1 aydan az') },
+      { id: 'a1', label: tt('1 – 3 ay') },
+      { id: 'a3', label: tt('3 – 6 ay') },
+      { id: 'a6', label: tt('6 aydan fazla') },
     ] as Opt<CushionBand>[],
   },
   {
     id: 'birikim',
     kind: 'list',
-    title: 'Toplam birikimin yaklaşık ne kadar?',
-    hint: 'Oturduğun ev hariç.',
+    title: tt('Toplam birikimin yaklaşık ne kadar?'),
+    hint: tt('Oturduğun ev hariç.'),
     options: [
-      { id: 'b0', label: 'Henüz birikimim yok' },
-      { id: 'b1', label: '100.000 TL altı' },
+      { id: 'b0', label: tt('Henüz birikimim yok') },
+      { id: 'b1', label: tt('100.000 TL altı') },
       { id: 'b2', label: '100.000 – 500.000 TL' },
-      { id: 'b3', label: '500.000 – 2 milyon TL' },
-      { id: 'b4', label: '2 milyon TL üstü' },
+      { id: 'b3', label: tt('500.000 – 2 milyon TL') },
+      { id: 'b4', label: tt('2 milyon TL üstü') },
     ] as Opt<SavingsBand>[],
   },
   {
     id: 'nerede',
     kind: 'multi',
-    title: 'Birikimin nerede duruyor?',
-    hint: 'Birden fazla seçebilirsin.',
+    title: tt('Birikimin nerede duruyor?'),
+    hint: tt('Birden fazla seçebilirsin.'),
     options: [
-      { id: 'mevduat', label: 'Mevduat / nakit', icon: 'bank' },
-      { id: 'doviz', label: 'Döviz', icon: 'dollar' },
-      { id: 'altin', label: 'Altın', icon: 'gold' },
-      { id: 'hisseFon', label: 'Hisse / fon', icon: 'chart' },
-      { id: 'kripto', label: 'Kripto', icon: 'hex' },
+      { id: 'mevduat', label: tt('Mevduat / nakit'), icon: 'bank' },
+      { id: 'doviz', label: tt('Döviz'), icon: 'dollar' },
+      { id: 'altin', label: tt('Altın'), icon: 'gold' },
+      { id: 'hisseFon', label: tt('Hisse / fon'), icon: 'chart' },
+      { id: 'kripto', label: tt('Kripto'), icon: 'hex' },
       { id: 'bes', label: 'BES', icon: 'piggy' },
     ] as Opt<AssetPlace>[],
   },
   {
     id: 'yatirim',
     kind: 'list',
-    title: 'Düzenli yatırım yapıyor musun?',
-    hint: 'Her ay belli bir tutarı kenara ayırmak.',
+    title: tt('Düzenli yatırım yapıyor musun?'),
+    hint: tt('Her ay belli bir tutarı kenara ayırmak.'),
     options: [
-      { id: 'hayir', label: 'Hayır' },
-      { id: 'arasira', label: 'Ara sıra, para artarsa' },
-      { id: 'her_ay', label: 'Evet, her ay düzenli' },
+      { id: 'hayir', label: tt('Hayır') },
+      { id: 'arasira', label: tt('Ara sıra, para artarsa') },
+      { id: 'her_ay', label: tt('Evet, her ay düzenli') },
     ] as Opt<InvestHabit>[],
   },
   {
     id: 'dusus',
     kind: 'list',
-    title: 'Yatırımın bir ayda %20 düşse ne yaparsın?',
-    hint: 'İlk tepkini seç.',
+    title: tt('Yatırımın bir ayda %20 düşse ne yaparsın?'),
+    hint: tt('İlk tepkini seç.'),
     options: [
-      { id: 'sat', label: 'Satıp kurtulurum', icon: 'down' },
-      { id: 'bekle', label: 'Sakin kalıp beklerim', icon: 'pause' },
-      { id: 'al', label: 'Fırsat bilip alırım', icon: 'up' },
+      { id: 'sat', label: tt('Satıp kurtulurum'), icon: 'down' },
+      { id: 'bekle', label: tt('Sakin kalıp beklerim'), icon: 'pause' },
+      { id: 'al', label: tt('Fırsat bilip alırım'), icon: 'up' },
     ] as Opt<DropReaction>[],
   },
 ] as const
@@ -210,10 +211,10 @@ export function estimate(a: QuickAnswers): QuickEstimate {
   const income = INCOME_TL[a.gelir]
   const rate = LEFT_RATE[a.kalan]
   const debts: QuickEstimate['debts'] = []
-  if (a.borc === 'kredi_rahat') debts.push({ name: 'İhtiyaç kredisi', type: 'loan', paymentTl: income * 0.15, balanceTl: income * 0.15 * 24, monthlyRatePct: 2 })
+  if (a.borc === 'kredi_rahat') debts.push({ name: tt('İhtiyaç kredisi'), type: 'loan', paymentTl: income * 0.15, balanceTl: income * 0.15 * 24, monthlyRatePct: 2 })
   if (a.borc === 'zor') {
-    debts.push({ name: 'Kredi kartı', type: 'card', paymentTl: income * 0.1, balanceTl: income, monthlyRatePct: 4.25 })
-    debts.push({ name: 'İhtiyaç kredisi', type: 'loan', paymentTl: income * 0.25, balanceTl: income * 0.25 * 24, monthlyRatePct: 3 })
+    debts.push({ name: tt('Kredi kartı'), type: 'card', paymentTl: income * 0.1, balanceTl: income, monthlyRatePct: 4.25 })
+    debts.push({ name: tt('İhtiyaç kredisi'), type: 'loan', paymentTl: income * 0.25, balanceTl: income * 0.25 * 24, monthlyRatePct: 3 })
   }
   const pay = debts.reduce((s, d) => s + d.paymentTl, 0)
   const spend = Math.max(income * 0.3, income * (1 - rate) - pay)
@@ -326,16 +327,16 @@ export function seedFacts(a: QuickAnswers): JourneyFacts {
 // ---------- Sonuç ----------
 
 export const ARCHETYPE: Record<DropReaction, { name: string; text: string }> = {
-  sat: { name: 'Temkinli Kaşif', text: 'Riski sevmiyor, adımlarını sağlama alıyorsun.' },
-  bekle: { name: 'Dengeli Yolcu', text: 'Ne aceleci ne çekingen; yolu planlayarak yürüyorsun.' },
-  al: { name: 'Atak Dağcı', text: 'Dalgalanmadan korkmuyor, zirveye kısa yoldan tırmanmak istiyorsun.' },
+  sat: { name: tt('Temkinli Kaşif'), text: tt('Riski sevmiyor, adımlarını sağlama alıyorsun.') },
+  bekle: { name: tt('Dengeli Yolcu'), text: tt('Ne aceleci ne çekingen; yolu planlayarak yürüyorsun.') },
+  al: { name: tt('Atak Dağcı'), text: tt('Dalgalanmadan korkmuyor, zirveye kısa yoldan tırmanmak istiyorsun.') },
 }
 
 export const PLACES = [
-  { min: 0, name: 'Sisli Vadi', text: 'Önce sis dağılmalı: bütçe dengesi ve ilk birikim yönünü kapatıyor.' },
-  { min: 1, name: 'Patikanın Başı', text: 'Yolu buldun; birkaç temel adımla hızlanacaksın.' },
-  { min: 4, name: 'Ana Yol', text: 'Zemin sağlam. Artık mesele hız ve doğru yatırım dağılımı.' },
-  { min: 6, name: 'Zirve Kampı', text: 'Zirve görünüyor. Birikimi korumak ve doğru çekmek önemli.' },
+  { min: 0, name: tt('Sisli Vadi'), text: tt('Önce sis dağılmalı: bütçe dengesi ve ilk birikim yönünü kapatıyor.') },
+  { min: 1, name: tt('Patikanın Başı'), text: tt('Yolu buldun; birkaç temel adımla hızlanacaksın.') },
+  { min: 4, name: tt('Ana Yol'), text: tt('Zemin sağlam. Artık mesele hız ve doğru yatırım dağılımı.') },
+  { min: 6, name: tt('Zirve Kampı'), text: tt('Zirve görünüyor. Birikimi korumak ve doğru çekmek önemli.') },
 ] as const
 
 export interface QuickInsight {
@@ -376,11 +377,11 @@ function growthShare(j: JourneyResult): QuickResult['growth'] {
 }
 
 const INSIGHT: Partial<Record<StageId, [QuickInsight['tone'], string]>> = {
-  balance: ['danger', 'Ay sonunda açık veriyorsun. Rota bu açığı kapatmakla başlıyor.'],
-  starter: ['warning', 'Beklenmedik bir masraf seni borca itebilir; ilk kalkanın henüz yok.'],
-  debt: ['danger', 'Taksitler zorluyor; yüksek faizli borç birikimini eritiyor.'],
-  emergency: ['warning', 'Acil durum yastığın var ama henüz tam değil.'],
-  saving: ['warning', "Gelirinin %20'sini düzenli biriktirmek rotanı ciddi hızlandırır."],
+  balance: ['danger', tt('Ay sonunda açık veriyorsun. Rota bu açığı kapatmakla başlıyor.')],
+  starter: ['warning', tt('Beklenmedik bir masraf seni borca itebilir; ilk kalkanın henüz yok.')],
+  debt: ['danger', tt('Taksitler zorluyor; yüksek faizli borç birikimini eritiyor.')],
+  emergency: ['warning', tt('Acil durum yastığın var ama henüz tam değil.')],
+  saving: ['warning', tt('Gelirinin %20\'sini düzenli biriktirmek rotanı ciddi hızlandırır.')],
 }
 
 export function quickResult(a: QuickAnswers): QuickResult {
@@ -394,12 +395,12 @@ export function quickResult(a: QuickAnswers): QuickResult {
     const i: QuickInsight['tone'] | undefined = INSIGHT[s.id]?.[0]
     if (!i) continue
     // Rahat ödenen kredi taksiti uyarı değil bilgi: kapandıkça birikime döner
-    if (s.id === 'debt' && a.borc === 'kredi_rahat') insights.push({ stage: s.id, tone: 'warning', text: 'Kredi taksitlerin birikime ayırabileceğin parayı azaltıyor; kapandıkça rotan hızlanır.' })
+    if (s.id === 'debt' && a.borc === 'kredi_rahat') insights.push({ stage: s.id, tone: 'warning', text: tt('Kredi taksitlerin birikime ayırabileceğin parayı azaltıyor; kapandıkça rotan hızlanır.') })
     else insights.push({ stage: s.id, tone: i, text: INSIGHT[s.id]![1] })
   }
   const e = estimate(a)
-  if (insights.length < 3 && e.incomeTl > 0 && (e.incomeTl - e.spendTl - e.debtPaymentTl) / e.incomeTl >= 0.2) insights.push({ stage: 'positive', tone: 'accent', text: 'Güçlü bir tasarruf oranın var; rotanın motoru bu.' })
-  if (insights.length < 3 && !e.debts.length) insights.push({ stage: 'positive', tone: 'accent', text: 'Borcun olmaması sana büyük bir hız avantajı veriyor.' })
+  if (insights.length < 3 && e.incomeTl > 0 && (e.incomeTl - e.spendTl - e.debtPaymentTl) / e.incomeTl >= 0.2) insights.push({ stage: 'positive', tone: 'accent', text: tt('Güçlü bir tasarruf oranın var; rotanın motoru bu.') })
+  if (insights.length < 3 && !e.debts.length) insights.push({ stage: 'positive', tone: 'accent', text: tt('Borcun olmaması sana büyük bir hız avantajı veriyor.') })
   const r = j.indicators.route
   return {
     journey: j,
@@ -414,8 +415,8 @@ export function quickResult(a: QuickAnswers): QuickResult {
     // Borç rakamları testte tahmin edildi: kesin tutar yerine gerçek borcu girmeye çağırır
     firstMove:
       j.current?.id === 'debt'
-        ? 'Testte taksitlerin olduğunu söyledin. Rota kurulumunda borçlarını girince hangisini önce kapatacağın ve borçsuzluk tarihin çıkar.'
-        : (j.current?.next ?? 'Rotan tamam: birikimini koru ve güvenli çekim planı yap.'),
+        ? tt('Testte taksitlerin olduğunu söyledin. Rota kurulumunda borçlarını girince hangisini önce kapatacağın ve borçsuzluk tarihin çıkar.')
+        : (j.current?.next ?? tt('Rotan tamam: birikimini koru ve güvenli çekim planı yap.')),
     growth: growthShare(j),
   }
 }

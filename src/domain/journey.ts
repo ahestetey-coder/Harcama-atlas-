@@ -21,6 +21,7 @@ import {
 import { simulateDebts, type CoachDebt, type DebtStrategy } from './coach'
 import { addMonths, MONTH_NAMES, periodOf } from './dates'
 import { isSpending, type IsoDate, type MonthKey, type Transaction } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 export { DTI_LIMIT, SAVING_RATE_TARGET, STARTER_MONTHS }
 
@@ -36,16 +37,16 @@ export type JourneyGoal = 'independence' | 'security' | 'early-retire' | 'custom
 export type IncomeStability = 'regular' | 'variable' | 'irregular'
 
 export const JOURNEY_GOAL_LABEL: Record<JourneyGoal, string> = {
-  independence: 'Finansal özgürlük',
-  security: 'Güvenceli bir düzen',
-  'early-retire': 'Erken emeklilik',
-  custom: 'Kendi hedefim',
+  independence: tt('Finansal özgürlük'),
+  security: tt('Güvenceli bir düzen'),
+  'early-retire': tt('Erken emeklilik'),
+  custom: tt('Kendi hedefim'),
 }
 
 export const STABILITY_LABEL: Record<IncomeStability, string> = {
-  regular: 'Düzenli (maaş gibi)',
-  variable: 'Değişken',
-  irregular: 'Düzensiz',
+  regular: tt('Düzenli (maaş gibi)'),
+  variable: tt('Değişken'),
+  irregular: tt('Düzensiz'),
 }
 
 export type Housing = 'rent' | 'mortgage' | 'owned' | 'family'
@@ -55,11 +56,11 @@ export type RiskStance = 'cautious' | 'balanced' | 'bold'
 /** Planın ölçü birimi: hedefler TL, dolar ya da gram altın cinsinden sabitlenir. */
 export type PlanBase = 'TRY' | 'USD' | 'XAU'
 
-export const HOUSING_LABEL: Record<Housing, string> = { rent: 'Kirada', mortgage: 'Ev sahibi, kredisi sürüyor', owned: 'Ev sahibi, borçsuz', family: 'Aile yanında / lojman' }
-export const PENSION_LABEL: Record<Pension, string> = { 'sgk-bes': 'SGK ve BES', sgk: 'Yalnızca SGK', bes: 'Yalnızca BES', none: 'Yok' }
-export const HEALTH_LABEL: Record<HealthCover, string> = { private: 'SGK ve özel sağlık sigortası', public: 'Yalnızca SGK (genel sağlık sigortası)', none: 'Yok' }
-export const RISK_LABEL: Record<RiskStance, string> = { cautious: 'Temkinli: dalgalanma beni çok rahatsız eder', balanced: 'Dengeli: kısa vadeli düşüşlere katlanırım', bold: 'Atak: uzun vadede dalgalanmayı kabul ederim' }
-export const BASE_LABEL: Record<PlanBase, string> = { TRY: 'TL', USD: 'USD', XAU: 'Gram altın' }
+export const HOUSING_LABEL: Record<Housing, string> = { rent: 'Kirada', mortgage: tt('Ev sahibi, kredisi sürüyor'), owned: tt('Ev sahibi, borçsuz'), family: tt('Aile yanında / lojman') }
+export const PENSION_LABEL: Record<Pension, string> = { 'sgk-bes': tt('SGK ve BES'), sgk: tt('Yalnızca SGK'), bes: tt('Yalnızca BES'), none: 'Yok' }
+export const HEALTH_LABEL: Record<HealthCover, string> = { private: tt('SGK ve özel sağlık sigortası'), public: tt('Yalnızca SGK (genel sağlık sigortası)'), none: 'Yok' }
+export const RISK_LABEL: Record<RiskStance, string> = { cautious: tt('Temkinli: dalgalanma beni çok rahatsız eder'), balanced: tt('Dengeli: kısa vadeli düşüşlere katlanırım'), bold: tt('Atak: uzun vadede dalgalanmayı kabul ederim') }
+export const BASE_LABEL: Record<PlanBase, string> = { TRY: 'TL', USD: 'USD', XAU: tt('Gram altın') }
 
 export interface JourneyProfile {
   goal: JourneyGoal
@@ -126,12 +127,12 @@ export type SpendGroup = 'housing' | 'food' | 'transport' | 'bills' | 'fun' | 'o
 export type SpendBreakdown = Record<SpendGroup, number>
 export const SPEND_GROUPS: SpendGroup[] = ['housing', 'food', 'transport', 'bills', 'fun', 'other']
 export const SPEND_GROUP_LABEL: Record<SpendGroup, string> = {
-  housing: 'Kira / konut',
-  food: 'Gıda ve market',
-  transport: 'Ulaşım',
-  bills: 'Faturalar ve abonelikler',
-  fun: 'Eğlence ve dışarıda yemek',
-  other: 'Diğer (sağlık, giyim, eğitim…)',
+  housing: tt('Kira / konut'),
+  food: tt('Gıda ve market'),
+  transport: tt('Ulaşım'),
+  bills: tt('Faturalar ve abonelikler'),
+  fun: tt('Eğlence ve dışarıda yemek'),
+  other: tt('Diğer (sağlık, giyim, eğitim…)'),
 }
 /** Zorunlu sayılan gruplar (acil durum fonu bunlarla ölçülür). */
 const ESSENTIAL_GROUPS: SpendGroup[] = ['housing', 'food', 'transport', 'bills']
@@ -310,8 +311,8 @@ export function freedomSteps(plan: Pick<FreedomPlan, 'fiKurus' | 'leanKurus' | '
   const swr = plan.withdrawal.usedPct / 100
   const cover = (k: number) => Math.round((k * swr) / 12)
   const raw: Array<Pick<FreedomStep, 'id' | 'title' | 'short' | 'what' | 'targetKurus'>> = [
-    { id: 'year1', title: 'Bir yıllık özgürlük', short: '1 yıl', what: 'Bir yıl hiç çalışmasanız da hedeflediğiniz yaşamı sürdürebilirsiniz', targetKurus: plan.targetMonthlyKurus * 12 },
-    { id: 'coast', title: 'Coast FI', short: 'Coast', what: 'Bundan sonra hiç eklemeseniz de birikim getirisiyle hedef yaşınızda tamamlanır', targetKurus: plan.coastKurus },
+    { id: 'year1', title: tt('Bir yıllık özgürlük'), short: tt('1 yıl'), what: tt('Bir yıl hiç çalışmasanız da hedeflediğiniz yaşamı sürdürebilirsiniz'), targetKurus: plan.targetMonthlyKurus * 12 },
+    { id: 'coast', title: tt('Coast FI'), short: tt('Coast'), what: tt('Bundan sonra hiç eklemeseniz de birikim getirisiyle hedef yaşınızda tamamlanır'), targetKurus: plan.coastKurus },
   ]
   const net = Math.max(0, plan.netKurus)
   const steps: FreedomStep[] = []
@@ -322,12 +323,12 @@ export function freedomSteps(plan: Pick<FreedomPlan, 'fiKurus' | 'leanKurus' | '
     const done = net >= r.targetKurus
     steps.push({
       ...r,
-      what: r.what || `Birikiminiz her ay ${tl(c)} giderinizi karşılar`,
+      what: r.what || ttf('Birikiminiz her ay {0} giderinizi karşılar', tl(c)),
       coverMonthlyKurus: c,
       done,
       progress: clamp01(net / r.targetKurus),
       leftKurus: Math.max(0, r.targetKurus - net),
-      leftText: done ? 'Ulaşıldı' : `${fmt(r.targetKurus - net)} kaldı`,
+      leftText: done ? tt('Ulaşıldı') : ttf('{0} kaldı', fmt(r.targetKurus - net)),
       etaMonths: done ? undefined : monthsToTarget(net, plan.monthlySavingKurus, r.targetKurus, plan.realReturnPct),
     })
   }
@@ -445,7 +446,7 @@ export function formatInBase(kurus: number, base: PlanBase, rates: BaseRates): s
   if (!rate) return null
   const v = kurus / 100 / rate
   if (base === 'USD') return `${Math.round(v).toLocaleString('tr-TR')} $`
-  if (base === 'XAU') return `${v.toLocaleString('tr-TR', { maximumFractionDigits: v >= 100 ? 0 : 1 })} gr altın`
+  if (base === 'XAU') return ttf('{0} gr altın', v.toLocaleString('tr-TR', { maximumFractionDigits: v >= 100 ? 0 : 1 }))
   return tl(kurus)
 }
 
@@ -473,7 +474,7 @@ function moneyCond(label: string, now: number, target: number, saving: number, v
     done,
     progress: target > 0 ? clamp01(now / target) : 1,
     left,
-    leftText: done ? 'Sağlanıyor' : verb,
+    leftText: done ? tt('Sağlanıyor') : verb,
     etaMonths: done ? undefined : monthsToTarget(now, saving, target, realPct),
     inBase,
   }
@@ -495,19 +496,19 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
   const balanceDone = income > 0 && spend <= income
   const balance: Stage = {
     id: 'balance',
-    title: 'Bütçe dengesi',
-    short: 'Denge',
-    criterion: 'Aylık gider, gelirin altında',
-    source: 'Bütün finansal planların ilk koşulu: harcama gelirden azdır.',
-    status: income > 0 ? `Gelirin %${Math.round(balanceRatio * 100)}'i harcanıyor` : 'Gelir bilgisi yok',
-    next: balanceDone ? 'Dengeyi koruyun; fazlayı birikime yönlendirin' : `Aylık giderleri ${tl(spend - income + 1)} azaltmak dengeyi sağlar`,
+    title: tt('Bütçe dengesi'),
+    short: tt('Denge'),
+    criterion: tt('Aylık gider, gelirin altında'),
+    source: tt('Bütün finansal planların ilk koşulu: harcama gelirden azdır.'),
+    status: income > 0 ? ttf('Gelirin %{0}\'i harcanıyor', Math.round(balanceRatio * 100)) : tt('Gelir bilgisi yok'),
+    next: balanceDone ? tt('Dengeyi koruyun; fazlayı birikime yönlendirin') : ttf('Aylık giderleri {0} azaltmak dengeyi sağlar', tl(spend - income + 1)),
     progress: income > 0 ? clamp01(spend <= income ? 1 : income / spend) : 0,
     done: balanceDone,
-    missing: f.averageExpenseKurus === null ? 'Son dönemlerde gider kaydı yok; zorunlu gider kullanıldı' : undefined,
-    goal: income > 0 ? `Aylık gideriniz, ${tl(income)} gelirinizin altında kalsın` : 'Aylık gideriniz gelirinizin altında kalsın',
+    missing: f.averageExpenseKurus === null ? tt('Son dönemlerde gider kaydı yok; zorunlu gider kullanıldı') : undefined,
+    goal: income > 0 ? ttf('Aylık gideriniz, {0} gelirinizin altında kalsın', tl(income)) : tt('Aylık gideriniz gelirinizin altında kalsın'),
     conditions: [
       {
-        label: 'Aylık gider',
+        label: tt('Aylık gider'),
         unit: 'money',
         now: spend,
         target: income,
@@ -515,25 +516,25 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
         done: balanceDone,
         progress: income > 0 ? clamp01(spend <= income ? 1 : income / spend) : 0,
         left: Math.max(0, spend - income),
-        leftText: balanceDone ? 'Sağlanıyor' : income > 0 ? `Ayda ${tl(spend - income + 1)} azaltın` : 'Testte gelirinizi girin',
+        leftText: balanceDone ? tt('Sağlanıyor') : income > 0 ? ttf('Ayda {0} azaltın', tl(spend - income + 1)) : tt('Testte gelirinizi girin'),
       },
     ],
   }
 
   const starterTarget = essential * STARTER_MONTHS
-  const starterCond = moneyCond('Hızlı kullanılabilir birikim', f.liquidKurus, starterTarget, saving, `${tl(starterTarget - f.liquidKurus)} daha biriktirin`)
+  const starterCond = moneyCond(tt('Hızlı kullanılabilir birikim'), f.liquidKurus, starterTarget, saving, ttf('{0} daha biriktirin', tl(starterTarget - f.liquidKurus)))
   const starter: Stage = {
     id: 'starter',
-    title: 'Başlangıç fonu',
-    short: 'Başlangıç',
-    criterion: `${STARTER_MONTHS} aylık zorunlu gider kadar hızlı kullanılabilir birikim`,
-    source: 'Küçük bir acil durum fonu, beklenmedik bir giderin yeni borca dönmesini önler (Dave Ramsey\'nin "bebek adımları" yaklaşımı).',
+    title: tt('Başlangıç fonu'),
+    short: tt('Başlangıç'),
+    criterion: ttf('{0} aylık zorunlu gider kadar hızlı kullanılabilir birikim', STARTER_MONTHS),
+    source: tt('Küçük bir acil durum fonu, beklenmedik bir giderin yeni borca dönmesini önler (Dave Ramsey\'nin "bebek adımları" yaklaşımı).'),
     status: `${tl(f.liquidKurus)} / ${tl(starterTarget)}`,
-    next: f.liquidKurus >= starterTarget ? 'Sırada yüksek faizli borçlar var' : `${tl(starterTarget - f.liquidKurus)} daha biriktirin`,
+    next: f.liquidKurus >= starterTarget ? tt('Sırada yüksek faizli borçlar var') : ttf('{0} daha biriktirin', tl(starterTarget - f.liquidKurus)),
     progress: starterCond.progress,
     done: starterCond.done,
-    missing: f.hasAssets ? undefined : 'Yatırımlarım boş; birikiminizi oraya ekleyin',
-    goal: `Kenarda ${tl(starterTarget)} hızlı kullanılabilir para (${STARTER_MONTHS} aylık zorunlu gider)`,
+    missing: f.hasAssets ? undefined : tt('Yatırımlarım boş; birikiminizi oraya ekleyin'),
+    goal: ttf('Kenarda {0} hızlı kullanılabilir para ({1} aylık zorunlu gider)', tl(starterTarget), STARTER_MONTHS),
     conditions: [starterCond],
   }
 
@@ -543,7 +544,7 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
   const dtiOk = dti === null || dti <= DTI_LIMIT
   const debtConds: Condition[] = [
     {
-      label: 'Yüksek faizli borç (kart, KMH, ihtiyaç, kişisel)',
+      label: tt('Yüksek faizli borç (kart, KMH, ihtiyaç, kişisel)'),
       unit: 'money',
       now: consumer,
       target: 0,
@@ -551,13 +552,13 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
       done: consumer <= 0,
       progress: consumer > 0 ? clamp01(income > 0 ? 1 - consumer / (consumer + income * 3) : 0) : 1,
       left: Math.max(0, consumer),
-      leftText: consumer > 0 ? `${tl(consumer)} borcu kapatın` : 'Sağlanıyor',
+      leftText: consumer > 0 ? ttf('{0} borcu kapatın', tl(consumer)) : tt('Sağlanıyor'),
       etaMonths: consumer > 0 ? (saving > 0 ? Math.ceil(consumer / saving) : null) : undefined,
     },
   ]
   if (dti !== null)
     debtConds.push({
-      label: 'Borç ödemesi / gelir',
+      label: tt('Borç ödemesi / gelir'),
       unit: 'pct',
       now: dti,
       target: DTI_LIMIT,
@@ -565,36 +566,36 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
       done: dtiOk,
       progress: dtiOk ? 1 : clamp01(DTI_LIMIT / dti),
       left: Math.max(0, dti - DTI_LIMIT),
-      leftText: dtiOk ? 'Sağlanıyor' : `Aylık borç ödemelerini ${tl(pay! - income * DTI_LIMIT)} azaltın`,
+      leftText: dtiOk ? tt('Sağlanıyor') : ttf('Aylık borç ödemelerini {0} azaltın', tl(pay! - income * DTI_LIMIT)),
     })
   const debt: Stage = {
     id: 'debt',
-    title: 'Yüksek faizli borçsuz',
-    short: 'Borçsuz',
-    criterion: `Kredi kartı, KMH, ihtiyaç kredisi ve kişisel borç kalmadı; borç ödemeleri gelirin %${DTI_LIMIT * 100}'sının altında`,
-    source: 'Yüksek faizli borç, yatırımın getirisinden hızlı büyür; önce kapatılır (çığ yöntemi). %36 borç/gelir eşiği bankaların kredi değerlendirmesinde yaygın kullanılır.',
-    status: [consumer > 0 ? `Tüketici borcu ${tl(consumer)}` : 'Tüketici borcu yok', dti !== null ? `borç ödemesi gelirin %${Math.round(dti * 100)}'i` : null].filter(Boolean).join(' · '),
-    next: consumer > 0 ? `${tl(consumer)} borcu en yüksek faizliden başlayarak kapatın` : dtiOk ? 'Yeni tüketici borcundan kaçının' : `Aylık borç ödemelerini ${tl(pay! - income * DTI_LIMIT)} azaltın`,
+    title: tt('Yüksek faizli borçsuz'),
+    short: tt('Borçsuz'),
+    criterion: ttf('Kredi kartı, KMH, ihtiyaç kredisi ve kişisel borç kalmadı; borç ödemeleri gelirin %{0}\'sının altında', DTI_LIMIT * 100),
+    source: tt('Yüksek faizli borç, yatırımın getirisinden hızlı büyür; önce kapatılır (çığ yöntemi). %36 borç/gelir eşiği bankaların kredi değerlendirmesinde yaygın kullanılır.'),
+    status: [consumer > 0 ? ttf('Tüketici borcu {0}', tl(consumer)) : tt('Tüketici borcu yok'), dti !== null ? ttf('borç ödemesi gelirin %{0}\'i', Math.round(dti * 100)) : null].filter(Boolean).join(' · '),
+    next: consumer > 0 ? ttf('{0} borcu en yüksek faizliden başlayarak kapatın', tl(consumer)) : dtiOk ? tt('Yeni tüketici borcundan kaçının') : ttf('Aylık borç ödemelerini {0} azaltın', tl(pay! - income * DTI_LIMIT)),
     progress: consumer > 0 ? debtConds[0].progress : dtiOk ? 1 : clamp01(DTI_LIMIT / dti!),
     done: consumer <= 0 && dtiOk && income > 0,
-    goal: `Yüksek faizli borç kalmasın; borç ödemeleri gelirin en çok %${DTI_LIMIT * 100}'sı olsun`,
+    goal: ttf('Yüksek faizli borç kalmasın; borç ödemeleri gelirin en çok %{0}\'sı olsun', DTI_LIMIT * 100),
     conditions: debtConds,
   }
 
   const emMonths = emergencyMonthsFor(p)
   const emTarget = essential * emMonths
-  const emCond = moneyCond('Hızlı kullanılabilir birikim', f.liquidKurus, emTarget, saving, `${tl(emTarget - f.liquidKurus)} daha biriktirin`)
+  const emCond = moneyCond(tt('Hızlı kullanılabilir birikim'), f.liquidKurus, emTarget, saving, ttf('{0} daha biriktirin', tl(emTarget - f.liquidKurus)))
   const emergency: Stage = {
     id: 'emergency',
-    title: 'Acil durum fonu',
-    short: 'Acil fon',
-    criterion: `${emMonths} aylık zorunlu gider kadar hızlı kullanılabilir birikim`,
-    source: 'Finansal planlamacıların yaygın önerisi 3–6 aylık zorunlu giderdir; gelir düzensizse ya da bakmakla yükümlü olduğunuz kişiler varsa daha uzun.',
+    title: tt('Acil durum fonu'),
+    short: tt('Acil fon'),
+    criterion: ttf('{0} aylık zorunlu gider kadar hızlı kullanılabilir birikim', emMonths),
+    source: tt('Finansal planlamacıların yaygın önerisi 3–6 aylık zorunlu giderdir; gelir düzensizse ya da bakmakla yükümlü olduğunuz kişiler varsa daha uzun.'),
     status: `${tl(f.liquidKurus)} / ${tl(emTarget)}`,
-    next: f.liquidKurus >= emTarget ? 'Fonu koruyun; fazlası uzun vadeli birikime gidebilir' : `${tl(emTarget - f.liquidKurus)} daha biriktirin`,
+    next: f.liquidKurus >= emTarget ? tt('Fonu koruyun; fazlası uzun vadeli birikime gidebilir') : ttf('{0} daha biriktirin', tl(emTarget - f.liquidKurus)),
     progress: emCond.progress,
     done: emCond.done,
-    goal: `Kenarda ${tl(emTarget)} hızlı kullanılabilir para (${emMonths} aylık zorunlu gider)`,
+    goal: ttf('Kenarda {0} hızlı kullanılabilir para ({1} aylık zorunlu gider)', tl(emTarget), emMonths),
     conditions: [emCond],
   }
 
@@ -602,22 +603,22 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
   const savingDone = rate >= SAVING_RATE_TARGET
   const savingStage: Stage = {
     id: 'saving',
-    title: 'Düzenli birikim',
-    short: 'Birikim',
-    criterion: `Gelirin en az %${SAVING_RATE_TARGET * 100}'si her ay birikime gidiyor`,
-    source: '50/30/20 kuralı: gelirin yarısı ihtiyaçlara, %30\'u isteklere, en az %20\'si birikime (Elizabeth Warren).',
-    status: income > 0 ? `Birikim oranı %${Math.max(0, Math.round(rate * 100))}` : 'Gelir bilgisi yok',
+    title: tt('Düzenli birikim'),
+    short: tt('Birikim'),
+    criterion: ttf('Gelirin en az %{0}\'si her ay birikime gidiyor', SAVING_RATE_TARGET * 100),
+    source: tt('50/30/20 kuralı: gelirin yarısı ihtiyaçlara, %30\'u isteklere, en az %20\'si birikime (Elizabeth Warren).'),
+    status: income > 0 ? ttf('Birikim oranı %{0}', Math.max(0, Math.round(rate * 100))) : tt('Gelir bilgisi yok'),
     next: savingDone
       ? f.recentMonthlyContributionKurus > 0
-        ? 'Birikimi Yatırımlarım’a eklemeye devam edin'
-        : 'Ayırdığınız tutarı Yatırımlarım’a ekleyerek takip edin'
-      : `Ayda ${tl(Math.max(0, income * SAVING_RATE_TARGET - saving))} daha ayırmak aşamayı tamamlar`,
+        ? tt('Birikimi Yatırımlarım’a eklemeye devam edin')
+        : tt('Ayırdığınız tutarı Yatırımlarım’a ekleyerek takip edin')
+      : ttf('Ayda {0} daha ayırmak aşamayı tamamlar', tl(Math.max(0, income * SAVING_RATE_TARGET - saving))),
     progress: clamp01(rate / SAVING_RATE_TARGET),
     done: savingDone,
-    goal: income > 0 ? `Her ay en az ${tl(income * SAVING_RATE_TARGET)} birikim (gelirin %${SAVING_RATE_TARGET * 100}'si)` : `Gelirin en az %${SAVING_RATE_TARGET * 100}'si her ay birikime gitsin`,
+    goal: income > 0 ? ttf('Her ay en az {0} birikim (gelirin %{1}\'si)', tl(income * SAVING_RATE_TARGET), SAVING_RATE_TARGET * 100) : ttf('Gelirin en az %{0}\'si her ay birikime gitsin', SAVING_RATE_TARGET * 100),
     conditions: [
       {
-        label: 'Aylık birikim oranı',
+        label: tt('Aylık birikim oranı'),
         unit: 'pct',
         now: Math.max(0, rate),
         target: SAVING_RATE_TARGET,
@@ -625,39 +626,39 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
         done: savingDone,
         progress: clamp01(rate / SAVING_RATE_TARGET),
         left: Math.max(0, SAVING_RATE_TARGET - rate),
-        leftText: savingDone ? 'Sağlanıyor' : income > 0 ? `Ayda ${tl(Math.max(0, income * SAVING_RATE_TARGET - saving))} daha ayırın` : 'Testte gelirinizi girin',
+        leftText: savingDone ? tt('Sağlanıyor') : income > 0 ? ttf('Ayda {0} daha ayırın', tl(Math.max(0, income * SAVING_RATE_TARGET - saving))) : tt('Testte gelirinizi girin'),
       },
     ],
   }
 
   const swrText = `%${plan.withdrawal.usedPct.toLocaleString('tr-TR')}`
   const capStage = (id: 'security' | 'independence' | 'freedom', title: string, short: string, goal: number, monthly: number, what: string, source: string): Stage => {
-    const cond = moneyCond('Net birikim (yatırımlar − borçlar)', net, goal, saving, `${big(goal - net)} kaldı`, true, plan.realReturnPct)
+    const cond = moneyCond(tt('Net birikim (yatırımlar − borçlar)'), net, goal, saving, ttf('{0} kaldı', big(goal - net)), true, plan.realReturnPct)
     return {
       id,
       title,
       short,
-      criterion: `Birikimden yıllık ${swrText} çekim, ${what} (aylık ${tl(monthly)}) karşılıyor: ${big(goal)}`,
+      criterion: ttf('Birikimden yıllık {0} çekim, {1} (aylık {2}) karşılıyor: {3}', swrText, what, tl(monthly), big(goal)),
       source,
       status: `${big(net)} / ${big(goal)}`,
-      next: net >= goal ? 'Bu seviyeye ulaştınız' : `${big(goal - net)} kaldı`,
+      next: net >= goal ? tt('Bu seviyeye ulaştınız') : ttf('{0} kaldı', big(goal - net)),
       progress: cond.progress,
       done: cond.done,
-      goal: `${big(goal)} birikim: yıllık ${swrText} çekim ${what} (aylık ${tl(monthly)}) karşılar`,
+      goal: ttf('{0} birikim: yıllık {1} çekim {2} (aylık {3}) karşılar', big(goal), swrText, what, tl(monthly)),
       conditions: [cond],
     }
   }
   const tm = plan.targetMonthlyKurus
-  const security = capStage('security', 'Finansal güvence · Lean FI', 'Güvence', plan.leanKurus, Math.round(tm * LEAN_FACTOR), `hedef yaşamın %${LEAN_FACTOR * 100}'ini, yani sade bir yaşamı`, 'Lean FI: hedef harcamanın %70\'i (topluluk kavramı). Çekim oranı emeklilik süresine göre (Bengen 1994; Pfau 2010).')
-  const independence = capStage('independence', 'Finansal bağımsızlık · FI', 'Bağımsızlık', plan.fiKurus, tm, 'hedeflediğiniz yaşam giderini', 'Hedef sermaye = (hedef yıllık gider − garantili gelir) ÷ çekim oranı (Bengen 1994; Cooley, Hubbard ve Walz 1998; Pfau 2010).')
-  const freedom = capStage('freedom', 'Finansal özgürlük · Fat FI', 'Özgürlük', plan.fatKurus, Math.round(tm * FAT_FACTOR), `hedef yaşamın %${FAT_FACTOR * 100}'ini, yani rahat bir yaşamı`, 'Fat FI: hedef harcamanın %150\'si; beklenmedik giderlere ve daha rahat bir yaşama pay bırakır.')
+  const security = capStage('security', tt('Finansal güvence · Lean FI'), tt('Güvence'), plan.leanKurus, Math.round(tm * LEAN_FACTOR), ttf('hedef yaşamın %{0}\'ini, yani sade bir yaşamı', LEAN_FACTOR * 100), tt('Lean FI: hedef harcamanın %70\'i (topluluk kavramı). Çekim oranı emeklilik süresine göre (Bengen 1994; Pfau 2010).'))
+  const independence = capStage('independence', tt('Finansal bağımsızlık · FI'), tt('Bağımsızlık'), plan.fiKurus, tm, tt('hedeflediğiniz yaşam giderini'), tt('Hedef sermaye = (hedef yıllık gider − garantili gelir) ÷ çekim oranı (Bengen 1994; Cooley, Hubbard ve Walz 1998; Pfau 2010).'))
+  const freedom = capStage('freedom', tt('Finansal özgürlük · Fat FI'), tt('Özgürlük'), plan.fatKurus, Math.round(tm * FAT_FACTOR), ttf('hedef yaşamın %{0}\'ini, yani rahat bir yaşamı', FAT_FACTOR * 100), tt('Fat FI: hedef harcamanın %150\'si; beklenmedik giderlere ve daha rahat bir yaşama pay bırakır.'))
 
   const steps = freedomSteps(plan, big)
   const nextStep = security.done ? null : (steps.find((x) => !x.done) ?? null)
   if (nextStep) {
     security.step = nextStep
-    security.goal = `Sıradaki adım ${nextStep.title}: ${big(nextStep.targetKurus)} birikim. ${nextStep.what}`
-    security.next = `Önce ${nextStep.title}: ${nextStep.leftText}. Aşama hedefi ${big(plan.leanKurus)}`
+    security.goal = ttf('Sıradaki adım {0}: {1} birikim. {2}', nextStep.title, big(nextStep.targetKurus), nextStep.what)
+    security.next = ttf('Önce {0}: {1}. Aşama hedefi {2}', nextStep.title, nextStep.leftText, big(plan.leanKurus))
   }
 
   const stages = [balance, starter, debt, emergency, savingStage, security, independence, freedom]
@@ -677,18 +678,18 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
   const checks: Check[] = [
     {
       id: 'health',
-      title: 'Sağlık güvencesi',
-      criterion: 'Genel sağlık sigortası (SGK) var; mümkünse tamamlayıcı ya da özel sağlık sigortası',
-      source: 'Büyük bir sağlık gideri birikimi tek seferde eritebilir; acil durum fonu sigortanın yerini tutmaz.',
-      status: p.health ? HEALTH_LABEL[p.health] : 'Testte yanıtlanmadı',
+      title: tt('Sağlık güvencesi'),
+      criterion: tt('Genel sağlık sigortası (SGK) var; mümkünse tamamlayıcı ya da özel sağlık sigortası'),
+      source: tt('Büyük bir sağlık gideri birikimi tek seferde eritebilir; acil durum fonu sigortanın yerini tutmaz.'),
+      status: p.health ? HEALTH_LABEL[p.health] : tt('Testte yanıtlanmadı'),
       done: p.health ? p.health !== 'none' : null,
     },
     {
       id: 'pension',
-      title: 'Emeklilik güvencesi',
-      criterion: 'SGK primleri ödeniyor; ek olarak BES ya da düzenli emeklilik birikimi var',
-      source: 'Emeklilik birikimi ne kadar erken başlarsa bileşik getiriden o kadar çok yararlanır.',
-      status: p.pension ? PENSION_LABEL[p.pension] : 'Testte yanıtlanmadı',
+      title: tt('Emeklilik güvencesi'),
+      criterion: tt('SGK primleri ödeniyor; ek olarak BES ya da düzenli emeklilik birikimi var'),
+      source: tt('Emeklilik birikimi ne kadar erken başlarsa bileşik getiriden o kadar çok yararlanır.'),
+      status: p.pension ? PENSION_LABEL[p.pension] : tt('Testte yanıtlanmadı'),
       done: p.pension ? p.pension === 'sgk-bes' : null,
     },
   ]
@@ -724,19 +725,19 @@ export type ScenarioKey = 'cautious' | 'mid' | 'optimistic'
 
 /** Reel (enflasyondan arındırılmış) yıllık getiri varsayımları. */
 export const SCENARIOS: Record<ScenarioKey, { label: string; realReturnPct: number }> = {
-  cautious: { label: 'Temkinli', realReturnPct: SCENARIO_RETURN_PCT.cautious },
-  mid: { label: 'Orta', realReturnPct: SCENARIO_RETURN_PCT.mid },
-  optimistic: { label: 'Olumlu', realReturnPct: SCENARIO_RETURN_PCT.optimistic },
+  cautious: { label: tt('Temkinli'), realReturnPct: SCENARIO_RETURN_PCT.cautious },
+  mid: { label: tt('Orta'), realReturnPct: SCENARIO_RETURN_PCT.mid },
+  optimistic: { label: tt('Olumlu'), realReturnPct: SCENARIO_RETURN_PCT.optimistic },
 }
 
 const monthlyRate = (annualPct: number) => Math.pow(1 + annualPct / 100, 1 / 12) - 1
 
 /** Süreyi okunur yazar: "Şimdi", "7 ay", "3 yıl", "14 yıl 5 ay". */
 export function durationLabel(months: number): string {
-  if (months <= 0) return 'Şimdi'
+  if (months <= 0) return tt('Şimdi')
   const y = Math.floor(months / 12)
   const m = months % 12
-  return [y ? `${y} yıl` : '', m ? `${m} ay` : ''].filter(Boolean).join(' ')
+  return [y ? ttf('{0} yıl', y) : '', m ? `${m} ay` : ''].filter(Boolean).join(' ')
 }
 
 /** Bugünden `months` ay sonrası, "Mart 2041" biçiminde. */
@@ -959,12 +960,12 @@ function normal(rand: () => number): number {
 
 /** Testteki risk toleransı soruları (Grable ve Lytton 1999 ölçeğinden uyarlandı; birebir kopya değildir). */
 export const RISK_QUESTIONS: Array<{ q: string; options: string[] }> = [
-  { q: 'Birikiminiz bir yılda %25 değer kaybetse ne yaparsınız?', options: ['Hepsini satarım', 'Bir kısmını satarım', 'Dokunmam, beklerim', 'Fırsat bilip eklerim'] },
-  { q: 'Arkadaşlarınız sizi riske karşı nasıl tanımlar?', options: ['Riskten kaçınan', 'Temkinli', 'Hesaplı risk alan', 'Risk sever'] },
-  { q: 'Yatırım deneyiminiz nedir?', options: ['Hiç yok', 'Mevduat, altın, döviz', 'Fon ya da hisse, az deneyim', 'Birkaç yıldır düzenli yatırımcıyım'] },
-  { q: '"Risk" kelimesi size önce ne düşündürür?', options: ['Kayıp', 'Belirsizlik', 'Fırsat', 'Heyecan'] },
-  { q: 'Hangi seçeneği tercih edersiniz?', options: ['Kesin 10.000 ₺', '%50 ihtimalle 25.000 ₺, yoksa 0', '%25 ihtimalle 60.000 ₺, yoksa 0', '%5 ihtimalle 300.000 ₺, yoksa 0'] },
-  { q: 'Beklenmedik bir kazancı nasıl değerlendirirsiniz?', options: ['Mevduatta tutarım', 'Çoğunu güvenli araçlarda tutarım', 'Yarısını dalgalı araçlara ayırırım', 'Çoğunu yüksek getiri beklediğim araçlara ayırırım'] },
+  { q: tt('Birikiminiz bir yılda %25 değer kaybetse ne yaparsınız?'), options: [tt('Hepsini satarım'), tt('Bir kısmını satarım'), tt('Dokunmam, beklerim'), tt('Fırsat bilip eklerim')] },
+  { q: tt('Arkadaşlarınız sizi riske karşı nasıl tanımlar?'), options: [tt('Riskten kaçınan'), 'Temkinli', tt('Hesaplı risk alan'), tt('Risk sever')] },
+  { q: tt('Yatırım deneyiminiz nedir?'), options: [tt('Hiç yok'), tt('Mevduat, altın, döviz'), tt('Fon ya da hisse, az deneyim'), tt('Birkaç yıldır düzenli yatırımcıyım')] },
+  { q: tt('"Risk" kelimesi size önce ne düşündürür?'), options: [tt('Kayıp'), 'Belirsizlik', tt('Fırsat'), 'Heyecan'] },
+  { q: tt('Hangi seçeneği tercih edersiniz?'), options: [tt('Kesin 10.000 ₺'), tt('%50 ihtimalle 25.000 ₺, yoksa 0'), tt('%25 ihtimalle 60.000 ₺, yoksa 0'), tt('%5 ihtimalle 300.000 ₺, yoksa 0')] },
+  { q: tt('Beklenmedik bir kazancı nasıl değerlendirirsiniz?'), options: [tt('Mevduatta tutarım'), tt('Çoğunu güvenli araçlarda tutarım'), tt('Yarısını dalgalı araçlara ayırırım'), tt('Çoğunu yüksek getiri beklediğim araçlara ayırırım')] },
 ]
 
 /** Tolerans: 6 soru (6–24 puan) → 0..3. Eski profillerde risk tutumundan. */

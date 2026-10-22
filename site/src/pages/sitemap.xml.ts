@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro'
 import { publishedPosts } from '../lib/blog'
+import { localize } from '../lib/i18n'
 
 /** Arama motorlarına açık sayfalar. Giriş, ödeme ve hesap sayfaları noindex olduğu için yoktur. */
 const STATIC = ['/', '/fiyatlar/', '/nasil-kullanilir/', '/test/', '/blog/', '/yasal/kvkk/', '/yasal/acik-riza/', '/yasal/gizlilik/', '/yasal/cerez/', '/yasal/kullanim-kosullari/', '/yasal/on-bilgilendirme/', '/yasal/mesafeli-satis/', '/yasal/iptal-iade/']
@@ -9,6 +10,10 @@ export const GET: APIRoute = async ({ site }) => {
   const posts = await publishedPosts()
   const urls = [
     ...STATIC.map((p) => `<url><loc>${base}${p}</loc></url>`),
+    // İngilizce karşılıklar (blog yalnızca Türkçe)
+    ...STATIC.map((p) => localize(p, 'en'))
+      .filter((p) => p.startsWith('/en'))
+      .map((p) => `<url><loc>${base}${p.replace(/\/?$/, '/')}</loc></url>`),
     ...posts.map((p) => `<url><loc>${base}/blog/${p.id}/</loc><lastmod>${(p.data.updated ?? p.data.date).toISOString().slice(0, 10)}</lastmod></url>`),
   ]
   const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join('')}</urlset>`

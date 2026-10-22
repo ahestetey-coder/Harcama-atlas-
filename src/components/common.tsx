@@ -46,6 +46,7 @@ import { cn } from '../lib/cn'
 import { useCycle } from '../state/cycle'
 import { Modal } from './ui/Modal'
 import { IconButton, Select } from './ui/primitives'
+import { tt, ttf } from '../lib/i18n'
 
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   'shopping-cart': ShoppingCart,
@@ -91,7 +92,7 @@ export function CategoryIcon({ category, size = 'md', className }: { category?: 
   return (
     <span
       className={cn('inline-grid shrink-0 place-items-center', dims[size], className)}
-      style={{ backgroundColor: `${color}1f`, color, boxShadow: `inset 0 0 0 1px ${color}33` }}
+      style={{ backgroundColor: `${color}1f`, color, boxShadow: ttf('inset 0 0 0 1px {0}33', color) }}
       aria-hidden
     >
       <Icon strokeWidth={2} />
@@ -123,26 +124,26 @@ export function Money({ kurus, type = 'expense', className, plain }: { kurus: nu
   if (type === 'refund')
     return (
       <span className={cn('num text-accent', className)}>
-        <span className="sr-only">İade: </span>+{text}
+        <span className="sr-only">{tt('İade:')} </span>+{text}
       </span>
     )
   if (type === 'income')
     return (
       <span className={cn('num text-accent', className)}>
-        <span className="sr-only">Gelir: </span>+{text}
+        <span className="sr-only">{tt('Gelir:')} </span>+{text}
       </span>
     )
   if (type === 'transfer')
     return (
       <span className={cn('num text-subtle', className)}>
-        <span className="sr-only">Transfer: </span>
+        <span className="sr-only">{tt('Transfer:')} </span>
         {text}
       </span>
     )
   return (
     <span className={cn('num text-ink', className)}>
       <span aria-hidden>−</span>
-      <span className="sr-only">Gider: </span>
+      <span className="sr-only">{tt('Gider:')} </span>
       {text}
     </span>
   )
@@ -156,7 +157,7 @@ export function MonthSwitcher({ month, onChange, compact, className }: { month: 
   const label = periodLabel(month, startDay)
   return (
     <div className={cn('flex h-10 items-center gap-0.5 rounded-xl border border-line bg-surface px-1 shadow-card', className)}>
-      <IconButton label="Önceki ay" size="sm" onClick={() => onChange(addMonths(month, -1))}>
+      <IconButton label={tt('Önceki ay')} size="sm" onClick={() => onChange(addMonths(month, -1))}>
         <ChevronLeft className="size-[18px]" />
       </IconButton>
       <button
@@ -170,20 +171,20 @@ export function MonthSwitcher({ month, onChange, compact, className }: { month: 
           startDay > 1 ? 'text-[13.5px]' : 'text-[14.5px]',
           compact ? 'min-w-[112px]' : 'min-w-[132px]',
         )}
-        aria-label={`Ay seç, seçili: ${label}`}
+        aria-label={ttf('Ay seç, seçili: {0}', label)}
       >
         {label}
       </button>
-      <IconButton label="Sonraki ay" size="sm" onClick={() => onChange(addMonths(month, 1))}>
+      <IconButton label={tt('Sonraki ay')} size="sm" onClick={() => onChange(addMonths(month, 1))}>
         <ChevronRight className="size-[18px]" />
       </IconButton>
-      <Modal open={open} onOpenChange={setOpen} title="Ay seçin" description={startDay > 1 ? `Ay döngüsü her ayın ${startDay}. günü başlar.` : undefined} size="sm">
+      <Modal open={open} onOpenChange={setOpen} title={tt('Ay seçin')} description={startDay > 1 ? ttf('Ay döngüsü her ayın {0}. günü başlar.', startDay) : undefined} size="sm">
         <div className="mb-3 flex items-center justify-between">
-          <IconButton label="Önceki yıl" onClick={() => setYear((y) => y - 1)}>
+          <IconButton label={tt('Önceki yıl')} onClick={() => setYear((y) => y - 1)}>
             <ChevronLeft className="size-5" />
           </IconButton>
           <span className="num font-display text-lg font-semibold">{year}</span>
-          <IconButton label="Sonraki yıl" onClick={() => setYear((y) => y + 1)}>
+          <IconButton label={tt('Sonraki yıl')} onClick={() => setYear((y) => y + 1)}>
             <ChevronRight className="size-5" />
           </IconButton>
         </div>
@@ -212,7 +213,7 @@ export function MonthSwitcher({ month, onChange, compact, className }: { month: 
           })}
         </div>
         <button type="button" className="mt-4 w-full rounded-xl py-2 text-sm font-medium text-accent hover:bg-accent-soft" onClick={() => { onChange(cur); setOpen(false) }}>
-          {startDay > 1 ? 'İçinde bulunulan döneme dön' : 'Bu aya dön'}
+          {startDay > 1 ? tt('İçinde bulunulan döneme dön') : tt('Bu aya dön')}
         </button>
       </Modal>
     </div>
@@ -238,7 +239,7 @@ export function GroupPicker({
   groups,
   value,
   onChange,
-  label = 'Harcama grubu',
+  label = tt('Harcama grubu'),
   size = 'md',
 }: {
   groups: SpendGroup[]
@@ -247,7 +248,7 @@ export function GroupPicker({
   label?: string
   size?: 'sm' | 'md'
 }) {
-  const options = [{ id: '', name: 'Grupsuz', color: 'transparent' }, ...groups]
+  const options = [{ id: '', name: tt('Grupsuz'), color: 'transparent' }, ...groups]
   return (
     <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
       {options.map((g) => {
@@ -349,16 +350,16 @@ export function FilterStrip({
     <div className={cn('rounded-2xl border border-line bg-surface p-1.5 shadow-card', className)}>
       {groups.length > 0 && (
         <ChipRow
-          label="Grup"
-          ariaLabel="Grup filtresi"
-          options={[{ id: '', name: 'Tümü' }, ...groups, { id: 'none', name: 'Grupsuz' }]}
+          label={tt('Grup')}
+          ariaLabel={tt('Grup filtresi')}
+          options={[{ id: '', name: tt('Tümü') }, ...groups, { id: 'none', name: tt('Grupsuz') }]}
           value={group}
           onChange={onGroup}
         />
       )}
       {showPersons && (
         <div className={cn(groups.length > 0 && 'mt-1.5 border-t border-line pt-1.5')}>
-          <ChipRow label="Ekleyen" ariaLabel="Kişi filtresi" options={[{ id: '', name: 'Herkes' }, ...persons]} value={person} onChange={onPerson} />
+          <ChipRow label={tt('Ekleyen')} ariaLabel={tt('Kişi filtresi')} options={[{ id: '', name: tt('Herkes') }, ...persons]} value={person} onChange={onPerson} />
         </div>
       )}
     </div>
@@ -387,7 +388,7 @@ export function CycleSelect({
       {inheritLabel && <option value="">{inheritLabel}</option>}
       {Array.from({ length: MAX_CYCLE_START_DAY }, (_, i) => i + 1).map((d) => (
         <option key={d} value={d}>
-          {d === 1 ? 'Ayın 1’i – ay sonu (takvim ayı)' : `Ayın ${d}’i – sonraki ayın ${d - 1}’i`}
+          {d === 1 ? tt('Ayın 1’i – ay sonu (takvim ayı)') : ttf('Ayın {0}’i – sonraki ayın {1}’i', d, d - 1)}
         </option>
       ))}
     </Select>

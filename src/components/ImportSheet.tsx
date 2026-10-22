@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useState } from 'react'
 import { useUi } from '../state/ui'
 import { ConfirmDialog, Modal } from './ui/Modal'
 import { Spinner } from './ui/primitives'
+import { tt } from '../lib/i18n'
 
 const ImportFlow = lazy(() => import('../pages/import/ImportPage').then((m) => ({ default: m.ImportFlow })))
 
@@ -28,8 +29,8 @@ export function ImportSheet() {
           if (dirty) setConfirm(true)
           else leave()
         }}
-        title="İçe aktar"
-        description="Dosya yalnızca bu cihazda okunur."
+        title={tt('İçe aktar')}
+        description={tt('Dosya yalnızca bu cihazda okunur.')}
         size="full"
       >
         <Suspense
@@ -42,8 +43,8 @@ export function ImportSheet() {
           {importOpen && <ImportFlow embedded onLeave={leave} onDirtyChange={onDirtyChange} />}
         </Suspense>
       </Modal>
-      <ConfirmDialog open={confirm} onOpenChange={setConfirm} title="İçe aktarma bırakılsın mı?" confirmLabel="Bırak" danger onConfirm={leave}>
-        Okunan satırlar henüz kaydedilmedi.
+      <ConfirmDialog open={confirm} onOpenChange={setConfirm} title={tt('İçe aktarma bırakılsın mı?')} confirmLabel={tt('Bırak')} danger onConfirm={leave}>
+        {tt('Okunan satırlar henüz kaydedilmedi.')}
       </ConfirmDialog>
     </>
   )

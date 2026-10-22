@@ -22,15 +22,16 @@ import { useCycle } from '../state/cycle'
 import { usePersonalTransactions } from '../state/personal'
 import { isCounted } from '../domain/personal'
 import { useUi } from '../state/ui'
+import { tt, ttf } from '../lib/i18n'
 
 type Period = 'month' | 'all' | 'custom'
 
 const TYPE_TABS: Array<{ value: TxType | 'all'; label: string }> = [
-  { value: 'all', label: 'Tümü' },
-  { value: 'expense', label: 'Gider' },
-  { value: 'income', label: 'Gelir' },
-  { value: 'refund', label: 'İade' },
-  { value: 'transfer', label: 'Transfer' },
+  { value: 'all', label: tt('Tümü') },
+  { value: 'expense', label: tt('Gider') },
+  { value: 'income', label: tt('Gelir') },
+  { value: 'refund', label: tt('İade') },
+  { value: 'transfer', label: tt('Transfer') },
 ]
 
 export default function TransactionsPage() {
@@ -145,16 +146,16 @@ export default function TransactionsPage() {
       setSelected(new Set())
       const skipped = ids.length - removed.length
       if (!removed.length) {
-        toast('Seçilenler grup üyelerinin harcamaları; yalnızca ekleyen silebilir.', { kind: 'info' })
+        toast(tt('Seçilenler grup üyelerinin harcamaları; yalnızca ekleyen silebilir.'), { kind: 'info' })
         return
       }
       toast((ids.length === 1 ? 'İşlem silindi.' : `${removed.length} işlem silindi.`) + (skipped ? ` Üyelerin eklediği ${skipped} işlem atlandı.` : ''), {
         action: {
-          label: 'Geri al',
+          label: tt('Geri al'),
           onClick: async () => {
             try {
               await repo.restoreTransactions(removed)
-              toast('Silme geri alındı.', { kind: 'info' })
+              toast(tt('Silme geri alındı.'), { kind: 'info' })
             } catch (e) {
               toast(toUserMessage(e), { kind: 'error' })
             }
@@ -202,7 +203,7 @@ export default function TransactionsPage() {
     const csv = transactionsToCsv(filtered, catMap, groupMap)
     const name = period === 'month' ? month : period === 'all' ? 'tum-kayitlar' : `${from || 'bas'}_${to || 'son'}`
     downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${APP_CONFIG.slug}-islemler-${name}.csv`)
-    toast(`${filtered.length} işlem CSV olarak indirildi.`)
+    toast(ttf('{0} işlem CSV olarak indirildi.', filtered.length))
   }
 
   const importName = importId ? imports?.find((i) => i.id === importId)?.fileName : undefined
@@ -210,53 +211,53 @@ export default function TransactionsPage() {
 
   const filterFields = (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <Field label="Dönem" htmlFor="f-period">
+      <Field label={tt('Dönem')} htmlFor="f-period">
         <Select id="f-period" value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-          <option value="month">Seçili ay ({periodLabel(month, startDay)})</option>
-          <option value="all">Tüm tarihler</option>
-          <option value="custom">Tarih aralığı</option>
+          <option value="month">{ttf('Seçili ay ({0})', periodLabel(month, startDay))}</option>
+          <option value="all">{tt('Tüm tarihler')}</option>
+          <option value="custom">{tt('Tarih aralığı')}</option>
         </Select>
       </Field>
       {period === 'custom' && (
         <>
-          <Field label="Başlangıç" htmlFor="f-from">
+          <Field label={tt('Başlangıç')} htmlFor="f-from">
             <Input id="f-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </Field>
-          <Field label="Bitiş" htmlFor="f-to">
+          <Field label={tt('Bitiş')} htmlFor="f-to">
             <Input id="f-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </Field>
         </>
       )}
-      <Field label="Kategori" htmlFor="f-cat">
+      <Field label={tt('Kategori')} htmlFor="f-cat">
         <Select id="f-cat" value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="">Tümü</option>
-          <option value="none">Kategorisiz</option>
+          <option value="">{tt('Tümü')}</option>
+          <option value="none">{tt('Kategorisiz')}</option>
           {(categories ?? []).map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
-              {c.archived ? ' (arşivde)' : ''}
+              {c.archived ? tt(' (arşivde)') : ''}
             </option>
           ))}
         </Select>
       </Field>
       {(groups ?? []).length > 0 && (
-        <Field label="Harcama grubu" htmlFor="f-group">
+        <Field label={tt('Harcama grubu')} htmlFor="f-group">
           <Select id="f-group" value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
-            <option value="">Tümü</option>
-            <option value="none">Grupsuz</option>
+            <option value="">{tt('Tümü')}</option>
+            <option value="none">{tt('Grupsuz')}</option>
             {(groups ?? []).map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
-                {g.archived ? ' (arşivde)' : ''}
+                {g.archived ? tt(' (arşivde)') : ''}
               </option>
             ))}
           </Select>
         </Field>
       )}
       {person.options.length > 0 && (
-        <Field label="Ekleyen kişi" htmlFor="f-person">
+        <Field label={tt('Ekleyen kişi')} htmlFor="f-person">
           <Select id="f-person" value={person.value} onChange={(e) => person.set(e.target.value)}>
-            <option value="">Herkes</option>
+            <option value="">{tt('Herkes')}</option>
             {person.options.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -265,9 +266,9 @@ export default function TransactionsPage() {
           </Select>
         </Field>
       )}
-      <Field label="Ödeme aracı" htmlFor="f-pay">
+      <Field label={tt('Ödeme aracı')} htmlFor="f-pay">
         <Select id="f-pay" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod | '')}>
-          <option value="">Tümü</option>
+          <option value="">{tt('Tümü')}</option>
           {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((p) => (
             <option key={p} value={p}>
               {PAYMENT_LABEL[p]}
@@ -275,9 +276,9 @@ export default function TransactionsPage() {
           ))}
         </Select>
       </Field>
-      <Field label="Kaynak" htmlFor="f-src">
+      <Field label={tt('Kaynak')} htmlFor="f-src">
         <Select id="f-src" value={source} onChange={(e) => setSource(e.target.value as TxSource | '')}>
-          <option value="">Tümü</option>
+          <option value="">{tt('Tümü')}</option>
           {(Object.keys(SOURCE_LABEL) as TxSource[]).map((s) => (
             <option key={s} value={s}>
               {SOURCE_LABEL[s]}
@@ -291,12 +292,12 @@ export default function TransactionsPage() {
   return (
     <div>
       <PageHeader
-        title="İşlemler"
+        title={tt('İşlemler')}
         actions={
           <>
             {period === 'month' && <MonthSwitcher month={month} onChange={setMonth} className="max-sm:flex-1" />}
             <Button variant="primary" className="max-lg:hidden" icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
-              Gider ekle
+              {tt('Gider ekle')}
             </Button>
           </>
         }
@@ -315,16 +316,16 @@ export default function TransactionsPage() {
       <div className="mb-3 flex gap-2">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-subtle" aria-hidden />
-          <Input aria-label="Açıklama veya notta ara" placeholder="Ara: iş yeri, açıklama, not…" value={query} onChange={(e) => setQuery(e.target.value)} className="rounded-2xl pl-10" type="search" />
+          <Input aria-label={tt('Açıklama veya notta ara')} placeholder={tt('Ara: iş yeri, açıklama, not…')} value={query} onChange={(e) => setQuery(e.target.value)} className="rounded-2xl pl-10" type="search" />
         </div>
-        <Button className="shrink-0 rounded-2xl" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen(true)} aria-label={`Filtreler${activeFilterCount ? `, ${activeFilterCount} etkin` : ''}`}>
-          <span className="max-sm:sr-only">Filtreler</span>
+        <Button className="shrink-0 rounded-2xl" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen(true)} aria-label={`Filtreler${activeFilterCount ? ttf(', {0} etkin', activeFilterCount) : ''}`}>
+          <span className="max-sm:sr-only">{tt('Filtreler')}</span>
           {activeFilterCount ? <span className="num rounded-full bg-accent px-1.5 text-[11px] text-white">{activeFilterCount}</span> : null}
         </Button>
       </div>
 
       <Segmented
-        label="İşlem türü"
+        label={tt('İşlem türü')}
         value={type || 'all'}
         onChange={(v) => setType(v === 'all' ? '' : v)}
         options={TYPE_TABS}
@@ -333,18 +334,18 @@ export default function TransactionsPage() {
 
       {(activeFilterCount > 0 || query) && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-[13px]">
-          {importName && <span className="rounded-full bg-info-soft px-2.5 py-1 text-info">Aktarım: {importName}</span>}
-          {period !== 'month' && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-muted">{period === 'all' ? 'Tüm tarihler' : 'Tarih aralığı'}</span>}
+          {importName && <span className="rounded-full bg-info-soft px-2.5 py-1 text-info">{ttf('Aktarım: {0}', importName)}</span>}
+          {period !== 'month' && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-muted">{period === 'all' ? tt('Tüm tarihler') : tt('Tarih aralığı')}</span>}
           <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium text-accent hover:bg-accent-soft">
-            <X className="size-3.5" /> Filtreleri temizle
+            <X className="size-3.5" /> {tt('Filtreleri temizle')}
           </button>
         </div>
       )}
 
       <div className="mb-3 grid grid-cols-3 gap-2">
-        <Stat label="Gider" value={formatKurus(totals.e - totals.r)} sub={totals.r > 0 ? `iade −${formatKurus(totals.r)}` : undefined} />
-        <Stat label="Gelir" value={formatKurus(totals.inc)} tone="up" />
-        <Stat label="İşlem" value={String(filtered.length)} />
+        <Stat label={tt('Gider')} value={formatKurus(totals.e - totals.r)} sub={totals.r > 0 ? ttf('iade −{0}', formatKurus(totals.r)) : undefined} />
+        <Stat label={tt('Gelir')} value={formatKurus(totals.inc)} tone="up" />
+        <Stat label={tt('İşlem')} value={String(filtered.length)} />
       </div>
       <AnimatePresence>
         {selected.size > 0 && (
@@ -355,12 +356,12 @@ export default function TransactionsPage() {
             transition={{ duration: 0.18 }}
             className="glass sticky top-16 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-line-strong px-3 py-2 shadow-float lg:top-4"
             role="region"
-            aria-label="Toplu işlemler"
+            aria-label={tt('Toplu işlemler')}
           >
-            <span className="num px-1 text-sm font-semibold">{selected.size} seçili</span>
+            <span className="num px-1 text-sm font-semibold">{ttf('{0} seçili', selected.size)}</span>
             <div className="ml-auto flex gap-2">
               <Button size="sm" icon={<Tags className="size-4" />} onClick={() => setBulkCatOpen(true)}>
-                Kategori değiştir
+                {tt('Kategori değiştir')}
               </Button>
               {(groups ?? []).length > 0 && (
                 <Button
@@ -371,14 +372,14 @@ export default function TransactionsPage() {
                     setBulkGroupOpen(true)
                   }}
                 >
-                  Grup ata
+                  {tt('Grup ata')}
                 </Button>
               )}
               <Button size="sm" variant="danger" icon={<Trash2 className="size-4" />} onClick={() => setConfirmBulkDelete(true)}>
-                Sil
+                {tt('Sil')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-                Vazgeç
+                {tt('Vazgeç')}
               </Button>
             </div>
           </motion.div>
@@ -395,23 +396,23 @@ export default function TransactionsPage() {
         ) : txs.length === 0 ? (
           <EmptyState
             icon={<ListOrdered className="size-6" />}
-            title="Henüz işlem yok"
+            title={tt('Henüz işlem yok')}
             action={
               <>
                 <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => openTransactionForm()}>
-                  Gider ekle
+                  {tt('Gider ekle')}
                 </Button>
                 <Button icon={<FileUp className="size-4" />} onClick={() => openImport()}>
-                  Dosya içe aktar
+                  {tt('Dosya içe aktar')}
                 </Button>
               </>
             }
           >
-            İlk giderinizi ekleyin veya ekstre yükleyin.
+            {tt('İlk giderinizi ekleyin veya ekstre yükleyin.')}
           </EmptyState>
         ) : filtered.length === 0 ? (
-          <EmptyState icon={<Search className="size-6" />} title="Bu filtrelerle işlem bulunamadı" action={<Button onClick={clearFilters}>Filtreleri temizle</Button>}>
-            {period === 'month' ? 'Dönemi “Tüm tarihler” yapmayı deneyin.' : 'Arama veya filtreleri değiştirin.'}
+          <EmptyState icon={<Search className="size-6" />} title={tt('Bu filtrelerle işlem bulunamadı')} action={<Button onClick={clearFilters}>{tt('Filtreleri temizle')}</Button>}>
+            {period === 'month' ? tt('Dönemi “Tüm tarihler” yapmayı deneyin.') : tt('Arama veya filtreleri değiştirin.')}
           </EmptyState>
         ) : (
           <TransactionList
@@ -439,45 +440,44 @@ export default function TransactionsPage() {
       <Modal
         open={filtersOpen}
         onOpenChange={setFiltersOpen}
-        title="Filtreler"
+        title={tt('Filtreler')}
         size="lg"
         footer={
           <>
             <Button variant="ghost" className="mr-auto" icon={<Download className="size-4" />} onClick={exportCsv} disabled={!filtered.length}>
-              CSV indir
+              {tt('CSV indir')}
             </Button>
             <Button variant="primary" onClick={() => setFiltersOpen(false)}>
-              Göster ({filtered.length})
-            </Button>
+              {ttf('Göster ({0})', filtered.length)}</Button>
           </>
         }
       >
         {filterFields}
         <button type="button" onClick={clearFilters} className="mt-4 text-sm font-medium text-accent">
-          Filtreleri temizle
+          {tt('Filtreleri temizle')}
         </button>
       </Modal>
 
       <Modal
         open={bulkCatOpen}
         onOpenChange={setBulkCatOpen}
-        title="Toplu kategori değiştir"
-        description={`${selected.size} işlemin kategorisi değişecek.`}
+        title={tt('Toplu kategori değiştir')}
+        description={ttf('{0} işlemin kategorisi değişecek.', selected.size)}
         size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setBulkCatOpen(false)}>
-              Vazgeç
+              {tt('Vazgeç')}
             </Button>
             <Button variant="primary" onClick={applyBulkCategory} loading={busy} disabled={!bulkCat}>
-              Uygula
+              {tt('Uygula')}
             </Button>
           </>
         }
       >
-        <Field label="Yeni kategori" htmlFor="bulk-cat">
+        <Field label={tt('Yeni kategori')} htmlFor="bulk-cat">
           <Select id="bulk-cat" value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}>
-            <option value="">Seçin…</option>
+            <option value="">{tt('Seçin…')}</option>
             {activeCats.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -490,33 +490,33 @@ export default function TransactionsPage() {
       <Modal
         open={bulkGroupOpen}
         onOpenChange={setBulkGroupOpen}
-        title="Toplu grup ata"
-        description={`${selected.size} işlemin grubu değişecek.`}
+        title={tt('Toplu grup ata')}
+        description={ttf('{0} işlemin grubu değişecek.', selected.size)}
         size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setBulkGroupOpen(false)}>
-              Vazgeç
+              {tt('Vazgeç')}
             </Button>
             <Button variant="primary" onClick={applyBulkGroup} loading={busy}>
-              Uygula
+              {tt('Uygula')}
             </Button>
           </>
         }
       >
-        <GroupPicker groups={(groups ?? []).filter((g) => !g.archived)} value={bulkGroup} onChange={setBulkGroup} label="Yeni grup" />
+        <GroupPicker groups={(groups ?? []).filter((g) => !g.archived)} value={bulkGroup} onChange={setBulkGroup} label={tt('Yeni grup')} />
       </Modal>
 
       <ConfirmDialog
         open={confirmBulkDelete}
         onOpenChange={setConfirmBulkDelete}
-        title={`${selected.size} işlem silinsin mi?`}
-        confirmLabel="Sil"
+        title={ttf('{0} işlem silinsin mi?', selected.size)}
+        confirmLabel={tt('Sil')}
         danger
         loading={busy}
         onConfirm={() => deleteWithUndo([...selected])}
       >
-        Seçili işlemler silinecek. Hemen ardından çıkan bildirimdeki “Geri al” ile kurtarabilirsiniz.
+        {tt('Seçili işlemler silinecek. Hemen ardından çıkan bildirimdeki “Geri al” ile kurtarabilirsiniz.')}
       </ConfirmDialog>
     </div>
   )
@@ -533,5 +533,5 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
 }
 
 function skippedNote(n: number): string {
-  return n > 0 ? ` Üyelerin eklediği ${n} işlem değiştirilmedi.` : ''
+  return n > 0 ? ttf(' Üyelerin eklediği {0} işlem değiştirilmedi.', n) : ''
 }

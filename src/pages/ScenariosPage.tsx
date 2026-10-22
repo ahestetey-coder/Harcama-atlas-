@@ -14,25 +14,26 @@ import { routeProfile } from '../domain/routeSetup'
 import { useJourneyFacts } from '../state/budget'
 import { useSettings } from '../state/data'
 import { useBaseRates } from '../state/livePrices'
+import { tt, ttf } from '../lib/i18n'
 
 export default function ScenariosPage() {
   return (
     <div>
       <PageHeader
-        title="Gelecek senaryoları"
+        title={tt('Gelecek senaryoları')}
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plusplus" /> Ya şöyle olursa?
+            <PlanBadge plan="plusplus" /> {tt('Ya şöyle olursa?')}
           </span>
         }
       />
       <PlanGate
         feature="scenarios"
-        title="Gelecek senaryoları"
+        title={tt('Gelecek senaryoları')}
         points={[
-          'Birikim, gelir kaybı ve büyük harcama varsayımlarını deneyin',
-          'Sonuçları bugünün satın alma gücüyle görün',
-          'Temkinli, orta ve olumlu varsayımları yan yana karşılaştırın',
+          tt('Birikim, gelir kaybı ve büyük harcama varsayımlarını deneyin'),
+          tt('Sonuçları bugünün satın alma gücüyle görün'),
+          tt('Temkinli, orta ve olumlu varsayımları yan yana karşılaştırın'),
         ]}
       >
         <ScenariosContent />
@@ -50,10 +51,10 @@ function ScenariosContent() {
     return (
       <Card className="p-6 text-center">
         <Mountain className="mx-auto size-8 text-accent" />
-        <h2 className="mt-2 font-display text-lg font-semibold">Önce yolculuğunuzu oluşturun</h2>
-        <p className="mx-auto mt-1 max-w-md text-sm text-muted">Senaryolar Finansal Yolculuğum'da kurduğun rotayla başlar.</p>
+        <h2 className="mt-2 font-display text-lg font-semibold">{tt('Önce yolculuğunuzu oluşturun')}</h2>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted">{tt('Senaryolar Finansal Yolculuğum\'da kurduğun rotayla başlar.')}</p>
         <Link to="/yolculuk" className="mt-4 inline-block">
-          <Button variant="primary">Rotamı belirle</Button>
+          <Button variant="primary">{tt('Rotamı belirle')}</Button>
         </Link>
       </Card>
     )
@@ -130,67 +131,67 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
   const midNow = sims.mid.reachMonths
   const diff = journeyMid !== null && midNow !== null ? midNow - journeyMid : null
   const tableYears = rows.filter((r) => r.year === 0 || r.year === a.years || r.year % (a.years <= 10 ? 2 : 5) === 0)
-  const reachText = (m: number | null) => (m === null ? '100 yıl içinde ulaşılmıyor' : m === 0 ? 'Hedef şimdiden karşılanıyor' : `${reachDateLabel(m, today)} · ${durationLabel(m)}`)
+  const reachText = (m: number | null) => (m === null ? tt('100 yıl içinde ulaşılmıyor') : m === 0 ? tt('Hedef şimdiden karşılanıyor') : `${reachDateLabel(m, today)} · ${durationLabel(m)}`)
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="p-5" aria-label="Başlangıç noktası">
-        <h2 className="font-display text-base font-semibold">Başlangıç noktanız</h2>
+      <Card className="p-5" aria-label={tt('Başlangıç noktası')}>
+        <h2 className="font-display text-base font-semibold">{tt('Başlangıç noktanız')}</h2>
         <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <dt className="text-[12.5px] text-muted">Net birikim</dt>
+            <dt className="text-[12.5px] text-muted">{tt('Net birikim')}</dt>
             <dd className="num font-display text-lg font-semibold">{inBase(start)}</dd>
             <dd className="num mt-0.5 text-[12px] text-muted">
-              Varlıklarınız. Kredi ve taksitler aylık ödemeden düşülür.
+              {tt('Varlıklarınız. Kredi ve taksitler aylık ödemeden düşülür.')}
             </dd>
           </div>
           <div>
-            <dt className="text-[12.5px] text-muted">Aylık birikim</dt>
+            <dt className="text-[12.5px] text-muted">{tt('Aylık birikim')}</dt>
             <dd className="num font-display text-lg font-semibold">{inBase(baseSaving)}</dd>
           </div>
           <div>
-            <dt className="text-[12.5px] text-muted">Özgürlük hedefi</dt>
+            <dt className="text-[12.5px] text-muted">{tt('Özgürlük hedefi')}</dt>
             <dd className="num font-display text-lg font-semibold">{inBase(goal)}</dd>
           </div>
         </dl>
         {start === 0 && (
           <p className="mt-3 text-[12.5px] text-muted">
-            Kayıtlı birikim yok, rota sıfırdan başlıyor.{' '}
+            {tt('Kayıtlı birikim yok, rota sıfırdan başlıyor.')}{' '}
             <Link to="/yatirimlar" className="font-medium text-accent underline">
-              Birikimini Yatırımlarım'a ekle
+              {tt('Birikimini Yatırımlarım\'a ekle')}
             </Link>
-            ; rota ve senaryolar onu başlangıca katar.
+            {tt('; rota ve senaryolar onu başlangıca katar.')}
           </p>
         )}
         <p className="mt-2 text-[12.5px] text-muted">
-          Hesap birimi: <span className="font-medium text-ink">{BASE_LABEL[base]}</span>. Getiriler enflasyon üstü (reel), tutarlar bugünün parasıyla; TL enflasyonu hesabı şişirmez.
+          {tt('Hesap birimi:')} <span className="font-medium text-ink">{BASE_LABEL[base]}</span>{tt('. Getiriler enflasyon üstü (reel), tutarlar bugünün parasıyla; TL enflasyonu hesabı şişirmez.')}
         </p>
         <p className="mt-1 text-[12.5px] text-muted">
-          Yolculuktaki tahmin: <span className="font-medium text-ink">{reachText(journeyMid)}</span>
+          {tt('Yolculuktaki tahmin:')} <span className="font-medium text-ink">{reachText(journeyMid)}</span>
         </p>
       </Card>
 
-      <Card className="p-5" aria-label="Varsayımlar">
+      <Card className="p-5" aria-label={tt('Varsayımlar')}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <SlidersHorizontal className="size-5 text-accent" /> Varsayımlar
+            <SlidersHorizontal className="size-5 text-accent" /> {tt('Varsayımlar')}
           </h2>
           <Button size="sm" variant="ghost" icon={<RotateCcw className="size-4" />} onClick={reset} disabled={!changed}>
-            Varsayılanlara dön
+            {tt('Varsayılanlara dön')}
           </Button>
         </div>
-        <p className="mt-1 text-[13px] text-muted">Tutarları bugünün parasıyla yazın.</p>
+        <p className="mt-1 text-[13px] text-muted">{tt('Tutarları bugünün parasıyla yazın.')}</p>
         <div key={formKey} className="mt-4 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-          <MoneyField id="s-extra" label="Ek aylık birikim (TL)" value={a.extra} onChange={(v) => set('extra', v)} />
-          <Slider id="s-loss" label="Gelir kaybı (ay)" value={a.lossMonths} min={0} max={36} onChange={(v) => set('lossMonths', v)} display={(v) => (v === 0 ? 'Yok' : `${v} ay`)} hint="Giderler birikimden karşılanır." />
-          <MoneyField id="s-loss-spend" label="Gelir kaybında aylık gider (TL)" value={a.lossSpend} onChange={(v) => set('lossSpend', v)} hint="Varsayılan: zorunlu giderleriniz." />
-          <MoneyField id="s-big" label="Büyük harcama (TL)" value={a.big} onChange={(v) => set('big', v)} hint="Tek seferlik harcama." />
-          <Slider id="s-big-year" label="Büyük harcamanın yılı" value={Math.min(a.bigYear, a.years)} min={1} max={a.years} onChange={(v) => set('bigYear', v)} display={(v) => `${v}. yıl`} disabled={a.big === 0} />
-          <Slider id="s-years" label="Grafik süresi (yıl)" value={a.years} min={1} max={60} onChange={(v) => set('years', v)} display={(v) => `${v} yıl`} />
-          <Slider id="s-inflation" label="Yıllık enflasyon (%)" value={a.inflation} min={0} max={100} onChange={(v) => set('inflation', v)} display={(v) => `%${v}`} hint="Yalnızca nominal gösterimi etkiler." />
+          <MoneyField id="s-extra" label={tt('Ek aylık birikim (TL)')} value={a.extra} onChange={(v) => set('extra', v)} />
+          <Slider id="s-loss" label={tt('Gelir kaybı (ay)')} value={a.lossMonths} min={0} max={36} onChange={(v) => set('lossMonths', v)} display={(v) => (v === 0 ? 'Yok' : `${v} ay`)} hint={tt('Giderler birikimden karşılanır.')} />
+          <MoneyField id="s-loss-spend" label={tt('Gelir kaybında aylık gider (TL)')} value={a.lossSpend} onChange={(v) => set('lossSpend', v)} hint={tt('Varsayılan: zorunlu giderleriniz.')} />
+          <MoneyField id="s-big" label={tt('Büyük harcama (TL)')} value={a.big} onChange={(v) => set('big', v)} hint={tt('Tek seferlik harcama.')} />
+          <Slider id="s-big-year" label={tt('Büyük harcamanın yılı')} value={Math.min(a.bigYear, a.years)} min={1} max={a.years} onChange={(v) => set('bigYear', v)} display={(v) => ttf('{0}. yıl', v)} disabled={a.big === 0} />
+          <Slider id="s-years" label={tt('Grafik süresi (yıl)')} value={a.years} min={1} max={60} onChange={(v) => set('years', v)} display={(v) => ttf('{0} yıl', v)} />
+          <Slider id="s-inflation" label={tt('Yıllık enflasyon (%)')} value={a.inflation} min={0} max={100} onChange={(v) => set('inflation', v)} display={(v) => `%${v}`} hint={tt('Yalnızca nominal gösterimi etkiler.')} />
         </div>
         <fieldset className="mt-5">
-          <legend className="text-[13px] font-medium text-muted">Yıllık reel getiri varsayımı (enflasyon üstü)</legend>
+          <legend className="text-[13px] font-medium text-muted">{tt('Yıllık reel getiri varsayımı (enflasyon üstü)')}</legend>
           <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
             {KEYS.map((k) => (
               <Slider
@@ -209,27 +210,27 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
         </fieldset>
       </Card>
 
-      <Card className="p-5" aria-label="Senaryo grafiği">
+      <Card className="p-5" aria-label={tt('Senaryo grafiği')}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-display text-base font-semibold">Net birikimin seyri</h2>
+          <h2 className="font-display text-base font-semibold">{tt('Net birikimin seyri')}</h2>
           <Segmented
-            label="Gösterim"
+            label={tt('Gösterim')}
             value={view}
             onChange={setView}
             options={[
-              { value: 'real', label: 'Bugünün parasıyla' },
-              { value: 'nominal', label: 'Nominal' },
+              { value: 'real', label: tt('Bugünün parasıyla') },
+              { value: 'nominal', label: tt('Nominal') },
             ]}
           />
         </div>
-        <ScenarioLines rows={rows} caption={view === 'real' ? 'Senaryolar, bugünün parasıyla' : 'Senaryolar, nominal'} />
-        <ul className="mt-3 grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-3" aria-label="Hedefe ulaşma">
+        <ScenarioLines rows={rows} caption={view === 'real' ? tt('Senaryolar, bugünün parasıyla') : tt('Senaryolar, nominal')} />
+        <ul className="mt-3 grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-3" aria-label={tt('Hedefe ulaşma')}>
           {KEYS.slice()
             .reverse()
             .map((k) => (
               <li key={k} className="rounded-xl bg-surface-2 px-3 py-2">
                 <div className="font-medium text-ink">
-                  {SCENARIOS[k].label} <span className="text-[12px] font-normal text-subtle">(%{a.returns[k].toLocaleString('tr-TR')} reel)</span>
+                  {SCENARIOS[k].label} <span className="text-[12px] font-normal text-subtle">{ttf('(%{0} reel)', a.returns[k].toLocaleString('tr-TR'))}</span>
                 </div>
                 <div className="num text-muted">{reachText(sims[k].reachMonths)}</div>
               </li>
@@ -237,31 +238,31 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
         </ul>
         {changed && diff !== null && (
           <p className="mt-2 text-[12.5px] text-muted" aria-live="polite">
-            Değişikliklerinizle orta varsayımda hedef{' '}
-            <span className={cn('font-semibold', diff > 0 ? 'text-danger' : diff < 0 ? 'text-accent' : 'text-ink')}>{diff === 0 ? 'aynı tarihte' : diff > 0 ? `${durationLabel(diff)} gecikiyor` : `${durationLabel(-diff)} erken`}</span>
-            {diff === 0 ? ' kalıyor.' : '.'}
+            {tt('Değişikliklerinizle orta varsayımda hedef')}{' '}
+            <span className={cn('font-semibold', diff > 0 ? 'text-danger' : diff < 0 ? 'text-accent' : 'text-ink')}>{diff === 0 ? tt('aynı tarihte') : diff > 0 ? `${durationLabel(diff)} gecikiyor` : `${durationLabel(-diff)} erken`}</span>
+            {diff === 0 ? tt(' kalıyor.') : '.'}
           </p>
         )}
       </Card>
 
-      <Card className="overflow-x-auto p-5" aria-label="Senaryo tablosu">
+      <Card className="overflow-x-auto p-5" aria-label={tt('Senaryo tablosu')}>
         <table className="w-full text-[13px]">
-          <caption className="mb-2 text-left font-display text-base font-semibold text-ink">Yıllara göre {view === 'real' ? '(bugünün parasıyla)' : '(nominal)'}</caption>
+          <caption className="mb-2 text-left font-display text-base font-semibold text-ink">{ttf('Yıllara göre {0}', view === 'real' ? tt('(bugünün parasıyla)') : '(nominal)')}</caption>
           <thead>
             <tr className="text-left text-muted">
-              <th className="py-1.5 pr-3 font-medium">Yıl</th>
+              <th className="py-1.5 pr-3 font-medium">{tt('Yıl')}</th>
               {KEYS.map((k) => (
                 <th key={k} className="py-1.5 pr-3 text-right font-medium">
                   {SCENARIOS[k].label}
                 </th>
               ))}
-              <th className="py-1.5 text-right font-medium">Hedef</th>
+              <th className="py-1.5 text-right font-medium">{tt('Hedef')}</th>
             </tr>
           </thead>
           <tbody className="num">
             {tableYears.map((r) => (
               <tr key={r.year} className="border-t border-line">
-                <td className="py-1.5 pr-3">{r.year === 0 ? 'Bugün' : r.year}</td>
+                <td className="py-1.5 pr-3">{r.year === 0 ? tt('Bugün') : r.year}</td>
                 {KEYS.map((k) => (
                   <td key={k} className="whitespace-nowrap py-1.5 pr-3 text-right">
                     <Amount kurus={r[k]} />
@@ -277,8 +278,8 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
       </Card>
 
       <div className="text-[12.5px] text-subtle">
-        <p>Senaryolar olasılık veya garanti değildir. Yatırım tavsiyesi değildir.</p>
-        <More>Girdiğiniz varsayımlarla yapılan basit hesaplardır. Gerçek getiri, enflasyon ve gelir farklı olabilir. Hangi ürünün alınıp satılacağını söylemez.</More>
+        <p>{tt('Senaryolar olasılık veya garanti değildir. Yatırım tavsiyesi değildir.')}</p>
+        <More>{tt('Girdiğiniz varsayımlarla yapılan basit hesaplardır. Gerçek getiri, enflasyon ve gelir farklı olabilir. Hangi ürünün alınıp satılacağını söylemez.')}</More>
       </div>
     </div>
   )
@@ -301,7 +302,7 @@ function MoneyField({ id, label, value, onChange, hint }: { id: string; label: s
     } else setBad(true)
   }
   return (
-    <Field label={label} htmlFor={id} hint={hint} error={bad ? 'Geçerli bir tutar girin; son geçerli tutar kullanılıyor.' : undefined}>
+    <Field label={label} htmlFor={id} hint={hint} error={bad ? tt('Geçerli bir tutar girin; son geçerli tutar kullanılıyor.') : undefined}>
       <Input id={id} inputMode="decimal" value={text} onChange={(e) => change(e.target.value)} onBlur={() => !bad && setText(value ? formatKurusPlain(value) : '')} placeholder="0,00" aria-invalid={bad || undefined} />
     </Field>
   )

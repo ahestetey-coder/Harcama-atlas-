@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { CONTENT_LABEL, REPORT_KIND_LABEL, SECTION_KEYS, SECTION_TITLE, type ContentType, type Report, type ReportTopic } from '../cloud/research'
 import { cn } from '../lib/cn'
 import { Badge } from './ui/primitives'
+import { dateLocale, tt, ttf } from '../lib/i18n'
 
 const TYPE_TONE: Record<ContentType, 'neutral' | 'accent' | 'warning' | 'info' | 'teal'> = {
   resmi_veri: 'teal',
@@ -13,7 +14,7 @@ const TYPE_TONE: Record<ContentType, 'neutral' | 'accent' | 'warning' | 'info' |
 }
 
 const fmtDate = (iso: string, time = false) =>
-  new Date(iso).toLocaleString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', ...(time ? { hour: '2-digit', minute: '2-digit' } : {}) })
+  new Date(iso).toLocaleString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric', ...(time ? { hour: '2-digit', minute: '2-digit' } : {}) })
 
 export function TypeBadge({ type }: { type: ContentType }) {
   return <Badge tone={TYPE_TONE[type]}>{CONTENT_LABEL[type]}</Badge>
@@ -29,12 +30,12 @@ export function ReportMeta({ r }: { r: Report }) {
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-subtle">
       <Badge tone={r.kind === 'acil' ? 'danger' : 'neutral'}>{REPORT_KIND_LABEL[r.kind]}</Badge>
       <span>
-        {r.published_at ? 'Yayın' : 'Taslak'}: {fmtDate(at, true)}
+        {r.published_at ? tt('Yayın') : 'Taslak'}: {fmtDate(at, true)}
       </span>
       <span>
-        · Kapsam: {fmtDate(r.window_start)} – {fmtDate(r.window_end)}
+        {ttf('· Kapsam: {0} – {1}', fmtDate(r.window_start), fmtDate(r.window_end))}
       </span>
-      {stale && <Badge tone="warning">{Math.floor(ageDays)} gün önce yayınlandı</Badge>}
+      {stale && <Badge tone="warning">{ttf('{0} gün önce yayınlandı', Math.floor(ageDays))}</Badge>}
     </div>
   )
 }
@@ -86,7 +87,7 @@ export function TopicView({ t, idx, reportId, open }: { t: ReportTopic; idx: num
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-1.5">
                     <TypeBadge type={s.type} />
-                    {s.personal !== undefined && <Badge tone="neutral">{s.personal ? 'Kişisel görüş' : 'Kurum adına'}</Badge>}
+                    {s.personal !== undefined && <Badge tone="neutral">{s.personal ? tt('Kişisel görüş') : tt('Kurum adına')}</Badge>}
                   </span>
                   <a
                     href={/^https?:\/\//i.test(s.url) ? s.url : undefined}
@@ -97,9 +98,7 @@ export function TopicView({ t, idx, reportId, open }: { t: ReportTopic; idx: num
                     {s.title} <ExternalLink className="inline size-3" />
                   </a>
                   <span className="block text-[11.5px] text-subtle">
-                    {s.author ? `${s.author} · ` : ''}
-                    {s.institution} · yayın {fmtDate(s.publishedAt, true)}
-                    {s.period ? ` · dönem ${s.period}` : ''}
+                    {ttf('{0}{1} · yayın {2}{3}', s.author ? `${s.author} · ` : '', s.institution, fmtDate(s.publishedAt, true), s.period ? ttf(' · dönem {0}', s.period) : '')}
                   </span>
                 </span>
               </li>

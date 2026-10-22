@@ -5,6 +5,7 @@ import type { SupabaseBackend } from '../cloud/supabaseBackend'
 import { APP_CONFIG } from '../config/app'
 import { UserFacingError } from '../data/repository'
 import { isNativeApp } from '../lib/native'
+import { tt } from '../lib/i18n'
 
 export interface AuthUser {
   id: string
@@ -148,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [config])
 
   const need = useCallback(() => {
-    if (!backend) throw new UserFacingError('Bağlantı hazırlanıyor, biraz sonra tekrar deneyin.')
+    if (!backend) throw new UserFacingError(tt('Bağlantı hazırlanıyor, biraz sonra tekrar deneyin.'))
     return backend
   }, [backend])
 
@@ -169,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       if (error) fail(error)
       // Supabase, kayıtlı bir e-posta için de hata vermeden kimliksiz kullanıcı döndürür
-      if (data.user && !data.user.identities?.length) throw new UserFacingError('Bu e-posta ile zaten hesap var; giriş yapın.')
+      if (data.user && !data.user.identities?.length) throw new UserFacingError(tt('Bu e-posta ile zaten hesap var; giriş yapın.'))
       return !!data.session
     },
     [need],
@@ -234,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await need().client.rpc('ha_delete_my_account')
     if (error) {
       if (/function .* does not exist|Could not find the function/i.test(error.message ?? '') || error.code === 'PGRST202')
-        throw new UserFacingError('Hesap silme veritabanına henüz eklenmemiş. Yöneticiden kurulum SQL’ini çalıştırmasını isteyin.')
+        throw new UserFacingError(tt('Hesap silme veritabanına henüz eklenmemiş. Yöneticiden kurulum SQL’ini çalıştırmasını isteyin.'))
       fail(error)
     }
     setRecovery(false)
@@ -251,6 +252,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthCtx {
   const c = useContext(Ctx)
-  if (!c) throw new Error('AuthProvider eksik')
+  if (!c) throw new Error(tt('AuthProvider eksik'))
   return c
 }

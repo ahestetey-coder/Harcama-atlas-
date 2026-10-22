@@ -2,78 +2,121 @@
 import Site from '../layouts/Site.astro'
 import Phone from '../components/Phone.astro'
 
+import { langOf, localize, translator } from '../lib/i18n'
+
+const lang = langOf(Astro.url.pathname)
+const t = translator(lang)
+const free = t('Ücretsiz', 'Free')
 const guide = [
   {
     id: 'baslangic',
-    title: 'Hesabını aç',
-    chip: 'Ücretsiz',
+    title: t('Hesabını aç', 'Create your account'),
+    chip: free,
     img: 'ozet-light',
     dark: 'ozet-dark',
-    intro: 'Harcama Atlası’nı web’de hemen, iOS ve Android’de yakında kullanabilirsin. Tek hesap, her cihazda aynı veriler.',
-    steps: ['Uygulamayı aç ve e-posta adresinle kayıt ol ya da Google ile giriş yap.', 'Finansal Harita testini çözdüysen aynı e-postayla gir; sonucun hesabına kendiliğinden bağlanır.', 'Tema, bildirimler ve ay başlangıç günü Menü > Ayarlar’da.'],
+    intro: t('Harcama Atlası’nı web’de hemen, iOS ve Android’de yakında kullanabilirsin. Tek hesap, her cihazda aynı veriler.', 'Use Harcama Atlası on the web today, on iOS and Android soon. One account, the same data on every device.'),
+    steps: [
+      t('Uygulamayı aç ve e-posta adresinle kayıt ol ya da Google ile giriş yap.', 'Open the app and sign up with your email or sign in with Google.'),
+      t('Finansal Harita testini çözdüysen aynı e-postayla gir; sonucun hesabına kendiliğinden bağlanır.', 'If you took the Financial Map test, sign in with the same email; your result is linked to your account automatically.'),
+      t('Tema, bildirimler ve ay başlangıç günü Menü > Ayarlar’da.', 'Theme, language, notifications and the month start day are under Menu > Settings.'),
+    ],
   },
   {
     id: 'harcama',
-    title: 'Harcama ekle ya da içe aktar',
-    chip: 'Ücretsiz',
+    title: t('Harcama ekle ya da içe aktar', 'Add or import spending'),
+    chip: free,
     img: 'islemler-light',
-    intro: 'Harcamalarını tek tek girebilir ya da kart ekstreni toplu olarak aktarabilirsin.',
-    steps: ['Alttaki yeşil + düğmesine dokun.', 'Tek harcama için tutarı, açıklamayı ve kategoriyi yazıp kaydet.', 'Toplu ekleme için içe aktarmayı seç; PDF, Excel, CSV ya da ekran görüntüsü yükle.', 'Okunan satırları kontrol et, tekrar edenleri ve kategorileri düzelt, sonra kaydet.'],
+    intro: t('Harcamalarını tek tek girebilir ya da kart ekstreni toplu olarak aktarabilirsin.', 'Enter expenses one by one or import your card statement in one go.'),
+    steps: [
+      t('Alttaki yeşil + düğmesine dokun.', 'Tap the green + button at the bottom.'),
+      t('Tek harcama için tutarı, açıklamayı ve kategoriyi yazıp kaydet.', 'For a single expense, enter the amount, description and category, then save.'),
+      t('Toplu ekleme için içe aktarmayı seç; PDF, Excel, CSV ya da ekran görüntüsü yükle.', 'To add many at once, choose import and upload a PDF, Excel, CSV or screenshot.'),
+      t('Okunan satırları kontrol et, tekrar edenleri ve kategorileri düzelt, sonra kaydet.', 'Check the rows that were read, fix duplicates and categories, then save.'),
+    ],
   },
   {
     id: 'ozet',
-    title: 'Özet sayfasını oku',
-    chip: 'Ücretsiz',
+    title: t('Özet sayfasını oku', 'Read the Summary page'),
+    chip: free,
     img: 'ozet-light',
     dark: 'ozet-dark',
-    intro: 'Özet, bu dönemin haritasıdır: ne harcadın, bütçende ne kaldı, para en çok nereye gidiyor.',
-    steps: ['Üstteki ay seçiciyle dönemler arasında geç.', 'Grup filtresiyle bireysel ya da ortak harcamalara bak.', 'Bütçe kartında kalan tutarı, Kategoriler grafiğinde dağılımı gör.'],
+    intro: t('Özet, bu dönemin haritasıdır: ne harcadın, bütçende ne kaldı, para en çok nereye gidiyor.', 'Summary is the map of this period: what you spent, what is left in your budget and where most of your money goes.'),
+    steps: [
+      t('Üstteki ay seçiciyle dönemler arasında geç.', 'Move between periods with the month picker at the top.'),
+      t('Grup filtresiyle bireysel ya da ortak harcamalara bak.', 'Use the group filter to look at personal or shared spending.'),
+      t('Bütçe kartında kalan tutarı, Kategoriler grafiğinde dağılımı gör.', 'See what is left on the budget card and the breakdown in the Categories chart.'),
+    ],
   },
   {
     id: 'butce',
-    title: 'Bütçeni kur',
+    title: t('Bütçeni kur', 'Set up your budget'),
     chip: 'Plus',
     img: 'butce-light',
-    intro: 'Maaşını ve maaş gününü gir; dönem buna göre başlar ve bütçen gelirine göre hesaplanır.',
-    steps: ['Alt çubuktan Bütçe’ye geç ve maaşını ekle.', 'Aylık bütçede Koç (otomatik) ya da Elle seçeneğini seç.', 'Plus ile kategori limitleri, uyarılar ve ay sonu tahmini açılır.'],
+    intro: t('Maaşını ve maaş gününü gir; dönem buna göre başlar ve bütçen gelirine göre hesaplanır.', 'Enter your salary and payday; periods start from that day and your budget is calculated from your income.'),
+    steps: [
+      t('Alt çubuktan Bütçe’ye geç ve maaşını ekle.', 'Go to Budget from the bottom bar and add your salary.'),
+      t('Aylık bütçede Koç (otomatik) ya da Elle seçeneğini seç.', 'For the monthly budget, choose Coach (automatic) or Manual.'),
+      t('Plus ile kategori limitleri, uyarılar ve ay sonu tahmini açılır.', 'Plus unlocks category limits, alerts and a month-end forecast.'),
+    ],
   },
   {
     id: 'borclar',
-    title: 'Borç ve ödemelerini planla',
+    title: t('Borç ve ödemelerini planla', 'Plan your debts and payments'),
     chip: 'Plus',
     img: 'borclar-light',
-    intro: 'Kart taksitleri, krediler ve düzenli ödemeler gelecek aylara yayılmış olarak görünür.',
-    steps: ['Menü’den Borçlar ve ödemeler’i aç.', 'Borç ekle ile türünü, kalan tutarı ve taksitleri gir.', 'Düzenli ödemeler sekmesinde kira, abonelik ve faturaları ekle; günü gelince hatırlatılır.'],
+    intro: t('Kart taksitleri, krediler ve düzenli ödemeler gelecek aylara yayılmış olarak görünür.', 'Card instalments, loans and recurring payments are laid out across the coming months.'),
+    steps: [
+      t('Menü’den Borçlar ve ödemeler’i aç.', 'Open Debts and payments from the Menu.'),
+      t('Borç ekle ile türünü, kalan tutarı ve taksitleri gir.', 'Use Add debt to enter its type, remaining balance and instalments.'),
+      t('Düzenli ödemeler sekmesinde kira, abonelik ve faturaları ekle; günü gelince hatırlatılır.', 'Add rent, subscriptions and bills under Recurring payments; you get a reminder on the day.'),
+    ],
   },
   {
     id: 'rota',
-    title: 'Testi çöz, rotanı netleştir',
-    chip: 'Ücretsiz · Plus',
+    title: t('Testi çöz, rotanı netleştir', 'Take the test, sharpen your route'),
+    chip: t('Ücretsiz · Plus', 'Free · Plus'),
     img: 'test-sonuc',
-    intro: 'Finansal Harita testi tahmini rotanı çıkarır. Plus ile gerçek kayıtların hesaba girer ve rota netleşir.',
-    steps: ['Menü’den Finansal Harita testini aç ve 10 soruyu yanıtla.', 'Sonuçta arketipini, konumunu ve özgürlük yılını gör.', 'Plus ile Finansal Yolculuğum’da Rotamı netleştir’e dokun; kesin tarih ve sıradaki durak çıkar.'],
+    intro: t('Finansal Harita testi tahmini rotanı çıkarır. Plus ile gerçek kayıtların hesaba girer ve rota netleşir.', 'The Financial Map test charts your estimated route. With Plus, your real records are used and the route becomes exact.'),
+    steps: [
+      t('Menü’den Finansal Harita testini aç ve 10 soruyu yanıtla.', 'Open the Financial Map test from the Menu and answer the 10 questions.'),
+      t('Sonuçta arketipini, konumunu ve özgürlük yılını gör.', 'See your archetype, your position and your freedom year in the result.'),
+      t('Plus ile Finansal Yolculuğum’da Rotamı netleştir’e dokun; kesin tarih ve sıradaki durak çıkar.', 'With Plus, tap Sharpen my route in My Financial Journey to get an exact date and your next stop.'),
+    ],
   },
   {
     id: 'koc',
-    title: 'Koçla konuş',
+    title: t('Koçla konuş', 'Talk to the coach'),
     chip: 'Plus+',
     img: 'koc-light',
     dark: 'koc-dark',
-    intro: 'Koç senin rakamlarınla konuşur: borç kapatma sırası, ayrılacak birikim, sıradaki durak.',
-    steps: ['Alt çubuktan Koç’a geç.', 'Kısa anketi doldur; koç seni tanısın.', 'Sorunu yaz ya da önerilen mesajlardan birini seç. Koç yatırım tavsiyesi vermez.'],
+    intro: t('Koç senin rakamlarınla konuşur: borç kapatma sırası, ayrılacak birikim, sıradaki durak.', 'The coach talks with your numbers: which debt to pay first, how much to save, your next stop.'),
+    steps: [
+      t('Alt çubuktan Koç’a geç.', 'Go to Coach from the bottom bar.'),
+      t('Kısa anketi doldur; koç seni tanısın.', 'Fill in the short survey so the coach gets to know you.'),
+      t('Sorunu yaz ya da önerilen mesajlardan birini seç. Koç yatırım tavsiyesi vermez.', 'Type your question or pick a suggested message. The coach does not give investment advice.'),
+    ],
   },
 ]
 ---
 
-<Site title="Nasıl kullanılır · Harcama Atlası" description="Harcama Atlası’nı adım adım kullanmayı öğren: harcama ekleme, içe aktarma, bütçe, borçlar, Finansal Harita testi ve koç.">
+<Site
+  title={t('Nasıl kullanılır · Harcama Atlası', 'Guide · Harcama Atlası')}
+  description={t('Harcama Atlası’nı adım adım kullanmayı öğren: harcama ekleme, içe aktarma, bütçe, borçlar, Finansal Harita testi ve koç.', 'Learn Harcama Atlası step by step: adding and importing spending, budget, debts, the Financial Map test and the coach.')}
+>
   <section class="wrap head">
-    <p class="eyebrow reveal">Rehber</p>
-    <h1 class="h-display reveal" style="--d:1">Harcama Atlası <span class="accent">nasıl kullanılır?</span></h1>
-    <p class="lead reveal" style="--d:2">Hesabını açmaktan koçla konuşmaya kadar, her ekranı kısa adımlarla anlattık.</p>
+    <p class="eyebrow reveal">{t('Rehber', 'Guide')}</p>
+    {
+      lang === 'en' ? (
+        <h1 class="h-display reveal" style="--d:1"><span class="accent">How to use</span> Harcama Atlası</h1>
+      ) : (
+        <h1 class="h-display reveal" style="--d:1">Harcama Atlası <span class="accent">nasıl kullanılır?</span></h1>
+      )
+    }
+    <p class="lead reveal" style="--d:2">{t('Hesabını açmaktan koçla konuşmaya kadar, her ekranı kısa adımlarla anlattık.', 'From creating your account to talking to the coach, every screen in short steps.')}</p>
   </section>
 
   <div class="wrap layout">
-    <nav class="toc" aria-label="Rehber bölümleri">
+    <nav class="toc" aria-label={t('Rehber bölümleri', 'Guide sections')}>
       <ol>
         {
           guide.map((g, i) => (
@@ -93,7 +136,7 @@ const guide = [
         guide.map((g, i) => (
           <section id={g.id} class="g reveal" aria-labelledby={`${g.id}-t`}>
             <div class="g-text">
-              <span class:list={['chip', { 'chip-route': g.chip !== 'Ücretsiz' }]}>{g.chip}</span>
+              <span class:list={['chip', { 'chip-route': g.chip !== free }]}>{g.chip}</span>
               <h2 id={`${g.id}-t`}>
                 <span class="gn">{String(i + 1).padStart(2, '0')}</span>
                 {g.title}
@@ -106,15 +149,15 @@ const guide = [
               </ol>
             </div>
             <div class="g-phone">
-              <Phone light={g.img} dark={g.dark} alt={`${g.title} ekranı`} />
+              <Phone light={g.img} dark={g.dark} alt={t(`${g.title} ekranı`, `${g.title} screen`)} />
             </div>
           </section>
         ))
       }
       <div class="cta card reveal">
-        <h2>Hazır mısın?</h2>
-        <p>İlk adım 2 dakikalık Finansal Harita testi.</p>
-        <a class="btn btn-route" href="/test">Testi çöz <span class="arr" aria-hidden="true">→</span></a>
+        <h2>{t('Hazır mısın?', 'Ready?')}</h2>
+        <p>{t('İlk adım 2 dakikalık Finansal Harita testi.', 'The first step is the 2-minute Financial Map test.')}</p>
+        <a class="btn btn-route" href={localize('/test', lang)}>{t('Testi çöz', 'Take the test')} <span class="arr" aria-hidden="true">→</span></a>
       </div>
     </div>
   </div>

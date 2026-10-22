@@ -1,3 +1,4 @@
+import { tt, ttf } from '../lib/i18n'
 import Dexie from 'dexie'
 import { APP_CONFIG } from '../config/app'
 import { merchantKey, normalizeText, cleanDescription } from '../domain/normalize'
@@ -25,7 +26,7 @@ const BUDGET_PROFILE_KEYS = [...BUDGET_PROFILE_KURUS_KEYS, 'housing', 'earners',
 export const SHARED_READONLY = 'Bu harcamayı grup üyesi ekledi; yalnızca o değiştirebilir veya silebilir.'
 export class UserFacingError extends Error {
   constructor(message: string) {
-    super(message)
+    super(tt(message))
     this.name = 'UserFacingError'
   }
 }
@@ -36,12 +37,12 @@ export function toUserMessage(e: unknown): string {
   const name = (e as { name?: string })?.name ?? ''
   const inner = (e as { inner?: { name?: string } })?.inner?.name ?? ''
   if (name === 'QuotaExceededError' || inner === 'QuotaExceededError')
-    return 'Tarayıcı depolama alanı dolu. Eski aktarımları geri alın veya yedek alıp gereksiz verileri silin.'
+    return tt('Tarayıcı depolama alanı dolu. Eski aktarımları geri alın veya yedek alıp gereksiz verileri silin.')
   if (name === 'DatabaseClosedError' || name === 'InvalidStateError')
-    return 'Veritabanı açılamadı. Tarayıcı gizli modda olabilir veya depolamaya izin verilmiyor olabilir.'
-  if (name === 'ConstraintError' || inner === 'ConstraintError') return 'Bu kayıt zaten mevcut.'
-  if (name === 'VersionError') return 'Veritabanı daha yeni bir uygulama sürümüyle oluşturulmuş. Sayfayı yenileyin.'
-  return 'Beklenmeyen bir hata oluştu. İşlem kaydedilmedi.'
+    return tt('Veritabanı açılamadı. Tarayıcı gizli modda olabilir veya depolamaya izin verilmiyor olabilir.')
+  if (name === 'ConstraintError' || inner === 'ConstraintError') return tt('Bu kayıt zaten mevcut.')
+  if (name === 'VersionError') return tt('Veritabanı daha yeni bir uygulama sürümüyle oluşturulmuş. Sayfayı yenileyin.')
+  return tt('Beklenmeyen bir hata oluştu. İşlem kaydedilmedi.')
 }
 
 export interface TransactionInput {
@@ -439,7 +440,7 @@ export class AtlasRepository {
     for (const t of commit.transactions) {
       if (t.groupId && !groupIds.has(t.groupId)) throw new UserFacingError('Seçilen grup bulunamadı.')
       const errors = validateTransaction(t, catIds)
-      if (hasErrors(errors)) throw new UserFacingError(`Eksik veya hatalı satır kaydedilemez: ${t.description || '(açıklamasız)'} — ${Object.values(errors)[0]}`)
+      if (hasErrors(errors)) throw new UserFacingError(ttf('Eksik veya hatalı satır kaydedilemez: {0} — {1}', t.description || tt('(açıklamasız)'), Object.values(errors)[0]))
       if (t.importId !== commit.record.id) throw new UserFacingError('Aktarım kimliği tutarsız.')
     }
     return this.db.transaction('rw', this.db.imports, this.db.transactions, this.db.rules, async () => {
@@ -494,7 +495,7 @@ export class AtlasRepository {
     const list = cur.recurringIncomes ?? []
     const prev = input.id ? list.find((i) => i.id === input.id) : undefined
     // Yedek dosyası bu sınırı aşarsa geri yüklenemez
-    if (!prev && list.length >= MAX_RECURRING_INCOMES) throw new UserFacingError(`En fazla ${MAX_RECURRING_INCOMES} gelir eklenebilir; eski tek seferlik gelirleri silin.`)
+    if (!prev && list.length >= MAX_RECURRING_INCOMES) throw new UserFacingError(ttf('En fazla {0} gelir eklenebilir; eski tek seferlik gelirleri silin.', MAX_RECURRING_INCOMES))
     const now = nowIso()
     const item: RecurringIncome = { ...input, name, id: prev?.id ?? newId(), createdAt: prev?.createdAt ?? now, updatedAt: now }
     await this.saveSettings({ recurringIncomes: prev ? list.map((i) => (i.id === prev.id ? item : i)) : [...list, item] })

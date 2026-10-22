@@ -8,6 +8,7 @@ import { ACCEPT } from '../pages/import/acceptTypes'
 import { usePlan } from '../state/plan'
 import { useUi } from '../state/ui'
 import { Modal } from './ui/Modal'
+import { tt } from '../lib/i18n'
 
 interface Action {
   key: string
@@ -48,18 +49,18 @@ export function QuickAddSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   }
 
   const record: Action[] = [
-    { key: 'expense', label: 'Gider', icon: <Receipt />, tone: 'from-emerald-500 to-teal-600', run: form('expense') },
-    { key: 'income', label: 'Gelir', icon: <ArrowDownLeft />, tone: 'from-lime-500 to-emerald-600', run: form('income') },
-    { key: 'refund', label: 'İade', icon: <Undo2 />, tone: 'from-sky-500 to-blue-600', run: form('refund') },
-    { key: 'transfer', label: 'Kart ödemesi', icon: <ArrowLeftRight />, tone: 'from-slate-500 to-slate-700', run: form('transfer') },
+    { key: 'expense', label: tt('Gider'), icon: <Receipt />, tone: 'from-emerald-500 to-teal-600', run: form('expense') },
+    { key: 'income', label: tt('Gelir'), icon: <ArrowDownLeft />, tone: 'from-lime-500 to-emerald-600', run: form('income') },
+    { key: 'refund', label: tt('İade'), icon: <Undo2 />, tone: 'from-sky-500 to-blue-600', run: form('refund') },
+    { key: 'transfer', label: tt('Kart ödemesi'), icon: <ArrowLeftRight />, tone: 'from-slate-500 to-slate-700', run: form('transfer') },
   ]
   const files: Action[] = [
-    { key: 'statement', label: 'Ekstre yükle', icon: <FileSpreadsheet />, tone: 'from-violet-500 to-purple-600', run: () => statement.current?.click() },
-    { key: 'image', label: 'Ekran görüntüsü', icon: <ImageIcon />, tone: 'from-pink-500 to-rose-600', run: () => image.current?.click() },
-    { key: 'camera', label: 'Fotoğraf çek', icon: <Camera />, tone: 'from-amber-500 to-orange-600', run: () => camera.current?.click() },
+    { key: 'statement', label: tt('Ekstre yükle'), icon: <FileSpreadsheet />, tone: 'from-violet-500 to-purple-600', run: () => statement.current?.click() },
+    { key: 'image', label: tt('Ekran görüntüsü'), icon: <ImageIcon />, tone: 'from-pink-500 to-rose-600', run: () => image.current?.click() },
+    { key: 'camera', label: tt('Fotoğraf çek'), icon: <Camera />, tone: 'from-amber-500 to-orange-600', run: () => camera.current?.click() },
     {
       key: 'import',
-      label: 'İçe aktar',
+      label: tt('İçe aktar'),
       icon: <FileUp />,
       tone: 'from-indigo-500 to-violet-600',
       run: () => {
@@ -69,29 +70,29 @@ export function QuickAddSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     },
   ]
   const plan: Action[] = [
-    { key: 'recurring', label: 'Düzenli ödeme', icon: <Repeat />, tone: 'from-violet-500 to-purple-600', run: go('/borclar?bolum=odemeler&yeni=1'), feature: 'subscriptions' },
-    { key: 'goal', label: 'Birikim hedefi', icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', run: go('/hedefler?yeni=1'), feature: 'goals' },
-    { key: 'asset', label: 'Yatırım', icon: <Wallet />, tone: 'from-emerald-600 to-green-700', run: go('/yatirimlar?yeni=1'), feature: 'assets' },
-    { key: 'debt', label: 'Borç', icon: <CreditCard />, tone: 'from-rose-500 to-red-600', run: go('/borclar?yeni=1'), feature: 'assets' },
-    { key: 'budget', label: 'Bütçe limiti', icon: <Target />, tone: 'from-amber-500 to-orange-600', run: go('/butce'), feature: 'advancedBudget' },
+    { key: 'recurring', label: tt('Düzenli ödeme'), icon: <Repeat />, tone: 'from-violet-500 to-purple-600', run: go('/borclar?bolum=odemeler&yeni=1'), feature: 'subscriptions' },
+    { key: 'goal', label: tt('Birikim hedefi'), icon: <PiggyBank />, tone: 'from-pink-500 to-rose-600', run: go('/hedefler?yeni=1'), feature: 'goals' },
+    { key: 'asset', label: tt('Yatırım'), icon: <Wallet />, tone: 'from-emerald-600 to-green-700', run: go('/yatirimlar?yeni=1'), feature: 'assets' },
+    { key: 'debt', label: tt('Borç'), icon: <CreditCard />, tone: 'from-rose-500 to-red-600', run: go('/borclar?yeni=1'), feature: 'assets' },
+    { key: 'budget', label: tt('Bütçe limiti'), icon: <Target />, tone: 'from-amber-500 to-orange-600', run: go('/butce'), feature: 'advancedBudget' },
   ]
   const more: Action[] = [
-    { key: 'category', label: 'Kategori', icon: <Tag />, tone: 'from-teal-500 to-cyan-600', run: go('/kategoriler?yeni=1') },
-    { key: 'group', label: 'Grup', icon: <FolderPlus />, tone: 'from-indigo-500 to-blue-700', run: go('/kategoriler?bolum=groups&yeni=1') },
-    { key: 'member', label: 'Üye davet et', icon: <UserPlus />, tone: 'from-fuchsia-500 to-pink-600', run: go('/uyeler') },
-    { key: 'coach', label: 'Koça sor', icon: <Bot />, tone: 'from-cyan-500 to-emerald-500', run: go('/koc'), feature: 'aiCoach' },
+    { key: 'category', label: tt('Kategori'), icon: <Tag />, tone: 'from-teal-500 to-cyan-600', run: go('/kategoriler?yeni=1') },
+    { key: 'group', label: tt('Grup'), icon: <FolderPlus />, tone: 'from-indigo-500 to-blue-700', run: go('/kategoriler?bolum=groups&yeni=1') },
+    { key: 'member', label: tt('Üye davet et'), icon: <UserPlus />, tone: 'from-fuchsia-500 to-pink-600', run: go('/uyeler') },
+    { key: 'coach', label: tt('Koça sor'), icon: <Bot />, tone: 'from-cyan-500 to-emerald-500', run: go('/koc'), feature: 'aiCoach' },
   ]
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title="Ne eklemek istersiniz?" size="md">
-      <input ref={statement} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} aria-label="Ekstre dosyası seçin" onChange={onFile} />
-      <input ref={image} type="file" accept="image/png,image/jpeg" className="sr-only" tabIndex={-1} aria-label="Ekran görüntüsü seçin" onChange={onFile} />
-      <input ref={camera} type="file" accept="image/jpeg,image/png" capture="environment" className="sr-only" tabIndex={-1} aria-label="Fotoğraf çekin" onChange={onFile} />
+    <Modal open={open} onOpenChange={onOpenChange} title={tt('Ne eklemek istersiniz?')} size="md">
+      <input ref={statement} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} aria-label={tt('Ekstre dosyası seçin')} onChange={onFile} />
+      <input ref={image} type="file" accept="image/png,image/jpeg" className="sr-only" tabIndex={-1} aria-label={tt('Ekran görüntüsü seçin')} onChange={onFile} />
+      <input ref={camera} type="file" accept="image/jpeg,image/png" capture="environment" className="sr-only" tabIndex={-1} aria-label={tt('Fotoğraf çekin')} onChange={onFile} />
       <div className="flex flex-col gap-5 pb-1">
-        <Section title="Kayıt" actions={record} offset={0} />
-        <Section title="Belgeden ekle" actions={files} offset={4} note="Belgeler yalnızca cihazınızda okunur." />
-        <Section title="Planla" actions={plan} offset={8} />
-        <Section title="Diğer" actions={more} offset={12} />
+        <Section title={tt('Kayıt')} actions={record} offset={0} />
+        <Section title={tt('Belgeden ekle')} actions={files} offset={4} note={tt('Belgeler yalnızca cihazınızda okunur.')} />
+        <Section title={tt('Planla')} actions={plan} offset={8} />
+        <Section title={tt('Diğer')} actions={more} offset={12} />
       </div>
     </Modal>
   )

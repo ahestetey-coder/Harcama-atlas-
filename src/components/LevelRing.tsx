@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { useReducedMotion } from '../lib/hooks'
+import { tt } from '../lib/i18n'
 
 /** Seviye halkası: tamamlanan aşamalar + sıradakinin ilerlemesi. */
 export function LevelRing({ position, total, level, small }: { position: number; total: number; level: number; small?: boolean }) {
@@ -18,7 +19,7 @@ export function LevelRing({ position, total, level, small }: { position: number;
             {level}
             <span className="text-[15px] font-semibold text-muted">/{total}</span>
           </div>
-          <div className={small ? 'mt-0.5 text-[9.5px] font-medium uppercase tracking-wide text-muted' : 'mt-1 text-[11px] font-medium uppercase tracking-wide text-muted'}>seviye</div>
+          <div className={small ? 'mt-0.5 text-[9.5px] font-medium uppercase tracking-wide text-muted' : 'mt-1 text-[11px] font-medium uppercase tracking-wide text-muted'}>{tt('seviye')}</div>
         </div>
       </div>
     </div>

@@ -1,0 +1,73 @@
+---
+import Legal from '../../../layouts/Legal.astro'
+import Fill from '../../../components/Fill.astro'
+---
+
+<Legal title="Privacy Policy" description="Where Harcama Atlası stores your data, who it is shared with and how to delete it: our privacy policy in plain language.">
+  <blockquote>
+    <p>
+      <strong>In short:</strong> Your records are stored in the cloud with your account and appear on every device you sign in to. Nobody else can see them; only members of a
+      shared group see the expenses you add to that group. Statements and screenshots are read on your device. There are no ads and your data is never sold. You can delete
+      your account at any time.
+    </p>
+  </blockquote>
+
+  <h2>1. Your records and syncing</h2>
+  <p>
+    Expenses, income, categories, groups, budget, recurring payments, debts, goals, assets, your test answers and settings are first written to the app database on your
+    device. When you sign in, they are also stored in the cloud with your account and synced to your other devices automatically. Without internet the app works with the
+    records on the device. Database access rules do not allow any other account to reach your records.
+  </p>
+
+  <h2>2. Documents and camera</h2>
+  <p>
+    Statements (PDF, Excel, CSV), screenshots and photos are read only on your device; text recognition also runs on the device. The files themselves are not stored; only the
+    transaction rows you approve are saved. The camera is used only when you tap “Take photo”. A password you enter for a protected PDF is not stored.
+  </p>
+
+  <h2>3. Account information</h2>
+  <p>
+    Your email address, name and an irreversible hash of your password are stored. They are used for sign-in, password resets, verification emails and introducing you to
+    members of shared groups.
+  </p>
+
+  <h2>4. Financial Map test</h2>
+  <p>
+    The name, email and answers you give when taking the test on the web are kept on the server to store your result and transfer it to the app. When you sign in to the app
+    with the same email, the result is linked to your account.
+  </p>
+
+  <h2>5. Coach (Plus+)</h2>
+  <p>
+    So that the coach can reply, your message and summary figures from your account (such as income, expense, debt and savings totals) are sent to OpenAI. Your name and email
+    are not sent. Under its own terms, OpenAI does not use data received through its API to train its models. If you do not use the coach, no such transfer happens.
+  </p>
+
+  <h2>6. Payments</h2>
+  <p>
+    Subscription payments on the web are taken by Paddle.com Market Ltd as merchant of record. Your card details are entered directly with Paddle and never reach us. We only
+    see the plan, period, subscription status and payment date.
+  </p>
+
+  <h2>7. Service providers</h2>
+  <ul>
+    <li><strong>Supabase</strong> (Frankfurt, Germany): accounts, synced records, shared groups.</li>
+    <li><strong>Paddle</strong> (United Kingdom): payment, invoicing and subscriptions.</li>
+    <li><strong>OpenAI</strong> (USA): the Plus+ coach only.</li>
+    <li><strong>Cloudflare and GitHub</strong>: hosting the website and web app; they may keep technical logs (e.g. IP address) on access.</li>
+    <li><strong>Google</strong>: only if you choose to sign in with Google.</li>
+  </ul>
+  <p>Details, legal grounds and retention periods are in the <a href="/en/legal/kvkk">KVKK Privacy Notice</a>.</p>
+
+  <h2>8. Deletion</h2>
+  <p>
+    In the app, under Settings &gt; Delete data, “Reset my data” permanently deletes your records and “Delete my account” deletes your account and all your data in the cloud. If
+    you have a running web subscription you are asked to cancel it first. Payment records that must be kept by law are held separately until their period ends.
+  </p>
+
+  <h2>9. Children</h2>
+  <p>The Service is not intended for children under 13; you must be 18 or over to buy a paid subscription.</p>
+
+  <h2>10. Changes and contact</h2>
+  <p>If this policy changes, the current version is published on this page. For questions: <Fill k="eposta" label="E-posta" />.</p>
+</Legal>

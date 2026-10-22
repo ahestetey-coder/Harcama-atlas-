@@ -1,6 +1,7 @@
 import { LogOut, UserRound } from 'lucide-react'
 import { useAuth } from '../state/auth'
 import { Button, Card } from './ui/primitives'
+import { tt } from '../lib/i18n'
 
 /** Ayarlar'da giriş yapan hesabın bilgisi ve çıkış ("Hesabımı sil" sayfanın en altında). */
 export function AccountCard() {
@@ -10,7 +11,7 @@ export function AccountCard() {
   return (
     <Card className="p-5 lg:col-span-2">
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-        <UserRound className="size-5 text-accent" /> Hesap
+        <UserRound className="size-5 text-accent" /> {tt('Hesap')}
       </h2>
       <p className="mt-1 text-sm text-muted">
         {user.name ? `${user.name} · ` : ''}
@@ -18,7 +19,7 @@ export function AccountCard() {
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button icon={<LogOut className="size-4" />} onClick={() => void auth.signOut()}>
-          Çıkış yap
+          {tt('Çıkış yap')}
         </Button>
       </div>
     </Card>

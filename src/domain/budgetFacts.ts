@@ -9,6 +9,7 @@ import { incomeBasis, monthlyEquivalent, nextPayday, primarySalary } from './inc
 import { spendGroupOf, type IncomeStability } from './journey'
 import { installmentPlans, occurrencesBetween, progressOf } from './recurring'
 import type { Category, IsoDate, MonthKey, RecurringPayment, Settings, Transaction } from './types'
+import { tt } from '../lib/i18n'
 
 /**
  * Dört kovalı bütçenin girdileri: gelir tabanı, zorunlu sabit satırlar, geçmiş harcama, borç ve
@@ -148,7 +149,7 @@ export function collectFixedLines(a: FactsInput, period: MonthKey, history: Map<
   const bucketOf = bucketResolver(a.categories)
   let fee = 0
   for (const [id, k] of history) if (k > 0 && bucketOf(id) === 'fee') fee += k
-  if (fee > 0) lines.push({ key: 'fee:bank', label: 'Banka ücretleri', kind: 'fee', monthlyKurus: fee, periodKurus: fee, housing: false, consumer: false, inSpending: true, source: 'history' })
+  if (fee > 0) lines.push({ key: 'fee:bank', label: tt('Banka ücretleri'), kind: 'fee', monthlyKurus: fee, periodKurus: fee, housing: false, consumer: false, inSpending: true, source: 'history' })
 
   // 6–9) Kısa beyan: yalnızca aynı türden ayrıntılı kayıt yoksa
   const p = a.settings.budgetProfile
@@ -167,21 +168,21 @@ export function collectFixedLines(a: FactsInput, period: MonthKey, history: Map<
     housingDeclared = true
     const mortgage = p.housing === 'mortgage'
     if (p.housingKurus > 0)
-      lines.push(profileLine('housingKurus', mortgage ? 'Konut kredisi taksiti' : 'Kira ve aidat', mortgage ? 'debt' : 'housing', p.housingKurus, { housing: true, consumer: false, inSpending: true }))
+      lines.push(profileLine('housingKurus', mortgage ? tt('Konut kredisi taksiti') : tt('Kira ve aidat'), mortgage ? 'debt' : 'housing', p.housingKurus, { housing: true, consumer: false, inSpending: true }))
   }
   if (!lines.some((l) => l.kind === 'bill') && declared(p?.billsKurus)) {
     billsDeclared = true
     if (p.billsKurus > 0) lines.push(profileLine('billsKurus', 'Faturalar', 'bill', p.billsKurus, { housing: false, consumer: false, inSpending: true }))
   }
   if (!assetTypes.has('card') && !assetTypes.has('overdraft') && declared(p?.cardPaymentKurus) && p.cardPaymentKurus > 0) {
-    const line = profileLine('cardPaymentKurus', 'Kart asgari ve KMH ödemesi', 'debt', p.cardPaymentKurus, { housing: false, consumer: true, inSpending: false })
+    const line = profileLine('cardPaymentKurus', tt('Kart asgari ve KMH ödemesi'), 'debt', p.cardPaymentKurus, { housing: false, consumer: true, inSpending: false })
     lines.push(line)
     cardLines.push(line)
   }
   // Ekstre ve elle eklenen taksitler kart alışverişidir (kart asgarisinden düşülür), kredi değildir
   const loanLine = assetTypes.has('loan') || assetTypes.has('auto') || assetTypes.has('personal')
   if (!loanLine && declared(p?.loanPaymentKurus) && p.loanPaymentKurus > 0)
-    lines.push(profileLine('loanPaymentKurus', 'Kredi taksitleri', 'debt', p.loanPaymentKurus, { housing: false, consumer: true, inSpending: true }))
+    lines.push(profileLine('loanPaymentKurus', tt('Kredi taksitleri'), 'debt', p.loanPaymentKurus, { housing: false, consumer: true, inSpending: true }))
 
   // 10–11) Yolculuk testi: konut ve faturalar için son çare
   const j = gates.journey ? a.settings.journey : undefined
@@ -190,10 +191,10 @@ export function collectFixedLines(a: FactsInput, period: MonthKey, history: Map<
     const housing = p?.housing ?? j.housing
     if (!housingDeclared && !lines.some((l) => l.housing) && (housing === 'rent' || housing === 'mortgage') && sp.housing > 0) {
       const mortgage = housing === 'mortgage'
-      lines.push({ key: 'journey:housing', label: mortgage ? 'Konut kredisi taksiti' : 'Kira', kind: mortgage ? 'debt' : 'housing', monthlyKurus: sp.housing, periodKurus: sp.housing, housing: true, consumer: false, inSpending: true, source: 'journey' })
+      lines.push({ key: 'journey:housing', label: mortgage ? tt('Konut kredisi taksiti') : tt('Kira'), kind: mortgage ? 'debt' : 'housing', monthlyKurus: sp.housing, periodKurus: sp.housing, housing: true, consumer: false, inSpending: true, source: 'journey' })
     }
     if (!billsDeclared && !lines.some((l) => l.kind === 'bill') && sp.bills > 0)
-      lines.push({ key: 'journey:bills', label: 'Faturalar ve abonelikler', kind: 'bill', monthlyKurus: sp.bills, periodKurus: sp.bills, housing: false, consumer: false, inSpending: true, source: 'journey' })
+      lines.push({ key: 'journey:bills', label: tt('Faturalar ve abonelikler'), kind: 'bill', monthlyKurus: sp.bills, periodKurus: sp.bills, housing: false, consumer: false, inSpending: true, source: 'journey' })
   }
 
   // Kart netleştirme: ekstre taksitleri kart asgarisinin içindedir, sırayla düşülür (taban 0)

@@ -1,6 +1,7 @@
 import { formatKurusPlain } from '../domain/money'
 import { formatDate } from '../domain/dates'
 import { PAYMENT_LABEL, SOURCE_LABEL, TX_TYPE_LABEL, type Category, type SpendGroup, type Transaction } from '../domain/types'
+import { tt } from './i18n'
 
 /**
  * CSV formül enjeksiyonunu önler: =, +, -, @, sekme veya satır başı ile başlayan hücrelerin
@@ -14,7 +15,7 @@ export function sanitizeCsvCell(value: string): string {
 }
 
 export function transactionsToCsv(txs: Transaction[], categories: Map<string, Category>, groups: Map<string, SpendGroup> = new Map()): string {
-  const header = ['Tarih', 'Açıklama', 'Tür', 'Tutar (TL)', 'Kategori', 'Grup', 'Ödeme aracı', 'Kart/hesap', 'Kaynak', 'Taksit', 'Döviz', 'Not']
+  const header = ['Tarih', tt('Açıklama'), tt('Tür'), tt('Tutar (TL)'), 'Kategori', 'Grup', tt('Ödeme aracı'), 'Kart/hesap', 'Kaynak', 'Taksit', tt('Döviz'), 'Not']
   const lines = [header.join(';')]
   for (const t of txs) {
     const signed = t.type === 'refund' || t.type === 'income' ? -t.amountKurus : t.amountKurus

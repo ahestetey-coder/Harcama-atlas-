@@ -7,6 +7,7 @@ import type { SavingsGoal } from '../domain/goals'
 import type { Category, ImportRecord, Member, RecurringPayment, Rule, Settings, SpendGroup, Transaction } from '../domain/types'
 import { readPref, writePref } from './prefs'
 import { useUi } from './ui'
+import { tt } from '../lib/i18n'
 
 interface DataCtx {
   repo: AtlasRepository
@@ -67,8 +68,8 @@ export function DataProvider({ children, userId }: { children: ReactNode; userId
         if (!alive) return
         setDbError(
           e?.name === 'VersionError'
-            ? 'Veritabanı daha yeni bir sürümle oluşturulmuş. Sayfayı yenileyin.'
-            : 'Tarayıcı veritabanı açılamadı. Gizli pencerede olabilirsiniz veya site verilerine izin verilmiyor olabilir.',
+            ? tt('Veritabanı daha yeni bir sürümle oluşturulmuş. Sayfayı yenileyin.')
+            : tt('Tarayıcı veritabanı açılamadı. Gizli pencerede olabilirsiniz veya site verilerine izin verilmiyor olabilir.'),
         )
       })
     return () => {
@@ -144,7 +145,7 @@ export function useMemberList(): Member[] | undefined {
 
 export function useData(): DataCtx {
   const c = useContext(Ctx)
-  if (!c) throw new Error('DataProvider eksik')
+  if (!c) throw new Error(tt('DataProvider eksik'))
   return c
 }
 

@@ -14,6 +14,7 @@ import { useCategories, useRepo, useRules, useTransactions } from '../state/data
 import { useUi } from '../state/ui'
 import { GroupsTab } from './GroupsTab'
 import { useStartNew } from '../lib/useStartNew'
+import { tt, ttf } from '../lib/i18n'
 
 export default function CategoriesPage() {
   const [params, setParams] = useSearchParams()
@@ -21,15 +22,15 @@ export default function CategoriesPage() {
   const setTab = (t: 'categories' | 'groups' | 'rules') => setParams(t === 'categories' ? {} : { bolum: t }, { replace: true })
   return (
     <div>
-      <PageHeader title="Kategoriler ve gruplar" />
+      <PageHeader title={tt('Kategoriler ve gruplar')} />
       <Segmented
-        label="Bölüm"
+        label={tt('Bölüm')}
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'categories', label: 'Kategoriler' },
-          { value: 'groups', label: 'Harcama grupları' },
-          { value: 'rules', label: 'Eşleştirme kuralları' },
+          { value: 'categories', label: tt('Kategoriler') },
+          { value: 'groups', label: tt('Harcama grupları') },
+          { value: 'rules', label: tt('Eşleştirme kuralları') },
         ]}
         className="mb-4 max-w-full overflow-x-auto"
       />
@@ -64,7 +65,7 @@ function CategoriesTab() {
   const toggleArchive = async (c: Category) => {
     try {
       await repo.updateCategory(c.id, { archived: !c.archived })
-      toast(c.archived ? `“${c.name}” yeniden etkin.` : `“${c.name}” arşivlendi. Mevcut kayıtlar korunur; yeni kayıtlarda seçilemez.`)
+      toast(c.archived ? ttf('“{0}” yeniden etkin.', c.name) : ttf('“{0}” arşivlendi. Mevcut kayıtlar korunur; yeni kayıtlarda seçilemez.', c.name))
     } catch (e) {
       toast(toUserMessage(e), { kind: 'error' })
     }
@@ -78,17 +79,16 @@ function CategoriesTab() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-medium">{c.name}</span>
-            {c.system && <Badge>Sistem</Badge>}
+            {c.system && <Badge>{tt('Sistem')}</Badge>}
           </div>
           <div className="num text-[12.5px] text-subtle">
-            {u.tx} işlem · {u.rules} kural
-          </div>
+            {ttf('{0} işlem · {1} kural', u.tx, u.rules)}</div>
         </div>
-        <IconButton label={`${c.name} düzenle`} size="sm" onClick={() => setEdit(c)}>
+        <IconButton label={ttf('{0} düzenle', c.name)} size="sm" onClick={() => setEdit(c)}>
           <Pencil className="size-4" />
         </IconButton>
         {!c.system && (
-          <IconButton label={c.archived ? `${c.name} arşivden çıkar` : `${c.name} arşivle`} size="sm" onClick={() => toggleArchive(c)}>
+          <IconButton label={c.archived ? ttf('{0} arşivden çıkar', c.name) : ttf('{0} arşivle', c.name)} size="sm" onClick={() => toggleArchive(c)}>
             {c.archived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
           </IconButton>
         )}
@@ -113,7 +113,7 @@ function CategoriesTab() {
     <>
       <div className="mb-3 flex justify-end">
         <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setEdit('new')}>
-          Kategori ekle
+          {tt('Kategori ekle')}
         </Button>
       </div>
       <Card className="overflow-hidden">
@@ -121,7 +121,7 @@ function CategoriesTab() {
       </Card>
       {archived.length > 0 && (
         <>
-          <h2 className="mb-2 mt-6 px-1 text-sm font-semibold text-muted">Arşivdeki kategoriler</h2>
+          <h2 className="mb-2 mt-6 px-1 text-sm font-semibold text-muted">{tt('Arşivdeki kategoriler')}</h2>
           <Card className="overflow-hidden opacity-80">
             <ul>{archived.map(renderRow)}</ul>
           </Card>
@@ -131,15 +131,15 @@ function CategoriesTab() {
       <ConfirmDialog
         open={!!del}
         onOpenChange={(o) => !o && setDel(null)}
-        title={`“${del?.name}” silinsin mi?`}
-        confirmLabel={needsTarget ? 'Taşı ve sil' : 'Sil'}
+        title={ttf('“{0}” silinsin mi?', del?.name)}
+        confirmLabel={needsTarget ? tt('Taşı ve sil') : 'Sil'}
         danger
         confirmDisabled={needsTarget && !target}
         onConfirm={async () => {
           if (!del) return
           try {
             await repo.deleteCategory(del.id, target || undefined)
-            toast(`“${del.name}” silindi.${needsTarget ? ` Kayıtları “${categories.find((c) => c.id === target)?.name}” kategorisine taşındı.` : ''}`)
+            toast(ttf('“{0}” silindi.{1}', del.name, needsTarget ? ttf(' Kayıtları “{0}” kategorisine taşındı.', categories.find((c) => c.id === target)?.name) : ''))
             setDel(null)
           } catch (e) {
             toast(toUserMessage(e), { kind: 'error' })
@@ -149,11 +149,11 @@ function CategoriesTab() {
         {needsTarget ? (
           <>
             <p>
-              Bu kategoride <strong className="text-ink">{delUsage.tx} işlem</strong> ve <strong className="text-ink">{delUsage.rules} kural</strong> var. Taşınacakları kategoriyi seçin ya da arşivleyin.
+              {tt('Bu kategoride')} <strong className="text-ink">{ttf('{0} işlem', delUsage.tx)}</strong> {tt('ve')} <strong className="text-ink">{ttf('{0} kural', delUsage.rules)}</strong> {tt('var. Taşınacakları kategoriyi seçin ya da arşivleyin.')}
             </p>
-            <Field label="Taşınacak kategori" htmlFor="del-target" className="mt-3">
+            <Field label={tt('Taşınacak kategori')} htmlFor="del-target" className="mt-3">
               <Select id="del-target" value={target} onChange={(e) => setTarget(e.target.value)}>
-                <option value="">Seçin…</option>
+                <option value="">{tt('Seçin…')}</option>
                 {categories
                   .filter((c) => c.id !== del?.id && !c.archived)
                   .map((c) => (
@@ -165,7 +165,7 @@ function CategoriesTab() {
             </Field>
           </>
         ) : (
-          'Bu kategori hiçbir işlemde veya kuralda kullanılmıyor.'
+          tt('Bu kategori hiçbir işlemde veya kuralda kullanılmıyor.')
         )}
       </ConfirmDialog>
     </>
@@ -193,7 +193,7 @@ function CategoryEditor({ value, onClose }: { value: Category | 'new' | null; on
     try {
       if (cat) await repo.updateCategory(cat.id, { name, icon, color })
       else await repo.addCategory({ name, icon, color })
-      toast(cat ? 'Kategori güncellendi.' : 'Kategori eklendi.')
+      toast(cat ? tt('Kategori güncellendi.') : tt('Kategori eklendi.'))
       onClose()
     } catch (e) {
       setError(toUserMessage(e))
@@ -203,14 +203,14 @@ function CategoryEditor({ value, onClose }: { value: Category | 'new' | null; on
     <Modal
       open={!!value}
       onOpenChange={(o) => !o && onClose()}
-      title={cat ? 'Kategoriyi düzenle' : 'Yeni kategori'}
+      title={cat ? tt('Kategoriyi düzenle') : tt('Yeni kategori')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Vazgeç
+            {tt('Vazgeç')}
           </Button>
           <Button variant="primary" onClick={save}>
-            Kaydet
+            {tt('Kaydet')}
           </Button>
         </>
       }
@@ -218,13 +218,13 @@ function CategoryEditor({ value, onClose }: { value: Category | 'new' | null; on
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3 rounded-2xl bg-surface-2 p-3">
           <CategoryIcon category={{ icon, color }} size="lg" />
-          <span className="font-semibold">{name || 'Kategori adı'}</span>
+          <span className="font-semibold">{name || tt('Kategori adı')}</span>
         </div>
-        <Field label="Ad" htmlFor="cat-name" error={error}>
+        <Field label={tt('Ad')} htmlFor="cat-name" error={error}>
           <Input id="cat-name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} autoFocus />
         </Field>
         <fieldset>
-          <legend className="mb-1.5 text-[13px] font-medium text-muted">İkon</legend>
+          <legend className="mb-1.5 text-[13px] font-medium text-muted">{tt('İkon')}</legend>
           <div className="grid grid-cols-8 gap-1.5">
             {Object.entries(CATEGORY_ICONS).map(([k, Icon]) => (
               <button
@@ -241,7 +241,7 @@ function CategoryEditor({ value, onClose }: { value: Category | 'new' | null; on
           </div>
         </fieldset>
         <fieldset>
-          <legend className="mb-1.5 text-[13px] font-medium text-muted">Renk</legend>
+          <legend className="mb-1.5 text-[13px] font-medium text-muted">{tt('Renk')}</legend>
           <div className="flex flex-wrap gap-2">
             {CATEGORY_COLORS.map((c) => (
               <button
@@ -261,8 +261,8 @@ function CategoryEditor({ value, onClose }: { value: Category | 'new' | null; on
   )
 }
 
-const MODE_LABEL: Record<RuleMatchMode, string> = { word: 'Tam kelime/ifade', prefix: 'Kelime başı', contains: 'İçinde geçer' }
-const ORIGIN_LABEL: Record<Rule['origin'], string> = { default: 'Hazır', user: 'Sizin', learned: 'Öğrenilmiş' }
+const MODE_LABEL: Record<RuleMatchMode, string> = { word: tt('Tam kelime/ifade'), prefix: tt('Kelime başı'), contains: tt('İçinde geçer') }
+const ORIGIN_LABEL: Record<Rule['origin'], string> = { default: tt('Hazır'), user: 'Sizin', learned: tt('Öğrenilmiş') }
 
 function RulesTab() {
   const rules = useRules()
@@ -286,9 +286,9 @@ function RulesTab() {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0">
         <div className="mb-3 flex flex-wrap gap-2">
-          <Input placeholder="Kural ara…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs flex-1" aria-label="Kural ara" />
-          <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="w-auto" aria-label="Kategoriye göre süz">
-            <option value="">Tüm kategoriler</option>
+          <Input placeholder={tt('Kural ara…')} value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs flex-1" aria-label={tt('Kural ara')} />
+          <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="w-auto" aria-label={tt('Kategoriye göre süz')}>
+            <option value="">{tt('Tüm kategoriler')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -296,11 +296,11 @@ function RulesTab() {
             ))}
           </Select>
           <Button variant="primary" className="ml-auto" icon={<Plus className="size-4" />} onClick={() => setEdit('new')}>
-            Kural ekle
+            {tt('Kural ekle')}
           </Button>
         </div>
         {conflicts.length > 0 && (
-          <Alert tone="warning" icon={<TriangleAlert />} title={`${conflicts.length} olası çakışma`} className="mb-3">
+          <Alert tone="warning" icon={<TriangleAlert />} title={ttf('{0} olası çakışma', conflicts.length)} className="mb-3">
             <ul className="mt-1 space-y-0.5">
               {conflicts.slice(0, 5).map((c, i) => (
                 <li key={i}>
@@ -308,12 +308,12 @@ function RulesTab() {
                 </li>
               ))}
             </ul>
-            <p className="mt-1">Önceliği büyük olan, eşitse daha uzun ifade kazanır.</p>
+            <p className="mt-1">{tt('Önceliği büyük olan, eşitse daha uzun ifade kazanır.')}</p>
           </Alert>
         )}
         <Card className="overflow-hidden">
           {sorted.length === 0 ? (
-            <EmptyState icon={<FlaskConical className="size-6" />} title="Kural bulunamadı" />
+            <EmptyState icon={<FlaskConical className="size-6" />} title={tt('Kural bulunamadı')} />
           ) : (
             <ul>
               {sorted.map((r) => {
@@ -325,15 +325,15 @@ function RulesTab() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-mono text-[13px] font-semibold">{r.pattern}</span>
                         <span className="text-[12.5px] text-subtle">→ {c?.name ?? '?'}</span>
-                        {conflictIds.has(r.id) && <Badge tone="warning">Çakışma</Badge>}
+                        {conflictIds.has(r.id) && <Badge tone="warning">{tt('Çakışma')}</Badge>}
                       </div>
                       <div className="num text-[12px] text-subtle">
-                        {MODE_LABEL[r.matchMode]} · öncelik {r.priority} · {ORIGIN_LABEL[r.origin]}
+                        {ttf('{0} · öncelik {1} · {2}', MODE_LABEL[r.matchMode], r.priority, ORIGIN_LABEL[r.origin])}
                       </div>
                     </div>
                     <Switch
                       checked={r.enabled}
-                      label={`${r.pattern} kuralı ${r.enabled ? 'açık' : 'kapalı'}`}
+                      label={ttf('{0} kuralı {1}', r.pattern, r.enabled ? tt('açık') : tt('kapalı'))}
                       onChange={async (v) => {
                         try {
                           await repo.saveRule({ ...r, enabled: v })
@@ -342,16 +342,16 @@ function RulesTab() {
                         }
                       }}
                     />
-                    <IconButton label={`${r.pattern} kuralını düzenle`} size="sm" onClick={() => setEdit(r)}>
+                    <IconButton label={ttf('{0} kuralını düzenle', r.pattern)} size="sm" onClick={() => setEdit(r)}>
                       <Pencil className="size-4" />
                     </IconButton>
                     <IconButton
-                      label={`${r.pattern} kuralını sil`}
+                      label={ttf('{0} kuralını sil', r.pattern)}
                       size="sm"
                       className="hover:text-danger"
                       onClick={async () => {
                         await repo.deleteRule(r.id)
-                        toast('Kural silindi.', { action: { label: 'Geri al', onClick: () => void repo.db.rules.put(r) } })
+                        toast(tt('Kural silindi.'), { action: { label: tt('Geri al'), onClick: () => void repo.db.rules.put(r) } })
                       }}
                     >
                       <Trash2 className="size-4" />
@@ -365,16 +365,15 @@ function RulesTab() {
       </div>
       <div>
         <Card className="sticky top-4 p-5">
-          <h2 className="font-display text-base font-semibold">Kural deneme</h2>
-          <p className="mt-1 text-[13px] text-muted">Bir açıklama yazın, eşleşen kuralları görün.</p>
+          <h2 className="font-display text-base font-semibold">{tt('Kural deneme')}</h2>
+          <p className="mt-1 text-[13px] text-muted">{tt('Bir açıklama yazın, eşleşen kuralları görün.')}</p>
           <More>
-            Kurallar yalnızca içe aktarmada öneri üretir; sizin seçtiğiniz kategoriyi ezmez. Büyük/küçük harf, Türkçe karakter ve boşluk farkı önemsenmez. Eşleşme
-            yoksa işlem “Kategori seçilmeli” olarak gelir.
+            {tt('Kurallar yalnızca içe aktarmada öneri üretir; sizin seçtiğiniz kategoriyi ezmez. Büyük/küçük harf, Türkçe karakter ve boşluk farkı önemsenmez. Eşleşme yoksa işlem “Kategori seçilmeli” olarak gelir.')}
           </More>
-          <Input className="mt-3" placeholder="Ör. MİGROS KANGURU KADIKÖY" value={test} onChange={(e) => setTest(e.target.value)} aria-label="Denenecek açıklama" />
+          <Input className="mt-3" placeholder={tt('Ör. MİGROS KANGURU KADIKÖY')} value={test} onChange={(e) => setTest(e.target.value)} aria-label={tt('Denenecek açıklama')} />
           {evaluation && (
             <div className="mt-3 text-[13px]">
-              <p className="font-mono text-[11.5px] text-subtle">Normalize: {normalizeText(test)}</p>
+              <p className="font-mono text-[11.5px] text-subtle">{ttf('Normalize: {0}', normalizeText(test))}</p>
               {evaluation.winner ? (
                 <ol className="mt-2 space-y-1.5">
                   {evaluation.matches.map((m, i) => (
@@ -389,9 +388,9 @@ function RulesTab() {
                   ))}
                 </ol>
               ) : (
-                <p className="mt-2 rounded-xl bg-warning-soft px-3 py-2 text-warning">Eşleşen kural yok.</p>
+                <p className="mt-2 rounded-xl bg-warning-soft px-3 py-2 text-warning">{tt('Eşleşen kural yok.')}</p>
               )}
-              {evaluation.conflict && <p className="mt-2 text-warning">Farklı kategoriler eşleşti; ilk sıradaki uygulanır.</p>}
+              {evaluation.conflict && <p className="mt-2 text-warning">{tt('Farklı kategoriler eşleşti; ilk sıradaki uygulanır.')}</p>}
             </div>
           )}
         </Card>
@@ -422,12 +421,12 @@ function RuleEditor({ value, onClose, categories }: { value: Rule | 'new' | null
   }
   const patternError = pattern.trim() ? validateRulePattern(pattern, mode) : null
   const save = async () => {
-    if (!categoryId) return setError('Kategori seçin.')
+    if (!categoryId) return setError(tt('Kategori seçin.'))
     const p = Number(priority)
-    if (!Number.isFinite(p) || p < 0 || p > 1000) return setError('Öncelik 0–1000 arasında olmalı.')
+    if (!Number.isFinite(p) || p < 0 || p > 1000) return setError(tt('Öncelik 0–1000 arasında olmalı.'))
     try {
       await repo.saveRule({ id: rule?.id, pattern, matchMode: mode, categoryId, priority: p, enabled: rule?.enabled ?? true })
-      toast(rule ? 'Kural güncellendi.' : 'Kural eklendi.')
+      toast(rule ? tt('Kural güncellendi.') : tt('Kural eklendi.'))
       onClose()
     } catch (e) {
       setError(toUserMessage(e))
@@ -437,33 +436,33 @@ function RuleEditor({ value, onClose, categories }: { value: Rule | 'new' | null
     <Modal
       open={!!value}
       onOpenChange={(o) => !o && onClose()}
-      title={rule ? 'Kuralı düzenle' : 'Yeni kural'}
+      title={rule ? tt('Kuralı düzenle') : tt('Yeni kural')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Vazgeç
+            {tt('Vazgeç')}
           </Button>
           <Button variant="primary" onClick={save} disabled={!!patternError || !pattern.trim()}>
-            Kaydet
+            {tt('Kaydet')}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
-        <Field label="Eşleşecek ifade" htmlFor="rule-pattern" error={patternError ?? undefined} hint={pattern ? `Normalize: ${normalizeText(pattern)}` : 'Ör. PETROL OFİSİ'}>
+        <Field label={tt('Eşleşecek ifade')} htmlFor="rule-pattern" error={patternError ?? undefined} hint={pattern ? `Normalize: ${normalizeText(pattern)}` : tt('Ör. PETROL OFİSİ')}>
           <Input id="rule-pattern" value={pattern} maxLength={80} onChange={(e) => setPattern(e.target.value)} autoFocus />
         </Field>
-        <Field label="Eşleşme türü" htmlFor="rule-mode" hint="Kısa ifadelerde “Tam kelime” seçin.">
+        <Field label={tt('Eşleşme türü')} htmlFor="rule-mode" hint={tt('Kısa ifadelerde “Tam kelime” seçin.')}>
           <Select id="rule-mode" value={mode} onChange={(e) => setMode(e.target.value as RuleMatchMode)}>
-            <option value="word">Tam kelime/ifade (önerilen)</option>
-            <option value="prefix">Kelime başı (en az 4 harf)</option>
-            <option value="contains">İçinde geçer (en az 5 harf)</option>
+            <option value="word">{tt('Tam kelime/ifade (önerilen)')}</option>
+            <option value="prefix">{tt('Kelime başı (en az 4 harf)')}</option>
+            <option value="contains">{tt('İçinde geçer (en az 5 harf)')}</option>
           </Select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Kategori" htmlFor="rule-cat">
+          <Field label={tt('Kategori')} htmlFor="rule-cat">
             <Select id="rule-cat" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              <option value="">Seçin…</option>
+              <option value="">{tt('Seçin…')}</option>
               {categories
                 .filter((c) => !c.archived)
                 .map((c) => (
@@ -473,7 +472,7 @@ function RuleEditor({ value, onClose, categories }: { value: Rule | 'new' | null
                 ))}
             </Select>
           </Field>
-          <Field label="Öncelik" htmlFor="rule-pri" hint={`Hazır: ${PRIORITY.default}, sizin: ${PRIORITY.user}, öğrenilmiş: ${PRIORITY.learned}`}>
+          <Field label={tt('Öncelik')} htmlFor="rule-pri" hint={ttf('Hazır: {0}, sizin: {1}, öğrenilmiş: {2}', PRIORITY.default, PRIORITY.user, PRIORITY.learned)}>
             <Input id="rule-pri" inputMode="numeric" value={priority} onChange={(e) => setPriority(e.target.value.replace(/[^\d]/g, ''))} className="num" />
           </Field>
         </div>

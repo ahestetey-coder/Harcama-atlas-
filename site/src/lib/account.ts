@@ -1,6 +1,13 @@
 // Hesap sayfalarının (giriş, ödeme, abonelik) ortak istemci kodu. Uygulamayla aynı Supabase hesabı kullanılır.
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config'
+import { formatTl as fmtTl } from '../data/plans'
+import { localize, pageLang, translator } from './i18n'
+
+/** Sayfanın dilinde metin seçici: t('Türkçe', 'English') */
+export const tr = () => translator(pageLang())
+/** Türkçe site yolunu sayfanın diline çevirir */
+export const local = (path: string) => localize(path, pageLang())
 
 export type Plan = 'plus' | 'plusplus'
 export type Period = 'monthly' | 'yearly'
@@ -17,7 +24,7 @@ export async function currentUser(): Promise<User | null> {
 }
 
 /** Yalnızca sitenin kendi sayfalarına dönülür (açık yönlendirme yok). */
-export function safeNext(v: string | null, fallback = '/hesap/abonelik'): string {
+export function safeNext(v: string | null, fallback = local('/hesap/abonelik')): string {
   if (!v) return fallback
   try {
     // "/\evil.com" gibi tarayıcının başka siteye çevirdiği yollar da elenir
@@ -31,7 +38,7 @@ export function safeNext(v: string | null, fallback = '/hesap/abonelik'): string
 /** Oturum yoksa giriş sayfasına gönderir; dönünce aynı sayfaya gelinir. */
 export async function requireUser(): Promise<User | null> {
   const u = await currentUser()
-  if (!u) location.assign(`/giris?sonra=${encodeURIComponent(location.pathname + location.search)}`)
+  if (!u) location.assign(`${local('/giris')}?sonra=${encodeURIComponent(location.pathname + location.search)}`)
   return u
 }
 
@@ -39,7 +46,7 @@ export async function requireUser(): Promise<User | null> {
 export const toPlan = (v: string | null): Plan => (v === 'plus_plus' || v === 'plusplus' ? 'plusplus' : 'plus')
 export const toPeriod = (v: string | null): Period => (v === 'yearly' ? 'yearly' : 'monthly')
 export const PLAN_LABEL: Record<Plan, string> = { plus: 'Plus', plusplus: 'Plus+' }
-export const PERIOD_LABEL: Record<Period, string> = { monthly: 'Aylık', yearly: 'Yıllık' }
+export const periodLabel = (p: Period) => (p === 'monthly' ? tr()('Aylık', 'Monthly') : tr()('Yıllık', 'Yearly'))
 
 export interface WebPrice {
   plan: Plan
@@ -100,19 +107,19 @@ export async function billing<T = Record<string, unknown>>(body: Record<string, 
   return data as T
 }
 
-const tl = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const tl0 = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 })
-export const formatTl = (kurus: number) => (kurus % 100 === 0 ? tl0 : tl).format(kurus / 100)
-export const formatDate = (iso: string | null) => (iso ? new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso)) : '')
+export const formatTl = (kurus: number) => fmtTl(kurus, pageLang())
+export const formatDate = (iso: string | null) =>
+  iso ? new Intl.DateTimeFormat(pageLang() === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso)) : ''
 
 /** Kullanıcıya gösterilecek kısa hata iletisi. */
 export function authMessage(e: unknown): string {
   const m = String((e as Error)?.message ?? e)
-  if (/Invalid login credentials/i.test(m)) return 'E-posta ya da şifre hatalı.'
-  if (/Email not confirmed/i.test(m)) return 'E-postanı henüz doğrulamadın. Gelen kutundaki bağlantıya dokun.'
-  if (/User already registered/i.test(m)) return 'Bu e-postayla bir hesap var. Giriş yap.'
-  if (/Password should be at least/i.test(m)) return 'Şifre en az 6 karakter olmalı.'
-  if (/rate limit|too many/i.test(m)) return 'Çok fazla deneme yapıldı. Biraz sonra tekrar dene.'
-  if (/Failed to fetch|NetworkError/i.test(m)) return 'Bağlantı kurulamadı. İnternetini kontrol et.'
+  const t = tr()
+  if (/Invalid login credentials/i.test(m)) return t('E-posta ya da şifre hatalı.', 'Wrong email or password.')
+  if (/Email not confirmed/i.test(m)) return t('E-postanı henüz doğrulamadın. Gelen kutundaki bağlantıya dokun.', 'You have not verified your email yet. Tap the link in your inbox.')
+  if (/User already registered/i.test(m)) return t('Bu e-postayla bir hesap var. Giriş yap.', 'An account with this email already exists. Sign in.')
+  if (/Password should be at least/i.test(m)) return t('Şifre en az 6 karakter olmalı.', 'Password must be at least 6 characters.')
+  if (/rate limit|too many/i.test(m)) return t('Çok fazla deneme yapıldı. Biraz sonra tekrar dene.', 'Too many attempts. Try again in a little while.')
+  if (/Failed to fetch|NetworkError/i.test(m)) return t('Bağlantı kurulamadı. İnternetini kontrol et.', 'Could not connect. Check your internet connection.')
   return m
 }

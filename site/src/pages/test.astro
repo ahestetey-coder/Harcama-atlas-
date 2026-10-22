@@ -1,49 +1,73 @@
 ---
 import Site from '../layouts/Site.astro'
 import { APP_URL } from '../lib/config'
+import { langOf, localize, translator } from '../lib/i18n'
 
 // Test uygulamanın kendisidir (#/harita); site onu gömülü modda gösterir, böylece tek bir test vardır.
 const appUrl = APP_URL
+const lang = langOf(Astro.url.pathname)
+const t = translator(lang)
 const gains = [
-  ['Arketipin', 'Parayla ilişkini anlatan profil: Temkinli Kaşif, Dengeli Yolcu ya da Atak Dağcı.'],
-  ['Konumun', 'Özgürlük rotasında bugün hangi durakta olduğun.'],
-  ['Özgürlük yılın', 'Bu tempoyla finansal özgürlüğe hangi yıllar arasında varacağın.'],
-  ['Rotan', 'Sıradaki durak ve ona giden ilk adımlar.'],
+  [t('Arketipin', 'Your archetype'), t('Parayla ilişkini anlatan profil: Temkinli Kaşif, Dengeli Yolcu ya da Atak Dağcı.', 'A profile of your relationship with money: Cautious Explorer, Balanced Traveller or Bold Climber.')],
+  [t('Konumun', 'Your position'), t('Özgürlük rotasında bugün hangi durakta olduğun.', 'Which stop on the freedom route you are at today.')],
+  [t('Özgürlük yılın', 'Your freedom year'), t('Bu tempoyla finansal özgürlüğe hangi yıllar arasında varacağın.', 'The range of years in which you reach financial freedom at this pace.')],
+  [t('Rotan', 'Your route'), t('Sıradaki durak ve ona giden ilk adımlar.', 'Your next stop and the first steps towards it.')],
 ]
 ---
 
-<Site title="Finansal Harita testi · Harcama Atlası" description="10 soruluk, 2 dakikalık Finansal Harita testiyle arketipini, bugünkü konumunu ve finansal özgürlüğe varacağın yılı öğren. Ücretsiz.">
+<Site
+  title={t('Finansal Harita testi · Harcama Atlası', 'Financial Map test · Harcama Atlası')}
+  description={t('10 soruluk, 2 dakikalık Finansal Harita testiyle arketipini, bugünkü konumunu ve finansal özgürlüğe varacağın yılı öğren. Ücretsiz.', 'Find out your archetype, where you stand today and the year you reach financial freedom with the free 10-question, 2-minute Financial Map test.')}
+>
   <section class="wrap head">
-    <p class="eyebrow reveal">Finansal Harita testi</p>
-    <h1 class="h-section reveal" style="--d:1">2 dakikada <span class="accent">haritanı çıkar.</span></h1>
-    <p class="lead reveal" style="--d:2">10 kısa soru. Sonunda nerede durduğunu, nereye gittiğini ve özgürlüğe hangi yıllar arasında varacağını görürsün.</p>
+    <p class="eyebrow reveal">{t('Finansal Harita testi', 'Financial Map test')}</p>
+    {
+      lang === 'en' ? (
+        <h1 class="h-section reveal" style="--d:1">Chart <span class="accent">your map in 2 minutes.</span></h1>
+      ) : (
+        <h1 class="h-section reveal" style="--d:1">2 dakikada <span class="accent">haritanı çıkar.</span></h1>
+      )
+    }
+    <p class="lead reveal" style="--d:2">{t('10 kısa soru. Sonunda nerede durduğunu, nereye gittiğini ve özgürlüğe hangi yıllar arasında varacağını görürsün.', 'Ten short questions. At the end you see where you stand, where you are heading and the range of years in which you reach freedom.')}</p>
     <ul class="facts reveal" style="--d:3">
-      <li><b>10 soru</b> · 2 dakika</li>
-      <li><b>Ücretsiz</b></li>
-      <li>Uygulamayla <b>aynı test</b></li>
+      {
+        lang === 'en' ? (
+          <>
+            <li><b>10 questions</b> · 2 minutes</li>
+            <li><b>Free</b></li>
+            <li><b>The same test</b> as in the app</li>
+          </>
+        ) : (
+          <>
+            <li><b>10 soru</b> · 2 dakika</li>
+            <li><b>Ücretsiz</b></li>
+            <li>Uygulamayla <b>aynı test</b></li>
+          </>
+        )
+      }
     </ul>
   </section>
 
   <div class="wrap layout">
-    <div class="frame card" data-test-frame data-app={appUrl}>
+    <div class="frame card" data-test-frame data-app={appUrl} data-lang={lang}>
       <div class="loading" data-loading>
         <span class="dot" aria-hidden="true"></span>
-        <span>Test yükleniyor…</span>
+        <span>{t('Test yükleniyor…', 'Loading the test…')}</span>
       </div>
-      <iframe title="Finansal Harita testi" data-test loading="eager" allow="clipboard-write"></iframe>
+      <iframe title={t('Finansal Harita testi', 'Financial Map test')} data-test loading="eager" allow="clipboard-write"></iframe>
       <p class="fallback">
-        Test görünmüyorsa <a href={`${appUrl}#/harita`} target="_blank" rel="noopener">yeni sekmede aç</a>.
+        {t('Test görünmüyorsa', 'If the test does not appear,')} <a href={`${appUrl}${lang === 'en' ? '?dil=en' : ''}#/harita`} target="_blank" rel="noopener">{t('yeni sekmede aç', 'open it in a new tab')}</a>.
       </p>
     </div>
 
     <aside class="side">
       <div class="card box reveal">
-        <h2>Sonunda ne göreceksin?</h2>
+        <h2>{t('Sonunda ne göreceksin?', 'What will you see at the end?')}</h2>
         <ol class="gains">
           {
-            gains.map(([t, s]) => (
+            gains.map(([title, s]) => (
               <li>
-                <b>{t}</b>
+                <b>{title}</b>
                 <span>{s}</span>
               </li>
             ))
@@ -51,11 +75,11 @@ const gains = [
         </ol>
       </div>
       <div class="card box reveal" style="--d:1">
-        <h2>Verilerin</h2>
+        <h2>{t('Verilerin', 'Your data')}</h2>
         <p>
-          Sonucunu görmek için adını ve e-postanı isteriz. Cevapların yalnızca onay verirsen kaydedilir; uygulamaya aynı e-postayla girince sonucun hesabına kendiliğinden bağlanır.
+          {t('Sonucunu görmek için adını ve e-postanı isteriz. Cevapların yalnızca onay verirsen kaydedilir; uygulamaya aynı e-postayla girince sonucun hesabına kendiliğinden bağlanır.', 'We ask for your name and email to show your result. Your answers are saved only with your consent; when you sign in to the app with the same email, your result is linked to your account automatically.')}
         </p>
-        <a href="/yasal/kvkk">KVKK aydınlatma metni</a>
+        <a href={localize('/yasal/kvkk', lang)}>{t('KVKK aydınlatma metni', 'KVKK privacy notice')}</a>
       </div>
     </aside>
   </div>
@@ -69,7 +93,7 @@ const gains = [
     const app = new URL(box.dataset.app!)
     const root = document.documentElement
     const dark = root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)
-    frame.src = `${app.href}?gomulu=1&tema=${dark ? 'koyu' : 'acik'}#/harita`
+    frame.src = `${app.href}?gomulu=1&tema=${dark ? 'koyu' : 'acik'}${box.dataset.lang === 'en' ? '&dil=en' : ''}#/harita`
 
     let steps = 0
     // Uygulama yükseklik bildirmezse (eski sürüm ya da yavaş bağlantı) test kendi içinde kaydırılır
