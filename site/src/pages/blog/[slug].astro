@@ -82,15 +82,35 @@ const cta =
   .cover {
     display: block;
     width: 100%;
+    max-width: none;
     height: auto;
-    margin: 1.5rem 0 0.5rem;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    margin: 1.5rem 0 2rem;
     border-radius: 1rem;
+  }
+  .post :global(p:has(> img)) {
+    margin: 2rem 0;
   }
   .post :global(p > img) {
     display: block;
     width: 100%;
+    max-width: none;
     height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
     border-radius: 1rem;
+  }
+  @media (max-width: 639px) {
+    .post {
+      margin-top: 2rem;
+    }
+    .cover {
+      margin-bottom: 1.5rem;
+    }
+    .post :global(p:has(> img)) {
+      margin: 1.5rem 0;
+    }
   }
   .note {
     margin-top: 2.5rem;
