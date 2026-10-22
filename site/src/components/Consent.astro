@@ -1,17 +1,21 @@
 ---
 import { POSTHOG_KEY } from '../lib/config'
+import { langOf, localize, translator } from '../lib/i18n'
+
+const lang = langOf(Astro.url.pathname)
+const t = translator(lang)
 ---
 
 {
   POSTHOG_KEY && (
-    <div class="consent" role="dialog" aria-live="polite" aria-label="Çerez tercihi" data-consent hidden transition:persist>
+    <div class="consent" role="dialog" aria-live="polite" aria-label={t('Çerez tercihi', 'Cookie preference')} data-consent hidden transition:persist>
       <p>
-        Siteyi geliştirmek için ziyaret istatistiği tutmak istiyoruz. Onay vermezsen yalnızca sitenin çalışması için gerekenler kullanılır.
-        <a href="/yasal/cerez">Ayrıntılar</a>
+        {t('Siteyi geliştirmek için ziyaret istatistiği tutmak istiyoruz. Onay vermezsen yalnızca sitenin çalışması için gerekenler kullanılır.', 'We would like to collect visit statistics to improve the site. If you decline, only what the site needs to work is used.')}
+        <a href={localize('/yasal/cerez', lang)}>{t('Ayrıntılar', 'Details')}</a>
       </p>
       <div class="btns">
-        <button class="btn btn-sm btn-ghost" type="button" data-consent-choice="no">Reddet</button>
-        <button class="btn btn-sm" type="button" data-consent-choice="yes">Kabul et</button>
+        <button class="btn btn-sm btn-ghost" type="button" data-consent-choice="no">{t('Reddet', 'Reject')}</button>
+        <button class="btn btn-sm" type="button" data-consent-choice="yes">{t('Kabul et', 'Accept')}</button>
       </div>
     </div>
   )

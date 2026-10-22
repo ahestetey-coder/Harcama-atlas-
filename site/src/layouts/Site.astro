@@ -8,6 +8,7 @@ import jakartaLatin from '@fontsource-variable/plus-jakarta-sans/files/plus-jaka
 import jakartaLatinExt from '@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-ext-wght-normal.woff2?url'
 import Brand from '../components/Brand.astro'
 import Consent from '../components/Consent.astro'
+import { counterpart, langOf, localize, translator } from '../lib/i18n'
 
 interface Props {
   title: string
@@ -22,6 +23,10 @@ interface Props {
 }
 const { title, description, jsonLd, noindex, image = '/og.png', ogType = 'website' } = Astro.props
 const site = Astro.site ?? new URL(Astro.url.origin)
+const lang = langOf(Astro.url.pathname)
+const t = translator(lang)
+const L = (p: string) => localize(p, lang)
+const other = counterpart(Astro.url.pathname)
 // Cloudflare Pages klasör sayfalarını sondaki eğik çizgiyle sunar
 const canonical = new URL(Astro.url.pathname.replace(/\/?$/, '/'), site).href
 const ogImage = new URL(image, site).href
@@ -29,21 +34,33 @@ const siteLd = {
   '@context': 'https://schema.org',
   '@graph': [
     { '@type': 'Organization', '@id': `${site.href}#org`, name: 'Harcama Atlası', url: site.href, logo: new URL('/apple-touch-icon.png', site).href },
-    { '@type': 'WebSite', '@id': `${site.href}#site`, name: 'Harcama Atlası', url: site.href, inLanguage: 'tr-TR', publisher: { '@id': `${site.href}#org` } },
+    { '@type': 'WebSite', '@id': `${site.href}#site`, name: 'Harcama Atlası', url: site.href, inLanguage: lang === 'en' ? 'en' : 'tr-TR', publisher: { '@id': `${site.href}#org` } },
   ],
 }
 const path = Astro.url.pathname.replace(/\/$/, '') || '/'
 const nav = [
-  { href: '/#nasil', label: 'Nasıl çalışır' },
-  { href: '/fiyatlar', label: 'Fiyatlar' },
-  { href: '/nasil-kullanilir', label: 'Nasıl kullanılır' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/#sss', label: 'SSS' },
+  { href: L('/#nasil'), label: t('Nasıl çalışır', 'How it works') },
+  { href: L('/fiyatlar'), label: t('Fiyatlar', 'Pricing') },
+  { href: L('/nasil-kullanilir'), label: t('Nasıl kullanılır', 'Guide') },
+  // Blog yazıları yalnızca Türkçe
+  ...(lang === 'tr' ? [{ href: '/blog', label: 'Blog' }] : []),
+  { href: L('/#sss'), label: t('SSS', 'FAQ') },
 ]
+const legal = [
+  ['/yasal/kvkk', 'KVKK Aydınlatma Metni', 'KVKK Privacy Notice'],
+  ['/yasal/acik-riza', 'Açık Rıza Metni', 'Explicit Consent'],
+  ['/yasal/gizlilik', 'Gizlilik Politikası', 'Privacy Policy'],
+  ['/yasal/cerez', 'Çerez Politikası', 'Cookie Policy'],
+  ['/yasal/kullanim-kosullari', 'Kullanım Koşulları', 'Terms of Use'],
+  ['/yasal/on-bilgilendirme', 'Ön Bilgilendirme Formu', 'Pre-Information Form'],
+  ['/yasal/mesafeli-satis', 'Mesafeli Satış Sözleşmesi', 'Distance Sales Agreement'],
+  ['/yasal/iptal-iade', 'İptal ve İade', 'Cancellation and Refunds'],
+]
+const alt = (href: string) => new URL(href, site).href
 ---
 
 <!doctype html>
-<html lang="tr" data-theme="dark">
+<html lang={lang} data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -52,7 +69,10 @@ const nav = [
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content="Harcama Atlası" />
-    <meta property="og:locale" content="tr_TR" />
+    <meta property="og:locale" content={lang === 'en' ? 'en_US' : 'tr_TR'} />
+    {!noindex && other.exists && <link rel="alternate" hreflang={other.lang} href={alt(other.href)} />}
+    {!noindex && other.exists && <link rel="alternate" hreflang={lang} href={canonical} />}
+    {!noindex && other.exists && <link rel="alternate" hreflang="x-default" href={lang === 'tr' ? canonical : alt(other.href)} />}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
@@ -61,7 +81,7 @@ const nav = [
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="sitemap" href="/sitemap.xml" />
-    <link rel="alternate" type="application/rss+xml" title="Harcama Atlası Blog" href="/blog/rss.xml" />
+    {lang === 'tr' && <link rel="alternate" type="application/rss+xml" title="Harcama Atlası Blog" href="/blog/rss.xml" />}
     <meta name="theme-color" content="#0d1722" />
     {[jakartaLatin, jakartaLatinExt].map((href) => <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />)}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -86,17 +106,18 @@ const nav = [
     <ClientRouter />
   </head>
   <body>
-    <a class="skip" href="#icerik">İçeriğe geç</a>
+    <a class="skip" href="#icerik">{t('İçeriğe geç', 'Skip to content')}</a>
     <header class="site-head" transition:persist>
       <div class="wrap bar">
-        <a href="/" class="brand" aria-label="Harcama Atlası ana sayfa">
+        <a href={L('/')} class="brand" aria-label={t('Harcama Atlası ana sayfa', 'Harcama Atlası home')}>
           <Brand id="logo-ust" size={34} />
         </a>
-        <nav class="links" aria-label="Ana menü">
+        <nav class="links" aria-label={t('Ana menü', 'Main menu')}>
           {nav.map((n) => <a href={n.href} aria-current={path === n.href || (n.href === '/blog' && path.startsWith('/blog/')) ? 'page' : undefined}>{n.label}</a>)}
         </nav>
         <div class="actions">
-          <button class="icon-btn" type="button" data-theme-toggle aria-label="Temayı değiştir">
+          <a class="lang-btn" href={other.href} hreflang={other.lang} lang={other.lang} data-lang-switch aria-label={t('Switch to English', 'Türkçeye geç')}>{other.lang.toUpperCase()}</a>
+          <button class="icon-btn" type="button" data-theme-toggle aria-label={t('Temayı değiştir', 'Toggle theme')}>
             <svg class="sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"
               ><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path
                 d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"
@@ -108,17 +129,18 @@ const nav = [
               ><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg
             >
           </button>
-          <a class="acct" href="/giris" data-account>Giriş yap</a>
-          <a class="btn btn-sm head-cta" href="/test">Testi çöz</a>
-          <button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="mobil-menu" aria-label="Menüyü aç">
+          <a class="acct" href={L('/giris')} data-account>{t('Giriş yap', 'Sign in')}</a>
+          <a class="btn btn-sm head-cta" href={L('/test')}>{t('Testi çöz', 'Take the test')}</a>
+          <button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="mobil-menu" aria-label={t('Menüyü aç', 'Open menu')}>
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
           </button>
         </div>
       </div>
-      <nav id="mobil-menu" class="mobile" aria-label="Mobil menü" hidden>
+      <nav id="mobil-menu" class="mobile" aria-label={t('Mobil menü', 'Mobile menu')} hidden>
         {nav.map((n) => <a href={n.href}>{n.label}</a>)}
-        <a href="/giris" data-account>Giriş yap</a>
-        <a class="btn btn-route" href="/test">Finansal Harita testini çöz</a>
+        <a href={L('/giris')} data-account>{t('Giriş yap', 'Sign in')}</a>
+        <a href={other.href} hreflang={other.lang} lang={other.lang} data-lang-switch>{other.lang === 'en' ? 'English' : 'Türkçe'}</a>
+        <a class="btn btn-route" href={L('/test')}>{t('Finansal Harita testini çöz', 'Take the Financial Map test')}</a>
       </nav>
     </header>
 
@@ -129,31 +151,24 @@ const nav = [
     <footer class="site-foot">
       <div class="wrap foot-grid">
         <div>
-          <a href="/" class="brand" aria-label="Harcama Atlası ana sayfa"><Brand id="logo-alt" /></a>
-          <p>Harcamalarını haritala, özgürlüğe giden rotanı çiz.</p>
-          <p class="small">Harcama Atlası yatırım danışmanlığı yapmaz; gösterilen hesaplar örnek ve tahmindir.</p>
+          <a href={L('/')} class="brand" aria-label={t('Harcama Atlası ana sayfa', 'Harcama Atlası home')}><Brand id="logo-alt" /></a>
+          <p>{t('Harcamalarını haritala, özgürlüğe giden rotanı çiz.', 'Map your spending, chart your route to financial freedom.')}</p>
+          <p class="small">{t('Harcama Atlası yatırım danışmanlığı yapmaz; gösterilen hesaplar örnek ve tahmindir.', 'Harcama Atlası does not provide investment advice; figures shown are examples and estimates.')}</p>
         </div>
-        <nav aria-label="Ürün">
-          <h2>Ürün</h2>
-          <a href="/test">Finansal Harita testi</a>
-          <a href="/fiyatlar">Fiyatlar</a>
-          <a href="/nasil-kullanilir">Nasıl kullanılır</a>
-          <a href="/blog">Blog</a>
-          <a href="/hesap/abonelik">Aboneliğim</a>
+        <nav aria-label={t('Ürün', 'Product')}>
+          <h2>{t('Ürün', 'Product')}</h2>
+          <a href={L('/test')}>{t('Finansal Harita testi', 'Financial Map test')}</a>
+          <a href={L('/fiyatlar')}>{t('Fiyatlar', 'Pricing')}</a>
+          <a href={L('/nasil-kullanilir')}>{t('Nasıl kullanılır', 'Guide')}</a>
+          {lang === 'tr' && <a href="/blog">Blog</a>}
+          <a href={L('/hesap/abonelik')}>{t('Aboneliğim', 'My subscription')}</a>
         </nav>
-        <nav aria-label="Yasal">
-          <h2>Yasal</h2>
-          <a href="/yasal/kvkk">KVKK Aydınlatma Metni</a>
-          <a href="/yasal/acik-riza">Açık Rıza Metni</a>
-          <a href="/yasal/gizlilik">Gizlilik Politikası</a>
-          <a href="/yasal/cerez">Çerez Politikası</a>
-          <a href="/yasal/kullanim-kosullari">Kullanım Koşulları</a>
-          <a href="/yasal/on-bilgilendirme">Ön Bilgilendirme Formu</a>
-          <a href="/yasal/mesafeli-satis">Mesafeli Satış Sözleşmesi</a>
-          <a href="/yasal/iptal-iade">İptal ve İade</a>
+        <nav aria-label={t('Yasal', 'Legal')}>
+          <h2>{t('Yasal', 'Legal')}</h2>
+          {legal.map(([href, tr, en]) => <a href={L(href)}>{t(tr, en)}</a>)}
         </nav>
       </div>
-      <div class="wrap copy">© 2026 Harcama Atlası <a href="/yasal/cerez" data-consent-open hidden>Çerez tercihleri</a></div>
+      <div class="wrap copy">© 2026 Harcama Atlası <a href={L('/yasal/cerez')} data-consent-open hidden>{t('Çerez tercihleri', 'Cookie preferences')}</a></div>
     </footer>
     <Consent />
   </body>
@@ -161,6 +176,7 @@ const nav = [
 
 <script>
   import { AUTH_STORAGE_KEY } from '../lib/config'
+  import { localize, pageLang, translator } from '../lib/i18n'
   const root = document.documentElement
   const mql = matchMedia('(prefers-color-scheme: dark)')
   const isDark = () => root.dataset.theme === 'dark' || (!root.dataset.theme && mql.matches)
@@ -171,9 +187,11 @@ const nav = [
     try {
       signedIn = !!localStorage.getItem(AUTH_STORAGE_KEY)
     } catch { /* depolama kapalı; giriş bağlantısı kalır */ }
+    const lang = pageLang()
+    const t = translator(lang)
     document.querySelectorAll<HTMLAnchorElement>('[data-account]').forEach((a) => {
-      a.href = signedIn ? '/hesap/abonelik' : '/giris'
-      a.textContent = signedIn ? 'Hesabım' : 'Giriş yap'
+      a.href = localize(signedIn ? '/hesap/abonelik' : '/giris', lang)
+      a.textContent = signedIn ? t('Hesabım', 'My account') : t('Giriş yap', 'Sign in')
     })
   }
 
@@ -200,7 +218,8 @@ const nav = [
       const set = (open: boolean) => {
         menu.hidden = !open
         btn.setAttribute('aria-expanded', String(open))
-        btn.setAttribute('aria-label', open ? 'Menüyü kapat' : 'Menüyü aç')
+        const t = translator(pageLang())
+        btn.setAttribute('aria-label', open ? t('Menüyü kapat', 'Close menu') : t('Menüyü aç', 'Open menu'))
       }
       btn.onclick = () => set(menu.hidden !== false)
       menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => set(false)))
@@ -378,6 +397,23 @@ const nav = [
   }
   .mobile .btn {
     margin-top: 1rem;
+  }
+  .lang-btn {
+    display: inline-grid;
+    place-items: center;
+    height: 2.6rem;
+    min-width: 2.6rem;
+    padding: 0 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+  }
+  .lang-btn:hover {
+    background: var(--paper-2);
   }
   .acct {
     color: var(--ink-2);

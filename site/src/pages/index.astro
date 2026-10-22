@@ -3,6 +3,11 @@ import Site from '../layouts/Site.astro'
 import Phone from '../components/Phone.astro'
 import PriceCards from '../components/PriceCards.astro'
 import { contourPaths } from '../lib/contours'
+import { langOf, localize, translator } from '../lib/i18n'
+
+const lang = langOf(Astro.url.pathname)
+const t = translator(lang)
+const L = (p: string) => localize(p, lang)
 
 const rings = [
   ...contourPaths({ cx: 330, cy: 170, rings: 8, r0: 20, step: 24, seed: 1.3 }),
@@ -10,26 +15,26 @@ const rings = [
 ]
 const route = 'M50 480 C 100 430, 110 380, 150 360 S 230 330, 250 280 S 290 170, 360 140'
 const stops = [
-  { x: 50, y: 480, label: 'Bugün', sub: 'Konumun' },
-  { x: 150, y: 360, label: 'Acil durum fonu', sub: '3–6 aylık gider' },
-  { x: 250, y: 280, label: 'Borçsuz', sub: 'Faizli borç yok' },
-  { x: 360, y: 140, label: 'Finansal özgürlük', sub: 'Zirve' },
+  { x: 50, y: 480, label: t('Bugün', 'Today'), sub: t('Konumun', 'You are here') },
+  { x: 150, y: 360, label: t('Acil durum fonu', 'Emergency fund'), sub: t('3–6 aylık gider', '3–6 months of expenses') },
+  { x: 250, y: 280, label: t('Borçsuz', 'Debt-free'), sub: t('Faizli borç yok', 'No interest-bearing debt') },
+  { x: 360, y: 140, label: t('Finansal özgürlük', 'Financial freedom'), sub: t('Zirve', 'The summit') },
 ]
 
 const features = [
-  { img: 'ozet-light', dark: 'ozet-dark', chip: 'Ücretsiz', title: 'Paranın haritası tek ekranda', text: 'Bu ay ne harcadın, bütçende ne kaldı, hangi kategori büyüyor? Özet sayfası hepsini bir bakışta gösterir.' },
-  { img: 'islemler-light', chip: 'Ücretsiz', title: 'Ekstreni yükle, gerisini bırak', text: 'PDF, Excel, CSV ya da ekran görüntüsü. Harcamalar okunur, kategoriler önerilir, tekrar edenler yakalanır.' },
-  { img: 'butce-light', chip: 'Plus', title: 'Gelirine göre akıllı bütçe', text: 'Maaş gününe göre dönem, kategori limitleri ve ay sonu tahmini. Bütçeyi koç kurar, sen onaylarsın.' },
-  { img: 'borclar-light', chip: 'Plus', title: 'Borçlar ve taksitler kontrolde', text: 'Kart taksitleri, krediler ve düzenli ödemeler gelecek aylara yayılmış halde. Hangi ay ne kadar ödeyeceğin belli.' },
+  { img: 'ozet-light', dark: 'ozet-dark', free: true, chip: t('Ücretsiz', 'Free'), title: t('Paranın haritası tek ekranda', 'Your money on one map'), text: t('Bu ay ne harcadın, bütçende ne kaldı, hangi kategori büyüyor? Özet sayfası hepsini bir bakışta gösterir.', 'What did you spend this month, what is left in your budget, which category is growing? The Summary page shows it all at a glance.') },
+  { img: 'islemler-light', free: true, chip: t('Ücretsiz', 'Free'), title: t('Ekstreni yükle, gerisini bırak', 'Upload your statement, we do the rest'), text: t('PDF, Excel, CSV ya da ekran görüntüsü. Harcamalar okunur, kategoriler önerilir, tekrar edenler yakalanır.', 'PDF, Excel, CSV or a screenshot. Transactions are read, categories suggested and duplicates caught.') },
+  { img: 'butce-light', chip: 'Plus', title: t('Gelirine göre akıllı bütçe', 'A smart budget based on your income'), text: t('Maaş gününe göre dönem, kategori limitleri ve ay sonu tahmini. Bütçeyi koç kurar, sen onaylarsın.', 'Periods that follow your payday, category limits and a month-end forecast. The coach builds the budget, you approve it.') },
+  { img: 'borclar-light', chip: 'Plus', title: t('Borçlar ve taksitler kontrolde', 'Debts and instalments under control'), text: t('Kart taksitleri, krediler ve düzenli ödemeler gelecek aylara yayılmış halde. Hangi ay ne kadar ödeyeceğin belli.', 'Card instalments, loans and recurring payments laid out across the coming months. You always know what is due when.') },
 ]
 
 const faqs = [
-  { q: 'Finansal Harita testi ücretli mi?', a: 'Hayır. Test ücretsiz, yaklaşık 2 dakika sürer ve 10 sorudan oluşur. Sonucunda finansal arketipini, rotandaki konumunu ve tahmini özgürlük yılını görürsün.' },
-  { q: 'Test sonucum uygulamaya nasıl geçiyor?', a: 'Testte verdiğin e-posta adresiyle uygulamaya giriş yaptığında sonucun hesabına kendiliğinden bağlanır. İstersen sana verilen devam koduyla da aktarabilirsin.' },
-  { q: 'Banka şifremi istiyor musunuz?', a: 'Hayır. Harcama Atlası bankana bağlanmaz. Harcamalarını ekstre dosyasıyla, ekran görüntüsüyle ya da elle eklersin. Ekran görüntüleri cihazında okunur.' },
-  { q: 'Verilerim nerede saklanıyor?', a: 'Verilerin hesabına bağlı olarak saklanır ve aynı hesapla girdiğin her cihazda görünür. Hesabını ve tüm verilerini dilediğin an uygulamadan silebilirsin.' },
-  { q: 'Aboneliğimi nereden alırım, nasıl iptal ederim?', a: 'Plus ve Plus+ paketlerini bu siteden ya da uygulama mağazasından alabilirsin. Hangi kanaldan aldıysan o kanaldan iptal edersin; iptal ettiğinde dönem sonuna kadar kullanmaya devam edersin.' },
-  { q: 'Koç yatırım tavsiyesi veriyor mu?', a: 'Hayır. Koç bütçe, borç kapatma ve birikim planı konusunda yol gösterir; belirli bir hisse, fon ya da coin almanı veya satmanı önermez.' },
+  { q: t('Finansal Harita testi ücretli mi?', 'Is the Financial Map test free?'), a: t('Hayır. Test ücretsiz, yaklaşık 2 dakika sürer ve 10 sorudan oluşur. Sonucunda finansal arketipini, rotandaki konumunu ve tahmini özgürlük yılını görürsün.', 'Yes. The test is free, takes about 2 minutes and has 10 questions. At the end you see your financial archetype, where you are on your route and your estimated freedom year.') },
+  { q: t('Test sonucum uygulamaya nasıl geçiyor?', 'How does my test result get into the app?'), a: t('Testte verdiğin e-posta adresiyle uygulamaya giriş yaptığında sonucun hesabına kendiliğinden bağlanır. İstersen sana verilen devam koduyla da aktarabilirsin.', 'When you sign in to the app with the email you gave in the test, your result is linked to your account automatically. You can also transfer it with the continue code you receive.') },
+  { q: t('Banka şifremi istiyor musunuz?', 'Do you ask for my bank password?'), a: t('Hayır. Harcama Atlası bankana bağlanmaz. Harcamalarını ekstre dosyasıyla, ekran görüntüsüyle ya da elle eklersin. Ekran görüntüleri cihazında okunur.', 'No. Harcama Atlası never connects to your bank. You add spending with a statement file, a screenshot or by hand. Screenshots are read on your device.') },
+  { q: t('Verilerim nerede saklanıyor?', 'Where is my data stored?'), a: t('Verilerin hesabına bağlı olarak saklanır ve aynı hesapla girdiğin her cihazda görünür. Hesabını ve tüm verilerini dilediğin an uygulamadan silebilirsin.', 'Your data is stored with your account and appears on every device you sign in to. You can delete your account and all your data from the app at any time.') },
+  { q: t('Aboneliğimi nereden alırım, nasıl iptal ederim?', 'Where do I subscribe and how do I cancel?'), a: t('Plus ve Plus+ paketlerini bu siteden ya da uygulama mağazasından alabilirsin. Hangi kanaldan aldıysan o kanaldan iptal edersin; iptal ettiğinde dönem sonuna kadar kullanmaya devam edersin.', 'You can buy Plus and Plus+ on this website or in the app store. You cancel through the same channel you bought from, and you keep access until the end of the paid period.') },
+  { q: t('Koç yatırım tavsiyesi veriyor mu?', 'Does the coach give investment advice?'), a: t('Hayır. Koç bütçe, borç kapatma ve birikim planı konusunda yol gösterir; belirli bir hisse, fon ya da coin almanı veya satmanı önermez.', 'No. The coach guides you on budgeting, paying off debt and saving; it never tells you to buy or sell a specific stock, fund or coin.') },
 ]
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -40,28 +45,49 @@ const jsonLd = {
 }
 ---
 
-<Site title="Harcama Atlası · Harcamalarını haritala, özgürlüğe giden rotanı çiz" description="Harcamalarını tek ekranda topla, 2 dakikalık Finansal Harita testiyle özgürlük rotanı çıkar. Ücretsiz başla." jsonLd={jsonLd}>
+<Site
+  title={t('Harcama Atlası · Harcamalarını haritala, özgürlüğe giden rotanı çiz', 'Harcama Atlası · Map your spending, chart your route to freedom')}
+  description={t('Harcamalarını tek ekranda topla, 2 dakikalık Finansal Harita testiyle özgürlük rotanı çıkar. Ücretsiz başla.', 'See all your spending on one screen and chart your route to financial freedom with a 2-minute Financial Map test. Start free.')}
+  jsonLd={jsonLd}
+>
   <!-- HERO -->
   <section class="hero wrap">
     <div class="hero-text">
-      <p class="eyebrow reveal">Kişisel finans atlası</p>
-      <h1 class="h-display reveal" style="--d:1">Harcamalarını haritala, <span class="accent">özgürlüğe giden rotanı</span> çiz.</h1>
+      <p class="eyebrow reveal">{t('Kişisel finans atlası', 'Your personal finance atlas')}</p>
+      {
+        lang === 'en' ? (
+          <h1 class="h-display reveal" style="--d:1">Map your spending, chart your <span class="accent">route to freedom</span>.</h1>
+        ) : (
+          <h1 class="h-display reveal" style="--d:1">Harcamalarını haritala, <span class="accent">özgürlüğe giden rotanı</span> çiz.</h1>
+        )
+      }
       <p class="lead reveal" style="--d:2">
-        Harcama Atlası paranın nereye gittiğini tek haritada toplar. 2 dakikalık Finansal Harita testiyle ilk rotanı çıkarır, uygulamada her ay nerede
-        olduğunu gösterir.
+        {t('Harcama Atlası paranın nereye gittiğini tek haritada toplar. 2 dakikalık Finansal Harita testiyle ilk rotanı çıkarır, uygulamada her ay nerede olduğunu gösterir.', 'Harcama Atlası puts everywhere your money goes on one map. A 2-minute Financial Map test charts your first route, and the app shows where you stand every month.')}
       </p>
       <div class="ctas reveal" style="--d:3">
-        <a class="btn btn-route" href="/test">Finansal Harita testini çöz <span class="arr" aria-hidden="true">→</span></a>
-        <a class="btn btn-ghost" href="#nasil">Nasıl çalışır?</a>
+        <a class="btn btn-route" href={L('/test')}>{t('Finansal Harita testini çöz', 'Take the Financial Map test')} <span class="arr" aria-hidden="true">→</span></a>
+        <a class="btn btn-ghost" href="#nasil">{t('Nasıl çalışır?', 'How does it work?')}</a>
       </div>
-      <ul class="proof reveal" style="--d:4" aria-label="Öne çıkanlar">
-        <li><strong>10 soru</strong> · 2 dakika</li>
-        <li><strong>TL, dolar</strong> ya da altın</li>
-        <li><strong>iOS, Android</strong> ve web</li>
+      <ul class="proof reveal" style="--d:4" aria-label={t('Öne çıkanlar', 'Highlights')}>
+        {
+          lang === 'en' ? (
+            <>
+              <li><strong>10 questions</strong> · 2 minutes</li>
+              <li><strong>Lira, dollars</strong> or gold</li>
+              <li><strong>iOS, Android</strong> and web</li>
+            </>
+          ) : (
+            <>
+              <li><strong>10 soru</strong> · 2 dakika</li>
+              <li><strong>TL, dolar</strong> ya da altın</li>
+              <li><strong>iOS, Android</strong> ve web</li>
+            </>
+          )
+        }
       </ul>
-      <div class="stores reveal" style="--d:5" aria-label="Uygulamayı indir">
-        <span class="store"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5a4.3 4.3 0 0 0-3.4-1.8c-1.4-.2-2.8.8-3.5.8-.7 0-1.8-.8-3-.8a4.5 4.5 0 0 0-3.8 2.3c-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3a10 10 0 0 0 1.3-2.6 4 4 0 0 1-2.5-3.7ZM14.1 5.8A4 4 0 0 0 15 2.9a4.1 4.1 0 0 0-2.7 1.4 3.9 3.9 0 0 0-1 2.8 3.4 3.4 0 0 0 2.8-1.3Z"></path></svg><span>App Store<small>yakında</small></span></span>
-        <span class="store"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3.6 2.3 13.4 12l-9.8 9.7a1.5 1.5 0 0 1-.6-1.2V3.5c0-.5.2-.9.6-1.2Zm11 8.5 2.6-2.6 3.2 1.8c1.1.6 1.1 1.7 0 2.3l-3.2 1.9-2.6-2.6L13.4 12l1.2-1.2ZM5 1.6l10.5 6-2.1 2.1L5 1.6Zm8.4 12.8 2.1 2.1L5 22.4l8.4-8Z"></path></svg><span>Google Play<small>yakında</small></span></span>
+      <div class="stores reveal" style="--d:5" aria-label={t('Uygulamayı indir', 'Download the app')}>
+        <span class="store"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5a4.3 4.3 0 0 0-3.4-1.8c-1.4-.2-2.8.8-3.5.8-.7 0-1.8-.8-3-.8a4.5 4.5 0 0 0-3.8 2.3c-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3a10 10 0 0 0 1.3-2.6 4 4 0 0 1-2.5-3.7ZM14.1 5.8A4 4 0 0 0 15 2.9a4.1 4.1 0 0 0-2.7 1.4 3.9 3.9 0 0 0-1 2.8 3.4 3.4 0 0 0 2.8-1.3Z"></path></svg><span>App Store<small>{t('yakında', 'coming soon')}</small></span></span>
+        <span class="store"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3.6 2.3 13.4 12l-9.8 9.7a1.5 1.5 0 0 1-.6-1.2V3.5c0-.5.2-.9.6-1.2Zm11 8.5 2.6-2.6 3.2 1.8c1.1.6 1.1 1.7 0 2.3l-3.2 1.9-2.6-2.6L13.4 12l1.2-1.2ZM5 1.6l10.5 6-2.1 2.1L5 1.6Zm8.4 12.8 2.1 2.1L5 22.4l8.4-8Z"></path></svg><span>Google Play<small>{t('yakında', 'coming soon')}</small></span></span>
       </div>
     </div>
 
@@ -89,7 +115,7 @@ const jsonLd = {
           <g class="compass" transform="translate(500 70)">
             <circle r="26" class="c-ring"></circle>
             <path d="M0 -20 L5 0 L0 20 L-5 0 Z" class="c-needle"></path>
-            <text y="-32" text-anchor="middle" class="coord">K</text>
+            <text y="-32" text-anchor="middle" class="coord">{t('K', 'N')}</text>
           </g>
         </svg>
       </div>
@@ -101,23 +127,29 @@ const jsonLd = {
 
   <!-- NASIL ÇALIŞIR -->
   <section id="nasil" class="how wrap">
-    <p class="eyebrow reveal">Nasıl çalışır</p>
-    <h2 class="h-section reveal">Üç adımda <span class="accent">rotan</span> hazır</h2>
+    <p class="eyebrow reveal">{t('Nasıl çalışır', 'How it works')}</p>
+    {
+      lang === 'en' ? (
+        <h2 class="h-section reveal">Your <span class="accent">route</span> in three steps</h2>
+      ) : (
+        <h2 class="h-section reveal">Üç adımda <span class="accent">rotan</span> hazır</h2>
+      )
+    }
     <ol class="steps">
       <li class="reveal" style="--d:0">
         <span class="n">01</span>
-        <h3>Harcamanı haritala</h3>
-        <p>Ekstreni, ekran görüntüsünü ya da harcamanı tek tek ekle. Kategoriler kendiliğinden oluşur.</p>
+        <h3>{t('Harcamanı haritala', 'Map your spending')}</h3>
+        <p>{t('Ekstreni, ekran görüntüsünü ya da harcamanı tek tek ekle. Kategoriler kendiliğinden oluşur.', 'Add your statement, a screenshot or each expense by hand. Categories are filled in for you.')}</p>
       </li>
       <li class="reveal" style="--d:1">
         <span class="n">02</span>
-        <h3>Testi çöz</h3>
-        <p>10 kısa soruyla konumunu ve hedefini belirle. Sonuç TL, dolar ya da altın cinsinden.</p>
+        <h3>{t('Testi çöz', 'Take the test')}</h3>
+        <p>{t('10 kısa soruyla konumunu ve hedefini belirle. Sonuç TL, dolar ya da altın cinsinden.', 'Ten short questions set where you are and where you are heading. Results in lira, dollars or gold.')}</p>
       </li>
       <li class="reveal" style="--d:2">
         <span class="n">03</span>
-        <h3>Rotanı izle</h3>
-        <p>Her ay hangi durakta olduğunu ve sıradaki hedefe ne kadar kaldığını gör.</p>
+        <h3>{t('Rotanı izle', 'Follow your route')}</h3>
+        <p>{t('Her ay hangi durakta olduğunu ve sıradaki hedefe ne kadar kaldığını gör.', 'Each month, see which stop you are at and how far the next one is.')}</p>
       </li>
     </ol>
   </section>
@@ -126,36 +158,48 @@ const jsonLd = {
   <section class="band">
     <div class="wrap test-grid">
       <div class="test-phone reveal">
-        <Phone light="test-soru-1" alt="Finansal Harita testinin çözülüşü">
-          <video data-autoplay muted loop playsinline preload="none" poster="/screenshots/test-soru-1.webp" aria-label="Finansal Harita testinin çözülüşünü gösteren kısa video">
+        <Phone light="test-soru-1" alt={t('Finansal Harita testinin çözülüşü', 'Taking the Financial Map test')}>
+          <video data-autoplay muted loop playsinline preload="none" poster="/screenshots/test-soru-1.webp" aria-label={t('Finansal Harita testinin çözülüşünü gösteren kısa video', 'Short video of the Financial Map test being taken')}>
             <source src="/video/harita-testi.webm" type="video/webm" />
             <source src="/video/harita-testi.mp4" type="video/mp4" />
           </video>
         </Phone>
         <div class="float-card card" aria-hidden="true">
-          <span class="chip">Sonuç</span>
-          <strong>Temkinli Kaşif</strong>
-          <span>Özgürlük yılı <b>2035</b></span>
+          <span class="chip">{t('Sonuç', 'Result')}</span>
+          <strong>{t('Temkinli Kaşif', 'Cautious Explorer')}</strong>
+          <span>{t('Özgürlük yılı', 'Freedom year')} <b>2035</b></span>
         </div>
       </div>
       <div class="test-text">
-        <p class="eyebrow reveal">Finansal Harita testi</p>
-        <h2 class="h-section reveal">2 dakikada <span class="accent">finansal haritanı</span> çıkar.</h2>
-        <p class="lead reveal">Sorular kısa ve görsel. Sonunda finansal arketipini, rotandaki konumunu ve bugünkü tempoyla özgürlük yılını görürsün.</p>
+        <p class="eyebrow reveal">{t('Finansal Harita testi', 'Financial Map test')}</p>
+        {
+          lang === 'en' ? (
+            <h2 class="h-section reveal">Chart your <span class="accent">financial map</span> in 2 minutes.</h2>
+          ) : (
+            <h2 class="h-section reveal">2 dakikada <span class="accent">finansal haritanı</span> çıkar.</h2>
+          )
+        }
+        <p class="lead reveal">{t('Sorular kısa ve görsel. Sonunda finansal arketipini, rotandaki konumunu ve bugünkü tempoyla özgürlük yılını görürsün.', 'Short, visual questions. At the end you see your financial archetype, where you are on your route and your freedom year at today’s pace.')}</p>
         <ul class="ticks reveal">
-          <li>Gelir, birikim, borç ve risk alışkanlığına göre kişisel sonuç</li>
-          <li>Hedefini TL, dolar ya da gram altın cinsinden gör</li>
-          <li>Sonucun, aynı e-postayla girdiğin uygulamada seni bekler</li>
+          <li>{t('Gelir, birikim, borç ve risk alışkanlığına göre kişisel sonuç', 'A personal result based on your income, savings, debt and risk habits')}</li>
+          <li>{t('Hedefini TL, dolar ya da gram altın cinsinden gör', 'See your goal in lira, dollars or grams of gold')}</li>
+          <li>{t('Sonucun, aynı e-postayla girdiğin uygulamada seni bekler', 'Your result waits for you in the app when you sign in with the same email')}</li>
         </ul>
-        <a class="btn btn-route reveal" href="/test">Testi ücretsiz çöz <span class="arr" aria-hidden="true">→</span></a>
+        <a class="btn btn-route reveal" href={L('/test')}>{t('Testi ücretsiz çöz', 'Take the test for free')} <span class="arr" aria-hidden="true">→</span></a>
       </div>
     </div>
   </section>
 
   <!-- ÖZELLİKLER -->
   <section class="features wrap" id="ozellikler">
-    <p class="eyebrow reveal">Özellikler</p>
-    <h2 class="h-section reveal">Paranı anlamak için<br />ihtiyacın olan her şey</h2>
+    <p class="eyebrow reveal">{t('Özellikler', 'Features')}</p>
+    {
+      lang === 'en' ? (
+        <h2 class="h-section reveal">Everything you need<br />to understand your money</h2>
+      ) : (
+        <h2 class="h-section reveal">Paranı anlamak için<br />ihtiyacın olan her şey</h2>
+      )
+    }
     <div class="feat-grid">
       <div class="feat-list">
         {
@@ -164,7 +208,7 @@ const jsonLd = {
               <div class="feat-phone-m">
                 <Phone light={f.img} dark={f.dark} alt={f.title} />
               </div>
-              <span class:list={['chip', { 'chip-route': f.chip !== 'Ücretsiz' }]}>{f.chip}</span>
+              <span class:list={['chip', { 'chip-route': !f.free }]}>{f.chip}</span>
               <h3>{f.title}</h3>
               <p>{f.text}</p>
             </article>
@@ -191,19 +235,31 @@ const jsonLd = {
     <div class="coach-card card">
       <div class="coach-text">
         <span class="chip chip-route reveal">Plus+</span>
-        <h2 class="h-section reveal">Seni tanıyan bir <span class="accent">finans koçu</span></h2>
-        <p class="lead reveal">Koç; gelirini, giderlerini, borçlarını ve test sonucunu bilir. Borç kapatma sırası, ayrılacak birikim ve sıradaki durak için sana özel plan çıkarır.</p>
-        <p class="note reveal">Koç yatırım tavsiyesi vermez; hesapları uygulamanın kendi motoru yapar.</p>
+        {
+          lang === 'en' ? (
+            <h2 class="h-section reveal">A <span class="accent">finance coach</span> who knows you</h2>
+          ) : (
+            <h2 class="h-section reveal">Seni tanıyan bir <span class="accent">finans koçu</span></h2>
+          )
+        }
+        <p class="lead reveal">{t('Koç; gelirini, giderlerini, borçlarını ve test sonucunu bilir. Borç kapatma sırası, ayrılacak birikim ve sıradaki durak için sana özel plan çıkarır.', 'The coach knows your income, expenses, debts and test result. It builds a plan just for you: which debt to pay off first, how much to save and your next stop.')}</p>
+        <p class="note reveal">{t('Koç yatırım tavsiyesi vermez; hesapları uygulamanın kendi motoru yapar.', 'The coach does not give investment advice; all calculations are done by the app’s own engine.')}</p>
       </div>
-      <div class="chat" aria-label="Örnek koç sohbeti">
-        <div class="msg me reveal" style="--d:0">Kredi kartı borcumu mu kapatayım, birikime mi başlayayım?</div>
+      <div class="chat" aria-label={t('Örnek koç sohbeti', 'Sample coach conversation')}>
+        <div class="msg me reveal" style="--d:0">{t('Kredi kartı borcumu mu kapatayım, birikime mi başlayayım?', 'Should I pay off my credit card or start saving?')}</div>
         <div class="msg bot reveal" style="--d:2">
-          Önce faizli kart borcunu kapatalım. Aylık <b>₺4.500</b> ayırırsan <b>Mart 2027</b>’de borçsuzsun. Sonra aynı tutarla acil durum fonuna geçeriz.
+          {
+            lang === 'en' ? (
+              <>Let’s clear the interest-bearing card debt first. Put aside <b>₺4,500</b> a month and you are debt-free by <b>March 2027</b>. Then we move the same amount into your emergency fund.</>
+            ) : (
+              <>Önce faizli kart borcunu kapatalım. Aylık <b>₺4.500</b> ayırırsan <b>Mart 2027</b>’de borçsuzsun. Sonra aynı tutarla acil durum fonuna geçeriz.</>
+            )
+          }
         </div>
         <div class="msg bot typing reveal" style="--d:4"><span></span><span></span><span></span></div>
       </div>
       <div class="coach-phone reveal" style="--d:1">
-        <Phone light="koc-light" dark="koc-dark" alt="Uygulamadaki Koçum ekranı" />
+        <Phone light="koc-light" dark="koc-dark" alt={t('Uygulamadaki Koçum ekranı', 'The My Coach screen in the app')} />
       </div>
     </div>
   </section>
@@ -212,18 +268,24 @@ const jsonLd = {
   <section class="plans wrap" id="paketler">
     <div class="plans-head">
       <div>
-        <p class="eyebrow reveal">Paketler</p>
-        <h2 class="h-section reveal">Ücretsiz başla, rotanı <span class="accent">netleştirmek</span> istediğinde yükselt</h2>
+        <p class="eyebrow reveal">{t('Paketler', 'Plans')}</p>
+        {
+          lang === 'en' ? (
+            <h2 class="h-section reveal">Start free, upgrade when you want to <span class="accent">sharpen</span> your route</h2>
+          ) : (
+            <h2 class="h-section reveal">Ücretsiz başla, rotanı <span class="accent">netleştirmek</span> istediğinde yükselt</h2>
+          )
+        }
       </div>
-      <a class="btn btn-ghost reveal" href="/fiyatlar">Tüm özellikleri karşılaştır <span class="arr" aria-hidden="true">→</span></a>
+      <a class="btn btn-ghost reveal" href={L('/fiyatlar')}>{t('Tüm özellikleri karşılaştır', 'Compare all features')} <span class="arr" aria-hidden="true">→</span></a>
     </div>
     <PriceCards />
   </section>
 
   <!-- SSS -->
   <section class="faq wrap" id="sss">
-    <p class="eyebrow reveal">Sık sorulanlar</p>
-    <h2 class="h-section reveal">Aklındaki sorular</h2>
+    <p class="eyebrow reveal">{t('Sık sorulanlar', 'FAQ')}</p>
+    <h2 class="h-section reveal">{t('Aklındaki sorular', 'Questions you may have')}</h2>
     <div class="faq-list">
       {
         faqs.map((f, i) => (
@@ -245,9 +307,9 @@ const jsonLd = {
       <svg class="final-route" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
         <path d="M-20 260 C 200 240, 260 120, 460 150 S 760 260, 900 140 S 1100 40, 1220 60" pathLength="1"></path>
       </svg>
-      <h2 class="h-section">Rotan 2 dakika uzağında.</h2>
-      <p>Ücretsiz Finansal Harita testini çöz, nerede durduğunu ve nereye gidebileceğini gör.</p>
-      <a class="btn btn-route" href="/test">Testi çöz <span class="arr" aria-hidden="true">→</span></a>
+      <h2 class="h-section">{t('Rotan 2 dakika uzağında.', 'Your route is 2 minutes away.')}</h2>
+      <p>{t('Ücretsiz Finansal Harita testini çöz, nerede durduğunu ve nereye gidebileceğini gör.', 'Take the free Financial Map test to see where you stand and where you could go.')}</p>
+      <a class="btn btn-route" href={L('/test')}>{t('Testi çöz', 'Take the test')} <span class="arr" aria-hidden="true">→</span></a>
     </div>
   </section>
 </Site>

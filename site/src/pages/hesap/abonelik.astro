@@ -1,62 +1,74 @@
 ---
 import Site from '../../layouts/Site.astro'
+import { langOf, translator } from '../../lib/i18n'
+
+const t = translator(langOf(Astro.url.pathname))
 ---
 
-<Site title="Aboneliğim · Harcama Atlası" description="Harcama Atlası aboneliğini görüntüle ve yönet." noindex>
+<Site title={t('Aboneliğim · Harcama Atlası', 'My subscription · Harcama Atlası')} description={t('Harcama Atlası aboneliğini görüntüle ve yönet.', 'View and manage your Harcama Atlası subscription.')} noindex>
   <section class="wrap acc" data-acc>
-    <p class="eyebrow">Hesabım</p>
-    <h1 class="h-section">Aboneliğim</h1>
+    <p class="eyebrow">{t('Hesabım', 'My account')}</p>
+    <h1 class="h-section">{t('Aboneliğim', 'My subscription')}</h1>
     <p class="muted who" data-who></p>
 
     <p class="notice" data-done hidden role="status" aria-live="polite"></p>
 
     <div class="card main" data-main>
-      <div class="loading"><span class="spin" aria-hidden="true"></span> Yükleniyor…</div>
+      <div class="loading"><span class="spin" aria-hidden="true"></span> {t('Yükleniyor…', 'Loading…')}</div>
     </div>
 
     <div class="card change" data-change hidden>
-      <h2>Paketi değiştir</h2>
-      <p class="muted">Yeni paket hemen başlar. Yükseltirsen yenileme tarihine kalan günlerin farkı bugün alınır; tutarı onaylamadan önce görürsün.</p>
+      <h2>{t('Paketi değiştir', 'Change plan')}</h2>
+      <p class="muted">{t('Yeni paket hemen başlar. Yükseltirsen yenileme tarihine kalan günlerin farkı bugün alınır; tutarı onaylamadan önce görürsün.', 'The new plan starts right away. If you upgrade, the difference for the days left until renewal is charged today; you see the amount before confirming.')}</p>
       <div class="opts" data-opts></div>
       <p class="notice" data-change-msg role="status" aria-live="polite"></p>
     </div>
 
     <div class="card app">
       <div>
-        <h2>Uygulamada kullan</h2>
-        <p class="muted">Aynı hesapla giriş yap; paketin uygulamada kendiliğinden açılır.</p>
+        <h2>{t('Uygulamada kullan', 'Use it in the app')}</h2>
+        <p class="muted">{t('Aynı hesapla giriş yap; paketin uygulamada kendiliğinden açılır.', 'Sign in with the same account; your plan unlocks in the app automatically.')}</p>
       </div>
       <div class="app-btns">
-        <a class="btn btn-route" data-open-app href="#">Uygulamayı aç</a>
-        <button class="btn btn-ghost" type="button" data-signout>Çıkış yap</button>
+        <a class="btn btn-route" data-open-app href="#">{t('Uygulamayı aç', 'Open the app')}</a>
+        <button class="btn btn-ghost" type="button" data-signout>{t('Çıkış yap', 'Sign out')}</button>
       </div>
     </div>
   </section>
 </Site>
 
 <script>
-  import { billing, formatDate, formatTl, isLive, loadBilling, mySubscription, PERIOD_LABEL, PLAN_LABEL, requireUser, supa, type Period, type Plan, type Subscription } from '../../lib/account'
+  import { billing, formatDate, formatTl, isLive, loadBilling, local, mySubscription, periodLabel, PLAN_LABEL, requireUser, supa, tr, type Period, type Plan, type Subscription } from '../../lib/account'
   import { APP_SCHEME, APP_URL } from '../../lib/config'
 
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 
   function statusLine(s: Subscription): { badge: string; tone: 'ok' | 'warn' | 'off'; text: string } {
+    const t = tr()
     const price = s.amount_kurus ? formatTl(s.amount_kurus) : ''
     if (s.status === 'trialing')
-      return { badge: 'Deneme', tone: 'ok', text: s.cancel_at ? `Deneme ${formatDate(s.trial_end)} tarihinde bitecek; iptal ettiğin için ücret alınmayacak.` : `Ücretsiz deneme ${formatDate(s.trial_end)} tarihinde bitiyor. Sonra ${price} alınır.` }
+      return {
+        badge: t('Deneme', 'Trial'),
+        tone: 'ok',
+        text: s.cancel_at
+          ? t(`Deneme ${formatDate(s.trial_end)} tarihinde bitecek; iptal ettiğin için ücret alınmayacak.`, `Your trial ends on ${formatDate(s.trial_end)}; since you cancelled, you will not be charged.`)
+          : t(`Ücretsiz deneme ${formatDate(s.trial_end)} tarihinde bitiyor. Sonra ${price} alınır.`, `Your free trial ends on ${formatDate(s.trial_end)}. Then ${price} is charged.`),
+      }
     if (s.status === 'active')
       return s.cancel_at
-        ? { badge: 'İptal edildi', tone: 'warn', text: `Paketin ${formatDate(s.cancel_at)} tarihine kadar açık; sonra yenilenmeyecek.` }
-        : { badge: 'Etkin', tone: 'ok', text: `Sonraki ödeme ${formatDate(s.current_period_end)} · ${price}` }
-    if (s.status === 'past_due') return { badge: 'Ödeme alınamadı', tone: 'warn', text: 'Son ödeme alınamadı. Kartını güncellersen paketin kesintisiz sürer.' }
-    if (s.status === 'paused') return { badge: 'Duraklatıldı', tone: 'warn', text: 'Aboneliğin duraklatıldı.' }
-    return { badge: 'Sona erdi', tone: 'off', text: 'Bu abonelik sona erdi.' }
+        ? { badge: t('İptal edildi', 'Cancelled'), tone: 'warn', text: t(`Paketin ${formatDate(s.cancel_at)} tarihine kadar açık; sonra yenilenmeyecek.`, `Your plan stays active until ${formatDate(s.cancel_at)} and will not renew.`) }
+        : { badge: t('Etkin', 'Active'), tone: 'ok', text: t(`Sonraki ödeme ${formatDate(s.current_period_end)} · ${price}`, `Next payment ${formatDate(s.current_period_end)} · ${price}`) }
+    if (s.status === 'past_due') return { badge: t('Ödeme alınamadı', 'Payment failed'), tone: 'warn', text: t('Son ödeme alınamadı. Kartını güncellersen paketin kesintisiz sürer.', 'Your last payment failed. Update your card to keep your plan without interruption.') }
+    if (s.status === 'paused') return { badge: t('Duraklatıldı', 'Paused'), tone: 'warn', text: t('Aboneliğin duraklatıldı.', 'Your subscription is paused.') }
+    return { badge: t('Sona erdi', 'Ended'), tone: 'off', text: t('Bu abonelik sona erdi.', 'This subscription has ended.') }
   }
 
   async function init() {
     const root = document.querySelector<HTMLElement>('[data-acc]')
     if (!root || root.dataset.ready) return
     root.dataset.ready = '1'
+    const t = tr()
+    const appUrl = document.documentElement.lang === 'en' ? `${APP_URL}?dil=en` : APP_URL
     const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!
     const user = await requireUser()
     if (!user) return
@@ -64,18 +76,18 @@ import Site from '../../layouts/Site.astro'
 
     // Telefonda önce uygulama, yoksa web uygulaması açılır
     const openApp = $<HTMLAnchorElement>('[data-open-app]')
-    openApp.href = APP_URL
+    openApp.href = appUrl
     if (/Android|iPhone|iPad/i.test(navigator.userAgent))
       openApp.addEventListener('click', (e) => {
         e.preventDefault()
-        const t = setTimeout(() => location.assign(APP_URL), 1200)
-        addEventListener('pagehide', () => clearTimeout(t), { once: true })
+        const timer = setTimeout(() => location.assign(appUrl), 1200)
+        addEventListener('pagehide', () => clearTimeout(timer), { once: true })
         location.assign(APP_SCHEME)
       })
 
     $('[data-signout]').addEventListener('click', async () => {
       await supa().auth.signOut()
-      location.assign('/')
+      location.assign(local('/'))
     })
 
     const done = new URLSearchParams(location.search).get('tamam') === '1'
@@ -90,23 +102,23 @@ import Site from '../../layouts/Site.astro'
       if (!s || !isLive(s)) {
         const granted = plan !== 'free'
         main.innerHTML = `
-          <div class="head"><h2>${granted ? `${plan === 'plusplus' ? 'Plus+' : 'Plus'} paketin açık` : 'Ücretsiz paket'}</h2>
-          ${granted ? '<span class="badge" data-tone="ok">Etkin</span>' : ''}</div>
-          <p class="muted">${granted ? 'Bu paket web aboneliğiyle değil, deneme ya da hediye olarak tanımlandı.' : 'Bütçe koçu, rota ve senaryolar için Plus ya da Plus+’a geç.'}</p>
-          <div class="btns"><a class="btn btn-route" href="/fiyatlar">Paketleri gör</a></div>`
+          <div class="head"><h2>${granted ? t(`${plan === 'plusplus' ? 'Plus+' : 'Plus'} paketin açık`, `Your ${plan === 'plusplus' ? 'Plus+' : 'Plus'} plan is active`) : t('Ücretsiz paket', 'Free plan')}</h2>
+          ${granted ? `<span class="badge" data-tone="ok">${t('Etkin', 'Active')}</span>` : ''}</div>
+          <p class="muted">${granted ? t('Bu paket web aboneliğiyle değil, deneme ya da hediye olarak tanımlandı.', 'This plan was granted as a trial or gift, not through a web subscription.') : t('Bütçe koçu, rota ve senaryolar için Plus ya da Plus+’a geç.', 'Switch to Plus or Plus+ for the budget coach, route and scenarios.')}</p>
+          <div class="btns"><a class="btn btn-route" href="${local('/fiyatlar')}">${t('Paketleri gör', 'See plans')}</a></div>`
         $('[data-change]').hidden = true
         return
       }
       const st = statusLine(s)
       main.innerHTML = `
-        <div class="head"><h2>${PLAN_LABEL[s.plan]} · ${PERIOD_LABEL[s.period]}</h2><span class="badge" data-tone="${st.tone}">${st.badge}</span></div>
+        <div class="head"><h2>${PLAN_LABEL[s.plan]} · ${periodLabel(s.period)}</h2><span class="badge" data-tone="${st.tone}">${st.badge}</span></div>
         <p>${esc(st.text)}</p>
         <div class="btns">
-          ${s.status === 'past_due' ? '<button class="btn btn-route" type="button" data-portal="payment">Kartımı güncelle</button>' : ''}
-          <button class="btn ${s.status === 'past_due' ? 'btn-ghost' : 'btn-route'}" type="button" data-portal="overview">Aboneliği yönet</button>
-          ${s.cancel_at ? '' : '<button class="btn btn-ghost" type="button" data-portal="cancel">İptal et</button>'}
+          ${s.status === 'past_due' ? `<button class="btn btn-route" type="button" data-portal="payment">${t('Kartımı güncelle', 'Update my card')}</button>` : ''}
+          <button class="btn ${s.status === 'past_due' ? 'btn-ghost' : 'btn-route'}" type="button" data-portal="overview">${t('Aboneliği yönet', 'Manage subscription')}</button>
+          ${s.cancel_at ? '' : `<button class="btn btn-ghost" type="button" data-portal="cancel">${t('İptal et', 'Cancel')}</button>`}
         </div>
-        <p class="small muted">Faturalarını, kartını ve iptal işlemini Paddle’ın güvenli sayfasında yönetirsin.</p>
+        <p class="small muted">${t('Faturalarını, kartını ve iptal işlemini Paddle’ın güvenli sayfasında yönetirsin.', 'You manage invoices, your card and cancellation on Paddle’s secure page.')}</p>
         <p class="notice" data-tone="danger" data-portal-msg role="alert"></p>`
       main.querySelectorAll<HTMLButtonElement>('[data-portal]').forEach((b) =>
         b.addEventListener('click', async () => {
@@ -114,7 +126,7 @@ import Site from '../../layouts/Site.astro'
           try {
             const r = await billing<{ url?: string; cancelUrl?: string; paymentUrl?: string }>({ action: 'portal' })
             const url = b.dataset.portal === 'cancel' ? r.cancelUrl : b.dataset.portal === 'payment' ? r.paymentUrl : r.url
-            if (!url) throw new Error('Yönetim sayfası açılamadı.')
+            if (!url) throw new Error(t('Yönetim sayfası açılamadı.', 'The management page could not be opened.'))
             location.assign(url)
           } catch (e) {
             main.querySelector('[data-portal-msg]')!.textContent = (e as Error).message
@@ -130,7 +142,7 @@ import Site from '../../layouts/Site.astro'
       const opts = prices.filter((p) => p.active && p.paddle_price_id && !(p.plan === s.plan && p.period === s.period))
       $('[data-change]').hidden = !opts.length || !!s.cancel_at || s.status === 'paused'
       $('[data-opts]').innerHTML = opts
-        .map((p) => `<button class="opt" type="button" data-plan="${p.plan}" data-period="${p.period}"><b>${PLAN_LABEL[p.plan]} · ${PERIOD_LABEL[p.period]}</b><span>${formatTl(p.amount_kurus)} / ${p.period === 'monthly' ? 'ay' : 'yıl'}</span></button>`)
+        .map((p) => `<button class="opt" type="button" data-plan="${p.plan}" data-period="${p.period}"><b>${PLAN_LABEL[p.plan]} · ${periodLabel(p.period)}</b><span>${formatTl(p.amount_kurus)} / ${p.period === 'monthly' ? t('ay', 'mo') : t('yıl', 'yr')}</span></button>`)
         .join('')
       $('[data-opts]')
         .querySelectorAll<HTMLButtonElement>('.opt')
@@ -143,21 +155,21 @@ import Site from '../../layouts/Site.astro'
             try {
               // Önce Paddle'dan bugünkü fark sorulur, kişi tutarı görüp onaylar
               const pv = await billing<{ action: string; amount_kurus: number; trialing: boolean }>({ action: 'preview', plan, period })
-              const name = `${PLAN_LABEL[plan]} · ${PERIOD_LABEL[period]}`
+              const name = `${PLAN_LABEL[plan]} · ${periodLabel(period)}`
               const cost = pv.trialing
-                ? 'Denemen sürüyor; bugün ücret alınmaz, yeni fiyat deneme bitince alınır.'
+                ? t('Denemen sürüyor; bugün ücret alınmaz, yeni fiyat deneme bitince alınır.', 'Your trial is still running; nothing is charged today and the new price applies when the trial ends.')
                 : pv.action === 'charge' && pv.amount_kurus > 0
-                  ? `Yenileme tarihine kalan süre için bugün ${formatTl(pv.amount_kurus)} fark alınır.`
+                  ? t(`Yenileme tarihine kalan süre için bugün ${formatTl(pv.amount_kurus)} fark alınır.`, `${formatTl(pv.amount_kurus)} is charged today for the time left until renewal.`)
                   : pv.action === 'credit' && pv.amount_kurus > 0
-                    ? `Kalan süren için ${formatTl(pv.amount_kurus)} sonraki ödemelerinden düşülür.`
-                    : 'Bugün ek ücret alınmaz.'
-              if (!confirm(`${name} paketine geçilsin mi?\n\n${cost}`)) {
+                    ? t(`Kalan süren için ${formatTl(pv.amount_kurus)} sonraki ödemelerinden düşülür.`, `${formatTl(pv.amount_kurus)} for your remaining time is deducted from your next payments.`)
+                    : t('Bugün ek ücret alınmaz.', 'No extra charge today.')
+              if (!confirm(t(`${name} paketine geçilsin mi?\n\n${cost}`, `Switch to ${name}?\n\n${cost}`))) {
                 b.disabled = false
                 return
               }
               await billing({ action: 'change', plan, period })
               msg.dataset.tone = 'ok'
-              msg.textContent = 'Paketin değişiyor. Birkaç saniye içinde burada görünecek.'
+              msg.textContent = t('Paketin değişiyor. Birkaç saniye içinde burada görünecek.', 'Your plan is changing. It will show here in a few seconds.')
               setTimeout(load, 4000)
             } catch (e) {
               msg.dataset.tone = 'danger'
@@ -172,13 +184,15 @@ import Site from '../../layouts/Site.astro'
     if (done) {
       const note = $('[data-done]')
       note.hidden = false
-      note.textContent = 'Ödemen alındı, teşekkürler! Paketin birkaç saniye içinde açılır.'
+      note.textContent = t('Ödemen alındı, teşekkürler! Paketin birkaç saniye içinde açılır.', 'Payment received, thank you! Your plan unlocks in a few seconds.')
       // Paddle bildirimi birkaç saniye sürebilir; abonelik görünene kadar kısa aralıklarla bakılır
       for (let i = 0; i < 10 && !isLive(sub); i++) {
         await new Promise((r) => setTimeout(r, 2500))
         sub = await load()
       }
-      note.textContent = isLive(sub) ? 'Ödemen alındı, paketin açıldı. Uygulamada aynı hesapla giriş yapman yeterli.' : 'Ödemen alındı. Paketin birkaç dakika içinde açılacak; bu sayfayı sonra yenileyebilirsin.'
+      note.textContent = isLive(sub)
+        ? t('Ödemen alındı, paketin açıldı. Uygulamada aynı hesapla giriş yapman yeterli.', 'Payment received and your plan is active. Just sign in to the app with the same account.')
+        : t('Ödemen alındı. Paketin birkaç dakika içinde açılacak; bu sayfayı sonra yenileyebilirsin.', 'Payment received. Your plan will unlock within a few minutes; you can refresh this page later.')
     }
   }
   document.addEventListener('astro:page-load', init)

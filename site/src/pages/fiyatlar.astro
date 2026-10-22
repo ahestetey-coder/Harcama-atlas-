@@ -1,54 +1,66 @@
 ---
 import Site from '../layouts/Site.astro'
 import PriceCards from '../components/PriceCards.astro'
-import { COMPARISON, PLANS } from '../data/plans'
+import { COMPARISON, plansFor } from '../data/plans'
+import { langOf, translator } from '../lib/i18n'
 
+const lang = langOf(Astro.url.pathname)
+const t = translator(lang)
+const PLANS = plansFor(lang)
 const billing = [
-  { q: 'Web’den aldığım paket uygulamada açılır mı?', a: 'Evet. Aynı hesapla giriş yaptığın iOS, Android ve web uygulamasında paketin kendiliğinden açılır.' },
-  { q: 'Mağazadan aldığım aboneliği buradan yönetebilir miyim?', a: 'App Store veya Google Play’den aldığın abonelik o mağazadan yönetilir. Hesabım sayfası seni doğru yere yönlendirir.' },
-  { q: '7 günlük deneme nasıl işler?', a: 'Plus ve Plus+ 7 gün ücretsiz denenir; bu sürede paketin bütün özellikleri açıktır. Deneme bitmeden iptal edersen ücret alınmaz. Deneme kişi başına bir kezdir.' },
-  { q: 'İptal edersem ne olur?', a: 'Dönem sonuna kadar paketini kullanmaya devam edersin; sonra hesabın Ücretsiz pakete döner, verilerin silinmez.' },
+  { q: t('Web’den aldığım paket uygulamada açılır mı?', 'Does a plan bought on the web unlock in the app?'), a: t('Evet. Aynı hesapla giriş yaptığın iOS, Android ve web uygulamasında paketin kendiliğinden açılır.', 'Yes. Your plan unlocks automatically in the iOS, Android and web app when you sign in with the same account.') },
+  { q: t('Mağazadan aldığım aboneliği buradan yönetebilir miyim?', 'Can I manage a store subscription here?'), a: t('App Store veya Google Play’den aldığın abonelik o mağazadan yönetilir. Hesabım sayfası seni doğru yere yönlendirir.', 'A subscription bought on the App Store or Google Play is managed in that store. The My account page points you to the right place.') },
+  { q: t('7 günlük deneme nasıl işler?', 'How does the 7-day trial work?'), a: t('Plus ve Plus+ 7 gün ücretsiz denenir; bu sürede paketin bütün özellikleri açıktır. Deneme bitmeden iptal edersen ücret alınmaz. Deneme kişi başına bir kezdir.', 'Plus and Plus+ can be tried free for 7 days with every feature unlocked. Cancel before the trial ends and you are not charged. One trial per person.') },
+  { q: t('İptal edersem ne olur?', 'What happens if I cancel?'), a: t('Dönem sonuna kadar paketini kullanmaya devam edersin; sonra hesabın Ücretsiz pakete döner, verilerin silinmez.', 'You keep your plan until the end of the period; then your account returns to Free and your data is kept.') },
 ]
 ---
 
-<Site title="Fiyatlar · Harcama Atlası" description="Ücretsiz, Plus ve Plus+ paketlerini karşılaştır. Yıllık ödemede indirim, Plus ve Plus+ için 7 gün ücretsiz deneme.">
+<Site
+  title={t('Fiyatlar · Harcama Atlası', 'Pricing · Harcama Atlası')}
+  description={t('Ücretsiz, Plus ve Plus+ paketlerini karşılaştır. Yıllık ödemede indirim, Plus ve Plus+ için 7 gün ücretsiz deneme.', 'Compare the Free, Plus and Plus+ plans. A discount for yearly billing and a 7-day free trial of Plus and Plus+.')}
+>
   <section class="wrap head">
-    <p class="eyebrow reveal">Fiyatlar</p>
-    <h1 class="h-display reveal" style="--d:1">Rotana uygun <span class="accent">paketi</span> seç</h1>
-    <p class="lead reveal" style="--d:2">Harcama takibi her zaman ücretsiz. Gerçek rakamlarla rotanı netleştirmek ve koçla ilerlemek istediğinde yükselt.</p>
+    <p class="eyebrow reveal">{t('Fiyatlar', 'Pricing')}</p>
+    {
+      lang === 'en' ? (
+        <h1 class="h-display reveal" style="--d:1">Pick the <span class="accent">plan</span> that fits your route</h1>
+      ) : (
+        <h1 class="h-display reveal" style="--d:1">Rotana uygun <span class="accent">paketi</span> seç</h1>
+      )
+    }
+    <p class="lead reveal" style="--d:2">{t('Harcama takibi her zaman ücretsiz. Gerçek rakamlarla rotanı netleştirmek ve koçla ilerlemek istediğinde yükselt.', 'Spending tracking is always free. Upgrade when you want to sharpen your route with real numbers and move forward with the coach.')}</p>
   </section>
 
   <section class="wrap">
     <PriceCards level={2} />
-    <p class="fine reveal">Fiyatlara KDV dahildir. İstediğin zaman iptal edebilirsin.</p>
+    <p class="fine reveal">{t('Fiyatlara KDV dahildir. İstediğin zaman iptal edebilirsin.', 'Prices include VAT. Cancel any time.')}</p>
   </section>
 
   <section class="wrap refine">
     <div class="refine-card card reveal">
       <div>
-        <span class="chip chip-route">Plus ile açılır</span>
-        <h2>Rotamı netleştir</h2>
+        <span class="chip chip-route">{t('Plus ile açılır', 'Unlocks with Plus')}</span>
+        <h2>{t('Rotamı netleştir', 'Sharpen my route')}</h2>
         <p>
-          Web’deki Finansal Harita testi sana tahmini bir rota çizer. Plus ile uygulamadaki gerçek gelir, gider, borç ve birikim kayıtların hesaba girer:
-          kesin özgürlük yılını, borçsuz kalacağın ayı ve sıradaki durağını görürsün.
+          {t('Web’deki Finansal Harita testi sana tahmini bir rota çizer. Plus ile uygulamadaki gerçek gelir, gider, borç ve birikim kayıtların hesaba girer: kesin özgürlük yılını, borçsuz kalacağın ayı ve sıradaki durağını görürsün.', 'The Financial Map test on the web draws you an estimated route. With Plus, your real income, expense, debt and savings records in the app are used: you see your exact freedom year, the month you become debt-free and your next stop.')}
         </p>
       </div>
-      <ol class="mini-route" aria-label="Netleştirme adımları">
-        <li><b>Test</b><span>Tahmini rota</span></li>
-        <li><b>Gerçek kayıtlar</b><span>Gelir, gider, borç</span></li>
-        <li class="end"><b>Net rota</b><span>Kesin tarih ve durak</span></li>
+      <ol class="mini-route" aria-label={t('Netleştirme adımları', 'Sharpening steps')}>
+        <li><b>Test</b><span>{t('Tahmini rota', 'Estimated route')}</span></li>
+        <li><b>{t('Gerçek kayıtlar', 'Real records')}</b><span>{t('Gelir, gider, borç', 'Income, expenses, debt')}</span></li>
+        <li class="end"><b>{t('Net rota', 'Clear route')}</b><span>{t('Kesin tarih ve durak', 'Exact date and stop')}</span></li>
       </ol>
     </div>
   </section>
 
   <section class="wrap compare">
-    <h2 class="h-section reveal">Bütün özellikler</h2>
+    <h2 class="h-section reveal">{t('Bütün özellikler', 'All features')}</h2>
     <div class="table-wrap reveal">
       <table>
-        <caption class="sr">Paketlerin özellik karşılaştırması</caption>
+        <caption class="sr">{t('Paketlerin özellik karşılaştırması', 'Plan feature comparison')}</caption>
         <thead>
           <tr>
-            <th scope="col"><span class="sr">Özellik</span></th>
+            <th scope="col"><span class="sr">{t('Özellik', 'Feature')}</span></th>
             {PLANS.map((p) => <th scope="col">{p.name}</th>)}
           </tr>
         </thead>
@@ -57,18 +69,18 @@ const billing = [
             <tbody>
               <tr class="group">
                 <th scope="colgroup" colspan="4">
-                  {g.group}
+                  {t(g.group, g.en)}
                 </th>
               </tr>
               {g.rows.map((r) => (
                 <tr class:list={[{ key: r.key }]}>
-                  <th scope="row">{r.label}</th>
+                  <th scope="row">{t(r.label, r.en)}</th>
                   {r.values.map((v) => (
                     <td>
                       {v === true ? (
-                        <span class="yes" role="img" aria-label="Var" />
+                        <span class="yes" role="img" aria-label={t('Var', 'Included')} />
                       ) : v === false ? (
-                        <span class="no" role="img" aria-label="Yok" />
+                        <span class="no" role="img" aria-label={t('Yok', 'Not included')} />
                       ) : (
                         v
                       )}
@@ -84,7 +96,7 @@ const billing = [
   </section>
 
   <section class="wrap billing">
-    <h2 class="h-section reveal">Ödeme ve abonelik</h2>
+    <h2 class="h-section reveal">{t('Ödeme ve abonelik', 'Billing and subscription')}</h2>
     <div class="b-grid">
       {
         billing.map((b, i) => (

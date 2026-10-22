@@ -1,0 +1,107 @@
+---
+import Legal from '../../../layouts/Legal.astro'
+import Fill from '../../../components/Fill.astro'
+---
+
+<Legal title="KVKK Privacy Notice" description="Why and on what legal basis Harcama Atlası processes your personal data, and your rights under Turkish Law No. 6698.">
+  <p>
+    This notice has been prepared under Article 10 of Turkish Personal Data Protection Law No. 6698 (“KVKK”) and the Communiqué on the Procedures and Principles for Fulfilling
+    the Obligation to Inform, to inform users of the Harcama Atlası website, web app and mobile apps (the “Service”).
+  </p>
+
+  <h2>1. Data controller</h2>
+  <p>
+    <Fill k="unvan" label="Şirket unvanı" />, <Fill k="adres" label="Açık adres" /> (MERSIS: <Fill k="mersis" label="MERSİS no" />). Contact:
+    <Fill k="eposta" label="E-posta" />, KEP: <Fill k="kep" label="KEP adresi" />.
+  </p>
+
+  <h2>2. Personal data processed</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Data</th></tr></thead>
+    <tbody>
+      <tr><td>Identity and contact</td><td>Name, email address; when signing in with Google, the name and email Google shares.</td></tr>
+      <tr><td>Account security</td><td>An irreversible hash of your password, sign-in and session records, account creation and last sign-in time.</td></tr>
+      <tr>
+        <td>Financial records (entered by you)</td>
+        <td>Expense, income and refund records, categories, groups, budget, recurring payments, debts, goals, assets and settings.</td>
+      </tr>
+      <tr><td>Test and coach</td><td>Financial Map test answers and result; on Plus+, the messages you send the coach and its replies.</td></tr>
+      <tr><td>Shared groups</td><td>Expenses you add to a group, memberships, invitations and expense splits.</td></tr>
+      <tr>
+        <td>Subscription and payment</td>
+        <td>Plan, period, subscription status, payment amount and date, customer and subscription numbers at the payment provider. Card details never reach us.</td>
+      </tr>
+      <tr><td>Transaction security</td><td>IP address, browser information and server logs (technical logs of hosting providers).</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Statements, PDFs and screenshots you upload are read on your device; the files themselves are not sent to or stored on servers. Only the transaction rows you approve are
+    saved. We never ask for your full card number, CVV or bank password.
+  </p>
+
+  <h2>3. Purposes and legal grounds</h2>
+  <ul>
+    <li>
+      <strong>Opening your account, storing your records and syncing them across devices, running shared groups, managing your subscription:</strong> formation and performance
+      of a contract (KVKK Art. 5/2-c).
+    </li>
+    <li><strong>Retention obligations under invoicing, tax and consumer law:</strong> expressly provided by law and legal obligation (Art. 5/2-a and ç).</li>
+    <li><strong>Security of the Service, preventing abuse, fixing errors:</strong> legitimate interest (Art. 5/2-f).</li>
+    <li><strong>Protecting our rights in legal claims:</strong> establishment, exercise or protection of a right (Art. 5/2-e).</li>
+    <li>
+      <strong>Website visit statistics and marketing emails:</strong> only with your <a href="/en/legal/explicit-consent">explicit consent</a> (Art. 5/1). No marketing emails
+      are currently sent.
+    </li>
+  </ul>
+  <p>Your financial records are never used for advertising, profiling or sale.</p>
+
+  <h2>4. Collection method</h2>
+  <p>
+    Data is collected electronically through sign-up forms, information you enter in the app, the Financial Map test, subscription notifications from the payment provider and
+    automatic logs of hosting providers.
+  </p>
+
+  <h2>5. Transfers</h2>
+  <p>Your personal data is transferred only to the following service providers, and only as far as needed to run the Service:</p>
+  <table>
+    <thead><tr><th>Recipient</th><th>Purpose</th><th>Location</th></tr></thead>
+    <tbody>
+      <tr><td>Supabase</td><td>Database, accounts, syncing, verification emails</td><td>Germany (Frankfurt)</td></tr>
+      <tr><td>Paddle.com Market Ltd</td><td>Taking payment as merchant of record, invoicing and subscriptions</td><td>United Kingdom</td></tr>
+      <tr><td>OpenAI</td><td>Generating the Plus+ coach’s replies (name and email are not sent)</td><td>USA</td></tr>
+      <tr><td>PostHog</td><td>Website visit statistics, only if you consent</td><td>EU (Germany)</td></tr>
+      <tr><td>Cloudflare, GitHub</td><td>Hosting the website and web app</td><td>USA and global network</td></tr>
+      <tr><td>Google</td><td>Authentication, only if you choose to sign in with Google</td><td>USA</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Transfers abroad are made in line with Article 9 of the KVKK, using standard contracts announced by the Board or other safeguards listed in the law. Information may also be
+    shared with competent public authorities where legally required.
+  </p>
+
+  <h2>6. Retention periods</h2>
+  <ul>
+    <li>Account and financial records: as long as your account is open. When you delete your account they are deleted from the cloud immediately and permanently.</li>
+    <li>Subscription and payment records: for the periods set by tax and commercial law (up to 10 years).</li>
+    <li>Financial Map tests taken on the web and never linked to an account: up to 12 months.</li>
+    <li>Server and security logs: for the providers’ technical retention periods, up to 1 year.</li>
+  </ul>
+
+  <h2>7. Your rights (KVKK Art. 11)</h2>
+  <p>By applying to the data controller, you have the right to:</p>
+  <ul>
+    <li>learn whether your personal data is processed and, if so, request information about it,</li>
+    <li>learn the purpose of processing and whether data is used in line with that purpose,</li>
+    <li>know the third parties in Turkey or abroad to whom data is transferred,</li>
+    <li>request correction of incomplete or inaccurate data, deletion or destruction under the conditions of KVKK Art. 7, and notification of these actions to recipients,</li>
+    <li>object to an outcome against you arising solely from analysis by automated systems,</li>
+    <li>claim compensation for damage caused by unlawful processing.</li>
+  </ul>
+
+  <h2>8. How to apply</h2>
+  <p>
+    You can send your request with information verifying your identity to <Fill k="eposta" label="E-posta" /> from your account’s email address, via KEP to
+    <Fill k="kep" label="KEP adresi" />, or in writing to <Fill k="adres" label="Açık adres" />. Requests are concluded free of charge within 30 days at the latest. You can
+    also delete your account or reset your data yourself in the app under Settings &gt; Delete data.
+  </p>
+</Legal>

@@ -1,5 +1,6 @@
 ---
-import { PLANS, formatTl, yearlyKurus, YEARLY_DISCOUNT } from '../data/plans'
+import { plansFor, formatTl as fmtTl, yearlyKurus, YEARLY_DISCOUNT } from '../data/plans'
+import { langOf, localize, translator } from '../lib/i18n'
 interface Props {
   compact?: boolean
   /** Paket adlarının başlık düzeyi; sayfada üstte h2 yoksa 2 */
@@ -8,18 +9,23 @@ interface Props {
 const { compact = false, level = 3 } = Astro.props
 const H = `h${level}` as 'h2' | 'h3'
 const pct = Math.round(YEARLY_DISCOUNT * 100)
+const lang = langOf(Astro.url.pathname)
+const t = translator(lang)
+const formatTl = (k: number) => fmtTl(k, lang)
+const PLANS = plansFor(lang)
+const checkout = localize('/odeme', lang)
 ---
 
-<div class="prices" data-period="monthly">
-  <div class="toggle" role="group" aria-label="Ödeme dönemi">
-    <button type="button" data-set="monthly" aria-pressed="true">Aylık</button>
-    <button type="button" data-set="yearly" aria-pressed="false">Yıllık <span class="chip chip-route">%{pct} indirim</span></button>
+<div class="prices" data-period="monthly" data-checkout={checkout}>
+  <div class="toggle" role="group" aria-label={t('Ödeme dönemi', 'Billing period')}>
+    <button type="button" data-set="monthly" aria-pressed="true">{t('Aylık', 'Monthly')}</button>
+    <button type="button" data-set="yearly" aria-pressed="false">{t('Yıllık', 'Yearly')} <span class="chip chip-route">{t(`%${pct} indirim`, `${pct}% off`)}</span></button>
   </div>
   <div class="grid">
     {
       PLANS.map((p, i) => (
         <article class:list={['plan card reveal', { featured: p.id === 'plus' }]} style={`--d:${i}`}>
-          {p.id === 'plus' && <span class="badge">En çok seçilen</span>}
+          {p.id === 'plus' && <span class="badge">{t('En çok seçilen', 'Most popular')}</span>}
           <H class="plan-name">{p.name}</H>
           <p class="tag">{p.tagline}</p>
           <p class="price">
@@ -29,12 +35,12 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
               <>
                 <span class="m">
                   <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:monthly`}>{formatTl(p.monthlyKurus)}</span>
-                  <span class="per">/ay</span>
+                  <span class="per">{t('/ay', '/mo')}</span>
                 </span>
                 <span class="y">
                   <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>{formatTl(yearlyKurus(p.monthlyKurus))}</span>
-                  <span class="per">/yıl</span>
-                  <span class="sub" data-live-sub={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>Aylık {formatTl(Math.round(yearlyKurus(p.monthlyKurus) / 12))} gibi</span>
+                  <span class="per">{t('/yıl', '/yr')}</span>
+                  <span class="sub" data-live-sub={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>{t(`Aylık ${formatTl(Math.round(yearlyKurus(p.monthlyKurus) / 12))} gibi`, `About ${formatTl(Math.round(yearlyKurus(p.monthlyKurus) / 12))} a month`)}</span>
                 </span>
               </>
             )}
@@ -47,12 +53,12 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
             </ul>
           )}
           {p.id === 'free' ? (
-            <a class="btn btn-ghost" href="/test">
-              Ücretsiz başla
+            <a class="btn btn-ghost" href={localize('/test', lang)}>
+              {t('Ücretsiz başla', 'Start free')}
             </a>
           ) : (
-            <a class:list={['btn', { 'btn-route': p.id === 'plus' }, { 'btn-ghost': p.id !== 'plus' }]} data-plan={p.id} href={`/odeme?plan=${p.id}&period=monthly`}>
-              {p.trial ?? `${p.name}'a geç`} <span class="arr" aria-hidden="true">→</span>
+            <a class:list={['btn', { 'btn-route': p.id === 'plus' }, { 'btn-ghost': p.id !== 'plus' }]} data-plan={p.id} href={`${checkout}?plan=${p.id}&period=monthly`}>
+              {p.trial ?? t(`${p.name}'a geç`, `Switch to ${p.name}`)} <span class="arr" aria-hidden="true">→</span>
             </a>
           )}
         </article>
@@ -63,11 +69,10 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
 
 <script>
   import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../lib/config'
+  import { formatTl } from '../data/plans'
+  import { pageLang } from '../lib/i18n'
 
   type Row = { plan: string; period: string; amount_kurus: number }
-  const tl = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  const tl0 = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 })
-  const fmt = (k: number) => (k % 100 === 0 ? tl0 : tl).format(k / 100)
   let cache: Promise<Row[]> | null = null
 
   // Güncel fiyatlar yönetici panelinden gelir; okunamazsa sayfadaki fiyatlar kalır
@@ -80,10 +85,12 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
 
   async function applyLive() {
     const rows = await livePrices()
+    const lang = pageLang()
+    const fmt = (k: number) => formatTl(k, lang)
     for (const r of rows) {
       const key = `${r.plan}:${r.period}`
       document.querySelectorAll<HTMLElement>(`[data-live="${key}"]`).forEach((el) => (el.textContent = fmt(r.amount_kurus)))
-      document.querySelectorAll<HTMLElement>(`[data-live-sub="${key}"]`).forEach((el) => (el.textContent = `Aylık ${fmt(Math.round(r.amount_kurus / 12))} gibi`))
+      document.querySelectorAll<HTMLElement>(`[data-live-sub="${key}"]`).forEach((el) => (el.textContent = lang === 'en' ? `About ${fmt(Math.round(r.amount_kurus / 12))} a month` : `Aylık ${fmt(Math.round(r.amount_kurus / 12))} gibi`))
     }
   }
 
@@ -95,7 +102,7 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
           const period = b.dataset.set!
           root.dataset.period = period
           root.querySelectorAll('[data-set]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
-          root.querySelectorAll<HTMLAnchorElement>('a[data-plan]').forEach((a) => (a.href = `/odeme?plan=${a.dataset.plan}&period=${period}`))
+          root.querySelectorAll<HTMLAnchorElement>('a[data-plan]').forEach((a) => (a.href = `${root.dataset.checkout}?plan=${a.dataset.plan}&period=${period}`))
         }),
       )
     })
