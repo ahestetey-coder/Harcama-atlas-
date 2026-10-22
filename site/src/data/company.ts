@@ -20,5 +20,7 @@ export const COMPANY = {
 /** Metinlerin son güncellenme tarihi */
 export const LEGAL_UPDATED = '22 Ekim 2026'
 
-/** Hukuki inceleme tamamlanınca false yapılır; taslak uyarısı kalkar. */
-export const LEGAL_DRAFT = true
+/**
+ * true olursa sayfalarda "taslak" uyarısı görünür. Hukuki inceleme notu sayfada değil site/README.md'dedir.
+ */
+export const LEGAL_DRAFT = false

@@ -1,0 +1,106 @@
+---
+import { POSTHOG_KEY } from '../lib/config'
+---
+
+{
+  POSTHOG_KEY && (
+    <div class="consent" role="dialog" aria-live="polite" aria-label="Çerez tercihi" data-consent hidden transition:persist>
+      <p>
+        Siteyi geliştirmek için ziyaret istatistiği tutmak istiyoruz. Onay vermezsen yalnızca sitenin çalışması için gerekenler kullanılır.
+        <a href="/yasal/cerez">Ayrıntılar</a>
+      </p>
+      <div class="btns">
+        <button class="btn btn-sm btn-ghost" type="button" data-consent-choice="no">Reddet</button>
+        <button class="btn btn-sm" type="button" data-consent-choice="yes">Kabul et</button>
+      </div>
+    </div>
+  )
+}
+
+<script>
+  import { CONSENT_KEY, POSTHOG_HOST, POSTHOG_KEY } from '../lib/config'
+
+  type Choice = 'yes' | 'no'
+  const read = (): Choice | null => {
+    try {
+      const v = localStorage.getItem(CONSENT_KEY)
+      return v === 'yes' || v === 'no' ? v : null
+    } catch {
+      return null
+    }
+  }
+
+  let started = false
+  async function startAnalytics() {
+    if (started || !POSTHOG_KEY) return
+    started = true
+    // Kütüphane yalnızca onaydan sonra indirilir
+    const { default: posthog } = await import('posthog-js')
+    posthog.init(POSTHOG_KEY, { api_host: POSTHOG_HOST, person_profiles: 'identified_only', capture_pageview: 'history_change', disable_session_recording: true })
+  }
+
+  function init() {
+    const box = document.querySelector<HTMLElement>('[data-consent]')
+    if (!POSTHOG_KEY || !box) return
+    const choice = read()
+    if (choice === 'yes') startAnalytics()
+    box.hidden = choice !== null
+    box.querySelectorAll<HTMLButtonElement>('[data-consent-choice]').forEach((b) => {
+      b.onclick = () => {
+        const v = b.dataset.consentChoice as Choice
+        try {
+          localStorage.setItem(CONSENT_KEY, v)
+        } catch { /* kaydedilemedi; seçim bu ziyarette geçerli */ }
+        box.hidden = true
+        if (v === 'yes') startAnalytics()
+        else if (started) location.reload()
+      }
+    })
+    // Alt bilgideki "Çerez tercihleri" kutuyu yeniden açar
+    document.querySelectorAll<HTMLElement>('[data-consent-open]').forEach((a) => {
+      a.hidden = false
+      a.onclick = (e) => {
+        e.preventDefault()
+        box.hidden = false
+      }
+    })
+  }
+  document.addEventListener('astro:page-load', init)
+</script>
+
+<style>
+  .consent {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 60;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    max-width: 44rem;
+    margin-inline: auto;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--card);
+    box-shadow: var(--shadow);
+  }
+  .consent[hidden] {
+    display: none;
+  }
+  .consent p {
+    flex: 1 1 18rem;
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--ink-2);
+  }
+  .consent a {
+    color: var(--route);
+  }
+  .btns {
+    display: flex;
+    gap: 0.5rem;
+  }
+</style>

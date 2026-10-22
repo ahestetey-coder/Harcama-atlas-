@@ -3,7 +3,11 @@ import '@fontsource-variable/plus-jakarta-sans'
 import '@fontsource-variable/inter'
 import '../styles/site.css'
 import { ClientRouter } from 'astro:transitions'
+// Başlık yazı tipleri erken indirilir; büyük başlık yazı tipini beklerken boyanmıyordu (LCP)
+import jakartaLatin from '@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2?url'
+import jakartaLatinExt from '@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-ext-wght-normal.woff2?url'
 import Brand from '../components/Brand.astro'
+import Consent from '../components/Consent.astro'
 
 interface Props {
   title: string
@@ -60,6 +64,7 @@ const nav = [
     <link rel="alternate" type="application/rss+xml" title="Harcama Atlası Blog" href="/blog/rss.xml" />
     <meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0d1722" media="(prefers-color-scheme: dark)" />
+    {[jakartaLatin, jakartaLatinExt].map((href) => <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />)}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script is:inline>
@@ -139,6 +144,7 @@ const nav = [
         <nav aria-label="Yasal">
           <h2>Yasal</h2>
           <a href="/yasal/kvkk">KVKK Aydınlatma Metni</a>
+          <a href="/yasal/acik-riza">Açık Rıza Metni</a>
           <a href="/yasal/gizlilik">Gizlilik Politikası</a>
           <a href="/yasal/cerez">Çerez Politikası</a>
           <a href="/yasal/kullanim-kosullari">Kullanım Koşulları</a>
@@ -147,8 +153,9 @@ const nav = [
           <a href="/yasal/iptal-iade">İptal ve İade</a>
         </nav>
       </div>
-      <div class="wrap copy">© 2026 Harcama Atlası</div>
+      <div class="wrap copy">© 2026 Harcama Atlası <a href="/yasal/cerez" data-consent-open hidden>Çerez tercihleri</a></div>
     </footer>
+    <Consent />
   </body>
 </html>
 
@@ -436,6 +443,10 @@ const nav = [
   }
   .foot-grid nav a:hover {
     color: var(--route);
+  }
+  .copy a {
+    margin-left: 1rem;
+    color: inherit;
   }
   .copy {
     margin-top: 3rem;

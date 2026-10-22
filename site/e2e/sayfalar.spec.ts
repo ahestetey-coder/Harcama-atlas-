@@ -79,11 +79,11 @@ test('test sayfası uygulamadaki testi gömülü modda açar', async ({ page }) 
   await expect(page.getByRole('link', { name: 'yeni sekmede aç' })).toHaveAttribute('href', /#\/harita$/)
 })
 
-test('yasal sayfalar: taslak uyarısı ve doldurulacak alanlar', async ({ page }) => {
-  for (const slug of ['kvkk', 'gizlilik', 'cerez', 'kullanim-kosullari', 'on-bilgilendirme', 'mesafeli-satis', 'iptal-iade']) {
+test('yasal sayfalar açılır, doldurulacak alanlar işaretli', async ({ page }) => {
+  for (const slug of ['kvkk', 'acik-riza', 'gizlilik', 'cerez', 'kullanim-kosullari', 'on-bilgilendirme', 'mesafeli-satis', 'iptal-iade']) {
     const res = await page.goto(`/yasal/${slug}/`)
     expect(res?.status()).toBe(200)
-    await expect(page.getByRole('note')).toContainText('taslak')
+    await expect(page.locator('h1')).toHaveCount(1)
   }
   await expect(page.locator('.fill').first()).toBeVisible()
 })
@@ -103,4 +103,12 @@ test('SEO: canonical, paylaşım görseli, site haritası ve blog', async ({ pag
   await page.getByRole('link', { name: /50\/30\/20 kuralı/ }).click()
   await expect(page.locator('h1')).toHaveText(/50\/30\/20/)
   await expect(page.getByRole('link', { name: 'Paketleri gör' })).toHaveAttribute('href', '/fiyatlar')
+})
+
+test('analitik anahtarı yokken çerez kutusu çıkmaz ve PostHog yüklenmez', async ({ page }) => {
+  const ph: string[] = []
+  page.on('request', (r) => /posthog/.test(r.url()) && ph.push(r.url()))
+  await page.goto('/')
+  await expect(page.getByRole('dialog', { name: 'Çerez tercihi' })).toHaveCount(0)
+  expect(ph).toEqual([])
 })

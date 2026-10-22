@@ -2,8 +2,11 @@
 import { PLANS, formatTl, yearlyKurus, YEARLY_DISCOUNT } from '../data/plans'
 interface Props {
   compact?: boolean
+  /** Paket adlarının başlık düzeyi; sayfada üstte h2 yoksa 2 */
+  level?: 2 | 3
 }
-const { compact = false } = Astro.props
+const { compact = false, level = 3 } = Astro.props
+const H = `h${level}` as 'h2' | 'h3'
 const pct = Math.round(YEARLY_DISCOUNT * 100)
 ---
 
@@ -17,7 +20,7 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
       PLANS.map((p, i) => (
         <article class:list={['plan card reveal', { featured: p.id === 'plus' }]} style={`--d:${i}`}>
           {p.id === 'plus' && <span class="badge">En çok seçilen</span>}
-          <h3>{p.name}</h3>
+          <H class="plan-name">{p.name}</H>
           <p class="tag">{p.tagline}</p>
           <p class="price">
             {p.monthlyKurus === 0 ? (
@@ -149,7 +152,7 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
     color: var(--band-ink);
     border-color: transparent;
   }
-  .plan.featured h3 {
+  .plan.featured .plan-name {
     color: var(--band-ink);
   }
   .plan.featured .tag,
@@ -169,7 +172,7 @@ const pct = Math.round(YEARLY_DISCOUNT * 100)
     font-size: 0.75rem;
     font-weight: 700;
   }
-  h3 {
+  .plan-name {
     margin: 0;
     font-size: 1.35rem;
     font-weight: 800;

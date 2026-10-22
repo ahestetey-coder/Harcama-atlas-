@@ -12,6 +12,7 @@ import Legal from '../../layouts/Legal.astro'
   <table>
     <thead><tr><th>Ad</th><th>Tür</th><th>Amaç</th><th>Süre</th></tr></thead>
     <tbody>
+      <tr><td>ha-cerez-onayi</td><td>Zorunlu (tercih)</td><td>Analitik için verdiğin onayı ya da reddi hatırlamak</td><td>Siz silene kadar</td></tr>
       <tr><td>ha-site-theme</td><td>Zorunlu (tercih)</td><td>Seçtiğiniz açık veya koyu temayı hatırlamak</td><td>Siz silene kadar</td></tr>
       <tr><td>sb-…-auth-token</td><td>Zorunlu</td><td>Giriş yaptıysanız oturumunuzu açık tutmak</td><td>Çıkış yapana kadar</td></tr>
       <tr><td>Uygulama veritabanı (IndexedDB)</td><td>Zorunlu</td><td>Kayıtlarınızın cihazda tutulması ve çevrimdışı çalışma</td><td>Siz silene kadar</td></tr>
@@ -19,12 +20,13 @@ import Legal from '../../layouts/Legal.astro'
       <tr><td>Cloudflare</td><td>Zorunlu (üçüncü taraf)</td><td>Siteyi saldırılara karşı korumak</td><td>Oturum boyunca</td></tr>
     </tbody>
   </table>
-  <p>Zorunlu çerezler için onay gerekmez. Reklam veya takip çerezi kullanmıyoruz.</p>
+  <p>Zorunlu çerezler için onay gerekmez. Reklam çerezi kullanmıyoruz.</p>
 
-  <h2>Analiz çerezleri</h2>
+  <h2>Analiz çerezleri (yalnızca onayla)</h2>
   <p>
-    İleride siteyi geliştirmek için ziyaret istatistikleri tutmaya karar verirsek, bunları yalnızca açık onayınızla, sayfa altında çıkacak bir seçimle etkinleştireceğiz ve
-    bu tabloyu güncelleyeceğiz.
+    Siteyi geliştirmek için PostHog (AB sunucusu) ile ziyaret istatistiği tutabiliriz: hangi sayfaların açıldığı, nereden gelindiği, cihaz ve tarayıcı türü. Bu ölçüm
+    yalnızca ekranın altındaki kutuda “Kabul et” dersen başlar ve <code>ph_…</code> adlı çerez ile tarayıcı depolamasını kullanır (en fazla 1 yıl). Oturum kaydı yapılmaz,
+    uygulamadaki finansal kayıtların ölçüme dahil edilmez. Kararını sayfa altındaki “Çerez tercihleri” bağlantısından istediğin an değiştirebilirsin.
   </p>
 
   <h2>Yönetmek</h2>

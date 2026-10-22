@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro'
 import { publishedPosts } from '../lib/blog'
 
 /** Arama motorlarına açık sayfalar. Giriş, ödeme ve hesap sayfaları noindex olduğu için yoktur. */
-const STATIC = ['/', '/fiyatlar/', '/nasil-kullanilir/', '/test/', '/blog/', '/yasal/kvkk/', '/yasal/gizlilik/', '/yasal/cerez/', '/yasal/kullanim-kosullari/', '/yasal/on-bilgilendirme/', '/yasal/mesafeli-satis/', '/yasal/iptal-iade/']
+const STATIC = ['/', '/fiyatlar/', '/nasil-kullanilir/', '/test/', '/blog/', '/yasal/kvkk/', '/yasal/acik-riza/', '/yasal/gizlilik/', '/yasal/cerez/', '/yasal/kullanim-kosullari/', '/yasal/on-bilgilendirme/', '/yasal/mesafeli-satis/', '/yasal/iptal-iade/']
 
 export const GET: APIRoute = async ({ site }) => {
   const base = site!.href.replace(/\/$/, '')

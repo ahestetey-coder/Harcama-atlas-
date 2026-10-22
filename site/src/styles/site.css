@@ -206,11 +206,11 @@ a {
   font-size: 0.75rem;
   font-weight: 700;
   background: var(--brand-soft);
-  color: var(--brand);
+  color: color-mix(in oklab, var(--brand) 78%, var(--ink));
 }
 .chip-route {
   background: var(--route-soft);
-  color: var(--route);
+  color: color-mix(in oklab, var(--route) 78%, var(--ink));
 }
 
 .card {
@@ -250,6 +250,11 @@ a {
 .js .reveal.in {
   opacity: 1;
   transform: none;
+}
+/* Sayfa başlığı ve giriş cümlesi en büyük görünür öğedir: saydamlıkla gizlenmez, yalnızca kayar (LCP) */
+.js h1.reveal,
+.js h1.reveal + .lead.reveal {
+  opacity: 1;
 }
 
 @keyframes drift {
@@ -388,6 +393,8 @@ a {
 }
 .prose a {
   color: var(--route);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 .prose ul,
 .prose ol {

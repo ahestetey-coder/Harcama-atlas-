@@ -14,7 +14,8 @@ const loading = eager ? 'eager' : 'lazy'
 <figure class:list={['phone', cls]}>
   <div class="screen">
     <img class:list={[{ 'only-light': !!dark }]} src={`/screenshots/${light}.webp`} alt={alt} width="560" height="1212" loading={loading} decoding="async" />
-    {dark && <img class="only-dark" src={`/screenshots/${dark}.webp`} alt={alt} width="560" height="1212" loading={loading} decoding="async" />}
+    {/* Koyu görsel her zaman tembel yüklenir: açık temada gizli olduğu için hiç indirilmez */}
+    {dark && <img class="only-dark" src={`/screenshots/${dark}.webp`} alt={alt} width="560" height="1212" loading="lazy" decoding="async" />}
     <slot />
   </div>
 </figure>
