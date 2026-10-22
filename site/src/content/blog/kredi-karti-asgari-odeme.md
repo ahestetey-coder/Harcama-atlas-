@@ -4,6 +4,8 @@ description: 'Kredi kartında yalnızca asgari ödeme yapmak borcu neden uzatır
 date: 2026-10-20
 tags: ['Borç', 'Kredi kartı']
 cta: plus
+cover: '/blog/kredi-karti-asgari-odeme/kapak.jpg'
+coverAlt: 'Masada kredi kartı ekstresine endişeyle bakan bir genç adam'
 ---
 
 Ekstre geldiğinde iki rakam görürsün: dönem borcu ve asgari ödeme tutarı. Asgari ödemeyi yapmak kartını gecikmeye düşürmez, ama kalan borç **akdi faizle** bir sonraki aya devreder. Borcun küçülmesi beklenenden çok daha uzun sürer.
@@ -26,7 +28,11 @@ Borç kapatmanın ilk adımı yeni borç eklememek. Kartı tamamen bırakamıyor
 - Taksitli alışverişleri bir süre durdur. Her yeni taksit gelecek ayların bütçesini önceden harcar.
 - Gündelik harcamalarda banka kartı veya nakit kullan.
 
+![Kredi kartını makasla ikiye kesen eller ve yanında borç listesi](/blog/kredi-karti-asgari-odeme/1.jpg)
+
 ## İki yöntem: çığ ve kartopu
+
+![Karlı bir yamaçta büyüyerek yuvarlanan kartopu](/blog/kredi-karti-asgari-odeme/2.jpg)
 
 Birden fazla kartın veya kredin varsa, hepsinin asgarisini ödedikten sonra kalan parayı nereye yatıracağına karar vermelisin.
 

@@ -21,7 +21,7 @@ const jsonLd = {
   dateModified: (d.updated ?? d.date).toISOString(),
   inLanguage: 'tr-TR',
   mainEntityOfPage: url,
-  image: new URL('/og.png', Astro.site).href,
+  image: new URL(d.cover ?? '/og.png', Astro.site).href,
   author: { '@type': 'Organization', name: 'Harcama Atlası' },
   publisher: { '@id': `${Astro.site?.href}#org` },
 }
@@ -31,7 +31,7 @@ const cta =
     : { title: 'Sen rotanın neresindesin?', text: '2 dakikalık Finansal Harita testi, harcama tipini ve tahmini özgürlük yılını çıkarır. Ücretsiz.', href: '/test', label: 'Testi çöz' }
 ---
 
-<Site title={`${d.title} · Harcama Atlası`} description={d.description} jsonLd={jsonLd} ogType="article">
+<Site title={`${d.title} · Harcama Atlası`} description={d.description} jsonLd={jsonLd} image={d.cover} ogType="article">
   <div class="wrap">
     <article class="prose post">
       <p class="crumb"><a href="/blog">Blog</a></p>
@@ -39,6 +39,7 @@ const cta =
       <p class="meta">
         <time datetime={d.date.toISOString()}>{formatPostDate(d.date)}</time> · {readingMinutes(post.body)} dk okuma
       </p>
+      {d.cover && <img class="cover" src={d.cover} alt={d.coverAlt} width="1376" height="768" />}
       <Content />
       <p class="note">Bu yazı genel bilgilendirme amaçlıdır, yatırım tavsiyesi değildir.</p>
     </article>
@@ -77,6 +78,19 @@ const cta =
   }
   .meta {
     font-size: 0.9rem;
+  }
+  .cover {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 1.5rem 0 0.5rem;
+    border-radius: 1rem;
+  }
+  .post :global(p > img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 1rem;
   }
   .note {
     margin-top: 2.5rem;
