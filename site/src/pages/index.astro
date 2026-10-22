@@ -21,11 +21,15 @@ const stops = [
   { x: 360, y: 140, label: t('Finansal özgürlük', 'Financial freedom'), sub: t('Zirve', 'The summit') },
 ]
 
+const markets = [t('Altın', 'Gold'), t('Döviz', 'Currencies'), t('BIST hisse', 'BIST stocks'), t('Yabancı hisse / ETF', 'Foreign stocks / ETFs'), t('TEFAS fon', 'TEFAS funds'), t('Kripto', 'Crypto'), t('Emtia', 'Commodities'), t('Mevduat', 'Deposits')]
+
 const features = [
   { img: 'ozet-light', dark: 'ozet-dark', free: true, chip: t('Ücretsiz', 'Free'), title: t('Paranın haritası tek ekranda', 'Your money on one map'), text: t('Bu ay ne harcadın, bütçende ne kaldı, hangi kategori büyüyor? Özet sayfası hepsini bir bakışta gösterir.', 'What did you spend this month, what is left in your budget, which category is growing? The Summary page shows it all at a glance.') },
   { img: 'islemler-light', free: true, chip: t('Ücretsiz', 'Free'), title: t('Ekstreni yükle, gerisini bırak', 'Upload your statement, we do the rest'), text: t('PDF, Excel, CSV ya da ekran görüntüsü. Harcamalar okunur, kategoriler önerilir, tekrar edenler yakalanır.', 'PDF, Excel, CSV or a screenshot. Transactions are read, categories suggested and duplicates caught.') },
   { img: 'butce-light', chip: 'Plus', title: t('Gelirine göre akıllı bütçe', 'A smart budget based on your income'), text: t('Maaş gününe göre dönem, kategori limitleri ve ay sonu tahmini. Bütçeyi koç kurar, sen onaylarsın.', 'Periods that follow your payday, category limits and a month-end forecast. The coach builds the budget, you approve it.') },
   { img: 'borclar-light', chip: 'Plus', title: t('Borçlar ve taksitler kontrolde', 'Debts and instalments under control'), text: t('Kart taksitleri, krediler ve düzenli ödemeler gelecek aylara yayılmış halde. Hangi ay ne kadar ödeyeceğin belli.', 'Card instalments, loans and recurring payments laid out across the coming months. You always know what is due when.') },
+  { img: 'yatirim-ozet-light', dark: 'yatirim-ozet-dark', chip: 'Plus', title: t('Yatırımların canlı fiyatla', 'Your investments at live prices'), text: t('Altın, döviz, fon, hisse, kripto ve emtia. Fiyatlar kendiliğinden güncellenir; maliyetini, güncel değerini ve kâr/zararını TL ya da dolar olarak görürsün.', 'Gold, currencies, funds, stocks, crypto and commodities. Prices update on their own; you see your cost, current value and profit/loss in lira or dollars.') },
+  { img: 'finansal-bilgi-light', dark: 'finansal-bilgi-dark', chip: 'Plus+', title: t('Koç ve finansal bilgi', 'Coach and financial know-how'), text: t('Koç senin rakamlarınla plan çıkarır. Finansal bilgi bölümü risk, enflasyon, çeşitlendirme gibi kavramları sade bir dille anlatır.', 'The coach plans with your own numbers. The financial know-how section explains ideas like risk, inflation and diversification in plain language.') },
 ]
 
 const faqs = [
@@ -34,6 +38,7 @@ const faqs = [
   { q: t('Banka şifremi istiyor musunuz?', 'Do you ask for my bank password?'), a: t('Hayır. Harcama Atlası bankana bağlanmaz. Harcamalarını ekstre dosyasıyla, ekran görüntüsüyle ya da elle eklersin. Ekran görüntüleri cihazında okunur.', 'No. Harcama Atlası never connects to your bank. You add spending with a statement file, a screenshot or by hand. Screenshots are read on your device.') },
   { q: t('Verilerim nerede saklanıyor?', 'Where is my data stored?'), a: t('Verilerin hesabına bağlı olarak saklanır ve aynı hesapla girdiğin her cihazda görünür. Hesabını ve tüm verilerini dilediğin an uygulamadan silebilirsin.', 'Your data is stored with your account and appears on every device you sign in to. You can delete your account and all your data from the app at any time.') },
   { q: t('Aboneliğimi nereden alırım, nasıl iptal ederim?', 'Where do I subscribe and how do I cancel?'), a: t('Plus ve Plus+ paketlerini bu siteden ya da uygulama mağazasından alabilirsin. Hangi kanaldan aldıysan o kanaldan iptal edersin; iptal ettiğinde dönem sonuna kadar kullanmaya devam edersin.', 'You can buy Plus and Plus+ on this website or in the app store. You cancel through the same channel you bought from, and you keep access until the end of the paid period.') },
+  { q: t('Yatırım fiyatları nereden geliyor?', 'Where do investment prices come from?'), a: t('Döviz kurları TCMB’den, altın, hisse, fon, kripto ve emtia fiyatları piyasa kaynaklarından kendiliğinden alınır; uygulama açıkken 15 dakikada bir yenilenir. Fiyatlar gecikmeli olabilir. Bankana ya da aracı kurumuna bağlanmayız, yatırımlarını sen eklersin.', 'Exchange rates come from the Central Bank of Türkiye; gold, stock, fund, crypto and commodity prices come from market sources automatically and refresh every 15 minutes while the app is open. Prices may be delayed. We never connect to your bank or broker; you add your investments yourself.') },
   { q: t('Koç yatırım tavsiyesi veriyor mu?', 'Does the coach give investment advice?'), a: t('Hayır. Koç bütçe, borç kapatma ve birikim planı konusunda yol gösterir; belirli bir hisse, fon ya da coin almanı veya satmanı önermez.', 'No. The coach guides you on budgeting, paying off debt and saving; it never tells you to buy or sell a specific stock, fund or coin.') },
 ]
 const jsonLd = {
@@ -231,6 +236,44 @@ const jsonLd = {
   </section>
 
   <!-- KOÇ -->
+  <section class="invest wrap" id="yatirimlar">
+    <div class="invest-card card">
+      <div class="invest-text">
+        <span class="chip chip-route reveal">Plus</span>
+        {
+          lang === 'en' ? (
+            <h2 class="h-section reveal">Your investments, <span class="accent">at live prices</span></h2>
+          ) : (
+            <h2 class="h-section reveal">Yatırımların <span class="accent">canlı fiyatla</span> tek yerde</h2>
+          )
+        }
+        <p class="lead reveal">{t('Ne aldığını, kaça aldığını yaz; gerisini uygulama yapar. Güncel değer, kâr/zarar ve dağılım her açılışta kendiliğinden yenilenir.', 'Enter what you bought and at what price; the app does the rest. Current value, profit/loss and your mix refresh by themselves every time you open it.')}</p>
+        <ul class="markets reveal" aria-label={t('Desteklenen yatırım türleri', 'Supported investment types')}>
+          {markets.map((m) => <li>{m}</li>)}
+        </ul>
+        <ul class="ticks reveal">
+          <li>{t('Adını yazınca sembol önerilir: THYAO, SPY, TTE, BTC…', 'Type a name and the symbol is suggested: THYAO, SPY, TTE, BTC…')}</li>
+          <li>{t('Maliyetin, güncel değerin ve kâr/zararın tutar ve yüzde olarak', 'Your cost, current value and profit/loss as an amount and a percentage')}</li>
+          <li>{t('Toplamı TL ya da dolar olarak gör, dağılımı grafikte izle', 'See your total in lira or dollars and follow your mix on a chart')}</li>
+        </ul>
+        <p class="note reveal">{t('Fiyatlar gecikmeli olabilir. Yatırım tavsiyesi değildir.', 'Prices may be delayed. Not investment advice.')}</p>
+      </div>
+      <div class="invest-phones">
+        <div class="invest-back reveal" style="--d:2">
+          <Phone light="yatirim-ekle-light" dark="yatirim-ekle-dark" alt={t('Yatırım ekleme ekranı', 'The add investment screen')} />
+        </div>
+        <div class="invest-front reveal" style="--d:1">
+          <Phone light="yatirim-liste-light" dark="yatirim-liste-dark" alt={t('Yatırımlarım listesinde güncel fiyat ve kâr/zarar', 'Current prices and profit/loss in the My investments list')} />
+        </div>
+        <div class="float-card card pl" aria-hidden="true">
+          <span class="chip">{t('Gram altın', 'Gold (gram)')}</span>
+          <strong>+52.720 ₺</strong>
+          <span>{t('Kâr', 'Profit')} <b>%30,7</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="coach wrap">
     <div class="coach-card card">
       <div class="coach-text">
@@ -243,6 +286,11 @@ const jsonLd = {
           )
         }
         <p class="lead reveal">{t('Koç; gelirini, giderlerini, borçlarını ve test sonucunu bilir. Borç kapatma sırası, ayrılacak birikim ve sıradaki durak için sana özel plan çıkarır.', 'The coach knows your income, expenses, debts and test result. It builds a plan just for you: which debt to pay off first, how much to save and your next stop.')}</p>
+        <ul class="ticks reveal">
+          <li>{t('Borç kapatma sırası ve aylık birikim tutarı', 'Which debt to pay off first and how much to save each month')}</li>
+          <li>{t('Yatırımların, borçların ve rotan tek planda', 'Your investments, debts and route in one plan')}</li>
+          <li>{t('Finansal bilgi: risk, enflasyon, çeşitlendirme sade dille', 'Financial know-how: risk, inflation and diversification in plain words')}</li>
+        </ul>
         <p class="note reveal">{t('Koç yatırım tavsiyesi vermez; hesapları uygulamanın kendi motoru yapar.', 'The coach does not give investment advice; all calculations are done by the app’s own engine.')}</p>
       </div>
       <div class="chat" aria-label={t('Örnek koç sohbeti', 'Sample coach conversation')}>
@@ -795,6 +843,75 @@ const jsonLd = {
   }
 
   /* KOÇ */
+  /* YATIRIMLAR */
+  .invest {
+    padding-block: 2rem 1rem;
+  }
+  .invest-card {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+    padding: 3.5rem;
+    overflow: hidden;
+    background:
+      radial-gradient(520px 280px at 0% 100%, var(--route-soft), transparent 70%),
+      var(--card);
+  }
+  .invest-text .h-section {
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+  }
+  .invest-text .lead {
+    margin: 1rem 0 1.25rem;
+  }
+  .invest-text .ticks {
+    margin: 1.5rem 0;
+  }
+  .markets {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .markets li {
+    padding: 0.35rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .invest-phones {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    max-width: 460px;
+    justify-self: center;
+    width: 100%;
+  }
+  .invest-front {
+    position: relative;
+    grid-area: 1 / 1;
+    z-index: 2;
+  }
+  .invest-back {
+    grid-area: 1 / 2;
+    margin-top: 3.5rem;
+    margin-left: -1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+  .float-card.pl {
+    right: auto;
+    left: -2.5rem;
+    top: auto;
+    bottom: 12%;
+    z-index: 3;
+  }
+
   .coach {
     padding-block: 4rem;
   }
@@ -1059,6 +1176,13 @@ const jsonLd = {
       display: block;
       width: min(240px, 70%);
       margin: 0 auto 1.75rem;
+    }
+    .invest-card {
+      grid-template-columns: 1fr;
+      padding: 2rem 1.25rem;
+    }
+    .float-card.pl {
+      left: 0;
     }
     .coach-card {
       grid-template-columns: 1fr;
