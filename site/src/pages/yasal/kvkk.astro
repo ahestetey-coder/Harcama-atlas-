@@ -1,0 +1,108 @@
+---
+import Legal from '../../layouts/Legal.astro'
+import Fill from '../../components/Fill.astro'
+---
+
+<Legal title="KVKK Aydınlatma Metni" description="Harcama Atlası’nın kişisel verilerini hangi amaçla, hangi hukuki sebeple işlediğini ve 6698 sayılı Kanun kapsamındaki haklarını anlatan aydınlatma metni.">
+  <p>
+    Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu’nun (“KVKK”) 10. maddesi ve Aydınlatma Yükümlülüğünün Yerine Getirilmesinde Uyulacak Usul ve Esaslar Hakkında
+    Tebliğ uyarınca, Harcama Atlası web sitesi, web uygulaması ve mobil uygulamalarını (“Hizmet”) kullananları bilgilendirmek için hazırlanmıştır.
+  </p>
+
+  <h2>1. Veri sorumlusu</h2>
+  <p>
+    <Fill k="unvan" label="Şirket unvanı" />, <Fill k="adres" label="Açık adres" /> (MERSİS: <Fill k="mersis" label="MERSİS no" />). İletişim:
+    <Fill k="eposta" label="E-posta" />, KEP: <Fill k="kep" label="KEP adresi" />.
+  </p>
+
+  <h2>2. İşlenen kişisel veriler</h2>
+  <table>
+    <thead><tr><th>Kategori</th><th>Veriler</th></tr></thead>
+    <tbody>
+      <tr><td>Kimlik ve iletişim</td><td>Ad, e-posta adresi; Google ile girişte Google’ın paylaştığı ad ve e-posta.</td></tr>
+      <tr><td>Hesap güvenliği</td><td>Şifrenin geri döndürülemez özeti, giriş ve oturum kayıtları, hesabın oluşturulma ve son giriş zamanı.</td></tr>
+      <tr>
+        <td>Finansal kayıtlar (sizin girdikleriniz)</td>
+        <td>Harcama, gelir ve iade kayıtları, kategoriler, gruplar, bütçe, düzenli ödemeler, borçlar, hedefler, varlıklar ve ayarlar.</td>
+      </tr>
+      <tr><td>Test ve koç</td><td>Finansal Harita testi cevapları ve sonucu; Plus+ paketinde koça yazdığınız mesajlar ve koçun yanıtları.</td></tr>
+      <tr><td>Ortak gruplar</td><td>Gruba eklediğiniz harcamalar, üyelikler, davetler ve gider paylaşımları.</td></tr>
+      <tr>
+        <td>Abonelik ve ödeme</td>
+        <td>Paket, dönem, abonelik durumu, ödeme tutarı ve tarihi, ödeme sağlayıcısındaki müşteri ve abonelik numarası. Kart bilgileri bize ulaşmaz.</td>
+      </tr>
+      <tr><td>İşlem güvenliği</td><td>IP adresi, tarayıcı bilgisi ve sunucu kayıtları (barındırma sağlayıcılarının teknik kayıtları).</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Yüklediğiniz ekstre, PDF ve ekran görüntüleri cihazınızda okunur; dosyaların kendisi sunuculara gönderilmez ve saklanmaz. Yalnızca onayladığınız işlem satırları kaydedilir.
+    Tam kart numarası, CVV veya banka parolası istenmez.
+  </p>
+
+  <h2>3. İşleme amaçları ve hukuki sebepler</h2>
+  <ul>
+    <li>
+      <strong>Hesabınızı açmak, kayıtlarınızı saklamak ve cihazlarınız arasında eşitlemek, ortak grupları çalıştırmak, aboneliğinizi yönetmek:</strong> sözleşmenin kurulması
+      ve ifası (KVKK m. 5/2-c).
+    </li>
+    <li><strong>Fatura, vergi ve tüketici mevzuatından doğan saklama yükümlülükleri:</strong> kanunlarda açıkça öngörülme ve hukuki yükümlülük (m. 5/2-a ve ç).</li>
+    <li><strong>Hizmetin güvenliği, kötüye kullanımın önlenmesi, hataların giderilmesi:</strong> meşru menfaat (m. 5/2-f).</li>
+    <li><strong>Hukuki taleplerde haklarımızın korunması:</strong> bir hakkın tesisi, kullanılması veya korunması (m. 5/2-e).</li>
+    <li>
+      <strong>Site ziyaret istatistikleri ve pazarlama e-postaları:</strong> yalnızca <a href="/yasal/acik-riza">açık rızanızla</a> (m. 5/1). Şu anda pazarlama e-postası
+      gönderilmemektedir.
+    </li>
+  </ul>
+  <p>Finansal kayıtlarınız reklam, profil çıkarma veya satış amacıyla kullanılmaz.</p>
+
+  <h2>4. Toplama yöntemi</h2>
+  <p>
+    Veriler; kayıt formları, uygulama içinde girdiğiniz bilgiler, Finansal Harita testi, ödeme sağlayıcısından gelen abonelik bildirimleri ve barındırma sağlayıcılarının
+    otomatik kayıtları aracılığıyla elektronik ortamda toplanır.
+  </p>
+
+  <h2>5. Aktarım</h2>
+  <p>Kişisel verileriniz yalnızca Hizmet’in çalışması için gereken ölçüde aşağıdaki hizmet sağlayıcılara aktarılır:</p>
+  <table>
+    <thead><tr><th>Alıcı</th><th>Amaç</th><th>Konum</th></tr></thead>
+    <tbody>
+      <tr><td>Supabase</td><td>Veritabanı, hesaplar, eşitleme, doğrulama e-postaları</td><td>Almanya (Frankfurt)</td></tr>
+      <tr><td>Paddle.com Market Ltd</td><td>Satıcı sıfatıyla ödeme alma, fatura ve abonelik</td><td>Birleşik Krallık</td></tr>
+      <tr><td>OpenAI</td><td>Plus+ koçunun yanıt üretmesi (ad ve e-posta gönderilmez)</td><td>ABD</td></tr>
+      <tr><td>PostHog</td><td>Yalnızca onay verirseniz site ziyaret istatistikleri</td><td>AB (Almanya)</td></tr>
+      <tr><td>Cloudflare, GitHub</td><td>Web sitesi ve web uygulamasının barındırılması</td><td>ABD ve küresel ağ</td></tr>
+      <tr><td>Google</td><td>Yalnızca Google ile girişi seçerseniz kimlik doğrulama</td><td>ABD</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Yurt dışına aktarımlar KVKK’nın 9. maddesine uygun olarak, Kurul’un ilan ettiği standart sözleşmeler veya kanunda sayılan diğer güvencelerle yapılır. Ayrıca yetkili
+    kamu kurum ve kuruluşlarına, kanunen zorunlu olduğu hâllerde bilgi verilebilir.
+  </p>
+
+  <h2>6. Saklama süresi</h2>
+  <ul>
+    <li>Hesap ve finansal kayıtlar: hesabınız açık kaldıkça. Hesabı sildiğinizde buluttan hemen ve kalıcı olarak silinir.</li>
+    <li>Abonelik ve ödeme kayıtları: ilgili vergi ve ticaret mevzuatındaki süreler boyunca (en fazla 10 yıl).</li>
+    <li>Web’de çözülen ve hesaba bağlanmayan Finansal Harita testleri: en fazla 12 ay.</li>
+    <li>Sunucu ve güvenlik kayıtları: sağlayıcıların teknik süreleri boyunca, en fazla 1 yıl.</li>
+  </ul>
+
+  <h2>7. Haklarınız (KVKK m. 11)</h2>
+  <p>Veri sorumlusuna başvurarak;</p>
+  <ul>
+    <li>kişisel verilerinizin işlenip işlenmediğini öğrenme ve işlenmişse bilgi talep etme,</li>
+    <li>işleme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme,</li>
+    <li>yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilme,</li>
+    <li>eksik veya yanlış işlenmişse düzeltilmesini, KVKK m. 7’deki şartlar çerçevesinde silinmesini veya yok edilmesini isteme ve bu işlemlerin aktarılan kişilere bildirilmesini isteme,</li>
+    <li>münhasıran otomatik sistemlerle analiz edilmesi sonucu aleyhinize bir sonucun ortaya çıkmasına itiraz etme,</li>
+    <li>kanuna aykırı işleme nedeniyle zarara uğramanız hâlinde zararın giderilmesini talep etme</li>
+  </ul>
+  <p>haklarına sahipsiniz.</p>
+
+  <h2>8. Başvuru</h2>
+  <p>
+    Başvurunuzu kimliğinizi doğrulayan bilgilerle birlikte <Fill k="eposta" label="E-posta" /> adresine hesabınızın e-posta adresinden, <Fill k="kep" label="KEP adresi" />
+    adresine KEP ile veya <Fill k="adres" label="Açık adres" /> adresine yazılı olarak iletebilirsiniz. Başvurular en geç 30 gün içinde ücretsiz sonuçlandırılır. Hesap silme ve
+    verileri sıfırlama işlemlerini uygulamada Ayarlar &gt; Verileri sil bölümünden kendiniz de yapabilirsiniz.
+  </p>
+</Legal>

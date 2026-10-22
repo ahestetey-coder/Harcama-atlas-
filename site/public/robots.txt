@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /giris
+Disallow: /odeme
+Disallow: /hesap/
+
+Sitemap: https://harcama-atlas.pages.dev/sitemap.xml

@@ -490,6 +490,92 @@ insert into public.ha_user_records (user_id, tbl, id, data) values (:'osman', 't
 reset role;
 select count(*) = 1 and bool_and(not deleted) and min((data->>'amountKurus')::int) = 200 as rec_safe from public.ha_user_records \gset
 \if :rec_safe \else \echo 'HATA: kişisel kayıt korunmadı' \q \endif
+-- Web aboneliği: fiyatlar herkese açık, kodlar ve olaylar gizli, paket yalnızca sunucuyla verilir
+\set abone 'a0000000-0000-0000-0000-000000000001'
+reset role;
+insert into auth.users (id, email) values (:'abone', 'abone@ornek.test');
+set role anon;
+select count(*) = 4 as prices_public from public.ha_web_prices \gset
+\if :prices_public \else \echo 'HATA: web fiyatları herkese açık değil' \q \endif
+\set ON_ERROR_STOP off
+select count(*) from public.ha_coupons;
+\set ON_ERROR_STOP on
+reset role;
+select pg_temp.as_user(:'abone');
+update public.ha_web_prices set amount_kurus = 100 where plan = 'plus';
+reset role;
+select count(*) = 0 as price_safe from public.ha_web_prices where amount_kurus = 100 \gset
+\if :price_safe \else \echo 'HATA: yönetici olmayan fiyat değiştirdi' \q \endif
+select pg_temp.as_user(:'osman');
+update public.ha_web_prices set amount_kurus = 10999 where plan = 'plus' and period = 'monthly';
+insert into public.ha_coupons (code, percent_off, plans) values ('YAZ20', 20, array['plusplus']);
+reset role;
+select amount_kurus = 10999 as price_admin from public.ha_web_prices where plan = 'plus' and period = 'monthly' \gset
+\if :price_admin \else \echo 'HATA: yönetici fiyatı değiştiremedi' \q \endif
+-- Paddle'a aktarılmamış kod geçersizdir
+select pg_temp.as_user(:'abone');
+select public.ha_check_coupon('yaz20', 'plusplus', 'monthly') is null as coupon_unsynced \gset
+\if :coupon_unsynced \else \echo 'HATA: aktarılmamış kod geçti' \q \endif
+reset role;
+update public.ha_coupons set paddle_discount_id = 'dsc_test' where code = 'YAZ20';
+select pg_temp.as_user(:'abone');
+select public.ha_check_coupon(' yaz20 ', 'plusplus', 'monthly') = 20 and public.ha_check_coupon('YAZ20', 'plus', 'monthly') is null as coupon_ok \gset
+\if :coupon_ok \else \echo 'HATA: kampanya kodu denetimi' \q \endif
+reset role;
+-- Kod deneme sınırı: saatte 20 deneme
+insert into public.ha_coupon_attempts (user_id) select :'abone' from generate_series(1, 20);
+select pg_temp.as_user(:'abone');
+do $$ begin
+  perform public.ha_check_coupon('YAZ20', 'plusplus', 'monthly');
+  raise exception 'HATA: kod deneme sınırı çalışmadı';
+exception when others then
+  if sqlerrm like 'HATA%' then raise; end if;
+end $$;
+reset role;
+-- Abonelik başlar: Ayşe Plus+ olur; eski tarihli olay yeni durumu ezmez
+select public.ha_apply_subscription(jsonb_build_object('id', 'sub_ayse1', 'user_id', :'abone', 'customer_id', 'ctm_1', 'plan', 'plusplus', 'period', 'monthly',
+  'status', 'trialing', 'event_at', '2026-10-01T10:00:00Z', 'current_period_end', (now() + interval '7 days')::text, 'trial_end', (now() + interval '7 days')::text)) = 'verildi' as sub_given \gset
+\if :sub_given \else \echo 'HATA: abonelik paketi verilmedi' \q \endif
+select public.ha_apply_subscription(jsonb_build_object('id', 'sub_ayse1', 'user_id', :'abone', 'customer_id', 'ctm_1', 'plan', 'plusplus', 'period', 'monthly',
+  'status', 'canceled', 'event_at', '2026-09-30T10:00:00Z')) = 'eski' as sub_old \gset
+\if :sub_old \else \echo 'HATA: eski olay işlendi' \q \endif
+select public.ha_plan_of(:'abone') = 'plusplus' as plan_paid \gset
+\if :plan_paid \else \echo 'HATA: ödenen paket görünmüyor' \q \endif
+-- Abonelik sürerken hesap silinemez
+select pg_temp.as_user(:'abone');
+\set ON_ERROR_STOP off
+select public.ha_delete_my_account();
+\set ON_ERROR_STOP on
+select count(*) = 1 as sub_own from public.ha_subscriptions \gset
+\if :sub_own \else \echo 'HATA: kişi kendi aboneliğini göremedi' \q \endif
+select count(*) = 0 as events_hidden from public.ha_webhook_events \gset
+\if :events_hidden \else \echo 'HATA: olaylar göründü' \q \endif
+reset role;
+select count(*) = 1 as account_kept from auth.users where id = :'abone' \gset
+\if :account_kept \else \echo 'HATA: abonelik sürerken hesap silindi' \q \endif
+select pg_temp.as_user('55555555-5555-5555-5555-555555555555');
+select count(*) = 0 as sub_hidden from public.ha_subscriptions \gset
+\if :sub_hidden \else \echo 'HATA: başkasının aboneliği göründü' \q \endif
+reset role;
+-- İptal: Paddle'dan gelen paket biter
+select public.ha_apply_subscription(jsonb_build_object('id', 'sub_ayse1', 'user_id', :'abone', 'customer_id', 'ctm_1', 'plan', 'plusplus', 'period', 'monthly',
+  'status', 'canceled', 'event_at', '2026-10-09T10:00:00Z')) = 'bitti' as sub_end \gset
+\if :sub_end \else \echo 'HATA: iptal işlenmedi' \q \endif
+select public.ha_plan_of(:'abone') = 'free' as plan_ended \gset
+\if :plan_ended \else \echo 'HATA: iptal sonrası paket sürüyor' \q \endif
+-- Yöneticinin verdiği paket Paddle iptaliyle bitmez
+select pg_temp.as_user(:'osman');
+select public.ha_admin_set_plan('55555555-5555-5555-5555-555555555555', 'plus', null);
+reset role;
+select public.ha_apply_subscription(jsonb_build_object('id', 'sub_u1', 'user_id', '55555555-5555-5555-5555-555555555555', 'customer_id', 'ctm_2', 'plan', 'plus',
+  'period', 'yearly', 'status', 'canceled', 'event_at', '2026-10-09T10:00:00Z')) = 'degismedi' as admin_kept \gset
+\if :admin_kept \else \echo 'HATA: yönetici paketi iptalle bitti' \q \endif
+-- Süresiz yönetici paketi, aynı paketin aboneliğiyle kısalmaz
+select public.ha_apply_subscription(jsonb_build_object('id', 'sub_u2', 'user_id', '55555555-5555-5555-5555-555555555555', 'customer_id', 'ctm_2', 'plan', 'plus',
+  'period', 'monthly', 'status', 'active', 'event_at', '2026-10-10T10:00:00Z', 'current_period_end', (now() + interval '30 days')::text)) = 'yonetici' as admin_strong \gset
+\if :admin_strong \else \echo 'HATA: yönetici paketi abonelikle değişti' \q \endif
+select expires_at is null and source = 'admin' as admin_same from public.ha_user_plans where user_id = '55555555-5555-5555-5555-555555555555' \gset
+\if :admin_same \else \echo 'HATA: yönetici paketi bozuldu' \q \endif
 -- Hesap silinince sahiplenilen kayıt da silinir
 delete from auth.users where id = '66666666-6666-6666-6666-666666666666';
 select count(*) = 0 as lead_deleted from public.ha_freedom_leads where code = 'ATL-ABC234' \gset

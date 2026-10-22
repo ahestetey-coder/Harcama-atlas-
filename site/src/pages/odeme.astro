@@ -1,0 +1,444 @@
+---
+import Site from '../layouts/Site.astro'
+import { PLANS } from '../data/plans'
+
+// Paket özellikleri statik; fiyat, deneme süresi ve kampanya kodu sayfa açılınca veritabanından okunur.
+const features = Object.fromEntries(PLANS.filter((p) => p.id !== 'free').map((p) => [p.id === 'plus_plus' ? 'plusplus' : 'plus', p.highlights]))
+---
+
+<Site title="Ödeme · Harcama Atlası" description="Harcama Atlası Plus ya da Plus+ aboneliğini başlat." noindex>
+  <section class="wrap pay" data-pay data-features={JSON.stringify(features)}>
+    <a class="back" href="/fiyatlar">← Paketlere dön</a>
+    <h1 class="h-section">Aboneliğini başlat</h1>
+
+    <div class="state card" data-state="loading">
+      <span class="spin" aria-hidden="true"></span>
+      <span>Hazırlanıyor…</span>
+    </div>
+
+    <div class="state card" data-state="closed" hidden>
+      <h2>Web ödemesi çok yakında</h2>
+      <p class="muted">Ödeme altyapısı son kontrollerden geçiyor. Bu sırada uygulamayı ücretsiz kullanmaya başlayabilirsin.</p>
+      <a class="btn btn-route" href="/test">Finansal Harita testini çöz</a>
+    </div>
+
+    <div class="state card" data-state="has-sub" hidden>
+      <h2>Zaten bir aboneliğin var</h2>
+      <p class="muted">Paketini ya da ödeme dönemini abonelik sayfandan değiştirebilirsin.</p>
+      <a class="btn btn-route" href="/hesap/abonelik">Aboneliğime git</a>
+    </div>
+
+    <div class="grid" data-state="ready" hidden>
+      <div class="left">
+        <div class="card block">
+          <p class="label">Paket</p>
+          <div class="seg" role="radiogroup" aria-label="Paket">
+            <button type="button" role="radio" data-plan="plus">Plus</button>
+            <button type="button" role="radio" data-plan="plusplus">Plus+</button>
+          </div>
+          <p class="label">Ödeme dönemi</p>
+          <div class="seg" role="radiogroup" aria-label="Ödeme dönemi">
+            <button type="button" role="radio" data-period="monthly">Aylık</button>
+            <button type="button" role="radio" data-period="yearly">Yıllık <span class="save" data-save></span></button>
+          </div>
+          <ul class="feat" data-feat></ul>
+        </div>
+
+        <div class="card block">
+          <div class="field">
+            <label for="kod">Kampanya kodu</label>
+            <div class="code-row">
+              <input class="input" id="kod" autocomplete="off" autocapitalize="characters" maxlength="20" placeholder="Varsa yaz" />
+              <button class="btn btn-ghost" type="button" data-apply>Uygula</button>
+            </div>
+          </div>
+          <p class="notice" data-code-msg role="status" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <aside class="card summary">
+        <p class="label">Özet</p>
+        <div class="line"><span data-sum-name>Plus · Aylık</span><b data-sum-price></b></div>
+        <div class="line disc" data-disc-line hidden><span data-disc-name>Kampanya</span><b data-disc-amount></b></div>
+        <div class="total"><span data-total-label>Bugün ödenecek</span><b data-total></b></div>
+        <p class="trial" data-trial hidden></p>
+        <p class="small muted" data-renew></p>
+        <label class="consent">
+          <input type="checkbox" data-consent />
+          <span>
+            <a href="/yasal/on-bilgilendirme" target="_blank">Ön bilgilendirme formunu</a> ve <a href="/yasal/mesafeli-satis" target="_blank">mesafeli satış sözleşmesini</a> okudum, kabul ediyorum.
+          </span>
+        </label>
+        <p class="notice" data-tone="danger" data-pay-msg role="alert"></p>
+        <button class="btn btn-route btn-block" type="button" data-checkout>Ödemeye geç</button>
+        <p class="small muted secure">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 10V8a6 6 0 1 1 12 0v2m-13 0h14v11H5z" fill="none" stroke="currentColor" stroke-width="2"></path></svg>
+          Ödeme Paddle güvencesiyle alınır. Kart bilgilerin bize ulaşmaz. İstediğin zaman iptal edebilirsin.
+        </p>
+        <p class="small muted" data-sandbox hidden>Deneme ortamı: gerçek ödeme alınmaz. Test kartı: 4242 4242 4242 4242.</p>
+      </aside>
+    </div>
+  </section>
+</Site>
+
+<script>
+  import { formatTl, isLive, loadBilling, mySubscription, PERIOD_LABEL, PLAN_LABEL, requireUser, supa, toPeriod, toPlan, type Period, type Plan, type WebPrice } from '../lib/account'
+
+  type PaddleGlobal = {
+    Environment: { set: (e: string) => void }
+    Initialize: (o: unknown) => void
+    Checkout: { open: (o: unknown) => void }
+  }
+
+  function loadPaddle(): Promise<PaddleGlobal> {
+    const w = window as unknown as { Paddle?: PaddleGlobal }
+    if (w.Paddle) return Promise.resolve(w.Paddle)
+    return new Promise((res, rej) => {
+      const s = document.createElement('script')
+      s.src = 'https://cdn.paddle.com/paddle/v2/paddle.js'
+      s.onload = () => (w.Paddle ? res(w.Paddle) : rej(new Error('Paddle yüklenemedi')))
+      s.onerror = () => rej(new Error('Ödeme sayfası yüklenemedi. Bağlantını kontrol et.'))
+      document.head.append(s)
+    })
+  }
+
+  async function init() {
+    const root = document.querySelector<HTMLElement>('[data-pay]')
+    if (!root || root.dataset.ready) return
+    root.dataset.ready = '1'
+    const show = (name: string) => root.querySelectorAll<HTMLElement>('[data-state]').forEach((el) => (el.hidden = el.dataset.state !== name))
+    const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!
+
+    const user = await requireUser()
+    if (!user) return
+    const [{ settings, prices }, sub] = await Promise.all([loadBilling(), mySubscription()])
+    if (isLive(sub)) return show('has-sub')
+    // Ücretsiz deneme kişi başına bir kez: daha önce abone olan hemen ücretlendirilir
+    const usedTrial = !!sub
+    const priceOf = (pl: Plan, pe: Period): WebPrice | undefined => prices.find((p) => p.plan === pl && p.period === pe && p.active && p.paddle_price_id)
+    if (!settings?.client_token || !prices.some((p) => p.paddle_price_id && p.active)) return show('closed')
+
+    const q = new URLSearchParams(location.search)
+    let plan = toPlan(q.get('plan'))
+    let period = toPeriod(q.get('period'))
+    if (!priceOf(plan, period)) period = period === 'yearly' ? 'monthly' : 'yearly'
+    if (!priceOf(plan, period)) return show('closed')
+    let coupon: { code: string; pct: number } | null = null
+    const features = JSON.parse(root.dataset.features ?? '{}') as Record<Plan, string[]>
+
+    const render = () => {
+      const p = priceOf(plan, period)!
+      root.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((b) => {
+        b.setAttribute('aria-checked', String(b.dataset.plan === plan))
+        b.disabled = !priceOf(b.dataset.plan as Plan, period) && !priceOf(b.dataset.plan as Plan, period === 'yearly' ? 'monthly' : 'yearly')
+      })
+      root.querySelectorAll<HTMLButtonElement>('[data-period]').forEach((b) => {
+        b.setAttribute('aria-checked', String(b.dataset.period === period))
+        b.disabled = !priceOf(plan, b.dataset.period as Period)
+      })
+      const m = priceOf(plan, 'monthly')
+      const y = priceOf(plan, 'yearly')
+      $('[data-save]').textContent = m && y && y.amount_kurus < m.amount_kurus * 12 ? `%${Math.round((1 - y.amount_kurus / (m.amount_kurus * 12)) * 100)} indirim` : ''
+      $('[data-feat]').innerHTML = (features[plan] ?? []).map((f) => `<li>${f.replace(/</g, '&lt;')}</li>`).join('')
+
+      const discount = coupon ? Math.round((p.amount_kurus * coupon.pct) / 100) : 0
+      const net = p.amount_kurus - discount
+      $('[data-sum-name]').textContent = `${PLAN_LABEL[plan]} · ${PERIOD_LABEL[period]}`
+      $('[data-sum-price]').textContent = formatTl(p.amount_kurus)
+      $('[data-disc-line]').hidden = !coupon
+      $('[data-disc-name]').textContent = coupon ? `Kampanya ${coupon.code} (%${coupon.pct})` : ''
+      $('[data-disc-amount]').textContent = coupon ? `−${formatTl(discount)}` : ''
+      const trial = p.trial_days > 0 && !usedTrial
+      $('[data-total-label]').textContent = trial ? 'Bugün ödenecek' : 'Toplam'
+      $('[data-total]').textContent = trial ? formatTl(0) : formatTl(net)
+      const trialUsed = p.trial_days > 0 && usedTrial
+      $('[data-trial]').hidden = !trial && !trialUsed
+      $('[data-trial]').textContent = trial
+        ? `${p.trial_days} gün ücretsiz. Deneme bitince ${formatTl(net)} alınır; bitmeden iptal edersen ücret alınmaz.`
+        : trialUsed
+          ? 'Ücretsiz denemeni daha önce kullandın; ödeme bugün alınır.'
+          : ''
+      $('[data-renew]').textContent = `Abonelik her ${period === 'monthly' ? 'ay' : 'yıl'} yenilenir. Fiyatlara KDV dahildir.`
+      const url = new URL(location.href)
+      url.searchParams.set('plan', plan === 'plusplus' ? 'plus_plus' : 'plus')
+      url.searchParams.set('period', period)
+      history.replaceState(history.state, '', url)
+    }
+    root.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((b) =>
+      b.addEventListener('click', () => {
+        plan = b.dataset.plan as Plan
+        if (!priceOf(plan, period)) period = period === 'yearly' ? 'monthly' : 'yearly'
+        coupon = null
+        $('[data-code-msg]').textContent = ''
+        render()
+      }),
+    )
+    root.querySelectorAll<HTMLButtonElement>('[data-period]').forEach((b) =>
+      b.addEventListener('click', () => {
+        period = b.dataset.period as Period
+        coupon = null
+        $('[data-code-msg]').textContent = ''
+        render()
+      }),
+    )
+
+    const codeInput = $<HTMLInputElement>('#kod')
+    const codeMsg = $('[data-code-msg]')
+    $('[data-apply]').addEventListener('click', async () => {
+      const code = codeInput.value.trim().toUpperCase()
+      coupon = null
+      if (!code) {
+        codeMsg.textContent = ''
+        return render()
+      }
+      const { data, error } = await supa().rpc('ha_check_coupon', { p_code: code, p_plan: plan, p_period: period })
+      if (error || !data) {
+        codeMsg.dataset.tone = 'danger'
+        codeMsg.textContent = error ? (/Çok fazla/.test(error.message) ? error.message : 'Kod denetlenemedi. Tekrar dene.') : 'Bu kod geçersiz ya da bu pakette kullanılamıyor.'
+      } else {
+        coupon = { code, pct: Number(data) }
+        codeMsg.dataset.tone = 'ok'
+        codeMsg.textContent = `Kod uygulandı: %${coupon.pct} indirim.`
+      }
+      render()
+    })
+    codeInput.addEventListener('keydown', (e) => e.key === 'Enter' && $('[data-apply]').click())
+
+    const payMsg = $('[data-pay-msg]')
+    const btn = $<HTMLButtonElement>('[data-checkout]')
+    $('[data-sandbox]').hidden = settings.environment !== 'sandbox'
+    btn.addEventListener('click', async () => {
+      payMsg.textContent = ''
+      if (!$<HTMLInputElement>('[data-consent]').checked) {
+        payMsg.textContent = 'Devam etmek için ön bilgilendirme formunu ve sözleşmeyi onayla.'
+        return
+      }
+      btn.disabled = true
+      btn.innerHTML = '<span class="spin" aria-hidden="true"></span> Ödeme açılıyor…'
+      try {
+        const Paddle = await loadPaddle()
+        if (settings.environment === 'sandbox') Paddle.Environment.set('sandbox')
+        const dark = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)
+        Paddle.Initialize({
+          token: settings.client_token,
+          checkout: { settings: { displayMode: 'overlay', theme: dark ? 'dark' : 'light', locale: 'tr', allowLogout: false } },
+          eventCallback: (ev: { name?: string }) => {
+            if (ev.name === 'checkout.completed') location.assign('/hesap/abonelik?tamam=1')
+          },
+        })
+        Paddle.Checkout.open({
+          items: [{ priceId: priceOf(plan, period)!.paddle_price_id, quantity: 1 }],
+          customer: { email: user.email },
+          // Ödeme hangi hesaba işlenecek: bildirimde bu kimlik geri gelir
+          customData: { user_id: user.id },
+          ...(coupon ? { discountCode: coupon.code } : {}),
+        })
+      } catch (e) {
+        payMsg.textContent = (e as Error).message
+      } finally {
+        btn.disabled = false
+        btn.textContent = 'Ödemeye geç'
+      }
+    })
+
+    render()
+    show('ready')
+  }
+  document.addEventListener('astro:page-load', init)
+</script>
+
+<style>
+  .pay {
+    padding-block: 2rem 5rem;
+  }
+  .back {
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 0.94rem;
+  }
+  .pay h1 {
+    margin: 0.75rem 0 1.75rem;
+  }
+  .state {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+    padding: 2rem;
+    max-width: 640px;
+  }
+  .state[data-state='loading'] {
+    grid-auto-flow: column;
+    align-items: center;
+    justify-content: start;
+    color: var(--ink-2);
+  }
+  .state h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 800;
+  }
+  .state p {
+    margin: 0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .grid[hidden] {
+    display: none;
+  }
+  .left {
+    display: grid;
+    gap: 1.5rem;
+  }
+  .block {
+    padding: 1.5rem;
+  }
+  .label {
+    margin: 0 0 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .seg button {
+    padding: 0.85rem 1rem;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+    color: var(--ink);
+    font: 700 1rem var(--display);
+    cursor: pointer;
+    transition:
+      border-color 0.2s,
+      background 0.2s;
+  }
+  .seg button[aria-checked='true'] {
+    border-color: var(--route);
+    background: var(--route-soft);
+  }
+  .seg button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .save {
+    margin-left: 0.25rem;
+    font: 700 0.75rem var(--body);
+    color: var(--brand);
+  }
+  .feat {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.55rem;
+  }
+  .feat :global(li) {
+    position: relative;
+    padding-left: 1.6rem;
+    font-size: 0.95rem;
+  }
+  .feat :global(li)::before {
+    content: '';
+    position: absolute;
+    left: 0.2rem;
+    top: 0.45rem;
+    width: 0.55rem;
+    height: 0.3rem;
+    border-left: 2px solid var(--brand);
+    border-bottom: 2px solid var(--brand);
+    transform: rotate(-45deg);
+  }
+  .code-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+  }
+  .code-row .input {
+    text-transform: uppercase;
+  }
+  .block .notice {
+    margin: 0.75rem 0 0;
+  }
+  .summary {
+    position: sticky;
+    top: 6rem;
+    display: grid;
+    gap: 0.85rem;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .summary p {
+    margin: 0;
+  }
+  .line,
+  .total {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .disc b {
+    color: var(--brand);
+  }
+  .total {
+    padding-top: 0.85rem;
+    border-top: 1px dashed var(--line);
+    font-size: 1.15rem;
+  }
+  .total b {
+    font: 800 1.5rem var(--display);
+    letter-spacing: -0.02em;
+  }
+  .trial {
+    padding: 0.7rem 0.85rem;
+    border-radius: 12px;
+    background: var(--brand-soft);
+    font-size: 0.92rem;
+  }
+  .small {
+    font-size: 0.85rem;
+  }
+  .consent {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+  .consent input {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.15rem;
+    accent-color: var(--route);
+  }
+  .consent a {
+    color: var(--ink);
+  }
+  .secure {
+    display: flex;
+    gap: 0.45rem;
+    align-items: flex-start;
+  }
+  .secure svg {
+    flex: none;
+    margin-top: 0.2rem;
+  }
+  @media (max-width: 900px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+    .summary {
+      position: static;
+    }
+  }
+</style>

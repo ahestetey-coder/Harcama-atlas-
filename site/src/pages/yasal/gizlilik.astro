@@ -1,0 +1,73 @@
+---
+import Legal from '../../layouts/Legal.astro'
+import Fill from '../../components/Fill.astro'
+---
+
+<Legal title="Gizlilik Politikası" description="Harcama Atlası verilerini nerede saklar, kimlerle paylaşır ve nasıl silersin: sade dille gizlilik politikası.">
+  <blockquote>
+    <p>
+      <strong>Kısaca:</strong> Kayıtlarınız hesabınızla birlikte bulutta saklanır ve aynı hesapla girdiğiniz her cihazda görünür. Bunları sizden başka kimse göremez; yalnızca
+      ortak gruplara eklediğiniz harcamaları o grubun üyeleri görür. Ekstre ve ekran görüntüleri cihazınızda okunur. Reklam yoktur, verileriniz satılmaz. Hesabınızı istediğiniz
+      an silebilirsiniz.
+    </p>
+  </blockquote>
+
+  <h2>1. Kayıtlarınız ve eşitleme</h2>
+  <p>
+    Harcamalar, gelirler, kategoriler, gruplar, bütçe, düzenli ödemeler, borçlar, hedefler, varlıklar, test cevaplarınız ve ayarlar önce cihazınızdaki uygulama
+    veritabanına yazılır. Giriş yaptığınızda hesabınıza bağlı olarak bulutta da saklanır ve diğer cihazlarınıza otomatik eşitlenir. İnternet yokken uygulama cihazdaki
+    kayıtlarla çalışır. Veritabanı erişim kuralları başka bir hesabın kayıtlarınıza ulaşmasına izin vermez.
+  </p>
+
+  <h2>2. Belgeler ve kamera</h2>
+  <p>
+    Ekstre (PDF, Excel, CSV), ekran görüntüsü ve fotoğraflar yalnızca cihazınızda okunur; metin tanıma da cihazda çalışır. Dosyaların kendisi saklanmaz, yalnızca
+    onayladığınız işlem satırları kaydedilir. Kamera yalnızca “Fotoğraf çek”e dokunduğunuzda kullanılır. Parolalı bir PDF için girdiğiniz parola saklanmaz.
+  </p>
+
+  <h2>3. Hesap bilgileri</h2>
+  <p>
+    E-posta adresiniz, adınız ve şifrenizin geri döndürülemez özeti saklanır. Bunlar giriş, şifre yenileme, doğrulama e-postaları ve ortak gruplarda sizi üyelere tanıtmak
+    için kullanılır.
+  </p>
+
+  <h2>4. Finansal Harita testi</h2>
+  <p>
+    Web’de testi çözerken verdiğiniz ad, e-posta ve cevaplar sonucunuzu saklamak ve uygulamaya aktarmak için sunucuda tutulur. Aynı e-postayla uygulamaya girdiğinizde sonuç
+    hesabınıza bağlanır.
+  </p>
+
+  <h2>5. Koç (Plus+)</h2>
+  <p>
+    Koçun yanıt verebilmesi için mesajınız ve hesabınızdaki özet rakamlar (gelir, gider, borç ve birikim toplamları gibi) OpenAI’ya gönderilir. Adınız ve e-postanız
+    gönderilmez. OpenAI, kendi koşulları gereği API üzerinden gelen verileri modellerini eğitmek için kullanmaz. Koçu kullanmazsanız bu aktarım olmaz.
+  </p>
+
+  <h2>6. Ödemeler</h2>
+  <p>
+    Web’deki abonelik ödemeleri, satıcı sıfatıyla (merchant of record) Paddle.com Market Ltd tarafından alınır. Kart bilgileriniz doğrudan Paddle’a girilir; bize ulaşmaz.
+    Biz yalnızca paket, dönem, abonelik durumu ve ödeme tarihini görürüz.
+  </p>
+
+  <h2>7. Hizmet sağlayıcılar</h2>
+  <ul>
+    <li><strong>Supabase</strong> (Frankfurt, Almanya): hesaplar, eşitlenen kayıtlar, ortak gruplar.</li>
+    <li><strong>Paddle</strong> (Birleşik Krallık): ödeme, fatura ve abonelik.</li>
+    <li><strong>OpenAI</strong> (ABD): yalnızca Plus+ koçu.</li>
+    <li><strong>Cloudflare ve GitHub</strong>: web sitesi ve web uygulamasının barındırılması; erişimde teknik kayıtlar (ör. IP adresi) tutabilirler.</li>
+    <li><strong>Google</strong>: yalnızca Google ile girişi seçerseniz.</li>
+  </ul>
+  <p>Ayrıntılar, hukuki sebepler ve saklama süreleri <a href="/yasal/kvkk">KVKK Aydınlatma Metni</a>’nde.</p>
+
+  <h2>8. Silme</h2>
+  <p>
+    Uygulamada Ayarlar &gt; Verileri sil bölümünden “Verilerimi sıfırla” ile kayıtlarınızı, “Hesabımı sil” ile hesabınızı ve buluttaki bütün verinizi kalıcı olarak
+    silebilirsiniz. Süren bir web aboneliğiniz varsa önce iptal etmeniz istenir. Yasal olarak saklanması gereken ödeme kayıtları süresi dolana kadar ayrı tutulur.
+  </p>
+
+  <h2>9. Çocuklar</h2>
+  <p>Hizmet 13 yaşından küçüklere yönelik değildir; ücretli abonelik için 18 yaşını doldurmuş olmak gerekir.</p>
+
+  <h2>10. Değişiklikler ve iletişim</h2>
+  <p>Bu politika değişirse güncel hâli bu sayfada yayımlanır. Sorularınız için: <Fill k="eposta" label="E-posta" />.</p>
+</Legal>

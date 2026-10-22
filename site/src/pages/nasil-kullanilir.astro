@@ -1,0 +1,330 @@
+---
+import Site from '../layouts/Site.astro'
+import Phone from '../components/Phone.astro'
+
+const guide = [
+  {
+    id: 'baslangic',
+    title: 'Hesabını aç',
+    chip: 'Ücretsiz',
+    img: 'ozet-light',
+    dark: 'ozet-dark',
+    intro: 'Harcama Atlası’nı web’de hemen, iOS ve Android’de yakında kullanabilirsin. Tek hesap, her cihazda aynı veriler.',
+    steps: ['Uygulamayı aç ve e-posta adresinle kayıt ol ya da Google ile giriş yap.', 'Finansal Harita testini çözdüysen aynı e-postayla gir; sonucun hesabına kendiliğinden bağlanır.', 'Tema, bildirimler ve ay başlangıç günü Menü > Ayarlar’da.'],
+  },
+  {
+    id: 'harcama',
+    title: 'Harcama ekle ya da içe aktar',
+    chip: 'Ücretsiz',
+    img: 'islemler-light',
+    intro: 'Harcamalarını tek tek girebilir ya da kart ekstreni toplu olarak aktarabilirsin.',
+    steps: ['Alttaki yeşil + düğmesine dokun.', 'Tek harcama için tutarı, açıklamayı ve kategoriyi yazıp kaydet.', 'Toplu ekleme için içe aktarmayı seç; PDF, Excel, CSV ya da ekran görüntüsü yükle.', 'Okunan satırları kontrol et, tekrar edenleri ve kategorileri düzelt, sonra kaydet.'],
+  },
+  {
+    id: 'ozet',
+    title: 'Özet sayfasını oku',
+    chip: 'Ücretsiz',
+    img: 'ozet-light',
+    dark: 'ozet-dark',
+    intro: 'Özet, bu dönemin haritasıdır: ne harcadın, bütçende ne kaldı, para en çok nereye gidiyor.',
+    steps: ['Üstteki ay seçiciyle dönemler arasında geç.', 'Grup filtresiyle bireysel ya da ortak harcamalara bak.', 'Bütçe kartında kalan tutarı, Kategoriler grafiğinde dağılımı gör.'],
+  },
+  {
+    id: 'butce',
+    title: 'Bütçeni kur',
+    chip: 'Plus',
+    img: 'butce-light',
+    intro: 'Maaşını ve maaş gününü gir; dönem buna göre başlar ve bütçen gelirine göre hesaplanır.',
+    steps: ['Alt çubuktan Bütçe’ye geç ve maaşını ekle.', 'Aylık bütçede Koç (otomatik) ya da Elle seçeneğini seç.', 'Plus ile kategori limitleri, uyarılar ve ay sonu tahmini açılır.'],
+  },
+  {
+    id: 'borclar',
+    title: 'Borç ve ödemelerini planla',
+    chip: 'Plus',
+    img: 'borclar-light',
+    intro: 'Kart taksitleri, krediler ve düzenli ödemeler gelecek aylara yayılmış olarak görünür.',
+    steps: ['Menü’den Borçlar ve ödemeler’i aç.', 'Borç ekle ile türünü, kalan tutarı ve taksitleri gir.', 'Düzenli ödemeler sekmesinde kira, abonelik ve faturaları ekle; günü gelince hatırlatılır.'],
+  },
+  {
+    id: 'rota',
+    title: 'Testi çöz, rotanı netleştir',
+    chip: 'Ücretsiz · Plus',
+    img: 'test-sonuc',
+    intro: 'Finansal Harita testi tahmini rotanı çıkarır. Plus ile gerçek kayıtların hesaba girer ve rota netleşir.',
+    steps: ['Menü’den Finansal Harita testini aç ve 10 soruyu yanıtla.', 'Sonuçta arketipini, konumunu ve özgürlük yılını gör.', 'Plus ile Finansal Yolculuğum’da Rotamı netleştir’e dokun; kesin tarih ve sıradaki durak çıkar.'],
+  },
+  {
+    id: 'koc',
+    title: 'Koçla konuş',
+    chip: 'Plus+',
+    img: 'koc-light',
+    dark: 'koc-dark',
+    intro: 'Koç senin rakamlarınla konuşur: borç kapatma sırası, ayrılacak birikim, sıradaki durak.',
+    steps: ['Alt çubuktan Koç’a geç.', 'Kısa anketi doldur; koç seni tanısın.', 'Sorunu yaz ya da önerilen mesajlardan birini seç. Koç yatırım tavsiyesi vermez.'],
+  },
+]
+---
+
+<Site title="Nasıl kullanılır · Harcama Atlası" description="Harcama Atlası’nı adım adım kullanmayı öğren: harcama ekleme, içe aktarma, bütçe, borçlar, Finansal Harita testi ve koç.">
+  <section class="wrap head">
+    <p class="eyebrow reveal">Rehber</p>
+    <h1 class="h-display reveal" style="--d:1">Harcama Atlası <span class="accent">nasıl kullanılır?</span></h1>
+    <p class="lead reveal" style="--d:2">Hesabını açmaktan koçla konuşmaya kadar, her ekranı kısa adımlarla anlattık.</p>
+  </section>
+
+  <div class="wrap layout">
+    <nav class="toc" aria-label="Rehber bölümleri">
+      <ol>
+        {
+          guide.map((g, i) => (
+            <li>
+              <a href={`#${g.id}`} data-toc={g.id}>
+                <span class="tn">{String(i + 1).padStart(2, '0')}</span>
+                {g.title}
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+    </nav>
+
+    <div class="sections">
+      {
+        guide.map((g, i) => (
+          <section id={g.id} class="g reveal" aria-labelledby={`${g.id}-t`}>
+            <div class="g-text">
+              <span class:list={['chip', { 'chip-route': g.chip !== 'Ücretsiz' }]}>{g.chip}</span>
+              <h2 id={`${g.id}-t`}>
+                <span class="gn">{String(i + 1).padStart(2, '0')}</span>
+                {g.title}
+              </h2>
+              <p class="intro">{g.intro}</p>
+              <ol class="g-steps">
+                {g.steps.map((s) => (
+                  <li>{s}</li>
+                ))}
+              </ol>
+            </div>
+            <div class="g-phone">
+              <Phone light={g.img} dark={g.dark} alt={`${g.title} ekranı`} />
+            </div>
+          </section>
+        ))
+      }
+      <div class="cta card reveal">
+        <h2>Hazır mısın?</h2>
+        <p>İlk adım 2 dakikalık Finansal Harita testi.</p>
+        <a class="btn btn-route" href="/test">Testi çöz <span class="arr" aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </div>
+</Site>
+
+<script>
+  function tocInit() {
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc]')]
+    if (!links.length) return
+    const io = new IntersectionObserver(
+      (es) =>
+        es.forEach((e) => {
+          if (e.isIntersecting) links.forEach((l) => l.toggleAttribute('aria-current', l.dataset.toc === e.target.id))
+        }),
+      { rootMargin: '-40% 0px -55% 0px' },
+    )
+    document.querySelectorAll('.g').forEach((s) => io.observe(s))
+  }
+  document.addEventListener('astro:page-load', tocInit)
+</script>
+
+<style>
+  .head {
+    padding-block: 3rem 3.5rem;
+  }
+  .head h1 {
+    margin-top: 1rem;
+    max-width: 16ch;
+  }
+  .head .lead {
+    margin-top: 1.25rem;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 3.5rem;
+    align-items: start;
+  }
+  .layout > * {
+    min-width: 0;
+  }
+  .toc {
+    position: sticky;
+    top: 6rem;
+  }
+  .toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 1rem;
+    border-left: 2px solid var(--line);
+    display: grid;
+    gap: 0.2rem;
+  }
+  .toc a {
+    position: relative;
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.45rem 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 0.94rem;
+    transition: color 0.25s;
+  }
+  .toc a::before {
+    content: '';
+    position: absolute;
+    left: calc(-1rem - 2px);
+    top: 0.3rem;
+    bottom: 0.3rem;
+    width: 2px;
+    background: var(--route);
+    transform: scaleY(0);
+    transition: transform 0.3s;
+  }
+  .toc a:hover,
+  .toc a[aria-current] {
+    color: var(--ink);
+  }
+  .toc a[aria-current] {
+    font-weight: 600;
+  }
+  .toc a[aria-current]::before {
+    transform: scaleY(1);
+  }
+  .tn {
+    font-variant-numeric: tabular-nums;
+    color: var(--route);
+    font-weight: 700;
+  }
+  .sections {
+    display: grid;
+    gap: 1.5rem;
+  }
+  .g {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 2.5rem;
+    align-items: center;
+    padding: 2.25rem;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--card);
+  }
+  .g h2 {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    margin: 0.8rem 0 0.5rem;
+    font-size: clamp(1.45rem, 2.4vw, 1.9rem);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+  }
+  .gn {
+    color: var(--route);
+    font-size: 0.9em;
+  }
+  .intro {
+    color: var(--ink-2);
+    margin: 0 0 1.25rem;
+  }
+  .g-steps {
+    list-style: none;
+    counter-reset: s;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+  .g-steps li {
+    counter-increment: s;
+    position: relative;
+    padding-left: 2.6rem;
+    min-height: 1.8rem;
+  }
+  .g-steps li::before {
+    content: counter(s);
+    position: absolute;
+    left: 0;
+    top: -0.05rem;
+    display: grid;
+    place-items: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    background: var(--route-soft);
+    color: var(--route);
+    font: 800 0.85rem var(--display);
+  }
+  .g-steps li:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 0.88rem;
+    top: 1.9rem;
+    bottom: -0.7rem;
+    border-left: 2px dotted var(--route);
+    opacity: 0.4;
+  }
+  .g-phone {
+    justify-self: center;
+    width: 100%;
+    max-width: 220px;
+  }
+  .cta {
+    padding: 2.5rem;
+    text-align: center;
+    background: var(--band);
+    color: var(--band-ink);
+    border: 0;
+  }
+  .cta h2 {
+    color: var(--band-ink);
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+  }
+  .cta p {
+    opacity: 0.8;
+    margin: 0.5rem 0 1.5rem;
+  }
+  @media (max-width: 960px) {
+    .layout {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    .toc {
+      position: static;
+    }
+    .toc ol {
+      display: flex;
+      overflow-x: auto;
+      gap: 0.5rem;
+      border: 0;
+      padding: 0 0 0.5rem;
+    }
+    .toc a {
+      white-space: nowrap;
+      padding: 0.45rem 0.85rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+    .toc a::before {
+      display: none;
+    }
+    .g {
+      grid-template-columns: 1fr;
+      padding: 1.5rem 1.25rem;
+    }
+    .g-phone {
+      max-width: 230px;
+      order: -1;
+    }
+  }
+</style>

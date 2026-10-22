@@ -1,0 +1,251 @@
+---
+import { PLANS, formatTl, yearlyKurus, YEARLY_DISCOUNT } from '../data/plans'
+interface Props {
+  compact?: boolean
+  /** Paket adlarının başlık düzeyi; sayfada üstte h2 yoksa 2 */
+  level?: 2 | 3
+}
+const { compact = false, level = 3 } = Astro.props
+const H = `h${level}` as 'h2' | 'h3'
+const pct = Math.round(YEARLY_DISCOUNT * 100)
+---
+
+<div class="prices" data-period="monthly">
+  <div class="toggle" role="group" aria-label="Ödeme dönemi">
+    <button type="button" data-set="monthly" aria-pressed="true">Aylık</button>
+    <button type="button" data-set="yearly" aria-pressed="false">Yıllık <span class="chip chip-route">%{pct} indirim</span></button>
+  </div>
+  <div class="grid">
+    {
+      PLANS.map((p, i) => (
+        <article class:list={['plan card reveal', { featured: p.id === 'plus' }]} style={`--d:${i}`}>
+          {p.id === 'plus' && <span class="badge">En çok seçilen</span>}
+          <H class="plan-name">{p.name}</H>
+          <p class="tag">{p.tagline}</p>
+          <p class="price">
+            {p.monthlyKurus === 0 ? (
+              <span class="amt">{formatTl(0)}</span>
+            ) : (
+              <>
+                <span class="m">
+                  <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:monthly`}>{formatTl(p.monthlyKurus)}</span>
+                  <span class="per">/ay</span>
+                </span>
+                <span class="y">
+                  <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>{formatTl(yearlyKurus(p.monthlyKurus))}</span>
+                  <span class="per">/yıl</span>
+                  <span class="sub" data-live-sub={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>Aylık {formatTl(Math.round(yearlyKurus(p.monthlyKurus) / 12))} gibi</span>
+                </span>
+              </>
+            )}
+          </p>
+          {!compact && (
+            <ul>
+              {p.highlights.map((h) => (
+                <li>{h}</li>
+              ))}
+            </ul>
+          )}
+          {p.id === 'free' ? (
+            <a class="btn btn-ghost" href="/test">
+              Ücretsiz başla
+            </a>
+          ) : (
+            <a class:list={['btn', { 'btn-route': p.id === 'plus' }, { 'btn-ghost': p.id !== 'plus' }]} data-plan={p.id} href={`/odeme?plan=${p.id}&period=monthly`}>
+              {p.trial ?? `${p.name}'a geç`} <span class="arr" aria-hidden="true">→</span>
+            </a>
+          )}
+        </article>
+      ))
+    }
+  </div>
+</div>
+
+<script>
+  import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../lib/config'
+
+  type Row = { plan: string; period: string; amount_kurus: number }
+  const tl = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const tl0 = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 })
+  const fmt = (k: number) => (k % 100 === 0 ? tl0 : tl).format(k / 100)
+  let cache: Promise<Row[]> | null = null
+
+  // Güncel fiyatlar yönetici panelinden gelir; okunamazsa sayfadaki fiyatlar kalır
+  function livePrices(): Promise<Row[]> {
+    cache ??= fetch(`${SUPABASE_URL}/rest/v1/ha_web_prices?select=plan,period,amount_kurus&active=eq.true`, { headers: { apikey: SUPABASE_ANON_KEY } })
+      .then((r) => (r.ok ? (r.json() as Promise<Row[]>) : []))
+      .catch(() => [])
+    return cache
+  }
+
+  async function applyLive() {
+    const rows = await livePrices()
+    for (const r of rows) {
+      const key = `${r.plan}:${r.period}`
+      document.querySelectorAll<HTMLElement>(`[data-live="${key}"]`).forEach((el) => (el.textContent = fmt(r.amount_kurus)))
+      document.querySelectorAll<HTMLElement>(`[data-live-sub="${key}"]`).forEach((el) => (el.textContent = `Aylık ${fmt(Math.round(r.amount_kurus / 12))} gibi`))
+    }
+  }
+
+  function init() {
+    if (document.querySelector('[data-live]')) void applyLive()
+    document.querySelectorAll<HTMLElement>('.prices').forEach((root) => {
+      root.querySelectorAll<HTMLButtonElement>('[data-set]').forEach((b) =>
+        b.addEventListener('click', () => {
+          const period = b.dataset.set!
+          root.dataset.period = period
+          root.querySelectorAll('[data-set]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+          root.querySelectorAll<HTMLAnchorElement>('a[data-plan]').forEach((a) => (a.href = `/odeme?plan=${a.dataset.plan}&period=${period}`))
+        }),
+      )
+    })
+  }
+  document.addEventListener('astro:page-load', init)
+</script>
+
+<style>
+  .toggle {
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .toggle button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.1rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-2);
+    font: 600 0.95rem var(--body);
+    cursor: pointer;
+    transition: background 0.25s, color 0.25s;
+  }
+  .toggle button[aria-pressed='true'] {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 4px 14px -6px rgb(0 0 0 / 0.25);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    align-items: stretch;
+  }
+  .plan {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 1.9rem;
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s;
+  }
+  .plan:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+  }
+  .plan.featured {
+    background: var(--band);
+    color: var(--band-ink);
+    border-color: transparent;
+  }
+  .plan.featured .plan-name {
+    color: var(--band-ink);
+  }
+  .plan.featured .tag,
+  .plan.featured li,
+  .plan.featured .per,
+  .plan.featured .sub {
+    color: color-mix(in oklab, var(--band-ink) 72%, transparent);
+  }
+  .badge {
+    position: absolute;
+    top: 1.4rem;
+    right: 1.4rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    background: var(--route);
+    color: var(--on-route);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .plan-name {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 800;
+  }
+  .tag {
+    margin: 0.3rem 0 1.25rem;
+    color: var(--ink-2);
+    font-size: 0.95rem;
+  }
+  .price {
+    margin: 0 0 1.25rem;
+    min-height: 4.6rem;
+  }
+  .amt {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 2.6rem;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .per {
+    color: var(--ink-2);
+    margin-left: 0.2rem;
+  }
+  .sub {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--ink-2);
+  }
+  .y {
+    display: none;
+  }
+  .prices[data-period='yearly'] .y {
+    display: block;
+  }
+  .prices[data-period='yearly'] .m {
+    display: none;
+  }
+  ul {
+    list-style: none;
+    margin: 0 0 1.75rem;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+    flex: 1;
+  }
+  li {
+    position: relative;
+    padding-left: 1.6rem;
+    color: var(--ink-2);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.45rem;
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    border: 2px solid var(--route);
+  }
+  .plan .btn {
+    margin-top: auto;
+    width: 100%;
+  }
+  .plan.featured .btn-ghost {
+    --fg: var(--band-ink);
+  }
+  @media (max-width: 900px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

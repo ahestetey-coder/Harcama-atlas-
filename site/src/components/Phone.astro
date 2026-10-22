@@ -1,0 +1,52 @@
+---
+/** Uygulama ekran görüntüsü için telefon çerçevesi. dark verilirse koyu temada o görüntü gösterilir. */
+interface Props {
+  light: string
+  dark?: string
+  alt: string
+  eager?: boolean
+  class?: string
+}
+const { light, dark, alt, eager = false, class: cls } = Astro.props
+const loading = eager ? 'eager' : 'lazy'
+---
+
+<figure class:list={['phone', cls]}>
+  <div class="screen">
+    <img class:list={[{ 'only-light': !!dark }]} src={`/screenshots/${light}.webp`} alt={alt} width="560" height="1212" loading={loading} decoding="async" />
+    {/* Koyu görsel her zaman tembel yüklenir: açık temada gizli olduğu için hiç indirilmez */}
+    {dark && <img class="only-dark" src={`/screenshots/${dark}.webp`} alt={alt} width="560" height="1212" loading="lazy" decoding="async" />}
+    <slot />
+  </div>
+</figure>
+
+<style>
+  .phone {
+    margin: 0;
+    padding: 7px;
+    border-radius: 34px;
+    background: linear-gradient(145deg, #2a3443, #0c1219);
+    box-shadow:
+      var(--shadow),
+      inset 0 0 0 1px rgb(255 255 255 / 0.08);
+    width: 100%;
+    max-width: 300px;
+  }
+  .screen {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    aspect-ratio: 560 / 1212;
+    background: #0c1219;
+  }
+  .screen :global(video) {
+    position: absolute;
+    inset: 0;
+  }
+  .screen img,
+  .screen :global(video) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+</style>

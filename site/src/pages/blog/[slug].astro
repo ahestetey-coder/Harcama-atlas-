@@ -1,0 +1,111 @@
+---
+import { render } from 'astro:content'
+import Site from '../../layouts/Site.astro'
+import { formatPostDate, publishedPosts, readingMinutes } from '../../lib/blog'
+
+export async function getStaticPaths() {
+  const posts = await publishedPosts()
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post, more: posts.filter((p) => p.id !== post.id).slice(0, 2) } }))
+}
+
+const { post, more } = Astro.props
+const { Content } = await render(post)
+const d = post.data
+const url = new URL(`/blog/${post.id}`, Astro.site).href
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: d.title,
+  description: d.description,
+  datePublished: d.date.toISOString(),
+  dateModified: (d.updated ?? d.date).toISOString(),
+  inLanguage: 'tr-TR',
+  mainEntityOfPage: url,
+  image: new URL('/og.png', Astro.site).href,
+  author: { '@type': 'Organization', name: 'Harcama Atlası' },
+  publisher: { '@id': `${Astro.site?.href}#org` },
+}
+const cta =
+  d.cta === 'plus'
+    ? { title: 'Bütçeni rakamlarınla kur', text: 'Plus ile maaşına göre otomatik bütçe, kategori limitleri ve borç planı. 7 gün ücretsiz.', href: '/fiyatlar', label: 'Paketleri gör' }
+    : { title: 'Sen rotanın neresindesin?', text: '2 dakikalık Finansal Harita testi, harcama tipini ve tahmini özgürlük yılını çıkarır. Ücretsiz.', href: '/test', label: 'Testi çöz' }
+---
+
+<Site title={`${d.title} · Harcama Atlası`} description={d.description} jsonLd={jsonLd} ogType="article">
+  <div class="wrap">
+    <article class="prose post">
+      <p class="crumb"><a href="/blog">Blog</a></p>
+      <h1>{d.title}</h1>
+      <p class="meta">
+        <time datetime={d.date.toISOString()}>{formatPostDate(d.date)}</time> · {readingMinutes(post.body)} dk okuma
+      </p>
+      <Content />
+      <p class="note">Bu yazı genel bilgilendirme amaçlıdır, yatırım tavsiyesi değildir.</p>
+    </article>
+
+    <aside class="card cta">
+      <h2>{cta.title}</h2>
+      <p>{cta.text}</p>
+      <a class="btn btn-route" href={cta.href}>{cta.label} <span class="arr" aria-hidden="true">→</span></a>
+    </aside>
+
+    {
+      more.length > 0 && (
+        <nav class="more" aria-label="Diğer yazılar">
+          <h2>Diğer yazılar</h2>
+          {more.map((p) => (
+            <a href={`/blog/${p.id}`}>{p.data.title}</a>
+          ))}
+        </nav>
+      )
+    }
+  </div>
+</Site>
+
+<style>
+  .post {
+    margin: 3rem auto 0;
+  }
+  .crumb {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+  }
+  .crumb a {
+    color: var(--brand);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .meta {
+    font-size: 0.9rem;
+  }
+  .note {
+    margin-top: 2.5rem;
+    font-size: 0.85rem;
+  }
+  .cta,
+  .more {
+    max-width: 46rem;
+    margin: 3rem auto 0;
+  }
+  .cta {
+    padding: 1.75rem;
+  }
+  .cta h2,
+  .more h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.3rem;
+  }
+  .cta p {
+    color: var(--ink-2);
+    margin: 0 0 1.25rem;
+  }
+  .more {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .more a {
+    color: var(--ink);
+    font-weight: 600;
+  }
+</style>

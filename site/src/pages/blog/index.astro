@@ -1,0 +1,81 @@
+---
+import Site from '../../layouts/Site.astro'
+import { formatPostDate, publishedPosts, readingMinutes } from '../../lib/blog'
+
+const posts = await publishedPosts()
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: 'Harcama Atlası Blog',
+  inLanguage: 'tr-TR',
+  blogPost: posts.map((p) => ({ '@type': 'BlogPosting', headline: p.data.title, datePublished: p.data.date.toISOString(), url: new URL(`/blog/${p.id}`, Astro.site).href })),
+}
+---
+
+<Site title="Blog · Harcama Atlası" description="Bütçe, borç, birikim ve finansal özgürlük üzerine sade, uygulanabilir yazılar." jsonLd={jsonLd}>
+  <section class="wrap head">
+    <p class="eyebrow reveal">Blog</p>
+    <h1 class="h-display reveal" style="--d:1">Paranın <span class="accent">haritası</span></h1>
+    <p class="lead reveal" style="--d:2">Bütçe, borç, birikim ve finansal özgürlük üzerine sade, hemen uygulanabilir yazılar.</p>
+  </section>
+
+  <div class="wrap list">
+    {
+      posts.map((p, i) => (
+        <a class="card post reveal" href={`/blog/${p.id}`} style={`--d:${Math.min(i, 3)}`}>
+          <div class="tags">{p.data.tags.slice(0, 2).map((t) => <span class="chip">{t}</span>)}</div>
+          <h2>{p.data.title}</h2>
+          <p>{p.data.description}</p>
+          <p class="meta">
+            <time datetime={p.data.date.toISOString()}>{formatPostDate(p.data.date)}</time> · {readingMinutes(p.body)} dk okuma
+          </p>
+        </a>
+      ))
+    }
+  </div>
+</Site>
+
+<style>
+  .head {
+    padding-top: 4rem;
+    padding-bottom: 2.5rem;
+  }
+  .list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 1.25rem;
+  }
+  .post {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: var(--ink);
+    transition: transform 0.25s, box-shadow 0.25s;
+  }
+  .post:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+  }
+  .post h2 {
+    margin: 0.25rem 0 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .post p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+  .post .meta {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    font-size: 0.85rem;
+  }
+  .tags {
+    display: flex;
+    gap: 0.4rem;
+  }
+</style>

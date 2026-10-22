@@ -374,3 +374,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Siteye gömülü test: arka planı site çizer, yükseklik içeriğe göre ayarlanır */
+html[data-embed],
+html[data-embed] body {
+  background: transparent;
+  min-height: 0;
+}
