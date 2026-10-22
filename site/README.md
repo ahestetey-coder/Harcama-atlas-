@@ -49,6 +49,12 @@ Mağaza abonelikleri (App Store, Google Play) ve RevenueCat henüz yok; mağaza 
 Şirket bilgileri (unvan, adres, MERSİS, vergi, KEP, e-posta, telefon) `src/data/company.ts` dosyasından gelir; boş alanlar sayfada sarı "doldurulacak" etiketiyle görünür.
 `LEGAL_DRAFT = true` yapılırsa sayfalara taslak uyarısı da eklenir.
 
+İngilizce çeviriler `src/pages/en/legal/` altındadır. Her sayfada "Türkçe aslı bağlayıcıdır" notu görünür. **Çeviriler de hukukçu tarafından gözden geçirilmelidir**; Türkçe metin değişirse İngilizcesi de elle güncellenir.
+
+## Diller
+
+Türkçe varsayılandır (önek yok), İngilizce `/en` altındadır. İngilizce sayfalar Türkçe sayfa dosyasını içe aktarır (`src/pages/en/*.astro`); metinler sayfada `t('Türkçe', 'English')` ile yan yana durur. Yol eşleşmeleri `src/lib/i18n.ts` içindedir. Blog yalnızca Türkçedir.
+
 Metinlerde benimsenen ve hukukçuyla teyit edilmesi gereken kurallar:
 
 - Her ödemeden sonraki 14 gün içinde tam iade; iptal dönem sonunda geçerli olur.
