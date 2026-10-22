@@ -43,7 +43,7 @@ const nav = [
 ---
 
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -62,8 +62,7 @@ const nav = [
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="sitemap" href="/sitemap.xml" />
     <link rel="alternate" type="application/rss+xml" title="Harcama Atlası Blog" href="/blog/rss.xml" />
-    <meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0d1722" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#0d1722" />
     {[jakartaLatin, jakartaLatinExt].map((href) => <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />)}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -74,8 +73,9 @@ const nav = [
           try {
             const q = new URLSearchParams(location.search).get('tema')
             const t = q === 'koyu' ? 'dark' : q === 'acik' ? 'light' : localStorage.getItem('ha-site-theme')
-            if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t
-          } catch { /* tercih okunamadı; sistem teması kullanılır */ }
+            // Seçim yapılmadıysa site koyu açılır
+            document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark'
+          } catch { /* tercih okunamadı; koyu tema kalır */ }
         }
         apply()
         document.addEventListener('astro:after-swap', apply)

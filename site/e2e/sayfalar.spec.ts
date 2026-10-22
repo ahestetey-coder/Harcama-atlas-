@@ -38,13 +38,16 @@ test('fiyatlar: yıllık seçilince fiyat ve ödeme bağlantısı değişir', as
   await expect(page.getByRole('row', { name: /Rotamı netleştir/ })).toBeVisible()
 })
 
-test('tema düğmesi koyu temaya geçer ve hatırlar', async ({ page }) => {
+test('site ilk açılışta koyu; düğmeyle açığa geçer ve hatırlar', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.getByRole('button', { name: 'Temayı değiştir' }).click()
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
   await page.goto('/fiyatlar/')
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 })
 
 test('mobil menü açılır ve sayfalar arasında gezilir', async ({ page, isMobile }) => {
