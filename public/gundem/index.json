@@ -1,6 +1,27 @@
 {
  "articles": [
   {
+   "slug": "guvenli-yatirimin-gizli-riski-2026-10-23",
+   "videoId": "u-1ayc9SuOs",
+   "channel": "The Money Guy Show",
+   "category": "finans-egitimi",
+   "publishAt": "2026-10-23T18:17:00Z",
+   "title": {
+    "tr": "\"Güvenli\" yatırımın gizli riski: denge zamanla değişir",
+    "en": "The hidden risk of \"safe\" investing: balance shifts over time"
+   },
+   "summary": {
+    "tr": "Risk toleransı ile risk kapasitesi arasındaki fark ve portföyün yaşla birlikte nasıl dengelendiği.",
+    "en": "The difference between risk tolerance and risk capacity, and how a portfolio is rebalanced with age."
+   },
+   "cover": "https://d8j0ntlcm91z4.cloudfront.net/user_36pFp5nFrWwQLYwgxN8PefZqIU2/hf_20261023_181053_caad9893-e51f-42bf-8fc7-b3d317534fdc.png",
+   "coverAlt": {
+    "tr": "Bir kefesinde madeni paralar, diğerinde fide olan dengede terazi",
+    "en": "A balanced scale with coins on one pan and a seedling on the other"
+   },
+   "onBlog": true
+  },
+  {
    "slug": "altin-4000-dolar-esiginde-borsa-faize-ragmen-geriledi-2026-10-23",
    "videoId": "Q-woLbIkUlQ",
    "channel": "Cihat E. Çiçek",
