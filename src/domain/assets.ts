@@ -12,16 +12,16 @@ export type AssetKind = 'deposit' | 'fx' | 'fund' | 'gold' | 'commodity' | 'stoc
 export const ASSET_KINDS: Exclude<AssetKind, 'debt'>[] = ['deposit', 'fx', 'fund', 'gold', 'commodity', 'stock', 'cash', 'foreign', 'crypto', 'other']
 
 export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
-  deposit: 'Mevduat',
+  deposit: tt('Mevduat'),
   fx: tt('Döviz'),
-  fund: 'Fon',
+  fund: tt('Fon'),
   gold: tt('Altın'),
-  commodity: 'Emtia',
+  commodity: tt('Emtia'),
   stock: tt('Hisse (BIST)'),
   foreign: tt('Yabancı hisse / ETF'),
-  cash: 'Nakit',
+  cash: tt('Nakit'),
   other: tt('Diğer'),
-  crypto: 'Kripto',
+  crypto: tt('Kripto'),
   debt: tt('Borç'),
 }
 
@@ -29,7 +29,7 @@ export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
 export const DEFAULT_UNIT: Record<AssetKind, string> = {
   deposit: 'TL',
   fx: 'USD',
-  fund: 'pay',
+  fund: tt('pay'),
   gold: 'gram',
   commodity: 'gram',
   stock: 'lot',

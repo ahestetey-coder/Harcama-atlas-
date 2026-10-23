@@ -60,7 +60,7 @@ const alt = (href: string) => new URL(href, site).href
 ---
 
 <!doctype html>
-<html lang={lang} data-theme="dark">
+<html lang={lang} data-theme="dark" data-alt={other.exists ? other.href : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -86,6 +86,36 @@ const alt = (href: string) => new URL(href, site).href
     {[jakartaLatin, jakartaLatinExt].map((href) => <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />)}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script is:inline>
+      // İlk ziyarette dil: Türkçe konuşulan yerlerde (cihaz dili tr ya da Türkiye/Kıbrıs saat dilimi) Türkçe, diğerlerinde İngilizce.
+      // Elle seçilen dil (dil düğmesi ya da ?dil=) her zaman kazanır ve hatırlanır. Arama motoru botları yönlendirilmez.
+      ;(function () {
+        const KEY = 'ha-site-lang'
+        const root = document.documentElement
+        let saved = null
+        try {
+          const q = new URLSearchParams(location.search).get('dil')
+          if (q === 'tr' || q === 'en') localStorage.setItem(KEY, q)
+          saved = localStorage.getItem(KEY)
+        } catch { /* tercih okunamadı */ }
+        document.addEventListener('click', (e) => {
+          const a = e.target instanceof Element && e.target.closest('[data-lang-switch]')
+          if (!a) return
+          try { localStorage.setItem(KEY, a.getAttribute('hreflang') === 'en' ? 'en' : 'tr') } catch { /* kaydedilemedi */ }
+        }, true)
+        if (/bot|crawl|spider|slurp|lighthouse|preview/i.test(navigator.userAgent)) return
+        let want = saved === 'tr' || saved === 'en' ? saved : null
+        if (!want) {
+          let tz = ''
+          try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { /* saat dilimi yok */ }
+          const langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || '']
+          const tr = langs.some((l) => /^tr\b|-tr$/i.test(l)) || ['Europe/Istanbul', 'Asia/Istanbul', 'Asia/Nicosia', 'Asia/Famagusta', 'Europe/Nicosia'].includes(tz)
+          want = tr ? 'tr' : 'en'
+        }
+        const alt = root.dataset.alt
+        if (want !== root.lang && alt) location.replace(alt + location.search.replace(/([?&])dil=[^&]*&?/, '$1').replace(/[?&]$/, '') + location.hash)
+      })()
+    </script>
     <script is:inline>
       ;(function () {
         const apply = () => {
