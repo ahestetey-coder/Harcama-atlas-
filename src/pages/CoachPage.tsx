@@ -21,7 +21,10 @@ import { useAuth } from '../state/auth'
 import { coachMemoryText, coachSummary, DEFAULT_SHARE, MEMORY_MAX, useCoach, useReports, type CoachDebtInfo, type CoachState } from '../state/coach'
 import { useRepo } from '../state/data'
 import { useUi } from '../state/ui'
-import { dateLocale, tt, ttf } from '../lib/i18n'
+import { dateLocale, getLang, tt, ttf } from '../lib/i18n'
+import { visibleArticles, type ArticleMeta } from '../domain/gundem'
+import { useArticles, useNow } from '../state/gundem'
+import { usePlan } from '../state/plan'
 
 export default function CoachPage() {
   return (
@@ -338,6 +341,15 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
   const { backend, user } = useAuth()
   const latest = useReports(3)?.find((r) => r.kind === 'gunluk' || r.kind === 'acil')
   const news = latest && !state.settings.dismissed.includes(`rapor-${latest.id}`) ? latest : null
+  // Finansal Gündem'de son 3 günde yayınlanan, okunmamış yazılar (Plus+)
+  const canRead = usePlan().has('learning')
+  const allArticles = useArticles()
+  const now = useNow()
+  const fresh = canRead && allArticles
+    ? visibleArticles(allArticles, now)
+        .filter((a) => now.getTime() - Date.parse(a.publishAt) < 3 * 86_400_000 && !state.settings.dismissed.includes(`gundem-${a.slug}`))
+        .slice(0, 3)
+    : []
   const [remaining, setRemaining] = useState<number | null>(null)
   const [summarizedUpTo, setSummarizedUpTo] = useState(0)
   const unread = state.messages.filter((m) => !m.read)
@@ -431,6 +443,9 @@ function Chat({ state, onDismiss, onRemember }: { state: CoachState; onDismiss: 
         )}
         {showOld && read.map((m) => <CoachBubble key={m.id} msg={m} dim />)}
         {news && <NewsBubble r={news} onDismiss={() => onDismiss(`rapor-${news.id}`)} />}
+        {[...fresh].reverse().map((a) => (
+          <ArticleBubble key={a.slug} a={a} onDismiss={() => onDismiss(`gundem-${a.slug}`)} />
+        ))}
         <AnimatePresence initial={false}>
           {unread.slice(0, shown).map((m) => (
             <CoachBubble key={m.id} msg={m} onDismiss={() => onDismiss(m.id)} />
@@ -546,6 +561,33 @@ function NewsBubble({ r, onDismiss }: { r: Report; onDismiss: () => void }) {
           <button type="button" onClick={onDismiss} className="inline-flex items-center gap-1 text-[12.5px] text-subtle hover:text-ink">
             <CheckCheck className="size-3.5" /> {tt('Okudum')}
           </button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+/** Koçun "yeni yazımız yayınlandı" mesajı: dokununca yazı açılır. */
+function ArticleBubble({ a, onDismiss }: { a: ArticleMeta; onDismiss: () => void }) {
+  const lang = getLang()
+  const title = a.title[lang] || a.title.tr
+  return (
+    <motion.div {...bubbleMotion} className="flex max-w-[92%] gap-2">
+      <div className="mt-1 grid size-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 text-white">
+        <Bot className="size-4" />
+      </div>
+      <div className="rounded-2xl rounded-tl-md border border-accent/20 bg-surface-2 px-3.5 py-2.5 text-[13.5px] shadow-card">
+        <p className="text-ink">{ttf('"{0}" başlıklı yeni yazımız yayınlandı.', title)}</p>
+        <div className="mt-2 flex items-center gap-3">
+          {a.cover && <img src={a.cover} alt="" loading="lazy" className="size-12 shrink-0 rounded-lg bg-surface object-cover" />}
+          <div className="flex flex-wrap items-center gap-3">
+            <Link to={`/gundem/${a.slug}`} onClick={onDismiss} className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">
+              <Newspaper className="size-3.5" /> {tt('Yazıyı oku')}
+            </Link>
+            <button type="button" onClick={onDismiss} className="inline-flex items-center gap-1 text-[12.5px] text-subtle hover:text-ink">
+              <CheckCheck className="size-3.5" /> {tt('Okudum')}
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
