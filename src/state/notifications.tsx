@@ -6,6 +6,7 @@ import {
   budgetAlerts,
   DEFAULT_NOTIFY_PREFS,
   HORIZON_DAYS,
+  MAX_PENDING,
   notificationId,
   planNotifications,
   type NotifyPrefs,
@@ -18,7 +19,10 @@ import { useBudgetStatus } from './budget'
 import { usePersonalCycle } from './cycle'
 import { useAssets, useCategoryMap, useSettings, useTransactions } from './data'
 import { useAllRecurring, usePersonalTransactions } from './personal'
-import { tt } from '../lib/i18n'
+import { getLang, tt } from '../lib/i18n'
+import { articleNotifications } from '../domain/gundem'
+import { readSeenAt, useArticles, writeSeenAt } from './gundem'
+import { usePlan } from './plan'
 
 /**
  * Mobil uygulamada cihazda kurulan bildirimler (sunucu yok; ücretsiz Apple kimliğiyle kurulan
@@ -193,6 +197,9 @@ function Scheduler() {
   const period = periodOf(todayIso(), startDay)
   const status = useBudgetStatus(period, prefs.enabled && prefs.budget)
   const categories = useCategoryMap()
+  // Gündem yazıları yalnızca Plus+ (Finansal Gündem) için
+  const gundemOn = usePlan().has('learning')
+  const articles = useArticles()
 
   useEffect(() => {
     if (!planned) return
@@ -204,8 +211,12 @@ function Scheduler() {
         if (perm === 'prompt' && prefs.enabled) perm = await requestNotifyPermission()
         if (cancelled || perm !== 'granted') return
         const sent = readSent()
-        const instant = budgetAlerts(status, period, (id) => categories.get(id)?.name ?? 'Kategori', sent, new Date())
-        await replaceScheduled(planned, instant)
+        const now = new Date()
+        const instant = budgetAlerts(status, period, (id) => categories.get(id)?.name ?? 'Kategori', sent, now)
+        // Koçun Gündem bildirimleri: yayına yeni girenler hemen, ileride girecekler saatinde
+        const news = prefs.enabled && prefs.gundem && gundemOn && articles ? articleNotifications(articles, getLang(), now, readSeenAt()) : []
+        await replaceScheduled([...planned.slice(0, MAX_PENDING - news.length), ...news], instant)
+        if (articles) writeSeenAt(now.getTime())
         if (instant.length) {
           for (const n of instant) {
             sent.add(n.key)
@@ -222,7 +233,7 @@ function Scheduler() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [planned, status, period, categories, prefs.enabled])
+  }, [planned, status, period, categories, prefs.enabled, prefs.gundem, gundemOn, articles])
 
   return null
 }

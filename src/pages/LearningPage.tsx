@@ -1,5 +1,5 @@
-import { BookOpen, ChevronDown, Newspaper, Scale } from "lucide-react";
-import { useEffect } from "react";
+import { BookOpen, ChevronDown, FileText, Newspaper, Scale } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { ASSUMPTIONS } from "../domain/assumptions";
 import { PageHeader } from "../components/AppShell";
@@ -8,7 +8,10 @@ import { ReportMeta, ReportView } from "../components/Report";
 import { REPORT_KIND_LABEL, type ReportKind } from "../cloud/research";
 import { PlanBadge, PlanGate } from "../components/PlanGate";
 import { useReports } from "../state/coach";
-import { Alert, Badge, Card, More, Segmented } from "../components/ui/primitives";
+import { Badge, Card, More, Segmented } from "../components/ui/primitives";
+import { visibleArticles } from "../domain/gundem";
+import { useArticles, useNow } from "../state/gundem";
+import { ArticleCard } from "./GundemPage";
 import { tt, ttf } from '../lib/i18n'
 
 interface Topic {
@@ -103,34 +106,100 @@ export default function LearningPage() {
   const reports = useReports(20);
   const [kind, setKind] = useState<ReportKind | "hepsi">("hepsi");
   const news = reports?.filter((r) => kind === "hepsi" || r.kind === kind) ?? null;
+  const all = useArticles();
+  const now = useNow();
+  const articles = all ? visibleArticles(all, now) : null;
   return (
     <div>
       <PageHeader
-        title={tt('Finansal bilgi')}
+        title={tt('Finansal Gündem')}
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <PlanBadge plan="plusplus" /> {tt('Temel kavramlar ve ekonomi gündemi')}
+            <PlanBadge plan="plusplus" /> {tt('Piyasa notları, finans yazıları ve temel kavramlar')}
           </span>
         }
       />
       <PlanGate
         feature="learning"
-        title={tt('Finansal bilgi ve ekonomi gündemi')}
+        title={tt('Finansal Gündem')}
         points={[
+          tt('Günde iki kez güncellenen piyasa notları ve finans yazıları'),
+          tt('Yeni yazı gelince koçtan bildirim'),
           tt('Risk, likidite, masraf ve çeşitlendirme gibi temel kavramlar'),
-          tt('Editör onaylı günlük, haftalık ve aylık ekonomi raporları'),
-          tt('Her bilginin kaynağı ve tarihi'),
         ]}
       >
-        <div className="flex flex-col gap-4">
-          <Alert tone="info">
-            {tt('Genel bilgidir; yatırım tavsiyesi değildir.')}
-          </Alert>
-
-          <section aria-label={tt('Temel kavramlar')}>
+        <div className="flex flex-col gap-5">
+          <section aria-label={tt('Ekonomi gündemi')}>
             <h2 className="mb-2 flex items-center gap-2 font-display text-base font-semibold">
-              <BookOpen className="size-5 text-accent" /> {tt('Temel kavramlar')}
+              <Newspaper className="size-5 text-accent" /> {tt('Ekonomi gündemi')}
             </h2>
+            {!articles ? (
+              <Card className="p-5">
+                <p className="text-sm text-muted">{tt('Yükleniyor…')}</p>
+              </Card>
+            ) : articles.length === 0 ? (
+              <Card className="p-5">
+                <p className="text-sm text-muted">{tt('Yeni notlar her gün 09:00 ve 21:00 taramasından sonra burada görünür.')}</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {articles.map((a) => (
+                  <ArticleCard key={a.slug} a={a} compact />
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-[12px] text-subtle">
+              {tt('Genel bilgidir; yatırım tavsiyesi değildir.')}
+            </p>
+          </section>
+
+          {reports && reports.length > 0 && (
+            <Fold icon={<FileText className="size-5 text-accent" />} title={tt('Editör raporları')}>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[12.5px] text-muted">{tt('Editör onayından sonra yayınlanır.')}</p>
+                <Segmented<ReportKind | "hepsi">
+                  label={tt('Rapor türü')}
+                  value={kind}
+                  onChange={setKind}
+                  className="no-scrollbar max-sm:w-full max-sm:overflow-x-auto"
+                  options={[
+                    { value: "hepsi", label: tt('Tümü') },
+                    ...(["gunluk", "haftalik", "aylik", "acil"] as const).map(
+                      (k) => ({ value: k, label: REPORT_KIND_LABEL[k] }),
+                    ),
+                  ]}
+                />
+              </div>
+              <More className="mb-3">
+                {tt('Raporlar herkese aynıdır; seçilmiş resmî kurumlar, haber kaynakları ve uzmanlardan derlenir. Her cümlenin kaynağı numarasıyla gösterilir.')}
+                <span className="mt-2 flex flex-wrap gap-2 text-[12.5px]">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Badge tone="teal">{tt('Resmî veri')}</Badge> {tt('kurumun açıkladığı')}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Badge tone="neutral">{tt('Haber')}</Badge> {tt('olanı aktarır')}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Badge tone="accent">{tt('Uzman yorumu')}</Badge> {tt('bir kişinin görüşüdür')}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Badge tone="warning">{tt('Tahmin')}</Badge> {tt('gerçekleşmeyebilir')}
+                  </span>
+                </span>
+              </More>
+              <div className="flex flex-col gap-3">
+                {(news ?? []).map((r, i) => (
+                  <Card key={r.id} className="p-4 sm:p-5">
+                    <div className="mb-1 font-semibold text-ink">{r.title}</div>
+                    <ReportMeta r={r} />
+                    <ReportView r={r} className="mt-3" openFirst={i === 0} />
+                  </Card>
+                ))}
+              </div>
+            </Fold>
+          )}
+
+          <Fold icon={<BookOpen className="size-5 text-accent" />} title={tt('Temel kavramlar')}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {TOPICS.map((t) => (
                 <Card key={t.id} className="p-0">
@@ -163,69 +232,25 @@ export default function LearningPage() {
                 </Card>
               ))}
             </div>
-          </section>
+          </Fold>
 
           <Assumptions />
-
-          <section aria-label={tt('Ekonomi gündemi')}>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-                <Newspaper className="size-5 text-accent" /> {tt('Ekonomi gündemi')}
-              </h2>
-              <Segmented<ReportKind | "hepsi">
-                label={tt('Rapor türü')}
-                value={kind}
-                onChange={setKind}
-                className="no-scrollbar max-sm:w-full max-sm:overflow-x-auto"
-                options={[
-                  { value: "hepsi", label: tt('Tümü') },
-                  ...(["gunluk", "haftalik", "aylik", "acil"] as const).map(
-                    (k) => ({ value: k, label: REPORT_KIND_LABEL[k] }),
-                  ),
-                ]}
-              />
-            </div>
-            <p className="text-[12.5px] text-muted">
-              {tt('Editör onayından sonra yayınlanır.')}
-            </p>
-            <More className="mb-3">
-              {tt('Raporlar herkese aynıdır; seçilmiş resmî kurumlar, haber kaynakları ve uzmanlardan derlenir. Her cümlenin kaynağı numarasıyla gösterilir.')}
-              <span className="mt-2 flex flex-wrap gap-2 text-[12.5px]">
-                <span className="inline-flex items-center gap-1.5">
-                  <Badge tone="teal">{tt('Resmî veri')}</Badge> {tt('kurumun açıkladığı')}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Badge tone="neutral">{tt('Haber')}</Badge> {tt('olanı aktarır')}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Badge tone="accent">{tt('Uzman yorumu')}</Badge> {tt('bir kişinin görüşüdür')}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Badge tone="warning">{tt('Tahmin')}</Badge> {tt('gerçekleşmeyebilir')}
-                </span>
-              </span>
-            </More>
-            {news && news.length > 0 ? (
-              <div className="flex flex-col gap-3">
-                {news.map((r, i) => (
-                  <Card key={r.id} className="p-4 sm:p-5">
-                    <div className="mb-1 font-semibold text-ink">{r.title}</div>
-                    <ReportMeta r={r} />
-                    <ReportView r={r} className="mt-3" openFirst={i === 0} />
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-5">
-                <p className="text-sm text-muted">
-                  {news ? tt('Henüz yayınlanmış rapor yok.') : tt('Yükleniyor…')}
-                </p>
-              </Card>
-            )}
-          </section>
         </div>
       </PlanGate>
     </div>
+  );
+}
+
+/** Sayfanın altındaki kapalı bölümler. */
+function Fold({ icon, title, children, id, open }: { icon: ReactNode; title: string; children: ReactNode; id?: string; open?: boolean }) {
+  return (
+    <details id={id} open={open} className="group scroll-mt-20 rounded-2xl border border-line bg-surface">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 font-display text-base font-semibold text-ink [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2">{icon} {title}</span>
+        <ChevronDown className="size-5 shrink-0 text-subtle transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="px-4 pb-4">{children}</div>
+    </details>
   );
 }
 
@@ -237,10 +262,7 @@ function Assumptions() {
       document.getElementById("varsayimlar")?.scrollIntoView({ block: "start" });
   }, [hash]);
   return (
-    <section id="varsayimlar" aria-label={tt('Varsayımlar ve kaynaklar')} className="scroll-mt-20">
-      <h2 className="mb-1 flex items-center gap-2 font-display text-base font-semibold">
-        <Scale className="size-5 text-accent" /> {tt('Varsayımlar ve kaynaklar')}
-      </h2>
+    <Fold id="varsayimlar" open={hash === "#varsayimlar"} icon={<Scale className="size-5 text-accent" />} title={tt('Varsayımlar ve kaynaklar')}>
       <p className="mb-3 text-[12.5px] text-muted">
         {tt('Rotadaki hesaplar bu varsayımlara dayanır.')}
       </p>
@@ -256,6 +278,6 @@ function Assumptions() {
           ))}
         </ul>
       </Card>
-    </section>
+    </Fold>
   );
 }

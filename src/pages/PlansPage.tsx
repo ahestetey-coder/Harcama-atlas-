@@ -71,7 +71,7 @@ const PLANS: Array<{ plan: Plan; tagline: string; items: Item[] }> = [
       { text: tt('Plus’ın bütün özellikleri') },
       { text: tt('Gelecek senaryoları: temkinli, orta ve olumlu varsayımlar'), feature: 'scenarios' },
       { text: tt('Finans koçu: borç kapatma ve yapılandırma planı, yatırıma ayrılacak tutar, kişiye özel mesajlar'), feature: 'aiCoach' },
-      { text: tt('Finansal bilgi ve ekonomi gündemi'), feature: 'learning' },
+      { text: tt('Finansal Gündem: piyasa notları ve finans yazıları'), feature: 'learning' },
     ],
   },
 ]

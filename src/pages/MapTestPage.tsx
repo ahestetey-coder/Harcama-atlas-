@@ -119,7 +119,7 @@ function NextStep({ result }: { result: QuickResult }) {
             <div className="rounded-xl border border-white/20 bg-white/5 p-3.5">
               <PlanBadge plan="plusplus" />
               <ul className="mt-2 flex flex-col gap-1 text-[13px] text-white/90">
-                {[tt('Plus\'taki her şey'), tt('Rotana göre seni takip eden koç'), tt('Gelecek senaryoları'), tt('Finansal bilgi ve gündem')].map((t) => (
+                {[tt('Plus\'taki her şey'), tt('Rotana göre seni takip eden koç'), tt('Gelecek senaryoları'), tt('Finansal Gündem ve piyasa notları')].map((t) => (
                   <li key={t} className="flex items-start gap-1.5">
                     <Check className="mt-0.5 size-3.5 shrink-0 text-violet-300" /> {t}
                   </li>

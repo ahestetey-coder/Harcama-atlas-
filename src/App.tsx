@@ -39,6 +39,7 @@ const loaders = {
   mapTest: () => import('./pages/MapTestPage'),
   scenarios: () => import('./pages/ScenariosPage'),
   learning: () => import('./pages/LearningPage'),
+  gundem: () => import('./pages/GundemPage'),
   coach: () => import('./pages/CoachPage'),
 }
 const TransactionsPage = lazy(loaders.transactions)
@@ -62,6 +63,7 @@ const JourneyPage = lazy(loaders.journey)
 const MapTestPage = lazy(loaders.mapTest)
 const ScenariosPage = lazy(loaders.scenarios)
 const LearningPage = lazy(loaders.learning)
+const GundemPage = lazy(loaders.gundem)
 const CoachPage = lazy(loaders.coach)
 /** Girişsiz web testi: uygulama kabuğu ve oturum olmadan açılır. */
 const FreedomMapPage = lazy(() => import('./pages/FreedomMapPage'))
@@ -172,6 +174,8 @@ const router = createHashRouter([
       { path: '/finansal-harita', element: <MapTestPage /> },
       { path: '/senaryolar', element: <ScenariosPage /> },
       { path: '/ogren', element: <LearningPage /> },
+      { path: '/gundem', element: <GundemPage /> },
+      { path: '/gundem/:slug', element: <GundemPage /> },
       { path: '/koc', element: <CoachPage /> },
       { path: '*', element: <NotFound /> },
     ],

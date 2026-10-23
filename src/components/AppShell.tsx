@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpen, Bot, ChartColumn, CreditCard, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Map as MapIcon, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Bot, ChartColumn, CreditCard, Database, FlaskConical, History, LayoutDashboard, ListOrdered, LogOut, Newspaper, Map as MapIcon, Menu, Mountain, Moon, PiggyBank, Plus, Receipt, Settings, ShieldCheck, Sparkles, Sun, Tags, Target, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useId, useLayoutEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { APP_CONFIG } from '../config/app'
@@ -42,7 +42,7 @@ const ITEMS = {
   journey: { to: '/yolculuk', label: tt('Finansal yolculuğum'), short: tt('Yolculuğum'), icon: Mountain, tone: 'from-orange-500 to-red-600' },
   mapTest: { to: '/finansal-harita', label: tt('Finansal Harita testi'), short: tt('Harita testi'), icon: MapIcon, tone: 'from-amber-500 to-orange-600' },
   scenarios: { to: '/senaryolar', label: tt('Gelecek senaryoları'), short: tt('Senaryolar'), icon: TrendingUp, tone: 'from-fuchsia-500 to-purple-600' },
-  learning: { to: '/ogren', label: tt('Finansal bilgi'), short: tt('Bilgi'), icon: BookOpen, tone: 'from-yellow-500 to-amber-600' },
+  learning: { to: '/ogren', label: tt('Finansal Gündem'), short: tt('Gündem'), icon: Newspaper, tone: 'from-yellow-500 to-amber-600' },
   members: { to: '/uyeler', label: tt('Üyeler ve paylaşım'), short: tt('Üyeler'), icon: Users, tone: 'from-fuchsia-500 to-pink-600' },
   history: { to: '/aktarimlar', label: tt('Aktarım geçmişi'), short: tt('Aktarımlar'), icon: History, tone: 'from-slate-500 to-slate-700' },
   backup: { to: '/yedekleme', label: tt('Yedekleme ve veri'), short: tt('Yedekleme'), icon: Database, tone: 'from-slate-500 to-slate-700' },

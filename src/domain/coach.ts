@@ -416,7 +416,7 @@ export function answer(q: QuestionId, p: CoachPlan, facts: JourneyFacts, budget:
       const inv = p.phases.find((x) => x.id === 'invest')
       const when = inv && inv.startMonth > 0 ? ttf(' {0} sonra, borç{1} tamamlanınca başlar.', monthsText(inv.startMonth), p.emergencyGapKurus > 0 ? tt(' ve acil durum birikimi') : '') : tt(' Hemen başlayabilirsiniz.')
       const buf = p.bufferKurus > 0 ? ttf(' Gelir düzeniniz nedeniyle {0} tampon olarak bırakıldı.', tl(p.bufferKurus)) : ''
-      return ttf('Ayda {0} ayırabilirsiniz.{1}{2} Hangi araca yatıracağınızı ben söylemem; risk ve likidite için Finansal bilgi sayfasına bakabilirsiniz.', tl(p.monthlyPlanKurus), when, buf)
+      return ttf('Ayda {0} ayırabilirsiniz.{1}{2} Hangi araca yatıracağınızı ben söylemem; risk ve likidite için Finansal Gündem sayfasına bakabilirsiniz.', tl(p.monthlyPlanKurus), when, buf)
     }
     case 'emergency': {
       if (p.emergencyGapKurus <= 0) return ttf('Evet. Hızlı kullanılabilir birikiminiz ({0}) {1} hedefini karşılıyor.', tl(facts.liquidKurus), tl(p.emergencyTargetKurus))
