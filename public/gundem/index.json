@@ -1,1 +1,25 @@
-{ "articles": [] }
+{
+ "articles": [
+  {
+   "slug": "altin-4000-dolar-esiginde-borsa-faize-ragmen-geriledi-2026-10-23",
+   "videoId": "Q-woLbIkUlQ",
+   "channel": "Cihat E. Çiçek",
+   "category": "piyasa-notu",
+   "publishAt": "2026-10-23T07:20:00Z",
+   "title": {
+    "tr": "Altın 4.000 dolar eşiğinde, borsa faiz indirimine rağmen geriledi",
+    "en": "Gold at 4,000 dollars, stocks fall despite rate cut"
+   },
+   "summary": {
+    "tr": "Ons altın 4.005 dolara inerken faiz indirimi borsayı taşıyamadı, petrol 2022'den beri en yüksekte.",
+    "en": "Gold slipped to 4,005 dollars, a rate cut failed to lift stocks and oil hit its highest since 2022."
+   },
+   "cover": "https://d8j0ntlcm91z4.cloudfront.net/user_36pFp5nFrWwQLYwgxN8PefZqIU2/hf_20261023_071214_d37b9816-229f-49b9-866b-c1e4cfc8cd8f.png",
+   "coverAlt": {
+    "tr": "Kırmızı piyasa ekranları önünde altın külçeler ve lira banknotları",
+    "en": "Gold bars and lira banknotes in front of red market screens"
+   },
+   "onBlog": false
+  }
+ ]
+}
