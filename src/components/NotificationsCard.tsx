@@ -7,7 +7,7 @@ import { useUi } from '../state/ui'
 import { Button, Card, Switch } from './ui/primitives'
 import { dateLocale, tt, ttf } from '../lib/i18n'
 
-const KINDS: NotifyKind[] = ['payments', 'income', 'budget', 'spending']
+const KINDS: NotifyKind[] = ['payments', 'income', 'budget', 'spending', 'gundem']
 
 function when(d: Date): string {
   return d.toLocaleString(dateLocale(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })

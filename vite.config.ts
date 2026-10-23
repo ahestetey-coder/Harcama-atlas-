@@ -35,7 +35,7 @@ export default defineConfig({
       workbox: {
         // Uygulama kabuğu ve PDF.js çalışanı ilk açılışta önbelleğe alınır.
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,json}'],
-        globIgnores: ['ocr/**', 'pdfjs/**', 'ornek-dosyalar/**'],
+        globIgnores: ['ocr/**', 'pdfjs/**', 'ornek-dosyalar/**', 'gundem/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: 'index.html',
         runtimeCaching: [
