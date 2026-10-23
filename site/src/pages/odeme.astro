@@ -10,7 +10,7 @@ const L = (p: string) => localize(p, lang)
 const features = Object.fromEntries(plansFor(lang).filter((p) => p.id !== 'free').map((p) => [p.id === 'plus_plus' ? 'plusplus' : 'plus', p.highlights]))
 ---
 
-<Site title={t('Ödeme · Harcama Atlası', 'Checkout · Harcama Atlası')} description={t('Harcama Atlası Plus ya da Plus+ aboneliğini başlat.', 'Start your Harcama Atlası Plus or Plus+ subscription.')} noindex>
+<Site title={t('Ödeme · Harcama Atlası', 'Checkout · Spending Atlas')} description={t('Harcama Atlası Plus ya da Plus+ aboneliğini başlat.', 'Start your Spending Atlas Plus or Plus+ subscription.')} noindex>
   <section class="wrap pay" data-pay data-features={JSON.stringify(features)}>
     <a class="back" href={L('/fiyatlar')}>{t('← Paketlere dön', '← Back to plans')}</a>
     <h1 class="h-section">{t('Aboneliğini başlat', 'Start your subscription')}</h1>

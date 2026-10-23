@@ -1,0 +1,3 @@
+/* Ana ekrandaki uygulama adı (cihaz dili Türkçe) */
+"CFBundleDisplayName" = "Harcama Atlası";
+"CFBundleName" = "Harcama Atlası";

@@ -29,12 +29,13 @@ const L = (p: string) => localize(p, lang)
 const other = counterpart(Astro.url.pathname)
 // Cloudflare Pages klasör sayfalarını sondaki eğik çizgiyle sunar
 const canonical = new URL(Astro.url.pathname.replace(/\/?$/, '/'), site).href
-const ogImage = new URL(image, site).href
+// İngilizce sayfalarda paylaşım görseli İngilizce (Spending Atlas)
+const ogImage = new URL(lang === 'en' && image === '/og.png' ? '/og-en.png' : image, site).href
 const siteLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    { '@type': 'Organization', '@id': `${site.href}#org`, name: 'Harcama Atlası', url: site.href, logo: new URL('/apple-touch-icon.png', site).href },
-    { '@type': 'WebSite', '@id': `${site.href}#site`, name: 'Harcama Atlası', url: site.href, inLanguage: lang === 'en' ? 'en' : 'tr-TR', publisher: { '@id': `${site.href}#org` } },
+    { '@type': 'Organization', '@id': `${site.href}#org`, name: t('Harcama Atlası', 'Spending Atlas'), url: site.href, logo: new URL('/apple-touch-icon.png', site).href },
+    { '@type': 'WebSite', '@id': `${site.href}#site`, name: t('Harcama Atlası', 'Spending Atlas'), url: site.href, inLanguage: lang === 'en' ? 'en' : 'tr-TR', publisher: { '@id': `${site.href}#org` } },
   ],
 }
 const path = Astro.url.pathname.replace(/\/$/, '') || '/'
@@ -68,7 +69,7 @@ const alt = (href: string) => new URL(href, site).href
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <meta property="og:type" content={ogType} />
-    <meta property="og:site_name" content="Harcama Atlası" />
+    <meta property="og:site_name" content={t('Harcama Atlası', 'Spending Atlas')} />
     <meta property="og:locale" content={lang === 'en' ? 'en_US' : 'tr_TR'} />
     {!noindex && other.exists && <link rel="alternate" hreflang={other.lang} href={alt(other.href)} />}
     {!noindex && other.exists && <link rel="alternate" hreflang={lang} href={canonical} />}
@@ -139,7 +140,7 @@ const alt = (href: string) => new URL(href, site).href
     <a class="skip" href="#icerik">{t('İçeriğe geç', 'Skip to content')}</a>
     <header class="site-head" transition:persist>
       <div class="wrap bar">
-        <a href={L('/')} class="brand" aria-label={t('Harcama Atlası ana sayfa', 'Harcama Atlası home')}>
+        <a href={L('/')} class="brand" aria-label={t('Harcama Atlası ana sayfa', 'Spending Atlas home')}>
           <Brand id="logo-ust" size={34} />
         </a>
         <nav class="links" aria-label={t('Ana menü', 'Main menu')}>
@@ -181,9 +182,9 @@ const alt = (href: string) => new URL(href, site).href
     <footer class="site-foot">
       <div class="wrap foot-grid">
         <div>
-          <a href={L('/')} class="brand" aria-label={t('Harcama Atlası ana sayfa', 'Harcama Atlası home')}><Brand id="logo-alt" /></a>
+          <a href={L('/')} class="brand" aria-label={t('Harcama Atlası ana sayfa', 'Spending Atlas home')}><Brand id="logo-alt" /></a>
           <p>{t('Harcamalarını haritala, özgürlüğe giden rotanı çiz.', 'Map your spending, chart your route to financial freedom.')}</p>
-          <p class="small">{t('Harcama Atlası yatırım danışmanlığı yapmaz; gösterilen hesaplar örnek ve tahmindir.', 'Harcama Atlası does not provide investment advice; figures shown are examples and estimates.')}</p>
+          <p class="small">{t('Harcama Atlası yatırım danışmanlığı yapmaz; gösterilen hesaplar örnek ve tahmindir.', 'Spending Atlas does not provide investment advice; figures shown are examples and estimates.')}</p>
         </div>
         <nav aria-label={t('Ürün', 'Product')}>
           <h2>{t('Ürün', 'Product')}</h2>
@@ -198,7 +199,7 @@ const alt = (href: string) => new URL(href, site).href
           {legal.map(([href, tr, en]) => <a href={L(href)}>{t(tr, en)}</a>)}
         </nav>
       </div>
-      <div class="wrap copy">© 2026 Harcama Atlası <a href={L('/yasal/cerez')} data-consent-open hidden>{t('Çerez tercihleri', 'Cookie preferences')}</a></div>
+      <div class="wrap copy">© 2026 {t('Harcama Atlası', 'Spending Atlas')} <a href={L('/yasal/cerez')} data-consent-open hidden>{t('Çerez tercihleri', 'Cookie preferences')}</a></div>
     </footer>
     <Consent />
   </body>

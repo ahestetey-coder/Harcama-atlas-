@@ -48,7 +48,7 @@ export async function generateCoachReply(messages: ChatMessage[], maxTokens = 50
 }
 
 /** İngilizce seçen kullanıcıya: kurallar aynı, yanıt dili İngilizce. */
-export const COACH_LANG_EN = `DİL: Kullanıcı uygulamayı İngilizce kullanıyor. Yanıtlarını doğal, sade İngilizceyle yaz (İngiliz İngilizcesi). Yukarıdaki kuralların hepsi aynen geçerli. Türkçe kurum adlarını (TCMB, TÜİK) koru, gerekirse kısaca açıkla.`
+export const COACH_LANG_EN = `DİL: Kullanıcı uygulamayı İngilizce kullanıyor. Yanıtlarını doğal, sade İngilizceyle yaz (İngiliz İngilizcesi). Yukarıdaki kuralların hepsi aynen geçerli. Türkçe kurum adlarını (TCMB, TÜİK) koru, gerekirse kısaca açıkla. Uygulamanın İngilizce adı "Spending Atlas"; uygulamanın adını anarsan bu adı kullan.`
 
 export type CoachCurrency = 'TRY' | 'USD'
 

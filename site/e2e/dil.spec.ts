@@ -10,6 +10,9 @@ test('İngilizce sürüm ve dil seçici', async ({ page, isMobile }) => {
   await expect(page).toHaveURL(/\/en\/pricing\/?$/)
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Pick the plan')
+  // İngilizce sürümde uygulamanın adı Spending Atlas
+  await expect(page).toHaveTitle(/Spending Atlas/)
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /og-en\.png$/)
   // Fiyatlar İngilizce biçimde, ödeme bağlantısı İngilizce sayfaya gider
   await expect(page.locator('a[data-plan="plus"]').first()).toHaveAttribute('href', /^\/en\/checkout\?plan=plus/)
   await expect(page.locator('.prices .amt').nth(1)).toHaveText(/\$2\.99/)

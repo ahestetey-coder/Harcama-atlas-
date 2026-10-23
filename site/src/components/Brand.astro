@@ -1,11 +1,14 @@
 ---
 // Harcama Atlası logosu: üç kontur katmanından oluşan zirve ve zirvedeki konum noktası.
+// İngilizce sayfalarda ad "Spending Atlas" yazılır.
+import { langOf } from '../lib/i18n'
 interface Props {
   id: string
   size?: number
   wordmark?: boolean
 }
 const { id, size = 30, wordmark = true } = Astro.props
+const en = langOf(Astro.url.pathname) === 'en'
 ---
 
 <span class="brand-in">
@@ -20,7 +23,7 @@ const { id, size = 30, wordmark = true } = Astro.props
     <path d="M20 56 C25 49 28 38 32 38 C36 38 39 49 44 56 Z" fill={`url(#${id}-3)`}></path>
     <circle class="peak" cx="32" cy="4.5" r="3.6" fill="currentColor"></circle>
   </svg>
-  {wordmark && <span class="word">harcama <span class="grad">atlası</span></span>}
+  {wordmark && (en ? <span class="word">spending <span class="grad">atlas</span></span> : <span class="word">harcama <span class="grad">atlası</span></span>)}
 </span>
 
 <style>

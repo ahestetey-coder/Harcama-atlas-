@@ -1,4 +1,5 @@
 {
+"Harcama Atlası": "Spending Atlas",
 " (arşivde)": " (archived)",
 " (maaş hafta sonuna denk geliyor)": " (payday falls on a weekend)",
 " (önizleme)": " (preview)",
@@ -374,7 +375,7 @@
 "Belirsizlik": "Uncertainty",
 "Belirtilmedi": "Not specified",
 "Bengen, W. P. (1994), \"Determining Withdrawal Rates Using Historical Data\", Journal of Financial Planning; Cooley, Hubbard ve Walz (1998), \"Retirement Savings: Choosing a Withdrawal Rate That Is Sustainable\" (Trinity çalışması); Pfau, W. D. (2010), \"An International Perspective on Safe Withdrawal Rates\", Journal of Financial Planning.": "Bengen, W. P. (1994), \"Determining Withdrawal Rates Using Historical Data\", Journal of Financial Planning; Cooley, Hubbard and Walz (1998), \"Retirement Savings: Choosing a Withdrawal Rate That Is Sustainable\" (the Trinity study); Pfau, W. D. (2010), \"An International Perspective on Safe Withdrawal Rates\", Journal of Financial Planning.",
-"Bildirim izni kapalı. Telefonun Ayarlar &gt; Harcama Atlası &gt; Bildirimler bölümünden açabilirsin.": "Notification permission is off. You can turn it on in your phone's Settings &gt; Harcama Atlası &gt; Notifications.",
+"Bildirim izni kapalı. Telefonun Ayarlar &gt; Harcama Atlası &gt; Bildirimler bölümünden açabilirsin.": "Notification permission is off. You can turn it on in your phone's Settings &gt; Spending Atlas &gt; Notifications.",
 "Bildirim izni verilmedi.": "Notification permission was not granted.",
 "Bildirimi kapat": "Close notification",
 "Bildirimler": "Notifications",
@@ -1201,7 +1202,7 @@
 "Hangi gider?": "Which expense?",
 "Hangi seçeneği tercih edersiniz?": "Which option would you choose?",
 "Harcama": "Spending",
-"Harcama Atlası daveti": "Harcama Atlası invitation",
+"Harcama Atlası daveti": "Spending Atlas invitation",
 "Harcama bütçeniz {0} oldu.": "Your spending budget is now {0}.",
 "Harcama bütçesi": "Spending budget",
 "Harcama geçmişiniz yokken kategori limitleri bu paylarla başlar ve üç dönemde sizin harcamanıza geçer. Ulaştırmanın Akaryakıt ile Ulaşım arasında yarı yarıya bölünmesi varsayımdır; {0} katsayısı 1 − birikim hedefi (%{1}). Konut grubu yükletilmiş kira içerdiği için dışarıda.": "Without spending history, category limits start from these shares and move to your own spending over three periods. Splitting transport equally between Fuel and Transport is an assumption; the {0} factor is 1 − savings target ({1}%). Housing is excluded because it includes imputed rent.",

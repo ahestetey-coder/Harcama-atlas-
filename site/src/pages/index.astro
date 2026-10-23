@@ -36,7 +36,7 @@ const features = [
 const faqs = [
   { q: t('Finansal Harita testi ücretli mi?', 'Is the Financial Map test free?'), a: t('Hayır. Test ücretsiz, yaklaşık 2 dakika sürer ve 10 sorudan oluşur. Sonucunda finansal arketipini, rotandaki konumunu ve tahmini özgürlük yılını görürsün.', 'Yes. The test is free, takes about 2 minutes and has 10 questions. At the end you see your financial archetype, where you are on your route and your estimated freedom year.') },
   { q: t('Test sonucum uygulamaya nasıl geçiyor?', 'How does my test result get into the app?'), a: t('Testte verdiğin e-posta adresiyle uygulamaya giriş yaptığında sonucun hesabına kendiliğinden bağlanır. İstersen sana verilen devam koduyla da aktarabilirsin.', 'When you sign in to the app with the email you gave in the test, your result is linked to your account automatically. You can also transfer it with the continue code you receive.') },
-  { q: t('Banka şifremi istiyor musunuz?', 'Do you ask for my bank password?'), a: t('Hayır. Harcama Atlası bankana bağlanmaz. Harcamalarını ekstre dosyasıyla, ekran görüntüsüyle ya da elle eklersin. Ekran görüntüleri cihazında okunur.', 'No. Harcama Atlası never connects to your bank. You add spending with a statement file, a screenshot or by hand. Screenshots are read on your device.') },
+  { q: t('Banka şifremi istiyor musunuz?', 'Do you ask for my bank password?'), a: t('Hayır. Harcama Atlası bankana bağlanmaz. Harcamalarını ekstre dosyasıyla, ekran görüntüsüyle ya da elle eklersin. Ekran görüntüleri cihazında okunur.', 'No. Spending Atlas never connects to your bank. You add spending with a statement file, a screenshot or by hand. Screenshots are read on your device.') },
   { q: t('Verilerim nerede saklanıyor?', 'Where is my data stored?'), a: t('Verilerin hesabına bağlı olarak saklanır ve aynı hesapla girdiğin her cihazda görünür. Hesabını ve tüm verilerini dilediğin an uygulamadan silebilirsin.', 'Your data is stored with your account and appears on every device you sign in to. You can delete your account and all your data from the app at any time.') },
   { q: t('Aboneliğimi nereden alırım, nasıl iptal ederim?', 'Where do I subscribe and how do I cancel?'), a: t('Plus ve Plus+ paketlerini bu siteden ya da uygulama mağazasından alabilirsin. Hangi kanaldan aldıysan o kanaldan iptal edersin; iptal ettiğinde dönem sonuna kadar kullanmaya devam edersin.', 'You can buy Plus and Plus+ on this website or in the app store. You cancel through the same channel you bought from, and you keep access until the end of the paid period.') },
   { q: t('Yatırım fiyatları nereden geliyor?', 'Where do investment prices come from?'), a: t('Döviz kurları TCMB’den, altın, hisse, fon, kripto ve emtia fiyatları piyasa kaynaklarından kendiliğinden alınır; uygulama açıkken 15 dakikada bir yenilenir. Fiyatlar gecikmeli olabilir. Bankana ya da aracı kurumuna bağlanmayız, yatırımlarını sen eklersin.', 'Exchange rates come from the Central Bank of Türkiye; gold, stock, fund, crypto and commodity prices come from market sources automatically and refresh every 15 minutes while the app is open. Prices may be delayed. We never connect to your bank or broker; you add your investments yourself.') },
@@ -45,14 +45,14 @@ const faqs = [
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    { '@type': 'SoftwareApplication', name: 'Harcama Atlası', applicationCategory: 'FinanceApplication', operatingSystem: 'iOS, Android, Web', offers: { '@type': 'Offer', price: '0', priceCurrency: currencyFor(lang) } },
+    { '@type': 'SoftwareApplication', name: t('Harcama Atlası', 'Spending Atlas'), applicationCategory: 'FinanceApplication', operatingSystem: 'iOS, Android, Web', offers: { '@type': 'Offer', price: '0', priceCurrency: currencyFor(lang) } },
     { '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
   ],
 }
 ---
 
 <Site
-  title={t('Harcama Atlası · Harcamalarını haritala, özgürlüğe giden rotanı çiz', 'Harcama Atlası · Map your spending, chart your route to freedom')}
+  title={t('Harcama Atlası · Harcamalarını haritala, özgürlüğe giden rotanı çiz', 'Spending Atlas · Map your spending, chart your route to freedom')}
   description={t('Harcamalarını tek ekranda topla, 2 dakikalık Finansal Harita testiyle özgürlük rotanı çıkar. Ücretsiz başla.', 'See all your spending on one screen and chart your route to financial freedom with a 2-minute Financial Map test. Start free.')}
   jsonLd={jsonLd}
 >
@@ -68,7 +68,7 @@ const jsonLd = {
         )
       }
       <p class="lead reveal" style="--d:2">
-        {t('Harcama Atlası paranın nereye gittiğini tek haritada toplar. 2 dakikalık Finansal Harita testiyle ilk rotanı çıkarır, uygulamada her ay nerede olduğunu gösterir.', 'Harcama Atlası puts everywhere your money goes on one map. A 2-minute Financial Map test charts your first route, and the app shows where you stand every month.')}
+        {t('Harcama Atlası paranın nereye gittiğini tek haritada toplar. 2 dakikalık Finansal Harita testiyle ilk rotanı çıkarır, uygulamada her ay nerede olduğunu gösterir.', 'Spending Atlas puts everywhere your money goes on one map. A 2-minute Financial Map test charts your first route, and the app shows where you stand every month.')}
       </p>
       <div class="ctas reveal" style="--d:3">
         <a class="btn btn-route" href={L('/test')}>{t('Finansal Harita testini çöz', 'Take the Financial Map test')} <span class="arr" aria-hidden="true">→</span></a>
