@@ -9,7 +9,7 @@ import { tt, ttf } from '../lib/i18n'
  * Mobil uygulamanın cihazda kurduğu (sunucusuz) bildirimler. Bu dosya yalnızca hangi bildirimin
  * ne zaman gösterileceğini hesaplar; kurma işi src/state/notifications.tsx'te.
  */
-export type NotifyKind = 'payments' | 'income' | 'budget' | 'spending'
+export type NotifyKind = 'payments' | 'income' | 'budget' | 'spending' | 'gundem'
 
 export interface NotifyPrefs {
   enabled: boolean
@@ -17,15 +17,17 @@ export interface NotifyPrefs {
   income: boolean
   budget: boolean
   spending: boolean
+  gundem: boolean
 }
 
-export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = { enabled: true, payments: true, income: true, budget: true, spending: true }
+export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = { enabled: true, payments: true, income: true, budget: true, spending: true, gundem: true }
 
 export const NOTIFY_KIND_LABEL: Record<NotifyKind, { title: string; hint: string }> = {
   payments: { title: tt('Ödeme hatırlatmaları'), hint: tt('Düzenli ödeme, taksit ve borç günleri') },
   income: { title: tt('Gelir günü'), hint: tt('Maaş ve düzenli gelir günü') },
   budget: { title: tt('Bütçe uyarıları'), hint: tt('Bütçe dolmaya yaklaşınca ve aşılınca') },
   spending: { title: tt('Harcama girme hatırlatması'), hint: tt('2 gün kayıt girilmezse 3. gün akşamı') },
+  gundem: { title: tt('Gündem yazıları'), hint: tt('Koç yeni piyasa notu ve finans yazısı gelince haber verir') },
 }
 
 export interface PlannedNotification {

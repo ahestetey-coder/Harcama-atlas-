@@ -6,6 +6,8 @@ name: Mobil derleme
 on:
   push:
     branches: [main]
+    # Gündem yazıları ve web sitesi değişince mobil derleme gerekmez
+    paths-ignore: ['public/gundem/**', 'site/**']
   workflow_dispatch:
 
 permissions:
