@@ -45,12 +45,14 @@ Deno.serve(async (req) => {
   const uid = await userId(req)
   if (!uid) return json({ error: 'Giriş gerekli' }, 401)
 
-  let body: { summary?: unknown; memory?: unknown; mode?: string; messages?: Array<{ role: string; content: string }> }
+  let body: { summary?: unknown; memory?: unknown; mode?: string; lang?: string; messages?: Array<{ role: string; content: string }> }
   try {
     body = await req.json()
   } catch {
     return json({ error: 'Geçersiz istek' }, 400)
   }
+  const en = body.lang === 'en'
+  const msg = (tr: string, eng: string) => (en ? eng : tr)
   const summary = JSON.stringify(body.summary ?? {})
   const memory = (Array.isArray(body.memory) ? body.memory : []).filter((m): m is string => typeof m === 'string').map((m) => m.slice(0, 400)).slice(0, 30)
   const history = (body.messages ?? []).slice(-24).filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
@@ -59,15 +61,15 @@ Deno.serve(async (req) => {
   const db = serviceClient()
   // Sohbet Plus+ paketine dahil (yönetici her zaman kullanabilir).
   const [{ data: plan }, { data: admin }] = await Promise.all([db.rpc('ha_plan_of', { p_user: uid }), db.from('ha_admins').select('user_id').eq('user_id', uid).maybeSingle()])
-  if (plan !== 'plusplus' && !admin) return json({ error: 'Koç sohbeti Plus+ paketine dahildir.' }, 403)
+  if (plan !== 'plusplus' && !admin) return json({ error: msg('Koç sohbeti Plus+ paketine dahildir.', 'Coach chat is included in Plus+.') }, 403)
   const settings = await agentSettings(db)
-  if ((await usage(db, 'ai_coach', 'month')) >= settings.ai_coach_monthly_tokens) return json({ error: 'Koç bu ay için ayrılan kullanım sınırına ulaştı. Yönetici sınırı artırana kadar sohbet kapalı.' }, 429)
+  if ((await usage(db, 'ai_coach', 'month')) >= settings.ai_coach_monthly_tokens) return json({ error: msg('Koç bu ay için ayrılan kullanım sınırına ulaştı. Yönetici sınırı artırana kadar sohbet kapalı.', 'The coach has reached this month\'s usage limit. Chat is paused until the limit is raised.') }, 429)
 
   // Sohbet özeti (hafızaya yazılır): kullanıcı sorusu sayılmaz, ama yapay zekâ maliyetine eklenir.
   if (body.mode === 'summarize') {
     if (history.length < 4) return json({ error: 'Geçersiz istek' }, 400)
     try {
-      const r = await openaiChatUsage([{ role: 'system', content: SUMMARY_PROMPT }, { role: 'user', content: history.map((m) => `${m.role === 'user' ? 'Kullanıcı' : 'Koç'}: ${m.content}`).join('\n') }], { maxTokens: 250, temperature: 0.1 })
+      const r = await openaiChatUsage([{ role: 'system', content: en ? `${SUMMARY_PROMPT} Notları İngilizce yaz.` : SUMMARY_PROMPT }, { role: 'user', content: history.map((m) => `${m.role === 'user' ? 'Kullanıcı' : 'Koç'}: ${m.content}`).join('\n') }], { maxTokens: 250, temperature: 0.1 })
       await addUsage(db, 'ai_coach', r.tokens)
       const notes = r.text
         .split('\n')
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
         .slice(0, 4)
       return json({ notes })
     } catch {
-      return json({ error: 'Sohbet özetlenemedi' }, 502)
+      return json({ error: msg('Sohbet özetlenemedi', 'The chat couldn\'t be summarised') }, 502)
     }
   }
 
@@ -84,22 +86,22 @@ Deno.serve(async (req) => {
   const limit = settings.coach_daily_limit
   const day = istanbulDay()
   const { data: row } = await db.from('ha_coach_usage').select('count').eq('user_id', uid).eq('day', day).maybeSingle()
-  if ((row?.count ?? 0) >= limit) return json({ error: `Bugünkü soru sınırına (${limit}) ulaştınız. Türkiye saatiyle gece yarısı yenilenir.` }, 429)
+  if ((row?.count ?? 0) >= limit) return json({ error: msg(`Bugünkü soru sınırına (${limit}) ulaştınız. Türkiye saatiyle gece yarısı yenilenir.`, `You've reached today's question limit (${limit}). It resets at midnight Turkey time.`) }, 429)
 
-  const messages = [...coachContext(summary, memory, await latestReport(db).catch(() => null)), ...history.slice(-12).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))]
+  const messages = [...coachContext(summary, memory, await latestReport(db).catch(() => null), en ? 'en' : 'tr'), ...history.slice(-12).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))]
   let reply
   try {
-    reply = await generateCoachReply(messages)
+    reply = await generateCoachReply(messages, 500, en ? 'en' : 'tr')
   } catch {
     // Teknik hata: soru hakkından düşülmez.
-    return json({ error: 'Koç şu an yanıt veremiyor. Biraz sonra tekrar deneyin; bu deneme günlük hakkınızdan sayılmadı.' }, 502)
+    return json({ error: msg('Koç şu an yanıt veremiyor. Biraz sonra tekrar deneyin; bu deneme günlük hakkınızdan sayılmadı.', "The coach can't respond right now. Please try again shortly; this attempt didn't count towards your daily limit.") }, 502)
   }
   await addUsage(db, 'ai_coach', reply.tokens)
   if (reply.outcome === 'yeniden_yazildi') await addUsage(db, 'koc_yeniden', 1)
   if (reply.outcome === 'engellendi') await addUsage(db, 'koc_engel', 1)
   // Başarılı yanıttan sonra sayılır; aynı anda gelen isteklerle sınır aşılmışsa yanıt verilmez.
   const { data: used, error } = await db.rpc('ha_coach_usage_bump', { p_user: uid, p_day: day, p_limit: limit, p_tokens: reply.tokens })
-  if (error) return json({ error: 'Koç şu an yanıt veremiyor. Biraz sonra tekrar deneyin.' }, 500)
-  if (used === -1) return json({ error: `Bugünkü soru sınırına (${limit}) ulaştınız. Türkiye saatiyle gece yarısı yenilenir.` }, 429)
+  if (error) return json({ error: msg('Koç şu an yanıt veremiyor. Biraz sonra tekrar deneyin.', "The coach can't respond right now. Please try again shortly.") }, 500)
+  if (used === -1) return json({ error: msg(`Bugünkü soru sınırına (${limit}) ulaştınız. Türkiye saatiyle gece yarısı yenilenir.`, `You've reached today's question limit (${limit}). It resets at midnight Turkey time.`) }, 429)
   return json({ reply: reply.text, remaining: Math.max(0, limit - Number(used)), checked: reply.outcome !== 'temiz' })
 })

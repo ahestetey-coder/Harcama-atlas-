@@ -5,6 +5,7 @@ import { cleanDescription, normalizeText } from '../domain/normalize'
 import type { Category } from '../domain/types'
 import { cellText } from './sheet'
 import type { CellValue, DraftRow, SheetTable } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 export type StatementKind = 'card' | 'account'
 
@@ -109,10 +110,10 @@ export function guessMapping(table: SheetTable): ColumnMapping {
 
 export function mappingProblems(m: ColumnMapping): string[] {
   const p: string[] = []
-  if (m.date === null) p.push('Tarih sütununu seçin.')
-  if (m.description === null) p.push('Açıklama sütununu seçin.')
-  if (m.amountMode === 'single' && m.amount === null) p.push('Tutar sütununu seçin.')
-  if (m.amountMode === 'debitCredit' && (m.debit === null || m.credit === null)) p.push('Borç ve alacak sütunlarını seçin.')
+  if (m.date === null) p.push(tt('Tarih sütununu seçin.'))
+  if (m.description === null) p.push(tt('Açıklama sütununu seçin.'))
+  if (m.amountMode === 'single' && m.amount === null) p.push(tt('Tutar sütununu seçin.'))
+  if (m.amountMode === 'debitCredit' && (m.debit === null || m.credit === null)) p.push(tt('Borç ve alacak sütunlarını seçin.'))
   return p
 }
 
@@ -195,13 +196,13 @@ export function rowsFromMapping(table: SheetTable, m: ColumnMapping, categories:
       // Banka hesabına gelen para gelir/transfer olabilir; gider takibinde iade sayılmaz.
       type = 'transfer'
       include = false
-      excludedReason = 'Hesaba gelen para (gelir/transfer). İade ise türünü "İade" yapıp dahil edin.'
+      excludedReason = tt('Hesaba gelen para (gelir/transfer). İade ise türünü "İade" yapıp dahil edin.')
     } else {
       notes.push(...decision.warnings)
     }
     if (isSummaryLine(description)) {
       include = false
-      excludedReason = 'Özet satırı (dönem borcu, limit, toplam vb.) işlem olarak alınmaz.'
+      excludedReason = tt('Özet satırı (dönem borcu, limit, toplam vb.) işlem olarak alınmaz.')
     }
 
     let categoryId: string | null = null
@@ -212,7 +213,7 @@ export function rowsFromMapping(table: SheetTable, m: ColumnMapping, categories:
       if (id) {
         categoryId = id
         categorySource = 'file'
-      } else notes.push(`Dosyadaki "${catCell}" kategorisi uygulamada yok; kategori seçin veya ekleyin.`)
+      } else notes.push(ttf('Dosyadaki "{0}" kategorisi uygulamada yok; kategori seçin veya ekleyin.', catCell))
     }
 
     const foreignCurrency = currency !== 'TRY'
@@ -233,7 +234,7 @@ export function rowsFromMapping(table: SheetTable, m: ColumnMapping, categories:
       foreign: foreignCurrency && amountAbs !== null ? { currency, amountMinor: amountAbs } : undefined,
       installment: detectInstallment(description) ?? undefined,
       source: { kind: 'sheet-row', line: ri + 1, text: sourceText },
-      notes: dp.ok ? (dp.note ? [dp.note, ...notes] : notes) : [dp.ok === false && dp.reason !== 'empty' ? dp.message : 'Tarih bulunamadı.', ...notes],
+      notes: dp.ok ? (dp.note ? [dp.note, ...notes] : notes) : [dp.ok === false && dp.reason !== 'empty' ? dp.message : tt('Tarih bulunamadı.'), ...notes],
       excludedReason,
     })
   }

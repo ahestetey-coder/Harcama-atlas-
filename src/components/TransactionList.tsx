@@ -169,7 +169,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                             </IconButton>
                           )}
                           {onDelete && !isReadOnlyTx(t) && (
-                            <IconButton label={`${t.description} sil`} size="sm" onClick={() => onDelete(t)} className="hover:text-danger">
+                            <IconButton label={ttf('{0} sil', t.description)} size="sm" onClick={() => onDelete(t)} className="hover:text-danger">
                               <Trash2 className="size-4" />
                             </IconButton>
                           )}
@@ -214,7 +214,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                     <div className="line-clamp-2 text-[14px] leading-snug [overflow-wrap:break-word] font-medium text-ink">{t.description}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-subtle">
                       <span className="num whitespace-nowrap">{formatDate(t.date)}</span>
-                      <span className={cn('whitespace-nowrap font-medium', cat || t.type === 'transfer' || t.type === 'income' ? 'text-muted' : 'text-warning')}>{cat?.name ?? (t.type === 'transfer' ? 'Transfer' : t.type === 'income' ? 'Gelir' : 'Kategorisiz')}</span>
+                      <span className={cn('whitespace-nowrap font-medium', cat || t.type === 'transfer' || t.type === 'income' ? 'text-muted' : 'text-warning')}>{cat?.name ?? (t.type === 'transfer' ? tt('Transfer') : t.type === 'income' ? tt('Gelir') : tt('Kategorisiz'))}</span>
                       <TxMeta t={t} group={t.groupId ? groups.get(t.groupId) : undefined} member={memberOf(t)} uncounted={markUncounted} period={periodBadge(t)} />
                     </div>
                   </button>
@@ -222,7 +222,7 @@ export function TransactionList({ transactions, categories, selectable, selected
                     <Money kurus={t.amountKurus} type={t.type} />
                   </div>
                   {onDelete && !compact && !isReadOnlyTx(t) && (
-                    <IconButton label={`${t.description} sil`} size="sm" onClick={() => onDelete(t)} className="-mr-1 hover:text-danger">
+                    <IconButton label={ttf('{0} sil', t.description)} size="sm" onClick={() => onDelete(t)} className="-mr-1 hover:text-danger">
                       <Trash2 className="size-4" />
                     </IconButton>
                   )}

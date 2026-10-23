@@ -4,6 +4,7 @@ import { APP_CONFIG } from '../config/app'
 import { isIsoDate } from '../domain/dates'
 import { isQuickAnswers, LEAD_CODE_RE, type QuickAnswers } from '../domain/quickTest'
 import { CURRENT_SCHEMA_VERSION } from './db'
+import { tt, ttf } from '../lib/i18n'
 
 // Doğrulama hata mesajları Türkçe
 z.config(z.locales.tr())
@@ -18,7 +19,7 @@ export const BACKUP_VERSION = 2
 /** Düzenli gelir tanımı üst sınırı (tek seferlik gelirler de sayılır). */
 export const MAX_RECURRING_INCOMES = 200
 
-const isoDate = z.string().refine(isIsoDate, 'Geçersiz tarih')
+const isoDate = z.string().refine(isIsoDate, tt('Geçersiz tarih'))
 const kurus = z.number().int().nonnegative()
 
 const transactionSchema = z.object({
@@ -269,7 +270,7 @@ const settingsSchema = z.object({
   webTest: z
     .object({
       code: z.string().regex(LEAD_CODE_RE),
-      answers: z.custom<QuickAnswers>(isQuickAnswers, 'Geçersiz web testi cevabı'),
+      answers: z.custom<QuickAnswers>(isQuickAnswers, tt('Geçersiz web testi cevabı')),
       name: z.string().max(60).optional(),
       createdAt: z.string(),
       linkedAt: z.string(),
@@ -337,25 +338,25 @@ export function parseBackup(text: string): BackupParseResult {
   try {
     json = JSON.parse(text)
   } catch {
-    return { ok: false, message: 'Dosya geçerli bir JSON değil.' }
+    return { ok: false, message: tt('Dosya geçerli bir JSON değil.') }
   }
   if (!json || typeof json !== 'object' || (json as { format?: unknown }).format !== BACKUP_FORMAT) {
-    return { ok: false, message: `Bu dosya bir ${APP_CONFIG.name} yedeği değil.` }
+    return { ok: false, message: ttf('Bu dosya bir {0} yedeği değil.', APP_CONFIG.name) }
   }
   const v = (json as { backupVersion?: unknown }).backupVersion
   if (typeof v === 'number' && v > BACKUP_VERSION) {
-    return { ok: false, message: 'Yedek, uygulamanın daha yeni bir sürümüyle alınmış. Önce uygulamayı güncelleyin.' }
+    return { ok: false, message: tt('Yedek, uygulamanın daha yeni bir sürümüyle alınmış. Önce uygulamayı güncelleyin.') }
   }
   const r = backupSchema.safeParse(json)
   if (!r.success) {
     const details = r.error.issues.slice(0, 8).map((i) => `${i.path.join('.')}: ${i.message}`)
-    return { ok: false, message: 'Yedek dosyasının yapısı bozuk veya eksik.', details }
+    return { ok: false, message: tt('Yedek dosyasının yapısı bozuk veya eksik.'), details }
   }
   // Tutarlılık: işlemlerin kategorileri yedekte bulunmalı
   const catIds = new Set(r.data.data.categories.map((c) => c.id))
   const orphan = r.data.data.transactions.filter((t) => t.categoryId && !catIds.has(t.categoryId))
   if (orphan.length) {
-    return { ok: false, message: `Yedekte kategorisi bulunmayan ${orphan.length} işlem var; dosya bozuk olabilir.` }
+    return { ok: false, message: ttf('Yedekte kategorisi bulunmayan {0} işlem var; dosya bozuk olabilir.', orphan.length) }
   }
   // Grubu yedekte bulunmayan işlemler grupsuz yüklenir (dosyayı reddetmeye değmez).
   const groupIds = new Set((r.data.data.groups ?? []).map((g) => g.id))

@@ -2,6 +2,7 @@ import Papa from 'papaparse'
 import { IMPORT_LIMITS } from '../config/app'
 import { decodeText } from './text'
 import type { CellValue, SheetTable } from './types'
+import { tt } from '../lib/i18n'
 
 export interface CsvResult {
   table: SheetTable
@@ -10,7 +11,7 @@ export interface CsvResult {
   encoding: string
 }
 
-const DELIMITER_LABEL: Record<string, string> = { ';': 'noktalı virgül', ',': 'virgül', '\t': 'sekme', '|': 'dikey çizgi' }
+const DELIMITER_LABEL: Record<string, string> = { ';': tt('noktalı virgül'), ',': tt('virgül'), '\t': tt('sekme'), '|': tt('dikey çizgi') }
 export const delimiterLabel = (d: string) => DELIMITER_LABEL[d] ?? d
 
 /** CSV metnindeki ayırıcıyı tırnak dışındaki tutarlı sütun sayısına göre seçer. */
@@ -47,7 +48,7 @@ export function parseCsv(buffer: ArrayBuffer, name = 'CSV'): CsvResult {
   const delimiter = detectDelimiter(decoded.text)
   const res = Papa.parse<string[]>(decoded.text, { delimiter, skipEmptyLines: 'greedy' })
   const rows: CellValue[][] = res.data.slice(0, IMPORT_LIMITS.maxRows + 50).map((r) => r.map((c) => (typeof c === 'string' ? c.trim() : c)))
-  if (!rows.length) throw new ImportError('Dosyada okunabilir satır bulunamadı.')
+  if (!rows.length) throw new ImportError(tt('Dosyada okunabilir satır bulunamadı.'))
   return { table: { name, rows }, delimiter, encodingNotes: decoded.notes, encoding: decoded.encoding }
 }
 
@@ -72,8 +73,8 @@ export async function parseXlsx(file: Blob): Promise<SheetTable[]> {
     }))
   } catch (e) {
     const msg = (e as Error)?.message ?? ''
-    if (/password|encrypt/i.test(msg)) throw new ImportError('Excel dosyası parola korumalı. Parolayı Excel\'de kaldırıp yeniden deneyin.')
-    throw new ImportError('Excel dosyası okunamadı. Dosya bozuk olabilir veya .xlsx biçiminde olmayabilir.')
+    if (/password|encrypt/i.test(msg)) throw new ImportError(tt('Excel dosyası parola korumalı. Parolayı Excel\'de kaldırıp yeniden deneyin.'))
+    throw new ImportError(tt('Excel dosyası okunamadı. Dosya bozuk olabilir veya .xlsx biçiminde olmayabilir.'))
   }
 }
 

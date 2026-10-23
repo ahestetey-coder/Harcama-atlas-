@@ -72,7 +72,7 @@ export function FlowCells({ flow }: { flow: MoneyFlowResult }) {
             </div>
             <div className="num mt-1 text-[15px] font-semibold leading-tight text-ink">{tl(r.targetKurus)}</div>
             <div className="num mt-1 text-[11.5px] text-muted">
-              {r.key === 'saving' ? tt('Ayrılan') : 'Harcanan'} {tl(r.spentKurus)} / {tl(r.targetKurus)}
+              {r.key === 'saving' ? tt('Ayrılan') : tt('Harcanan')} {tl(r.spentKurus)} / {tl(r.targetKurus)}
             </div>
             <div className="mt-1.5">
               <Bar r={r} delay={0.1 * i} />

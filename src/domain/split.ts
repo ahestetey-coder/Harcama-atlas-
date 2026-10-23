@@ -41,7 +41,7 @@ export const SPLIT_METHOD_LABEL: Record<SplitMethod, string> = {
   equal: tt('Eşit'),
   percent: tt('Yüzde'),
   weights: tt('Ağırlık'),
-  amounts: 'Tutar',
+  amounts: tt('Tutar'),
 }
 
 export interface SplitRule {

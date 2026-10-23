@@ -1,3 +1,4 @@
+import { tt } from '../lib/i18n'
 /**
  * Uygulamanın adı ve temel ayarları. Adı değiştirmek için yalnızca bu dosyayı düzenleyin;
  * başlık, menü, PWA manifesti ve yedek dosya adları buradan beslenir.
@@ -5,7 +6,7 @@
 export const APP_CONFIG = {
   name: 'Harcama Atlası',
   shortName: 'Harcama Atlası',
-  description: 'Aylık giderlerinizi yerelde, gizlilikle takip edin.',
+  description: tt('Aylık giderlerinizi yerelde, gizlilikle takip edin.'),
   /** Dosya adlarında kullanılan kısa ad (Türkçe karakter içermemeli). */
   slug: 'harcama-atlasi',
   currency: 'TRY',

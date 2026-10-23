@@ -103,7 +103,7 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
         </EmptyState>
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           {PRESETS.map((p) => (
-            <Button key={p.name} size="sm" variant="soft" onClick={() => onEdit({ name: p.name === 'Diğer' ? '' : p.name, icon: p.icon, color: p.color })}>
+            <Button key={p.name} size="sm" variant="soft" onClick={() => onEdit({ name: p.name === tt('Diğer') ? '' : p.name, icon: p.icon, color: p.color })}>
               {p.name}
             </Button>
           ))}
@@ -146,7 +146,7 @@ function GoalsContent({ onEdit }: { onEdit: (d: Draft) => void }) {
                   <IconButton label={ttf('{0} arşivden çıkar', goal.name)} size="sm" onClick={() => void archive(goal, false)}>
                     <ArchiveRestore className="size-4" />
                   </IconButton>
-                  <IconButton label={`${goal.name} sil`} size="sm" onClick={() => setDel(goal)}>
+                  <IconButton label={ttf('{0} sil', goal.name)} size="sm" onClick={() => setDel(goal)}>
                     <Trash2 className="size-4" />
                   </IconButton>
                 </li>
@@ -238,7 +238,7 @@ function GoalCard({ goal, p, onEdit, onMove, onArchive, onDelete }: { goal: Savi
         <IconButton label={ttf('{0} arşivle', goal.name)} size="sm" onClick={onArchive}>
           <Archive className="size-4" />
         </IconButton>
-        <IconButton label={`${goal.name} sil`} size="sm" onClick={onDelete}>
+        <IconButton label={ttf('{0} sil', goal.name)} size="sm" onClick={onDelete}>
           <Trash2 className="size-4" />
         </IconButton>
       </div>
@@ -361,7 +361,7 @@ function GoalEditor({ draft, onClose }: { draft: Draft | null; onClose: () => vo
     setBusy(true)
     try {
       await repo.saveGoal({ id: draft?.id, name: f.name, icon: f.icon, color: f.color, targetKurus: amt.kurus, targetDate: f.date || null })
-      toast(isNew ? tt('Hedef eklendi.') : 'Kaydedildi.')
+      toast(isNew ? tt('Hedef eklendi.') : tt('Kaydedildi.'))
       onClose()
     } catch (e) {
       setError(toUserMessage(e))
@@ -384,7 +384,7 @@ function GoalEditor({ draft, onClose }: { draft: Draft | null; onClose: () => vo
       <div className="flex flex-col gap-3">
         {isNew && (
           <div className="flex flex-wrap gap-1.5" aria-label={tt('Hazır hedefler')}>
-            {PRESETS.filter((p) => p.name !== 'Diğer').map((p) => (
+            {PRESETS.filter((p) => p.name !== tt('Diğer')).map((p) => (
               <Button key={p.name} size="sm" variant={f.name === p.name ? 'soft' : 'ghost'} onClick={() => setF((x) => ({ ...x, name: p.name, icon: p.icon, color: p.color }))}>
                 {p.name}
               </Button>
@@ -407,7 +407,7 @@ function GoalEditor({ draft, onClose }: { draft: Draft | null; onClose: () => vo
               <button
                 key={ic}
                 type="button"
-                aria-label={`Simge ${ic}`}
+                aria-label={ttf('Simge {0}', ic)}
                 aria-pressed={f.icon === ic}
                 onClick={() => set('icon', ic)}
                 className={cn('rounded-xl p-0.5 ring-2 ring-transparent', f.icon === ic && 'ring-accent')}
@@ -421,7 +421,7 @@ function GoalEditor({ draft, onClose }: { draft: Draft | null; onClose: () => vo
               <button
                 key={c}
                 type="button"
-                aria-label={`Renk ${c}`}
+                aria-label={ttf('Renk {0}', c)}
                 aria-pressed={f.color === c}
                 onClick={() => set('color', c)}
                 className={cn('size-6 rounded-full ring-2 ring-offset-2 ring-offset-surface', f.color === c ? 'ring-ink' : 'ring-transparent')}

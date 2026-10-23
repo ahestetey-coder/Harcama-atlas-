@@ -1,4 +1,4 @@
-import { getLang, ttf } from '../lib/i18n'
+import { getLang, ttf, tt } from '../lib/i18n'
 import type { IsoDate, MonthKey } from './types'
 
 /**
@@ -141,14 +141,14 @@ function expandYear(y: number): number {
  * Varsayılan sıra gün-ay-yıl'dır (Türkiye). `order: 'mdy'` ABD biçimi için.
  */
 export function parseDate(input: unknown, opts: { order?: DateOrder; fallbackYear?: number } = {}): DateParseResult {
-  if (input === null || input === undefined || input === '') return { ok: false, reason: 'empty', message: 'Tarih boş.' }
+  if (input === null || input === undefined || input === '') return { ok: false, reason: 'empty', message: tt('Tarih boş.') }
   if (input instanceof Date) {
-    if (Number.isNaN(input.getTime())) return { ok: false, reason: 'invalid', message: 'Geçersiz tarih.' }
+    if (Number.isNaN(input.getTime())) return { ok: false, reason: 'invalid', message: tt('Geçersiz tarih.') }
     // Excel tarihleri UTC gece yarısı olarak gelir; UTC bileşenleri takvim gününü verir.
     return { ok: true, date: toIsoDate(input.getUTCFullYear(), input.getUTCMonth() + 1, input.getUTCDate()) }
   }
   const s = String(input).trim().replace(/\s+/g, ' ')
-  if (!s) return { ok: false, reason: 'empty', message: 'Tarih boş.' }
+  if (!s) return { ok: false, reason: 'empty', message: tt('Tarih boş.') }
   const order = opts.order ?? 'dmy'
 
   let m = /^(\d{4})[-./](\d{1,2})[-./](\d{1,2})(?:[ T].*)?$/.exec(s)
@@ -175,7 +175,7 @@ export function parseDate(input: unknown, opts: { order?: DateOrder; fallbackYea
     const d = order === 'mdy' ? +m[2] : +m[1]
     const mo = order === 'mdy' ? +m[1] : +m[2]
     if (!isValidYmd(opts.fallbackYear, mo, d)) return invalid(s)
-    return { ok: true, date: toIsoDate(opts.fallbackYear, mo, d), yearGuessed: true, note: 'Yıl belgede yoktu; ekstre döneminden alındı.' }
+    return { ok: true, date: toIsoDate(opts.fallbackYear, mo, d), yearGuessed: true, note: tt('Yıl belgede yoktu; ekstre döneminden alındı.') }
   }
   m = /^(\d{1,2})[\s.-]+([A-Za-zÇĞİÖŞÜçğıöşü]+)\.?[\s.-]+(\d{2}|\d{4})$/.exec(s)
   if (m) {
@@ -188,7 +188,7 @@ export function parseDate(input: unknown, opts: { order?: DateOrder; fallbackYea
 }
 
 function invalid(s: string): DateParseResult {
-  return { ok: false, reason: 'invalid', message: `"${s}" tarih olarak okunamadı.` }
+  return { ok: false, reason: 'invalid', message: ttf('"{0}" tarih olarak okunamadı.', s) }
 }
 
 /** Sütundaki örneklerden gün/ay sırasını çıkarır; kanıt yoksa gün-ay-yıl (Türkiye) varsayılır. */

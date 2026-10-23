@@ -1,5 +1,6 @@
 import { IMPORT_LIMITS } from '../config/app'
 import { ImportError } from './sheet'
+import { tt } from '../lib/i18n'
 
 export interface ImageAdjustments {
   /** 0, 90, 180, 270 */
@@ -14,12 +15,12 @@ export async function loadImage(file: Blob): Promise<ImageBitmap> {
     const bmp = await createImageBitmap(file)
     if (bmp.width * bmp.height > IMPORT_LIMITS.maxImagePixels) {
       bmp.close()
-      throw new ImportError('Görsel çok büyük (piksel sayısı). Daha küçük bir ekran görüntüsü deneyin.')
+      throw new ImportError(tt('Görsel çok büyük (piksel sayısı). Daha küçük bir ekran görüntüsü deneyin.'))
     }
     return bmp
   } catch (e) {
     if (e instanceof ImportError) throw e
-    throw new ImportError('Görsel açılamadı. Dosya bozuk veya desteklenmeyen biçimde olabilir.')
+    throw new ImportError(tt('Görsel açılamadı. Dosya bozuk veya desteklenmeyen biçimde olabilir.'))
   }
 }
 

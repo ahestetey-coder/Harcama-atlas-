@@ -2,6 +2,7 @@ import { IMPORT_LIMITS } from '../config/app'
 import type { OcrProgress, OcrSession } from './ocr'
 import { ImportError } from './sheet'
 import type { DocCell, DocLine, PageInfo, ParsedDocument } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 // "legacy" derleme, pdf.js'in kullandığı yeni JS özellikleri (ör. Map.getOrInsertComputed) için
 // polyfill içerir; bu olmadan Chrome 141 ve Safari gibi tarayıcılarda PDF okuma hata verir.
@@ -23,7 +24,7 @@ async function loadPdfJs(): Promise<PdfJs> {
 export class PdfPasswordError extends Error {
   readonly incorrect: boolean
   constructor(incorrect: boolean) {
-    super(incorrect ? 'Parola hatalı.' : 'Bu PDF parola korumalı.')
+    super(incorrect ? tt('Parola hatalı.') : tt('Bu PDF parola korumalı.'))
     this.name = 'PdfPasswordError'
     this.incorrect = incorrect
   }
@@ -71,12 +72,12 @@ export async function readPdf(
   } catch (e) {
     const err = e as { name?: string; code?: number }
     if (err?.name === 'PasswordException') throw new PdfPasswordError(err.code === pdfjs.PasswordResponses.INCORRECT_PASSWORD)
-    if (err?.name === 'InvalidPDFException') throw new ImportError('PDF dosyası bozuk veya geçerli bir PDF değil.')
-    throw new ImportError('PDF okunamadı. Dosya bozuk veya desteklenmeyen bir biçimde olabilir.')
+    if (err?.name === 'InvalidPDFException') throw new ImportError(tt('PDF dosyası bozuk veya geçerli bir PDF değil.'))
+    throw new ImportError(tt('PDF okunamadı. Dosya bozuk veya desteklenmeyen bir biçimde olabilir.'))
   }
   try {
     if (doc.numPages > IMPORT_LIMITS.maxPdfPages)
-      throw new ImportError(`PDF ${doc.numPages} sayfa. En fazla ${IMPORT_LIMITS.maxPdfPages} sayfalık ekstreler okunabilir; dosyayı bölerek yükleyin.`)
+      throw new ImportError(ttf('PDF {0} sayfa. En fazla {1} sayfalık ekstreler okunabilir; dosyayı bölerek yükleyin.', doc.numPages, IMPORT_LIMITS.maxPdfPages))
     const lines: DocLine[] = []
     const pages: PageInfo[] = []
     let ocrPages = 0
@@ -96,11 +97,11 @@ export async function readPdf(
         continue
       }
       if (!opts.ocr) {
-        pages.push({ page: p, mode: 'skipped', textItems: items.length, note: 'Metin yok; OCR kapalı.' })
+        pages.push({ page: p, mode: 'skipped', textItems: items.length, note: tt('Metin yok; OCR kapalı.') })
         continue
       }
       if (ocrPages >= IMPORT_LIMITS.maxOcrPdfPages) {
-        pages.push({ page: p, mode: 'skipped', textItems: items.length, note: `OCR sınırı (${IMPORT_LIMITS.maxOcrPdfPages} sayfa) aşıldı.` })
+        pages.push({ page: p, mode: 'skipped', textItems: items.length, note: ttf('OCR sınırı ({0} sayfa) aşıldı.', IMPORT_LIMITS.maxOcrPdfPages) })
         continue
       }
       ocrPages++

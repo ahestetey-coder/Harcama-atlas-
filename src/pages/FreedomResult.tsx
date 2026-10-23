@@ -111,7 +111,7 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
       </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Kpi icon={<PiggyBank className="size-4" />} label={ttf('{0} yaşında bağımsız olmak için', v.targetAge)} tone={v.gapKurus > 0 ? 'warn' : 'good'} value={`${Math.round(v.requiredMonthlyKurus / 100).toLocaleString('tr-TR')} ₺/ay`}>
+        <Kpi icon={<PiggyBank className="size-4" />} label={ttf('{0} yaşında bağımsız olmak için', v.targetAge)} tone={v.gapKurus > 0 ? 'warn' : 'good'} value={ttf('{0} ₺/ay', Math.round(v.requiredMonthlyKurus / 100).toLocaleString('tr-TR'))}>
           {ttf('Şu an {0} ₺/ay {1}', Math.round(v.monthlySavingKurus / 100).toLocaleString('tr-TR'), v.gapKurus > 0 ? (midAge === null ? tt(' · bu hızla ulaşılamıyor') : ttf(' · bu hızla {0} yaşında', midAge)) : tt(' · yetiyor'))}
         </Kpi>
         <Kpi icon={<Hourglass className="size-4" />} label={tt('Coast FI eşiği')} tone={v.coastPassed ? 'good' : undefined} value={inBase(v.coastKurus)}>
@@ -124,7 +124,7 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
           {nextEnds.length
             ? nextEnds
                 .slice(0, 3)
-                .map((e) => `${e.name}: ${reachDateLabel(e.month, today)} (+${formatKurus(e.freed)}/ay birikime)`)
+                .map((e) => ttf('{0}: {1} (+{2}/ay birikime)', e.name, reachDateLabel(e.month, today), formatKurus(e.freed)))
                 .join(' · ')
             : tt('Biten borç ya da taksit yok.')}
           {v.debtEnds.length > 0 && ttf(' Sıra: {0}.', strategy === 'avalanche' ? tt('önce en yüksek faiz') : tt('önce en küçük borç'))}

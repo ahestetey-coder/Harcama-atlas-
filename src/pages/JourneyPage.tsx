@@ -618,10 +618,10 @@ function CriteriaTab({ j, profile, left, onRetake }: { j: JourneyResult; profile
   const answers: Array<[string, string]> = [
     [tt('Yaş'), profile.age ? String(profile.age) : '—'],
     [tt('Bakmakla yükümlü'), profile.dependents !== undefined ? ttf('{0} kişi', profile.dependents) : '—'],
-    ['Konut', profile.housing ? HOUSING_LABEL[profile.housing] : '—'],
+    [tt('Konut'), profile.housing ? HOUSING_LABEL[profile.housing] : '—'],
     [tt('Aylık gelir'), formatKurus(profile.monthlyIncomeKurus)],
     [tt('Gelir düzeni'), STABILITY_LABEL[profile.incomeStability]],
-    [tt('Pasif gelir'), profile.passiveIncomeKurus ? formatKurus(profile.passiveIncomeKurus) : 'Yok'],
+    [tt('Pasif gelir'), profile.passiveIncomeKurus ? formatKurus(profile.passiveIncomeKurus) : tt('Yok')],
     [tt('Zorunlu gider'), formatKurus(profile.essentialMonthlyKurus)],
     [tt('Hedef yaşam gideri'), formatKurus(profile.targetMonthlyExpenseKurus)],
     [tt('Risk tutumu'), profile.risk ? RISK_LABEL[profile.risk].split(':')[0] : '—'],
@@ -641,7 +641,7 @@ function CriteriaTab({ j, profile, left, onRetake }: { j: JourneyResult; profile
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-ink">{c.title}</span>
-                  <Badge tone={c.done === true ? 'accent' : c.done === false ? 'warning' : 'neutral'}>{c.done === true ? tt('Sağlanıyor') : c.done === false ? tt('Henüz değil') : 'Bilinmiyor'}</Badge>
+                  <Badge tone={c.done === true ? 'accent' : c.done === false ? 'warning' : 'neutral'}>{c.done === true ? tt('Sağlanıyor') : c.done === false ? tt('Henüz değil') : tt('Bilinmiyor')}</Badge>
                 </div>
                 <p className="text-[12.5px] text-muted">{c.criterion}</p>
                 <p className="num text-[12.5px] text-ink">{c.status}</p>

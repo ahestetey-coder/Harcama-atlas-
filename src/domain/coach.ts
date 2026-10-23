@@ -403,7 +403,7 @@ export const QUESTIONS: Array<{ id: QuestionId; text: string }> = [
   { id: 'budget', text: tt('Bu ay bütçem nasıl gidiyor?') },
 ]
 
-const monthsText = (m: number) => (m < 12 ? `${m} ay` : m % 12 === 0 ? ttf('{0} yıl', m / 12) : ttf('{0} yıl {1} ay', Math.floor(m / 12), m % 12))
+const monthsText = (m: number) => (m < 12 ? ttf('{0} ay', m) : m % 12 === 0 ? ttf('{0} yıl', m / 12) : ttf('{0} yıl {1} ay', Math.floor(m / 12), m % 12))
 
 export function answer(q: QuestionId, p: CoachPlan, facts: JourneyFacts, budget: BudgetStatus | null, today: IsoDate): string {
   switch (q) {

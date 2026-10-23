@@ -58,6 +58,19 @@ const CERTAIN = tr(
   /\b(kesin(?:likle)? (?:yüksel|düş|art|kazan)\w*|garanti(?:li)? (?:getiri|kazanç)\w*|kaçırılmayacak\w*|risksiz\w*|mutlaka (?:al|sat|yüksel|düş)\w*)\b/,
 )
 
+/** İngilizce yanıtlar için aynı kurallar (koç İngilizce konuşan kullanıcıya İngilizce yanıt verir). */
+const INSTRUMENT_EN = /\b(stocks?|shares?|equit(?:y|ies)|funds?|etfs?|index funds?|crypto\w*|bitcoin|btc|eth|ethereum|gold|silver|dollars?|euros?|forex|currenc(?:y|ies)|stock market|bist|index(?:es)?|bonds?|eurobonds?|warrants?|futures|coins?|tokens?|commodit(?:y|ies)|oil)\b/
+const ACTION_EN =
+  /\b(buy(?:ing)?|sell(?:ing)?|hold(?:ing)? (?:on to|onto)?|you should (?:buy|sell|hold|add|move|switch|invest|consider)|consider (?:buying|selling|adding|holding|switching|investing)|add (?:some|more)|move (?:into|to)|switch (?:into|to)|go long|go short|take a position|open a position|exit|get (?:in|out)|invest in|put (?:your|some) (?:money|savings) (?:in|into)|i (?:recommend|suggest|would)|i'd (?:buy|sell|go)|makes? sense to (?:buy|sell|hold)|good (?:opportunity|time to buy)|don't miss)\b/
+const DIRECTION_EN =
+  /\b(will (?:rise|fall|go up|go down|increase|drop|climb|rally|gain|lose)|(?:is|are) (?:likely|expected) to (?:rise|fall|go up|go down|increase|drop|gain)|could (?:rise|fall|go up|go down|rally|drop)|set to (?:rise|fall)|rally|bottom(?:ed)? out|hit (?:a|its) (?:peak|bottom)|all-time high)\b/
+const NEGATION_EN =
+  /\b(i (?:can't|cannot|won't|don't) (?:recommend|advise|tell|say|give|predict)|not (?:investment|financial) advice|isn't advice|licensed (?:investment |financial )?advis[eo]r|no one (?:can|knows)|nobody (?:can|knows)|can't be predicted|cannot be predicted|unpredictable|no guarantee|not guaranteed)\b/
+const TARGET_PRICE_EN = /\b(target price|price target|target level|support level|resistance level|\d[\d.,]*\s?(?:tl|₺|\$|dollars?)\s?(?:level|target))\b/
+const PERCENT_EN = /%\s?\d|\d\s?%|\d+\s?percent/
+const PORTFOLIO_EN = /\b(portfolio|allocation|allocate|your savings|your money|basket)\b/
+const CERTAIN_EN = /\b((?:definitely|certainly|guaranteed to) (?:rise|fall|go up|go down|gain)|guaranteed (?:returns?|profits?|gains?)|risk-free|can't-miss|sure thing|must (?:buy|sell))\b/
+
 function hasTicker(sentence: string): boolean {
   for (const m of sentence.matchAll(/(?<![\p{L}\p{N}])[A-ZÇĞİÖŞÜ]{4,5}(?![\p{Ll}\p{N}])/gu)) if (!NOT_TICKER.has(m[0])) return true
   return false
@@ -85,23 +98,27 @@ export function steeringIssues(text: string): SteeringIssue[] {
   for (const s of sentences(text)) {
     const cut = s.slice(0, 160)
     const l = s.toLocaleLowerCase('tr-TR')
-    if (CERTAIN.test(l)) {
+    const e = s.toLowerCase()
+    if (CERTAIN.test(l) || CERTAIN_EN.test(e)) {
       out.push({ kind: 'kesin-dil', sentence: cut })
       continue
     }
-    if (NEGATION.test(l)) continue
-    if (TARGET_PRICE.test(l)) {
+    if (NEGATION.test(l) || NEGATION_EN.test(e)) continue
+    if (TARGET_PRICE.test(l) || TARGET_PRICE_EN.test(e)) {
       out.push({ kind: 'hedef-fiyat', sentence: cut })
       continue
     }
-    const inst = mentionsInstrument(s, l)
+    const inst = mentionsInstrument(s, l) || INSTRUMENT_EN.test(e)
     if (!inst) continue
-    if (PERCENT.test(l) && PORTFOLIO.test(l)) out.push({ kind: 'portfoy-orani', sentence: cut })
-    else if (ACTION.test(l)) out.push({ kind: 'al-sat', sentence: cut })
-    else if (DIRECTION.test(l)) out.push({ kind: 'yon-tahmini', sentence: cut })
+    if ((PERCENT.test(l) && PORTFOLIO.test(l)) || (PERCENT_EN.test(e) && PORTFOLIO_EN.test(e))) out.push({ kind: 'portfoy-orani', sentence: cut })
+    else if (ACTION.test(l) || ACTION_EN.test(e)) out.push({ kind: 'al-sat', sentence: cut })
+    else if (DIRECTION.test(l) || DIRECTION_EN.test(e)) out.push({ kind: 'yon-tahmini', sentence: cut })
   }
   return out
 }
 
 export const STEERING_FALLBACK =
   'Belirli bir hisse, fon, kripto para, altın veya döviz için alım-satım, hedef fiyat ya da portföy oranı söyleyemem; bu kişisel yatırım danışmanlığıdır ve lisanslı bir danışmanın işidir. İsterseniz bütçenize göre her ay ne kadar ayırabileceğinizi, acil durum birikiminizi veya risk, likidite ve masraf gibi kavramları birlikte inceleyebiliriz.'
+
+export const STEERING_FALLBACK_EN =
+  "I can't give buy or sell calls, target prices or portfolio percentages for a specific stock, fund, cryptocurrency, gold or currency; that is personal investment advice and a job for a licensed adviser. If you like, we can look at how much you can set aside each month, your emergency fund, or ideas like risk, liquidity and fees together."

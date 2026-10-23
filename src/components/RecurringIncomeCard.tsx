@@ -93,7 +93,7 @@ export function RecurringIncomeCard() {
               <IconButton size="sm" label={ttf('{0} düzenle', it.name)} onClick={() => setDraft({ id: it.id, name: it.name, kind: it.kind, amount: formatKurusPlain(it.amountKurus), startDate: it.startDate, cadence: it.cadence })}>
                 <Pencil className="size-4" />
               </IconButton>
-              <IconButton size="sm" label={`${it.name} sil`} onClick={() => void remove(it)}>
+              <IconButton size="sm" label={ttf('{0} sil', it.name)} onClick={() => void remove(it)}>
                 <Trash2 className="size-4" />
               </IconButton>
             </li>

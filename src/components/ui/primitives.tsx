@@ -295,7 +295,7 @@ export function More({ label = tt('Nasıl çalışır?'), children, className }:
         className="inline-flex items-center gap-1 rounded-md text-[12.5px] font-medium text-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
       >
         <Info className="size-3.5" aria-hidden />
-        {open ? 'Gizle' : label}
+        {open ? tt('Gizle') : label}
       </button>
       {open && (
         <div id={id} className="mt-1.5 text-[13px] leading-relaxed text-muted">

@@ -625,7 +625,7 @@ function Gate({ result, onSubmit }: { result: QuickResult; onSubmit: (name: stri
       <RouteArt progress={(result.journey.position / result.journey.stages.length) * 0.9 + 0.03} fog={<FogYear small />} label={tt('Sisle kaplı rota; yalnızca konumun görünüyor')} />
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
         {[
-          ['Seviye', `• / ${result.journey.stages.length}`],
+          [tt('Seviye'), `• / ${result.journey.stages.length}`],
           [tt('Özgürlük yılı'), '20••'],
           [tt('Hedef birikim'), '•• TL'],
         ].map(([k, v]) => (
@@ -685,7 +685,7 @@ function Result({ result: r, name, code, saved, onRestart, next, teaser }: { res
   return (
     <>
       <div className="flex flex-col gap-2">
-        <p className="text-[13px] font-medium uppercase tracking-[0.12em] text-muted">{ttf('{0} açıldı · finansal arketipin', first ? ttf('{0}, haritan', first) : 'Haritan')}</p>
+        <p className="text-[13px] font-medium uppercase tracking-[0.12em] text-muted">{ttf('{0} açıldı · finansal arketipin', first ? ttf('{0}, haritan', first) : tt('Haritan'))}</p>
         <h1 className="font-display text-[2.4rem] font-extrabold leading-none tracking-tight text-ink sm:text-5xl">{r.archetype.name}</h1>
         <p className="text-[15px] text-muted">{r.archetype.text}</p>
         <Badge tone="accent" className="self-start">

@@ -328,7 +328,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
           {tt('Vazgeç')}
         </Button>
         <Button type="submit" variant="primary" loading={saving} className="flex-1">
-          {tx ? tt('Değişiklikleri kaydet') : 'Kaydet'}
+          {tx ? tt('Değişiklikleri kaydet') : tt('Kaydet')}
         </Button>
       </div>
     </form>

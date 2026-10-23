@@ -23,7 +23,7 @@ function readStored(): Lang | null {
   }
 }
 
-/** Sıra: adresteki ?dil=, kayıtlı seçim, yeni kurulumda cihaz dili. Mevcut kullanıcılar Türkçede kalır. */
+/** Sıra: adresteki ?dil=, kayıtlı seçim, yeni kurulumda cihaz dili ve bölgesi. Mevcut kullanıcılar Türkçede kalır. */
 export function detectLang(): Lang {
   try {
     const q = new URLSearchParams(location.search).get('dil')
@@ -43,8 +43,24 @@ export function detectLang(): Lang {
     /* depolama kapalı */
   }
   if (existing) return 'tr'
-  const nav = (navigator.languages?.[0] ?? navigator.language ?? 'tr').toLowerCase()
-  return nav.startsWith('tr') ? 'tr' : 'en'
+  return deviceLang()
+}
+
+/** Türkçe konuşulan yerlerin saat dilimleri (Türkiye, Kıbrıs). */
+const TR_ZONES = ['Europe/Istanbul', 'Asia/Istanbul', 'Asia/Nicosia', 'Europe/Nicosia', 'Asia/Famagusta']
+
+/** Yeni kurulumda: cihaz dili Türkçeyse ya da Türkçe konuşulan bir yerden açıldıysa Türkçe, değilse İngilizce. */
+export function deviceLang(languages: readonly string[] = navigator.languages?.length ? navigator.languages : [navigator.language ?? ''], timeZone?: string): Lang {
+  if (languages.some((l) => /^tr\b/i.test(l) || /-TR$/i.test(l))) return 'tr'
+  let tz = timeZone
+  if (tz === undefined) {
+    try {
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    } catch {
+      tz = ''
+    }
+  }
+  return TR_ZONES.includes(tz ?? '') ? 'tr' : 'en'
 }
 
 /** Uygulama açılmadan önce çağrılır: dili belirler, İngilizcede sözlüğü yükler. */

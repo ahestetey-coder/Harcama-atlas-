@@ -1,4 +1,5 @@
 import type { AtlasRepository } from '../data/repository'
+import { tt } from '../lib/i18n'
 
 /** Supabase proje adresi ve herkese açık (anon) anahtar. Gizli değildir; veriyi RLS kuralları korur. */
 export interface CloudConfig {
@@ -19,10 +20,10 @@ export function validateCloudConfig(c: Partial<CloudConfig>): string | null {
   try {
     u = new URL((c.url ?? '').trim())
   } catch {
-    return 'Proje adresi geçerli bir adres değil (ör. https://abcd.supabase.co).'
+    return tt('Proje adresi geçerli bir adres değil (ör. https://abcd.supabase.co).')
   }
-  if (u.protocol !== 'https:') return 'Proje adresi https:// ile başlamalı.'
-  if (!c.anonKey || c.anonKey.trim().length < 20) return 'Herkese açık (anon) anahtarı yapıştırın.'
+  if (u.protocol !== 'https:') return tt('Proje adresi https:// ile başlamalı.')
+  if (!c.anonKey || c.anonKey.trim().length < 20) return tt('Herkese açık (anon) anahtarı yapıştırın.')
   return null
 }
 

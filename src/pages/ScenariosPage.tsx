@@ -183,7 +183,7 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
         <p className="mt-1 text-[13px] text-muted">{tt('Tutarları bugünün parasıyla yazın.')}</p>
         <div key={formKey} className="mt-4 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
           <MoneyField id="s-extra" label={tt('Ek aylık birikim (TL)')} value={a.extra} onChange={(v) => set('extra', v)} />
-          <Slider id="s-loss" label={tt('Gelir kaybı (ay)')} value={a.lossMonths} min={0} max={36} onChange={(v) => set('lossMonths', v)} display={(v) => (v === 0 ? 'Yok' : `${v} ay`)} hint={tt('Giderler birikimden karşılanır.')} />
+          <Slider id="s-loss" label={tt('Gelir kaybı (ay)')} value={a.lossMonths} min={0} max={36} onChange={(v) => set('lossMonths', v)} display={(v) => (v === 0 ? tt('Yok') : ttf('{0} ay', v))} hint={tt('Giderler birikimden karşılanır.')} />
           <MoneyField id="s-loss-spend" label={tt('Gelir kaybında aylık gider (TL)')} value={a.lossSpend} onChange={(v) => set('lossSpend', v)} hint={tt('Varsayılan: zorunlu giderleriniz.')} />
           <MoneyField id="s-big" label={tt('Büyük harcama (TL)')} value={a.big} onChange={(v) => set('big', v)} hint={tt('Tek seferlik harcama.')} />
           <Slider id="s-big-year" label={tt('Büyük harcamanın yılı')} value={Math.min(a.bigYear, a.years)} min={1} max={a.years} onChange={(v) => set('bigYear', v)} display={(v) => ttf('{0}. yıl', v)} disabled={a.big === 0} />

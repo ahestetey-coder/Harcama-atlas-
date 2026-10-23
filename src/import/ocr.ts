@@ -1,4 +1,5 @@
 import type { DocCell, DocLine } from './types'
+import { tt } from '../lib/i18n'
 
 /**
  * Yerel OCR (Tesseract.js). Motor, çalışan ve Türkçe/İngilizce dil dosyaları uygulamayla
@@ -22,21 +23,21 @@ export interface OcrPageResult {
 
 export class OcrCancelledError extends Error {
   constructor() {
-    super('OCR iptal edildi.')
+    super(tt('OCR iptal edildi.'))
     this.name = 'OcrCancelledError'
   }
 }
 
 const STATUS_TR: Record<string, string> = {
-  'loading tesseract core': 'OCR motoru yükleniyor',
-  'initializing tesseract': 'OCR motoru hazırlanıyor',
-  'initialized tesseract': 'OCR motoru hazır',
-  'loading language traineddata': 'Dil dosyaları yükleniyor',
-  'loading language traineddata (from cache)': 'Dil dosyaları önbellekten yükleniyor',
-  'loaded language traineddata': 'Dil dosyaları yüklendi',
-  'initializing api': 'Tanıma hazırlanıyor',
-  'initialized api': 'Tanıma hazır',
-  'recognizing text': 'Metin tanınıyor',
+  'loading tesseract core': tt('OCR motoru yükleniyor'),
+  'initializing tesseract': tt('OCR motoru hazırlanıyor'),
+  'initialized tesseract': tt('OCR motoru hazır'),
+  'loading language traineddata': tt('Dil dosyaları yükleniyor'),
+  'loading language traineddata (from cache)': tt('Dil dosyaları önbellekten yükleniyor'),
+  'loaded language traineddata': tt('Dil dosyaları yüklendi'),
+  'initializing api': tt('Tanıma hazırlanıyor'),
+  'initialized api': tt('Tanıma hazır'),
+  'recognizing text': tt('Metin tanınıyor'),
 }
 
 function assetUrl(path: string): string {
@@ -201,7 +202,7 @@ export async function ocrCacheStatus(): Promise<'ready' | 'partial' | 'missing' 
 /** OCR dosyalarını çevrimdışı kullanım için önbelleğe indirir. */
 export async function downloadOcrAssets(onProgress: (done: number, total: number) => void): Promise<void> {
   const info = await ocrAssetInfo()
-  if (!info) throw new Error('OCR dosya listesi alınamadı.')
+  if (!info) throw new Error(tt('OCR dosya listesi alınamadı.'))
   const cache = await caches.open('ocr-assets')
   const files = Object.keys(info.files)
   let done = 0

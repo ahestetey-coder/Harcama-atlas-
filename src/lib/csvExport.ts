@@ -15,7 +15,7 @@ export function sanitizeCsvCell(value: string): string {
 }
 
 export function transactionsToCsv(txs: Transaction[], categories: Map<string, Category>, groups: Map<string, SpendGroup> = new Map()): string {
-  const header = ['Tarih', tt('Açıklama'), tt('Tür'), tt('Tutar (TL)'), 'Kategori', 'Grup', tt('Ödeme aracı'), 'Kart/hesap', 'Kaynak', 'Taksit', tt('Döviz'), 'Not']
+  const header = [tt('Tarih'), tt('Açıklama'), tt('Tür'), tt('Tutar (TL)'), tt('Kategori'), tt('Grup'), tt('Ödeme aracı'), tt('Kart/hesap'), tt('Kaynak'), tt('Taksit'), tt('Döviz'), tt('Not')]
   const lines = [header.join(';')]
   for (const t of txs) {
     const signed = t.type === 'refund' || t.type === 'income' ? -t.amountKurus : t.amountKurus

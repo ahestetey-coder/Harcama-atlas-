@@ -36,7 +36,7 @@ export function CategoryDonut({
   total,
   onSelect,
   centerLabel,
-  valueLabel = 'Gider',
+  valueLabel = tt('Gider'),
   format = formatKurus,
   formatCompact = formatKurusCompact,
 }: {
@@ -84,7 +84,7 @@ export function CategoryDonut({
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null
               const s = payload[0].payload as DonutSlice
-              return <TooltipBox title={s.name} lines={[[valueLabel, format(s.kurus)], ['Pay', `%${((s.kurus / Math.max(1, total)) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`]]} />
+              return <TooltipBox title={s.name} lines={[[valueLabel, format(s.kurus)], [tt('Pay'), `%${((s.kurus / Math.max(1, total)) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`]]} />
             }}
           />
         </PieChart>
@@ -133,14 +133,14 @@ export function DailyBars({ data, onSelect, highlightDay }: { data: DailyPoint[]
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null
               const p = payload[0].payload as DailyPoint
-              const lines: Array<[string, string]> = [['Gider', formatKurus(p.expenseKurus)]]
+              const lines: Array<[string, string]> = [[tt('Gider'), formatKurus(p.expenseKurus)]]
               if (p.refundKurus) lines.push([tt('İade'), formatKurus(p.refundKurus)])
               return <TooltipBox title={p.label} lines={lines} />
             }}
           />
           <Bar
             dataKey="expenseKurus"
-            name="Gider"
+            name={tt('Gider')}
             radius={[4, 4, 0, 0]}
             maxBarSize={18}
             isAnimationActive={!reduced}
@@ -381,7 +381,7 @@ export function ExtraSavingLines({ rows, plusLabel, caption }: { rows: ExtraSavi
                 return (
                   <TooltipBox
                     title={p.year === 0 ? tt('Bugün') : ttf('{0}. yıl sonu', p.year)}
-                    lines={[...series.map((s) => [s.label, p[s.key] === null ? 'Hedefte' : formatKurus(p[s.key]!)] as [string, string]), ['Hedef', formatKurus(p.target)]]}
+                    lines={[...series.map((s) => [s.label, p[s.key] === null ? tt('Hedefte') : formatKurus(p[s.key]!)] as [string, string]), [tt('Hedef'), formatKurus(p.target)]]}
                   />
                 )
               }}
@@ -409,7 +409,7 @@ export function ExtraSavingLines({ rows, plusLabel, caption }: { rows: ExtraSavi
             <tr key={r.year}>
               <td>{r.year}</td>
               {series.map((s) => (
-                <td key={s.key}>{r[s.key] === null ? 'Hedefte' : formatKurus(r[s.key]!)}</td>
+                <td key={s.key}>{r[s.key] === null ? tt('Hedefte') : formatKurus(r[s.key]!)}</td>
               ))}
               <td>{formatKurus(r.target)}</td>
             </tr>

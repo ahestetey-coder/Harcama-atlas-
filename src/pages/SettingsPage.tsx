@@ -121,7 +121,7 @@ export default function SettingsPage() {
                 value={settings?.defaultPaymentMethod ?? ''}
                 onChange={async (e) => {
                   await repo.saveSettings({ defaultPaymentMethod: (e.target.value || undefined) as PaymentMethod | undefined })
-                  toast('Kaydedildi.')
+                  toast(tt('Kaydedildi.'))
                 }}
               >
                 <option value="">{tt('Belirtilmedi')}</option>
