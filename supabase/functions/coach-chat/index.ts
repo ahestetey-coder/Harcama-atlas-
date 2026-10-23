@@ -45,13 +45,14 @@ Deno.serve(async (req) => {
   const uid = await userId(req)
   if (!uid) return json({ error: 'Giriş gerekli' }, 401)
 
-  let body: { summary?: unknown; memory?: unknown; mode?: string; lang?: string; messages?: Array<{ role: string; content: string }> }
+  let body: { summary?: unknown; memory?: unknown; mode?: string; lang?: string; currency?: string; messages?: Array<{ role: string; content: string }> }
   try {
     body = await req.json()
   } catch {
     return json({ error: 'Geçersiz istek' }, 400)
   }
   const en = body.lang === 'en'
+  const currency = body.currency === 'USD' ? 'USD' : 'TRY'
   const msg = (tr: string, eng: string) => (en ? eng : tr)
   const summary = JSON.stringify(body.summary ?? {})
   const memory = (Array.isArray(body.memory) ? body.memory : []).filter((m): m is string => typeof m === 'string').map((m) => m.slice(0, 400)).slice(0, 30)
@@ -88,7 +89,7 @@ Deno.serve(async (req) => {
   const { data: row } = await db.from('ha_coach_usage').select('count').eq('user_id', uid).eq('day', day).maybeSingle()
   if ((row?.count ?? 0) >= limit) return json({ error: msg(`Bugünkü soru sınırına (${limit}) ulaştınız. Türkiye saatiyle gece yarısı yenilenir.`, `You've reached today's question limit (${limit}). It resets at midnight Turkey time.`) }, 429)
 
-  const messages = [...coachContext(summary, memory, await latestReport(db).catch(() => null), en ? 'en' : 'tr'), ...history.slice(-12).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))]
+  const messages = [...coachContext(summary, memory, await latestReport(db).catch(() => null), en ? 'en' : 'tr', currency), ...history.slice(-12).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))]
   let reply
   try {
     reply = await generateCoachReply(messages, 500, en ? 'en' : 'tr')

@@ -6,7 +6,8 @@ import type { FlowKey, FlowRow, MoneyFlowResult } from '../domain/moneyFlow'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
 import { Card } from './ui/primitives'
-import { tt, ttf } from '../lib/i18n'
+import { tt, ttf, pctText } from '../lib/i18n'
+import { formatWhole } from '../domain/money'
 
 /** 50/30/20 kovaları; renkler açık ve koyu temada doğrulanmış paletten. */
 export const FLOW_META: Record<FlowKey, { label: string; color: string }> = {
@@ -16,8 +17,8 @@ export const FLOW_META: Record<FlowKey, { label: string; color: string }> = {
 }
 
 /** Tam lira: 1765000 → "17.650 ₺" */
-export const tl = (k: number) => `${Math.round(k / 100).toLocaleString('tr-TR')} ₺`
-const pct = (x: number) => `%${Math.round(x * 100)}`
+export const tl = formatWhole
+const pct = (x: number) => pctText(Math.round(x * 100), 0)
 
 /** Hücrenin durum satırı: hedefin içinde mi, ne kadar aşıldı ya da birikim ne kadar eksik. */
 export function flowNote(r: FlowRow): string {

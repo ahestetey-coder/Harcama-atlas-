@@ -1,6 +1,7 @@
 import { nthDue, progressOf } from './recurring'
 import type { IsoDate, RecurringPayment } from './types'
 import { tt } from '../lib/i18n'
+import { curCode, moneyLocale, withSymbol } from '../lib/currency'
 
 /**
  * Plus "Varlıklarım": varlıklar ve borçlar. Döviz TCMB kurundan, sembolü girilen hisse, ETF, fon, kripto ve
@@ -27,17 +28,17 @@ export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
 
 /** Varsayılan birimler (kullanıcı değiştirebilir). */
 export const DEFAULT_UNIT: Record<AssetKind, string> = {
-  deposit: 'TL',
+  deposit: curCode(),
   fx: 'USD',
   fund: tt('pay'),
   gold: 'gram',
   commodity: 'gram',
   stock: 'lot',
-  foreign: 'adet',
-  cash: 'TL',
-  other: 'adet',
-  crypto: 'adet',
-  debt: 'TL',
+  foreign: tt('adet'),
+  cash: curCode(),
+  other: tt('adet'),
+  crypto: tt('adet'),
+  debt: curCode(),
 }
 
 /** Bakiye gibi takip edilen türler: miktar TL, değer "güncel bakiye" olarak girilir. */
@@ -399,7 +400,7 @@ export function formatQuantity(n: number): string {
 /** Birim fiyat: 2 haneden küçük fiyatlarda (fon) daha çok ondalık gösterilir. */
 export function formatUnitPrice(kurus: number): string {
   const tl = kurus / 100
-  return `${tl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: tl < 10 ? 6 : 2 })} ₺`
+  return withSymbol(tl.toLocaleString(moneyLocale(), { minimumFractionDigits: 2, maximumFractionDigits: tl < 10 ? 6 : 2 }))
 }
 
 // ---------- Otomatik fiyat (TCMB kuru ve piyasa fiyatı) ----------
@@ -429,11 +430,11 @@ export function autoPriceCode(asset: Pick<Asset, 'kind' | 'unit'>): string | nul
 
 /** Bir birimdeki saf altın (gram). Ziynet altınları darphane ağırlığı × 22 ayar (0,916); yaklaşık değerdir. */
 const COIN_FINE_GRAMS: [RegExp, number][] = [
-  [/çeyrek|ceyrek/, 1.754 * 0.916],
-  [/yarım|yarim/, 3.508 * 0.916],
+  [/çeyrek|ceyrek|quarter/, 1.754 * 0.916],
+  [/yarım|yarim|half/, 3.508 * 0.916],
   [/gremse|iki buçuk|2[,.]5/, 17.54 * 0.916],
-  [/cumhuriyet|ata|reşat|resat|hamit|aziz/, 7.216 * 0.916],
-  [/tam/, 7.016 * 0.916],
+  [/cumhuriyet|republic|ata|reşat|resat|hamit|aziz/, 7.216 * 0.916],
+  [/tam|full/, 7.016 * 0.916],
 ]
 
 /**

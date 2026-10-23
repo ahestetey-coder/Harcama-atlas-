@@ -1,3 +1,4 @@
+import { formatWhole } from './money'
 import type { BudgetStatus } from './budget'
 import { monthsToTarget, SCENARIOS, targetCapital, type IncomeStability, type JourneyFacts, type JourneyProfile } from './journey'
 import { monthLabel } from './dates'
@@ -307,7 +308,7 @@ export interface CoachMessage {
   link?: { to: string; label: string }
 }
 
-const tl = (k: number) => `${Math.round(k / 100).toLocaleString('tr-TR')} ₺`
+const tl = formatWhole
 
 export interface MessageInput {
   plan: CoachPlan | null

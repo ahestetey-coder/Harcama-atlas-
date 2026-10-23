@@ -9,6 +9,7 @@ import { useAuth } from '../state/auth'
 import { APP_CONFIG } from '../config/app'
 import { isNativeApp } from '../lib/native'
 import { tt, ttf } from '../lib/i18n'
+import { pick, withSymbol } from '../lib/currency'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
@@ -123,7 +124,7 @@ function HeroPanel() {
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
               <div className="text-[11px] font-medium uppercase tracking-wider text-white/50">{tt('Eylül')}</div>
-              <div className="font-display text-2xl font-bold">12.480 ₺</div>
+              <div className="font-display text-2xl font-bold">{withSymbol(pick('12.480', '2,480'))}</div>
             </div>
           </div>
         </motion.div>
@@ -144,7 +145,7 @@ function HeroPanel() {
           </span>
           <div>
             <div className="text-[12.5px] font-semibold">{tt('Ayşe ortak gider ekledi')}</div>
-            <div className="text-[11.5px] text-white/60">{tt('Elektrik faturası · 450 ₺')}</div>
+            <div className="text-[11.5px] text-white/60">{ttf('Elektrik faturası · {0}', withSymbol(pick('450', '85')))}</div>
           </div>
         </FloatCard>
         <FloatCard className="bottom-0 left-4" delay={1.3} float={[0, -8, 0]}>

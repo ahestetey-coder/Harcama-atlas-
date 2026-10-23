@@ -12,6 +12,7 @@ import { useUi } from '../state/ui'
 import { CategoryIcon, GroupBadge, IncomeIcon, Money, TransferIcon } from './common'
 import { Badge, IconButton } from './ui/primitives'
 import { tt, ttf } from '../lib/i18n'
+import { moneyLocale } from '../lib/currency'
 
 interface Props {
   transactions: Transaction[]
@@ -50,7 +51,7 @@ function TxMeta({ t, group, member, uncounted, period }: { t: Transaction; group
       )}
       {t.foreign && (
         <Badge tone="teal" className="num">
-          {(t.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {t.foreign.currency}
+          {(t.foreign.amountMinor / 100).toLocaleString(moneyLocale(), { minimumFractionDigits: 2 })} {t.foreign.currency}
         </Badge>
       )}
       {t.source !== 'manual' && t.source !== 'demo' && t.source !== 'shared' && <Badge tone={t.source === 'settlement' ? 'accent' : undefined}>{t.source === 'planned' && t.type === 'income' ? tt('Düzenli gelir') : SOURCE_LABEL[t.source]}</Badge>}

@@ -14,7 +14,7 @@ import { routeProfile } from '../domain/routeSetup'
 import { useJourneyFacts } from '../state/budget'
 import { useSettings } from '../state/data'
 import { useBaseRates } from '../state/livePrices'
-import { tt, ttf } from '../lib/i18n'
+import { tt, ttf, pctText } from '../lib/i18n'
 
 export default function ScenariosPage() {
   return (
@@ -203,7 +203,7 @@ function Scenarios({ profile, facts }: { profile: JourneyProfile; facts: Journey
                 max={10}
                 step={0.5}
                 onChange={(v) => setA((p) => ({ ...p, returns: { ...p.returns, [k]: v } }))}
-                display={(v) => `%${v.toLocaleString('tr-TR')}`}
+                display={(v) => pctText(v)}
               />
             ))}
           </div>

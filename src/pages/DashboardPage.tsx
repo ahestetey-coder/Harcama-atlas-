@@ -28,7 +28,7 @@ import { usePlan } from '../state/plan'
 import { useBudgetSetup, useBudgetStatus, useDuePayments, useMoneyFlow } from '../state/budget'
 import { MoneyFlowSummary } from '../components/MoneyFlowCard'
 import { useCoach } from '../state/coach'
-import { tt, ttf } from '../lib/i18n'
+import { tt, ttf, pctText } from '../lib/i18n'
 
 const MAX_SLICES = 7
 
@@ -519,7 +519,7 @@ function ComparisonChip({ comparison }: { comparison: ReturnType<typeof compareW
     <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px]">
       <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold', flat ? 'bg-white/10' : up ? 'bg-rose-400/15 text-rose-200' : 'bg-emerald-400/15 text-emerald-200')}>
         <Icon className="size-3.5" />
-        {comparison.percent !== null ? `%${Math.abs(comparison.percent).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}` : ''}
+        {comparison.percent !== null ? pctText(Math.abs(comparison.percent), 1) : ''}
         <span className="num">
           {comparison.percent !== null ? ' · ' : ''}
           {up ? '+' : flat ? '' : '−'}

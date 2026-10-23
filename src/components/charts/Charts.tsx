@@ -2,7 +2,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, P
 import { formatDate } from '../../domain/dates'
 import { formatKurus, formatKurusCompact } from '../../domain/money'
 import { useReducedMotion } from '../../lib/hooks'
-import { tt, ttf } from '../../lib/i18n'
+import { tt, ttf, pctText } from '../../lib/i18n'
 
 export interface DonutSlice {
   id: string
@@ -84,7 +84,7 @@ export function CategoryDonut({
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null
               const s = payload[0].payload as DonutSlice
-              return <TooltipBox title={s.name} lines={[[valueLabel, format(s.kurus)], [tt('Pay'), `%${((s.kurus / Math.max(1, total)) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`]]} />
+              return <TooltipBox title={s.name} lines={[[valueLabel, format(s.kurus)], [tt('Pay'), pctText(((s.kurus / Math.max(1, total)) * 100), 1)]]} />
             }}
           />
         </PieChart>
@@ -125,7 +125,7 @@ export function DailyBars({ data, onSelect, highlightDay }: { data: DailyPoint[]
             axisLine={false}
             width={52}
             tick={{ fill: 'var(--subtle)', fontSize: 11 }}
-            tickFormatter={(v: number) => (Math.abs(v) >= 100000 ? `${(v / 100000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ${tt('B')} ₺` : formatKurusCompact(v))}
+            tickFormatter={(v: number) => formatKurusCompact(v)}
             allowDecimals={false}
           />
           <Tooltip

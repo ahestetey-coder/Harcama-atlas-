@@ -10,6 +10,7 @@ import { SAVING_GROWTH_PCT } from './assumptions'
 import type { CoachDebt } from './coach'
 import { buildFreedomPlan, buildJourney, SPEND_GROUPS, type FreedomPlan, type JourneyFacts, type JourneyGoal, type JourneyProfile, type JourneyResult, type SpendBreakdown, type StageId } from './journey'
 import { tt } from '../lib/i18n'
+import { pick } from '../lib/currency'
 
 export const QUICK_TEST_VERSION = 1
 
@@ -40,6 +41,9 @@ export interface QuickAnswers {
 
 type Opt<T extends string> = { id: T; label: string; icon?: string }
 
+/** Pasif gelir sorusunun başlangıç değeri. */
+export const HAYAL_DEFAULT = pick(60000, 3000)
+
 /** Soru metinleri; web sayfası ve uygulama aynı listeyi kullanır. */
 export const QUICK_QUESTIONS = [
   {
@@ -54,18 +58,18 @@ export const QUICK_QUESTIONS = [
       { id: 'guvence', label: tt('Ailemi güvenceye almak'), icon: 'shield' },
     ] as Opt<QuickGoal>[],
   },
-  { id: 'hayal', kind: 'slider', title: tt('Ayda ne kadar pasif gelir seni özgür hissettirir?'), hint: tt('Bugünün fiyatlarıyla düşün.'), min: 10000, max: 500000, step: 5000, def: 60000 },
+  { id: 'hayal', kind: 'slider', title: tt('Ayda ne kadar pasif gelir seni özgür hissettirir?'), hint: tt('Bugünün fiyatlarıyla düşün.'), min: pick(10000, 500), max: pick(500000, 30000), step: pick(5000, 100), def: HAYAL_DEFAULT },
   {
     id: 'gelir',
     kind: 'list',
     title: tt('Hanene her ay giren net gelir ne kadar?'),
     hint: tt('Maaş ve ek gelirler dahil.'),
     options: [
-      { id: 'g1', label: tt('25.000 TL altı') },
-      { id: 'g2', label: '25.000 – 50.000 TL' },
-      { id: 'g3', label: '50.000 – 100.000 TL' },
-      { id: 'g4', label: '100.000 – 200.000 TL' },
-      { id: 'g5', label: tt('200.000 TL üstü') },
+      { id: 'g1', label: pick(tt('25.000 TL altı'), tt('2.000 USD altı')) },
+      { id: 'g2', label: pick('25.000 – 50.000 TL', '$2,000 – $4,000') },
+      { id: 'g3', label: pick('50.000 – 100.000 TL', '$4,000 – $8,000') },
+      { id: 'g4', label: pick('100.000 – 200.000 TL', '$8,000 – $15,000') },
+      { id: 'g5', label: pick(tt('200.000 TL üstü'), tt('15.000 USD üstü')) },
     ] as Opt<IncomeBand>[],
   },
   {
@@ -111,10 +115,10 @@ export const QUICK_QUESTIONS = [
     hint: tt('Oturduğun ev hariç.'),
     options: [
       { id: 'b0', label: tt('Henüz birikimim yok') },
-      { id: 'b1', label: tt('100.000 TL altı') },
-      { id: 'b2', label: '100.000 – 500.000 TL' },
-      { id: 'b3', label: tt('500.000 – 2 milyon TL') },
-      { id: 'b4', label: tt('2 milyon TL üstü') },
+      { id: 'b1', label: pick(tt('100.000 TL altı'), tt('10.000 USD altı')) },
+      { id: 'b2', label: pick('100.000 – 500.000 TL', '$10,000 – $50,000') },
+      { id: 'b3', label: pick(tt('500.000 – 2 milyon TL'), '$50,000 – $250,000') },
+      { id: 'b4', label: pick(tt('2 milyon TL üstü'), tt('250.000 USD üstü')) },
     ] as Opt<SavingsBand>[],
   },
   {
@@ -158,12 +162,13 @@ export const QUICK_QUESTIONS = [
 export type QuickQuestion = (typeof QUICK_QUESTIONS)[number]
 export type QuickQuestionId = QuickQuestion['id']
 
-// ---------- Aralıkların tahmini karşılıkları (TL) ----------
+// ---------- Aralıkların tahmini karşılıkları (ana para biriminde: TL ya da USD) ----------
 
-const INCOME_TL: Record<IncomeBand, number> = { g1: 20000, g2: 37500, g3: 75000, g4: 150000, g5: 260000 }
+/** Aralığın tahmini aylık net geliri. */
+export const INCOME_TL: Record<IncomeBand, number> = pick({ g1: 20000, g2: 37500, g3: 75000, g4: 150000, g5: 260000 }, { g1: 1500, g2: 3000, g3: 6000, g4: 11000, g5: 20000 })
 const LEFT_RATE: Record<LeftBand, number> = { eksi: -0.05, az: 0.05, orta: 0.15, iyi: 0.3 }
 const CUSHION_MONTHS: Record<CushionBand, number> = { a0: 0.5, a1: 2, a3: 4.5, a6: 8 }
-const SAVINGS_TL: Record<SavingsBand, number> = { b0: 0, b1: 50000, b2: 250000, b3: 1000000, b4: 3000000 }
+const SAVINGS_TL: Record<SavingsBand, number> = pick({ b0: 0, b1: 50000, b2: 250000, b3: 1000000, b4: 3000000 }, { b0: 0, b1: 5000, b2: 25000, b3: 120000, b4: 400000 })
 const INVEST_RATE: Record<InvestHabit, number> = { hayir: 0, arasira: 0.03, her_ay: 0.1 }
 /** Tahmini harcamanın 6 gruba dağılımı (yalnızca uygulamada harcama kaydı yoksa kullanılır). */
 const SPEND_SHARE: SpendBreakdown = { housing: 0.32, food: 0.24, transport: 0.12, bills: 0.1, fun: 0.12, other: 0.1 }
@@ -172,7 +177,8 @@ const GOAL_MAP: Record<QuickGoal, JourneyGoal> = { calismadan_gecinmek: 'indepen
 const LIQUID_PLACES: AssetPlace[] = ['mevduat', 'doviz', 'altin', 'hisseFon']
 
 const K = 100 // TL → kuruş
-const r100 = (tl: number) => Math.round(tl / 100) * 100
+const ROUND = pick(100, 10)
+const r100 = (tl: number) => Math.round(tl / ROUND) * ROUND
 
 export function isQuickAnswers(v: unknown): v is QuickAnswers {
   if (!v || typeof v !== 'object') return false
@@ -182,7 +188,7 @@ export function isQuickAnswers(v: unknown): v is QuickAnswers {
     a.v === QUICK_TEST_VERSION &&
     has('amac', Object.keys(GOAL_MAP)) &&
     typeof a.hayal === 'number' &&
-    a.hayal >= 1000 &&
+    a.hayal >= 100 &&
     a.hayal <= 10_000_000 &&
     has('gelir', Object.keys(INCOME_TL)) &&
     has('kalan', Object.keys(LEFT_RATE)) &&

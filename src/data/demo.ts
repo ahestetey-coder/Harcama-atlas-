@@ -1,6 +1,7 @@
 import { addMonths, currentMonth, dayOf, daysInMonth, parseMonthKey, todayIso, toIsoDate } from '../domain/dates'
 import { normalizeText } from '../domain/normalize'
 import { tt, ttf } from '../lib/i18n'
+import { pick } from '../lib/currency'
 import type { Transaction } from '../domain/types'
 import type { AtlasRepository } from './repository'
 
@@ -26,6 +27,29 @@ const MERCHANTS: Array<[string, string, number, number, number]> = [
   ['CİNEMAXİMUM', 'cat-eglence', 280, 560, 1],
   ['NETFLIX.COM', 'cat-abonelik', 229.99, 229.99, 1],
   ['SPOTIFY', 'cat-abonelik', 99.99, 99.99, 1],
+]
+
+/** Ana para birimi USD ise ABD'den örnek harcamalar (dolar). */
+const MERCHANTS_USD: Array<[string, string, number, number, number]> = [
+  ['WHOLE FOODS MARKET', 'cat-market', 18, 140, 5],
+  ['TRADER JOES', 'cat-market', 12, 85, 4],
+  ['TARGET', 'cat-market', 9, 60, 3],
+  ['SHELL OIL', 'cat-akaryakit', 35, 70, 2],
+  ['CHEVRON', 'cat-akaryakit', 30, 65, 1],
+  ['STARBUCKS', 'cat-restoran', 5, 14, 4],
+  ['BLUE BOTTLE COFFEE', 'cat-restoran', 5, 11, 2],
+  ['DOORDASH', 'cat-restoran', 22, 58, 3],
+  ['MTA METROCARD', 'cat-ulasim', 20, 40, 2],
+  ['UBER', 'cat-ulasim', 12, 38, 1],
+  ['CON EDISON ELECTRIC', 'cat-faturalar', 70, 140, 1],
+  ['NATIONAL GRID GAS', 'cat-faturalar', 30, 120, 1],
+  ['VERIZON WIRELESS', 'cat-faturalar', 65, 65, 1],
+  ['CVS PHARMACY', 'cat-saglik', 8, 45, 1],
+  ['UNIQLO', 'cat-giyim', 25, 120, 1],
+  ['BUY BUY BABY', 'cat-bebek', 20, 95, 1],
+  ['AMC THEATRES', 'cat-eglence', 18, 40, 1],
+  ['NETFLIX.COM', 'cat-abonelik', 15.49, 15.49, 1],
+  ['SPOTIFY', 'cat-abonelik', 11.99, 11.99, 1],
 ]
 
 function rng(seed: number) {
@@ -68,8 +92,8 @@ export async function seedDemoData(repo: AtlasRepository): Promise<void> {
     const month = addMonths(cur, -back)
     const { year, month: m } = parseMonthKey(month)
     const lastDay = back === 0 ? dayOf(today) : daysInMonth(year, m)
-    add(toIsoDate(year, m, 1), 18500, tt('KİRA ÖDEMESİ'), 'cat-kira', 'expense', { paymentMethod: 'debit', accountAlias: undefined })
-    for (const [desc, cat, min, max, avg] of MERCHANTS) {
+    add(toIsoDate(year, m, 1), pick(18500, 1850), tt('KİRA ÖDEMESİ'), 'cat-kira', 'expense', { paymentMethod: 'debit', accountAlias: undefined })
+    for (const [desc, cat, min, max, avg] of pick(MERCHANTS, MERCHANTS_USD)) {
       const count = Math.max(0, Math.round(avg * (0.6 + rand() * 0.8) * (lastDay / daysInMonth(year, m))))
       for (let i = 0; i < count; i++) {
         const day = 1 + Math.floor(rand() * lastDay)
@@ -80,15 +104,15 @@ export async function seedDemoData(repo: AtlasRepository): Promise<void> {
     if (lastDay >= 12) {
       // 12.000 TL'lik alışverişin yalnızca o ayki taksidi (1.000 TL) gider olarak yazılır.
       const inst = 6 - back
-      add(toIsoDate(year, m, 12), 1000, ttf('TEKNOSA ATAŞEHİR ({0}/12 TAKSİT)', inst), 'cat-diger', 'expense', { installment: { current: inst, total: 12, purchaseTotalKurus: 1200000 } })
-      add(toIsoDate(year, m, Math.min(lastDay, 10)), 9500 + rand() * 3000, tt('ÖDEMENİZ İÇİN TEŞEKKÜR EDERİZ'), null, 'transfer')
+      add(toIsoDate(year, m, 12), pick(1000, 100), pick(ttf('TEKNOSA ATAŞEHİR ({0}/12 TAKSİT)', inst), `BEST BUY (${inst}/12 INSTALLMENT)`), 'cat-diger', 'expense', { installment: { current: inst, total: 12, purchaseTotalKurus: pick(1200000, 120000) } })
+      add(toIsoDate(year, m, Math.min(lastDay, 10)), pick(9500 + rand() * 3000, 950 + rand() * 300), tt('ÖDEMENİZ İÇİN TEŞEKKÜR EDERİZ'), null, 'transfer')
     }
-    if (back === 0 && lastDay >= 22) add(toIsoDate(year, m, 22), 189.9, tt('EBEBEK İADE'), 'cat-bebek', 'refund')
-    if (back === 1) add(toIsoDate(year, m, Math.min(lastDay, 18)), 449.9, tt('DEFACTO İADE'), 'cat-giyim', 'refund')
+    if (back === 0 && lastDay >= 22) add(toIsoDate(year, m, 22), pick(189.9, 18.99), pick(tt('EBEBEK İADE'), 'BUY BUY BABY REFUND'), 'cat-bebek', 'refund')
+    if (back === 1) add(toIsoDate(year, m, Math.min(lastDay, 18)), pick(449.9, 44.99), pick(tt('DEFACTO İADE'), 'UNIQLO REFUND'), 'cat-giyim', 'refund')
   }
   await repo.db.transaction('rw', repo.db.transactions, repo.db.settings, async () => {
     await repo.db.transactions.bulkAdd(txs)
-    await repo.db.settings.put({ id: 'settings', monthlyBudgetKurus: 4500000, updatedAt: now })
+    await repo.db.settings.put({ id: 'settings', monthlyBudgetKurus: pick(4500000, 450000), updatedAt: now })
   })
 }
 

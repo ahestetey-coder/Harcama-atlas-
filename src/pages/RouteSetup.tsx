@@ -20,6 +20,7 @@ import { AssetEditor, type Editing } from './AssetsPage'
 import { RecurringEditor, type Draft } from './PaymentsSection'
 import { MoneyFlow } from './RouteSimulation'
 import { tt, ttf } from '../lib/i18n'
+import { curCode, usdText } from '../lib/currency'
 
 /**
  * Rota kurulumu: Finansal Harita testinin tahmini rakamları 6 adımda gerçek rakamlarla değiştirilir.
@@ -510,7 +511,7 @@ export function RouteSetup({ link, facts, rates, onDone, onCancel }: { link: Web
                 {f.goalMode === 'auto' ? (
                   <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[13.5px] text-ink">
                     {tt('Verdiğin bilgilere göre bağımsızlık hedefin')}{' '}
-                    <span className="num font-semibold">{usdRate ? `${Math.round(live.plan.suggestedFiKurus / 100 / usdRate).toLocaleString('tr-TR')} $` : formatKurusCompact(live.plan.suggestedFiKurus)}</span>.
+                    <span className="num font-semibold">{usdRate ? usdText(live.plan.suggestedFiKurus / 100 / usdRate) : formatKurusCompact(live.plan.suggestedFiKurus)}</span>.
                   </p>
                 ) : (
                   <MoneyField id="rs-ownUsd" unit="$" label={tt('Bağımsızlık hedefin')} hint={tt('Bu tutara göre ara adımlar, Lean FI (%70) ve Fat FI (%150) hesaplanır; sayfa dolar bazında hazırlanır.')} value={f.ownUsd} onChange={(v) => set('ownUsd', v)} autoFocus />
@@ -584,7 +585,7 @@ function Label({ htmlFor, label, badge }: { htmlFor?: string; label: string; bad
   )
 }
 
-function MoneyField({ id, label, hint, badge, value, onChange, autoFocus, unit = 'TL' }: { id: string; label: string; hint?: string; badge?: ReactNode; value: string; onChange: (v: string) => void; autoFocus?: boolean; unit?: string }) {
+function MoneyField({ id, label, hint, badge, value, onChange, autoFocus, unit = curCode() }: { id: string; label: string; hint?: string; badge?: ReactNode; value: string; onChange: (v: string) => void; autoFocus?: boolean; unit?: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <Label htmlFor={id} label={label} badge={badge} />

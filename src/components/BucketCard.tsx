@@ -15,7 +15,7 @@ import { useUi } from '../state/ui'
 import { FixedCostsDialog } from './FixedCostsDialog'
 import { SalaryDialog } from './SalaryDialog'
 import { Alert, Button, Card, More } from './ui/primitives'
-import { tt, ttf } from '../lib/i18n'
+import { pctText as fmtPct, tt, ttf } from '../lib/i18n'
 
 const ROWS: Array<{ key: BucketKind; label: string; short: string; color: string }> = [
   { key: 'fixed', label: tt('Zorunlu sabitler'), short: tt('zorunlu sabitler'), color: 'bg-slate-400 dark:bg-slate-500' },
@@ -33,10 +33,10 @@ const DESTINATION: Record<'emergency' | 'debt' | 'goals' | 'grow', string> = {
 
 /** Gelirin payı (0..1) → "%41,7"; tam sayıda ondalık yazılmaz ("%10"). */
 export function pctText(x: number): string {
-  return `%${(x * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`
+  return fmtPct(x * 100, 1)
 }
 
-const limitText = (rate: number) => `%${Math.round(rate * 100)}`
+const limitText = (rate: number) => fmtPct(Math.round(rate * 100), 0)
 
 /** Kova çubuğunun ekran okuyucu metni. */
 export function bucketAriaLabel(b: BucketBudget): string {

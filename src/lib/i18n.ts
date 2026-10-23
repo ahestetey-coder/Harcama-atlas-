@@ -3,6 +3,8 @@
  * İngilizcede karşılıklar src/i18n/en.json sözlüğünden okunur; sözlükte olmayan metin Türkçe kalır.
  * Dil değişince sayfa yeniden yüklenir; böylece modül düzeyindeki metinler de yeni dille hesaplanır.
  */
+import { curText, initCurrency } from './currency'
+
 export type Lang = 'tr' | 'en'
 
 const KEY = 'ha:dil'
@@ -11,7 +13,7 @@ let dict: Record<string, string> = {}
 
 export const getLang = (): Lang => lang
 
-/** Tarih ve ay adlarının yerel ayarı. Tutarlar her iki dilde de Türk biçimindedir (₺1.234,56). */
+/** Tarih ve ay adlarının yerel ayarı. Tutarların biçimi para birimine bağlıdır (lib/currency). */
 export const dateLocale = (): string => (lang === 'en' ? 'en-GB' : 'tr-TR')
 
 function readStored(): Lang | null {
@@ -67,6 +69,7 @@ export function deviceLang(languages: readonly string[] = navigator.languages?.l
 export async function initLang(): Promise<void> {
   lang = detectLang()
   document.documentElement.lang = lang
+  initCurrency(lang)
   if (lang === 'en') {
     try {
       dict = (await import('../i18n/en.json')).default as Record<string, string>
@@ -91,10 +94,16 @@ export function setLang(next: Lang): void {
 
 /** Metni seçili dile çevirir. */
 export function tt(tr: string): string {
-  return lang === 'en' ? (dict[tr] ?? tr) : tr
+  return curText(lang === 'en' ? (dict[tr] ?? tr) : tr)
 }
 
 /** Yer tutuculu metin: ttf('{0} gün kaldı', n) */
 export function ttf(tr: string, ...args: unknown[]): string {
   return tt(tr).replace(/\{(\d+)\}/g, (_, i: string) => String(args[Number(i)] ?? ''))
+}
+
+/** Yüzde: Türkçede "%12,5", İngilizcede "12.5%". */
+export function pctText(n: number, digits = 1): string {
+  const v = n.toLocaleString(lang === 'en' ? 'en-US' : 'tr-TR', { maximumFractionDigits: digits })
+  return lang === 'en' ? `${v}%` : `%${v}`
 }

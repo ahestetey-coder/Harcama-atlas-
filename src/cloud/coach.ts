@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getLang, tt } from '../lib/i18n'
+import { getCurrency } from '../lib/currency'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -9,7 +10,7 @@ export interface ChatTurn {
 export class CoachChatError extends Error {}
 
 async function call<T>(client: SupabaseClient, body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await client.functions.invoke('coach-chat', { body: { ...body, lang: getLang() } })
+  const { data, error } = await client.functions.invoke('coach-chat', { body: { ...body, lang: getLang(), currency: getCurrency() } })
   if (error) {
     let msg = tt('Koç şu an yanıt veremiyor. Biraz sonra tekrar deneyin; bu deneme günlük hakkınızdan sayılmadı.')
     try {

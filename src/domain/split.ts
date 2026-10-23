@@ -1,3 +1,4 @@
+import { formatKurus } from './money'
 import { isSpending, type Transaction } from './types'
 import { tt, ttf } from '../lib/i18n'
 
@@ -105,7 +106,7 @@ export function sharesFor(total: number, allIds: string[], rule: SplitRule, tieO
   const fixed = ids.filter((id) => rule.values[id] != null)
   const free = ids.filter((id) => rule.values[id] == null)
   const fixedSum = fixed.reduce((s, id) => s + v(id), 0)
-  const tl = (k: number) => `${(k / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`
+  const tl = formatKurus
   if (free.length === 0 && fixedSum !== total) return { shares: equal(), error: ttf('Tutarların toplamı {0} olmalı (şu an {1}).', tl(total), tl(fixedSum)) }
   if (fixedSum > total) return { shares: equal(), error: ttf('Girilen tutarlar toplam gideri ({0}) aşıyor.', tl(total)) }
   const shares = new Map(fixed.map((id) => [id, v(id)]))

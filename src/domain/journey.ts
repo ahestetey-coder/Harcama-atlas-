@@ -1,3 +1,5 @@
+import { formatWhole } from './money'
+import { curCode, pick, usdText } from '../lib/currency'
 import type { RouteSetupData } from './routeSetup'
 import {
   DEFAULT_INFLATION_PCT,
@@ -21,7 +23,7 @@ import {
 import { simulateDebts, type CoachDebt, type DebtStrategy } from './coach'
 import { addMonths, MONTH_NAMES, periodOf } from './dates'
 import { isSpending, type IsoDate, type MonthKey, type Transaction } from './types'
-import { tt, ttf } from '../lib/i18n'
+import { tt, ttf, pctText } from '../lib/i18n'
 
 export { DTI_LIMIT, SAVING_RATE_TARGET, STARTER_MONTHS }
 
@@ -60,7 +62,7 @@ export const HOUSING_LABEL: Record<Housing, string> = { rent: tt('Kirada'), mort
 export const PENSION_LABEL: Record<Pension, string> = { 'sgk-bes': tt('SGK ve BES'), sgk: tt('Yalnızca SGK'), bes: tt('Yalnızca BES'), none: tt('Yok') }
 export const HEALTH_LABEL: Record<HealthCover, string> = { private: tt('SGK ve özel sağlık sigortası'), public: tt('Yalnızca SGK (genel sağlık sigortası)'), none: 'Yok' }
 export const RISK_LABEL: Record<RiskStance, string> = { cautious: tt('Temkinli: dalgalanma beni çok rahatsız eder'), balanced: tt('Dengeli: kısa vadeli düşüşlere katlanırım'), bold: tt('Atak: uzun vadede dalgalanmayı kabul ederim') }
-export const BASE_LABEL: Record<PlanBase, string> = { TRY: 'TL', USD: 'USD', XAU: tt('Gram altın') }
+export const BASE_LABEL: Record<PlanBase, string> = { TRY: curCode(), USD: 'USD', XAU: tt('Gram altın') }
 
 export interface JourneyProfile {
   goal: JourneyGoal
@@ -381,7 +383,7 @@ export interface JourneyResult {
 }
 
 const clamp01 = (x: number) => (Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0)
-const tl = (k: number) => `${Math.round(k / 100).toLocaleString('tr-TR')} ₺`
+const tl = formatWhole
 
 /** Acil durum fonu kaç aylık zorunlu gider olmalı: düzenli gelirde 3, bakmakla yükümlü kişi varsa ya da gelir değişkense 6, düzensizse 9. */
 export function emergencyMonthsFor(p: Pick<JourneyProfile, 'incomeStability' | 'dependents'>): number {
@@ -445,7 +447,7 @@ export function formatInBase(kurus: number, base: PlanBase, rates: BaseRates): s
   const rate = rateOf(base, rates)
   if (!rate) return null
   const v = kurus / 100 / rate
-  if (base === 'USD') return `${Math.round(v).toLocaleString('tr-TR')} $`
+  if (base === 'USD') return usdText(v)
   if (base === 'XAU') return ttf('{0} gr altın', v.toLocaleString('tr-TR', { maximumFractionDigits: v >= 100 ? 0 : 1 }))
   return tl(kurus)
 }
@@ -631,7 +633,7 @@ export function buildJourney(p: JourneyProfile, f: JourneyFacts, rates: BaseRate
     ],
   }
 
-  const swrText = `%${plan.withdrawal.usedPct.toLocaleString('tr-TR')}`
+  const swrText = pctText(plan.withdrawal.usedPct)
   const capStage = (id: 'security' | 'independence' | 'freedom', title: string, short: string, goal: number, monthly: number, what: string, source: string): Stage => {
     const cond = moneyCond(tt('Net birikim (yatırımlar − borçlar)'), net, goal, saving, ttf('{0} kaldı', big(goal - net)), true, plan.realReturnPct)
     return {
@@ -964,7 +966,7 @@ export const RISK_QUESTIONS: Array<{ q: string; options: string[] }> = [
   { q: tt('Arkadaşlarınız sizi riske karşı nasıl tanımlar?'), options: [tt('Riskten kaçınan'), 'Temkinli', tt('Hesaplı risk alan'), tt('Risk sever')] },
   { q: tt('Yatırım deneyiminiz nedir?'), options: [tt('Hiç yok'), tt('Mevduat, altın, döviz'), tt('Fon ya da hisse, az deneyim'), tt('Birkaç yıldır düzenli yatırımcıyım')] },
   { q: tt('"Risk" kelimesi size önce ne düşündürür?'), options: [tt('Kayıp'), tt('Belirsizlik'), tt('Fırsat'), tt('Heyecan')] },
-  { q: tt('Hangi seçeneği tercih edersiniz?'), options: [tt('Kesin 10.000 ₺'), tt('%50 ihtimalle 25.000 ₺, yoksa 0'), tt('%25 ihtimalle 60.000 ₺, yoksa 0'), tt('%5 ihtimalle 300.000 ₺, yoksa 0')] },
+  { q: tt('Hangi seçeneği tercih edersiniz?'), options: pick([tt('Kesin 10.000 ₺'), tt('%50 ihtimalle 25.000 ₺, yoksa 0'), tt('%25 ihtimalle 60.000 ₺, yoksa 0'), tt('%5 ihtimalle 300.000 ₺, yoksa 0')], [tt('Kesin 1.000 $'), tt('%50 ihtimalle 2.500 $, yoksa 0'), tt('%25 ihtimalle 6.000 $, yoksa 0'), tt('%5 ihtimalle 30.000 $, yoksa 0')]) },
   { q: tt('Beklenmedik bir kazancı nasıl değerlendirirsiniz?'), options: [tt('Mevduatta tutarım'), tt('Çoğunu güvenli araçlarda tutarım'), tt('Yarısını dalgalı araçlara ayırırım'), tt('Çoğunu yüksek getiri beklediğim araçlara ayırırım')] },
 ]
 

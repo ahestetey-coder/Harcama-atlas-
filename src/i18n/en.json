@@ -2973,5 +2973,18 @@
 "piyasa notu": "market note",
 "yazı": "article",
 "\"{0}\" başlıklı yeni yazımız yayınlandı.": "Our new article \"{0}\" is out.",
-"Yazıyı oku": "Read the article"
+"Yazıyı oku": "Read the article",
+"Dolar kuru alınamadı": "Could not get the dollar rate",
+"USD (nominal)": "USD (nominal)",
+"2.000 USD altı": "Under $2,000",
+"15.000 USD üstü": "Over $15,000",
+"10.000 USD altı": "Under $10,000",
+"250.000 USD üstü": "Over $250,000",
+"Kesin 1.000 $": "A certain $1,000",
+"%50 ihtimalle 2.500 $, yoksa 0": "50% chance of $2,500, otherwise 0",
+"%25 ihtimalle 6.000 $, yoksa 0": "25% chance of $6,000, otherwise 0",
+"%5 ihtimalle 30.000 $, yoksa 0": "5% chance of $30,000, otherwise 0",
+"Tutarlar bu para biriminde girilir ve gösterilir. Değiştirince kayıtlı tutarlar çevrilmez.": "Amounts are entered and shown in this currency. Changing it does not convert amounts you have already saved.",
+"Elektrik faturası · {0}": "Electricity bill · {0}",
+"adet": "units"
 }

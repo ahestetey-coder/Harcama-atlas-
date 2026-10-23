@@ -48,13 +48,22 @@ export async function generateCoachReply(messages: ChatMessage[], maxTokens = 50
 }
 
 /** İngilizce seçen kullanıcıya: kurallar aynı, yanıt dili İngilizce. */
-export const COACH_LANG_EN = `DİL: Kullanıcı uygulamayı İngilizce kullanıyor. Yanıtlarını doğal, sade İngilizceyle yaz (İngiliz İngilizcesi). Yukarıdaki kuralların hepsi aynen geçerli. Tutarlar TL'dir; "₺" ile yaz. Türkçe kurum adlarını (TCMB, TÜİK) koru, gerekirse kısaca açıkla.`
+export const COACH_LANG_EN = `DİL: Kullanıcı uygulamayı İngilizce kullanıyor. Yanıtlarını doğal, sade İngilizceyle yaz (İngiliz İngilizcesi). Yukarıdaki kuralların hepsi aynen geçerli. Türkçe kurum adlarını (TCMB, TÜİK) koru, gerekirse kısaca açıkla.`
 
-export function coachContext(summary: string, memory: string[], report: string | null, lang: 'tr' | 'en' = 'tr'): ChatMessage[] {
+export type CoachCurrency = 'TRY' | 'USD'
+
+/** Kullanıcının ana para birimi: özet tutarları bu birimdedir ve koç tutarları bu birimle yazar. */
+export function currencyRule(currency: CoachCurrency, lang: 'tr' | 'en'): string {
+  if (currency === 'USD') return `PARA BİRİMİ: Kullanıcının ana para birimi ABD doları. ÖZET'teki bütün tutarlar dolardır; tutarları "$" ile yaz (ör. $1,250). TL'ye çevirme, TL ya da "₺" kullanma.`
+  return lang === 'en' ? `PARA BİRİMİ: Tutarlar TL'dir; "₺" ile yaz.` : `PARA BİRİMİ: Tutarlar TL'dir.`
+}
+
+export function coachContext(summary: string, memory: string[], report: string | null, lang: 'tr' | 'en' = 'tr', currency: CoachCurrency = 'TRY'): ChatMessage[] {
   const out: ChatMessage[] = [
     { role: 'system', content: COACH_SYSTEM },
     ...(lang === 'en' ? [{ role: 'system' as const, content: COACH_LANG_EN }] : []),
-    { role: 'system', content: `ÖZET (kullanıcının izin verdiği veriler, tutarlar TL): ${summary}` },
+    { role: 'system', content: currencyRule(currency, lang) },
+    { role: 'system', content: `ÖZET (kullanıcının izin verdiği veriler, tutarlar ${currency === 'USD' ? 'ABD doları' : 'TL'}): ${summary}` },
   ]
   if (memory.length) out.push({ role: 'system', content: `HAFIZA (kullanıcının görüp düzenleyebildiği notlar):\n${memory.map((m) => `- ${m}`).join('\n')}` })
   if (report) out.push({ role: 'system', content: `RAPOR (herkese aynı gönderilen, editör onaylı son ekonomi raporu):\n${report}` })

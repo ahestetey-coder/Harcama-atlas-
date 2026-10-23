@@ -1,5 +1,5 @@
 import { addDays, toIsoDate } from './dates'
-import { formatKurus } from './money'
+import { formatWhole } from './money'
 import { occurrencesBetween, type DuePayment } from './recurring'
 import type { BudgetStatus, LimitState } from './budget'
 import type { IsoDate, RecurringIncome } from './types'
@@ -53,7 +53,7 @@ const SPENDING_HOUR = 20
 
 /** Kuruşsuz tutar: 125000 → "1.250 ₺" */
 function lira(kurus: number): string {
-  return formatKurus(Math.round(kurus / 100) * 100).replace(/,00 ₺$/, ' ₺')
+  return formatWhole(kurus)
 }
 
 /** Yerel saatle o günün belirtilen saati. */

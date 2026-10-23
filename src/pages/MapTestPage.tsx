@@ -10,6 +10,7 @@ import { usePlan } from '../state/plan'
 import { useReducedMotion } from '../lib/hooks'
 import FreedomMapPage, { UnlockStrip } from './FreedomMapPage'
 import { tt, ttf } from '../lib/i18n'
+import { withSymbol } from '../lib/currency'
 
 /**
  * Uygulama içi Finansal Harita testi (#/finansal-harita): her pakette açık. Web testiyle aynı 10 soru
@@ -67,7 +68,7 @@ function NextStep({ result }: { result: QuickResult }) {
   const locked: Array<[ReactNode, string, string]> = [
     [<CalendarCheck key="y" className="size-4" />, tt('Kesin özgürlük yılın'), '20••'],
     [<Unlink key="d" className="size-4" />, tt('Borçsuzluk tarihin'), '•• / 20••'],
-    [<PiggyBank key="p" className="size-4" />, tt('Aylık yatırım planın'), '•••• ₺'],
+    [<PiggyBank key="p" className="size-4" />, tt('Aylık yatırım planın'), withSymbol('••••')],
     [<LineChart key="s" className="size-4" />, tt('Yıl yıl simülasyonun'), '▁▂▃▅▇'],
   ]
   return (
