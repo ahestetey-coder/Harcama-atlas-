@@ -1,7 +1,7 @@
 // Hesap sayfalarının (giriş, ödeme, abonelik) ortak istemci kodu. Uygulamayla aynı Supabase hesabı kullanılır.
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config'
-import { formatTl as fmtTl } from '../data/plans'
+import { currencyFor, formatPrice as fmtPrice, type Currency } from '../data/plans'
 import { localize, pageLang, translator } from './i18n'
 
 /** Sayfanın dilinde metin seçici: t('Türkçe', 'English') */
@@ -51,6 +51,7 @@ export const periodLabel = (p: Period) => (p === 'monthly' ? tr()('Aylık', 'Mon
 export interface WebPrice {
   plan: Plan
   period: Period
+  currency: Currency
   amount_kurus: number
   trial_days: number
   active: boolean
@@ -65,7 +66,7 @@ export interface BillingSettings {
 export async function loadBilling(): Promise<{ settings: BillingSettings | null; prices: WebPrice[] }> {
   const [s, p] = await Promise.all([
     supa().from('ha_billing_settings').select('environment, client_token').eq('id', 1).maybeSingle(),
-    supa().from('ha_web_prices').select('plan, period, amount_kurus, trial_days, active, paddle_price_id'),
+    supa().from('ha_web_prices').select('plan, period, currency, amount_kurus, trial_days, active, paddle_price_id'),
   ])
   return { settings: (s.data as BillingSettings | null) ?? null, prices: (p.data as WebPrice[] | null) ?? [] }
 }
@@ -76,6 +77,8 @@ export interface Subscription {
   period: Period
   status: 'active' | 'trialing' | 'past_due' | 'paused' | 'canceled'
   amount_kurus: number | null
+  /** Paddle'ın para birimi kodu (TRY, USD); eski kayıtlarda boş olabilir */
+  currency: string | null
   current_period_end: string | null
   trial_end: string | null
   cancel_at: string | null
@@ -84,7 +87,7 @@ export interface Subscription {
 export async function mySubscription(): Promise<Subscription | null> {
   const { data } = await supa()
     .from('ha_subscriptions')
-    .select('id, plan, period, status, amount_kurus, current_period_end, trial_end, cancel_at')
+    .select('id, plan, period, status, amount_kurus, currency, current_period_end, trial_end, cancel_at')
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -107,7 +110,11 @@ export async function billing<T = Record<string, unknown>>(body: Record<string, 
   return data as T
 }
 
-export const formatTl = (kurus: number) => fmtTl(kurus, pageLang())
+/** Sayfanın para birimi: Türkçe sitede TL, İngilizcede USD. */
+export const pageCurrency = (): Currency => currencyFor(pageLang())
+/** Aboneliğin para birimi; bilinmiyorsa TL (ilk abonelikler TL idi). */
+export const subCurrency = (s: Pick<Subscription, 'currency'>): Currency => (s.currency === 'USD' ? 'USD' : 'TRY')
+export const formatPrice = (kurus: number, currency: Currency = pageCurrency()) => fmtPrice(kurus, pageLang(), currency)
 export const formatDate = (iso: string | null) =>
   iso ? new Intl.DateTimeFormat(pageLang() === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso)) : ''
 

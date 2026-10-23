@@ -64,18 +64,31 @@ const PLANS_EN: Record<PlanId, PlanText> = {
   },
 }
 
-/** Paketler seçilen dilde */
-export const plansFor = (lang: Lang): PlanInfo[] => (lang === 'en' ? PLANS.map((p) => ({ ...p, ...PLANS_EN[p.id] })) : PLANS)
+/** Türkçe sitede fiyatlar TL, İngilizce sitede USD. Paddle'da her paketin iki birimde ayrı fiyatı vardır. */
+export type Currency = 'TRY' | 'USD'
+export const currencyFor = (lang: Lang): Currency => (lang === 'en' ? 'USD' : 'TRY')
+const USD_MONTHLY_CENTS: Record<PlanId, number> = { free: 0, plus: 299, plus_plus: 599 }
+
+/** Paketler seçilen dilde ve o dilin para biriminde */
+export const plansFor = (lang: Lang): PlanInfo[] => (lang === 'en' ? PLANS.map((p) => ({ ...p, ...PLANS_EN[p.id], monthlyKurus: USD_MONTHLY_CENTS[p.id] })) : PLANS)
 
 /** Yıllık ödeme: aylık fiyatın 12 katından indirim düşülür, kuruşa yuvarlanır. */
 export const yearlyKurus = (monthly: number) => Math.round(monthly * 12 * (1 - YEARLY_DISCOUNT))
 
-const money = (lang: Lang, digits: number) =>
-  new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'tr-TR', { style: 'currency', currency: 'TRY', currencyDisplay: 'narrowSymbol', minimumFractionDigits: digits, maximumFractionDigits: digits })
-const FMT = { tr: [money('tr', 0), money('tr', 2)], en: [money('en', 0), money('en', 2)] }
+const formats = new Map<string, Intl.NumberFormat>()
+const money = (lang: Lang, currency: Currency, digits: number) => {
+  const key = `${lang}:${currency}:${digits}`
+  let f = formats.get(key)
+  if (!f) {
+    const locale = lang === 'tr' ? 'tr-TR' : currency === 'USD' ? 'en-US' : 'en-GB'
+    f = new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol', minimumFractionDigits: digits, maximumFractionDigits: digits })
+    formats.set(key, f)
+  }
+  return f
+}
 
-/** ₺1.299,99 biçimi (İngilizcede ₺1,299.99); tam liralarda kuruş gösterilmez (₺0). */
-export const formatTl = (kurus: number, lang: Lang = 'tr') => FMT[lang][kurus % 100 === 0 ? 0 : 1].format(kurus / 100)
+/** ₺1.299,99 / $2.99 biçimi; tam tutarlarda kuruş gösterilmez (₺0). Birim verilmezse dilin birimi. */
+export const formatPrice = (kurus: number, lang: Lang = 'tr', currency: Currency = currencyFor(lang)) => money(lang, currency, kurus % 100 === 0 ? 0 : 2).format(kurus / 100)
 
 export type Mark = boolean | string
 

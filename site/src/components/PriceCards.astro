@@ -1,5 +1,5 @@
 ---
-import { plansFor, formatTl as fmtTl, yearlyKurus, YEARLY_DISCOUNT } from '../data/plans'
+import { plansFor, formatPrice as fmtPrice, yearlyKurus, YEARLY_DISCOUNT } from '../data/plans'
 import { langOf, localize, translator } from '../lib/i18n'
 interface Props {
   compact?: boolean
@@ -11,7 +11,7 @@ const H = `h${level}` as 'h2' | 'h3'
 const pct = Math.round(YEARLY_DISCOUNT * 100)
 const lang = langOf(Astro.url.pathname)
 const t = translator(lang)
-const formatTl = (k: number) => fmtTl(k, lang)
+const formatPrice = (k: number) => fmtPrice(k, lang)
 const PLANS = plansFor(lang)
 const checkout = localize('/odeme', lang)
 ---
@@ -30,17 +30,17 @@ const checkout = localize('/odeme', lang)
           <p class="tag">{p.tagline}</p>
           <p class="price">
             {p.monthlyKurus === 0 ? (
-              <span class="amt">{formatTl(0)}</span>
+              <span class="amt">{formatPrice(0)}</span>
             ) : (
               <>
                 <span class="m">
-                  <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:monthly`}>{formatTl(p.monthlyKurus)}</span>
+                  <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:monthly`}>{formatPrice(p.monthlyKurus)}</span>
                   <span class="per">{t('/ay', '/mo')}</span>
                 </span>
                 <span class="y">
-                  <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>{formatTl(yearlyKurus(p.monthlyKurus))}</span>
+                  <span class="amt" data-live={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>{formatPrice(yearlyKurus(p.monthlyKurus))}</span>
                   <span class="per">{t('/yıl', '/yr')}</span>
-                  <span class="sub" data-live-sub={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>{t(`Aylık ${formatTl(Math.round(yearlyKurus(p.monthlyKurus) / 12))} gibi`, `About ${formatTl(Math.round(yearlyKurus(p.monthlyKurus) / 12))} a month`)}</span>
+                  <span class="sub" data-live-sub={`${p.id === 'plus_plus' ? 'plusplus' : 'plus'}:yearly`}>{t(`Aylık ${formatPrice(Math.round(yearlyKurus(p.monthlyKurus) / 12))} gibi`, `About ${formatPrice(Math.round(yearlyKurus(p.monthlyKurus) / 12))} a month`)}</span>
                 </span>
               </>
             )}
@@ -69,16 +69,19 @@ const checkout = localize('/odeme', lang)
 
 <script>
   import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../lib/config'
-  import { formatTl } from '../data/plans'
+  import { currencyFor, formatPrice } from '../data/plans'
   import { pageLang } from '../lib/i18n'
 
-  type Row = { plan: string; period: string; amount_kurus: number }
+  type Row = { plan: string; period: string; currency: string; amount_kurus: number }
   let cache: Promise<Row[]> | null = null
 
   // Güncel fiyatlar yönetici panelinden gelir; okunamazsa sayfadaki fiyatlar kalır
   function livePrices(): Promise<Row[]> {
-    cache ??= fetch(`${SUPABASE_URL}/rest/v1/ha_web_prices?select=plan,period,amount_kurus&active=eq.true`, { headers: { apikey: SUPABASE_ANON_KEY } })
+    // Türkçe sayfada TL, İngilizce sayfada USD fiyatlar
+    const cur = currencyFor(pageLang())
+    cache ??= fetch(`${SUPABASE_URL}/rest/v1/ha_web_prices?select=plan,period,currency,amount_kurus&active=eq.true&currency=eq.${cur}`, { headers: { apikey: SUPABASE_ANON_KEY } })
       .then((r) => (r.ok ? (r.json() as Promise<Row[]>) : []))
+      .then((rows) => rows.filter((r) => r.currency === cur))
       .catch(() => [])
     return cache
   }
@@ -86,7 +89,7 @@ const checkout = localize('/odeme', lang)
   async function applyLive() {
     const rows = await livePrices()
     const lang = pageLang()
-    const fmt = (k: number) => formatTl(k, lang)
+    const fmt = (k: number) => formatPrice(k, lang)
     for (const r of rows) {
       const key = `${r.plan}:${r.period}`
       document.querySelectorAll<HTMLElement>(`[data-live="${key}"]`).forEach((el) => (el.textContent = fmt(r.amount_kurus)))

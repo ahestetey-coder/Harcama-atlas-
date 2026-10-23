@@ -38,14 +38,14 @@ const t = translator(langOf(Astro.url.pathname))
 </Site>
 
 <script>
-  import { billing, formatDate, formatTl, isLive, loadBilling, local, mySubscription, periodLabel, PLAN_LABEL, requireUser, supa, tr, type Period, type Plan, type Subscription } from '../../lib/account'
+  import { billing, formatDate, formatPrice, isLive, subCurrency, loadBilling, local, mySubscription, periodLabel, PLAN_LABEL, requireUser, supa, tr, type Period, type Plan, type Subscription } from '../../lib/account'
   import { APP_SCHEME, APP_URL } from '../../lib/config'
 
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 
   function statusLine(s: Subscription): { badge: string; tone: 'ok' | 'warn' | 'off'; text: string } {
     const t = tr()
-    const price = s.amount_kurus ? formatTl(s.amount_kurus) : ''
+    const price = s.amount_kurus ? formatPrice(s.amount_kurus, subCurrency(s)) : ''
     if (s.status === 'trialing')
       return {
         badge: t('Deneme', 'Trial'),
@@ -139,10 +139,12 @@ const t = translator(langOf(Astro.url.pathname))
 
     const renderChange = async (s: Subscription) => {
       const { prices } = await loadBilling()
-      const opts = prices.filter((p) => p.active && p.paddle_price_id && !(p.plan === s.plan && p.period === s.period))
+      // Abonelik kendi para biriminde kalır: yalnızca aynı birimdeki fiyatlara geçilir
+      const cur = subCurrency(s)
+      const opts = prices.filter((p) => p.currency === cur && p.active && p.paddle_price_id && !(p.plan === s.plan && p.period === s.period))
       $('[data-change]').hidden = !opts.length || !!s.cancel_at || s.status === 'paused'
       $('[data-opts]').innerHTML = opts
-        .map((p) => `<button class="opt" type="button" data-plan="${p.plan}" data-period="${p.period}"><b>${PLAN_LABEL[p.plan]} · ${periodLabel(p.period)}</b><span>${formatTl(p.amount_kurus)} / ${p.period === 'monthly' ? t('ay', 'mo') : t('yıl', 'yr')}</span></button>`)
+        .map((p) => `<button class="opt" type="button" data-plan="${p.plan}" data-period="${p.period}"><b>${PLAN_LABEL[p.plan]} · ${periodLabel(p.period)}</b><span>${formatPrice(p.amount_kurus, cur)} / ${p.period === 'monthly' ? t('ay', 'mo') : t('yıl', 'yr')}</span></button>`)
         .join('')
       $('[data-opts]')
         .querySelectorAll<HTMLButtonElement>('.opt')
@@ -159,9 +161,9 @@ const t = translator(langOf(Astro.url.pathname))
               const cost = pv.trialing
                 ? t('Denemen sürüyor; bugün ücret alınmaz, yeni fiyat deneme bitince alınır.', 'Your trial is still running; nothing is charged today and the new price applies when the trial ends.')
                 : pv.action === 'charge' && pv.amount_kurus > 0
-                  ? t(`Yenileme tarihine kalan süre için bugün ${formatTl(pv.amount_kurus)} fark alınır.`, `${formatTl(pv.amount_kurus)} is charged today for the time left until renewal.`)
+                  ? t(`Yenileme tarihine kalan süre için bugün ${formatPrice(pv.amount_kurus, cur)} fark alınır.`, `${formatPrice(pv.amount_kurus, cur)} is charged today for the time left until renewal.`)
                   : pv.action === 'credit' && pv.amount_kurus > 0
-                    ? t(`Kalan süren için ${formatTl(pv.amount_kurus)} sonraki ödemelerinden düşülür.`, `${formatTl(pv.amount_kurus)} for your remaining time is deducted from your next payments.`)
+                    ? t(`Kalan süren için ${formatPrice(pv.amount_kurus, cur)} sonraki ödemelerinden düşülür.`, `${formatPrice(pv.amount_kurus, cur)} for your remaining time is deducted from your next payments.`)
                     : t('Bugün ek ücret alınmaz.', 'No extra charge today.')
               if (!confirm(t(`${name} paketine geçilsin mi?\n\n${cost}`, `Switch to ${name}?\n\n${cost}`))) {
                 b.disabled = false

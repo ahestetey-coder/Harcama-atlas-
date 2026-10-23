@@ -52,16 +52,16 @@ async function sync(db: SupabaseClient): Promise<{ prices: number; coupons: numb
   await db.from('ha_billing_settings').update({ product_ids: ids }).eq('id', 1)
 
   const { data: prices } = await db.from('ha_web_prices').select('*')
-  const priceIds: Record<string, string> = {}
+  const priceIds: Record<string, string[]> = {}
   for (const p of (prices ?? []) as (WebPrice & { paddle_price_id: string | null })[]) {
     let id = p.paddle_price_id
     if (id) await api('PATCH', `/prices/${id}`, priceBody(p, null))
     else {
       id = (await api('POST', '/prices', priceBody(p, ids[p.plan]))).id as string
       if (!p.active) await api('PATCH', `/prices/${id}`, { status: 'archived' })
-      await db.from('ha_web_prices').update({ paddle_price_id: id }).eq('plan', p.plan).eq('period', p.period)
+      await db.from('ha_web_prices').update({ paddle_price_id: id }).eq('plan', p.plan).eq('period', p.period).eq('currency', p.currency)
     }
-    priceIds[`${p.plan}:${p.period}`] = id
+    ;(priceIds[`${p.plan}:${p.period}`] ??= []).push(id)
   }
 
   const { data: coupons } = await db.from('ha_coupons').select('*')
@@ -92,19 +92,19 @@ async function sync(db: SupabaseClient): Promise<{ prices: number; coupons: numb
   }
 
   await db.from('ha_billing_settings').update({ synced_at: new Date().toISOString(), sync_error: null }).eq('id', 1)
-  return { prices: Object.keys(priceIds).length, coupons: coupons?.length ?? 0 }
+  return { prices: prices?.length ?? 0, coupons: coupons?.length ?? 0 }
 }
 
 async function mySubscription(db: SupabaseClient, uid: string) {
   const { data } = await db
     .from('ha_subscriptions')
-    .select('id, customer_id, status, plan, period')
+    .select('id, customer_id, status, plan, period, currency')
     .eq('user_id', uid)
     .in('status', ['active', 'trialing', 'past_due', 'paused'])
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  return data as { id: string; customer_id: string; status: string; plan: Plan; period: Period } | null
+  return data as { id: string; customer_id: string; status: string; plan: Plan; period: Period; currency: string | null } | null
 }
 
 Deno.serve(async (req) => {
@@ -144,7 +144,8 @@ Deno.serve(async (req) => {
       const period = body.period
       if ((plan !== 'plus' && plan !== 'plusplus') || (period !== 'monthly' && period !== 'yearly')) return json({ error: 'Geçersiz paket' }, 400)
       if (plan === sub.plan && period === sub.period) return json({ ok: true, unchanged: true })
-      const { data: price } = await db.from('ha_web_prices').select('paddle_price_id, active').eq('plan', plan).eq('period', period).maybeSingle()
+      // Paddle bir abonelikte para birimini değiştirmez: aynı birimdeki fiyata geçilir
+      const { data: price } = await db.from('ha_web_prices').select('paddle_price_id, active').eq('plan', plan).eq('period', period).eq('currency', sub.currency === 'USD' ? 'USD' : 'TRY').maybeSingle()
       if (!price?.paddle_price_id || !price.active) return json({ error: 'Bu paket şu an satışta değil' }, 409)
       // Yükseltmede yenileme tarihine kalan günlerin farkı hemen alınır, düşürmede kalan tutar sonraki ödemelere sayılır.
       // Denemedeyken ödeme yoktur: paket hemen değişir, deneme sürer, yeni fiyat deneme bitince alınır.

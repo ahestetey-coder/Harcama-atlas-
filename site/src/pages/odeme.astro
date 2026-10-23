@@ -94,7 +94,7 @@ const features = Object.fromEntries(plansFor(lang).filter((p) => p.id !== 'free'
 </Site>
 
 <script>
-  import { formatTl, isLive, loadBilling, local, mySubscription, periodLabel, PLAN_LABEL, requireUser, supa, toPeriod, toPlan, tr, type Period, type Plan, type WebPrice } from '../lib/account'
+  import { formatPrice, isLive, loadBilling, local, pageCurrency, mySubscription, periodLabel, PLAN_LABEL, requireUser, supa, toPeriod, toPlan, tr, type Period, type Plan, type WebPrice } from '../lib/account'
   import { pageLang } from '../lib/i18n'
 
   type PaddleGlobal = {
@@ -130,8 +130,10 @@ const features = Object.fromEntries(plansFor(lang).filter((p) => p.id !== 'free'
     if (isLive(sub)) return show('has-sub')
     // Ücretsiz deneme kişi başına bir kez: daha önce abone olan hemen ücretlendirilir
     const usedTrial = !!sub
-    const priceOf = (pl: Plan, pe: Period): WebPrice | undefined => prices.find((p) => p.plan === pl && p.period === pe && p.active && p.paddle_price_id)
-    if (!settings?.client_token || !prices.some((p) => p.paddle_price_id && p.active)) return show('closed')
+    // Türkçe sayfada TL, İngilizce sayfada USD fiyatlar satılır
+    const cur = pageCurrency()
+    const priceOf = (pl: Plan, pe: Period): WebPrice | undefined => prices.find((p) => p.plan === pl && p.period === pe && p.currency === cur && p.active && p.paddle_price_id)
+    if (!settings?.client_token || !prices.some((p) => p.currency === cur && p.paddle_price_id && p.active)) return show('closed')
 
     const q = new URLSearchParams(location.search)
     let plan = toPlan(q.get('plan'))
@@ -159,27 +161,27 @@ const features = Object.fromEntries(plansFor(lang).filter((p) => p.id !== 'free'
       const discount = coupon ? Math.round((p.amount_kurus * coupon.pct) / 100) : 0
       const net = p.amount_kurus - discount
       $('[data-sum-name]').textContent = `${PLAN_LABEL[plan]} · ${periodLabel(period)}`
-      $('[data-sum-price]').textContent = formatTl(p.amount_kurus)
+      $('[data-sum-price]').textContent = formatPrice(p.amount_kurus)
       $('[data-disc-line]').hidden = !coupon
       $('[data-disc-name]').textContent = coupon ? t(`Kampanya ${coupon.code} (%${coupon.pct})`, `Promo ${coupon.code} (${coupon.pct}%)`) : ''
-      $('[data-disc-amount]').textContent = coupon ? `−${formatTl(discount)}` : ''
+      $('[data-disc-amount]').textContent = coupon ? `−${formatPrice(discount)}` : ''
       const trial = p.trial_days > 0 && !usedTrial
       $('[data-total-label]').textContent = trial ? t('Bugün ödenecek', 'Due today') : t('Toplam', 'Total')
-      $('[data-total]').textContent = trial ? formatTl(0) : formatTl(net)
+      $('[data-total]').textContent = trial ? formatPrice(0) : formatPrice(net)
       const trialUsed = p.trial_days > 0 && usedTrial
       $('[data-trial]').hidden = !trial && !trialUsed
       $('[data-trial]').textContent = trial
         ? t(
-            `${p.trial_days} gün ücretsiz. Deneme bitince ${formatTl(net)} alınır; bitmeden iptal edersen ücret alınmaz.`,
-            `${p.trial_days} days free. ${formatTl(net)} is charged when the trial ends; cancel before then and you pay nothing.`,
+            `${p.trial_days} gün ücretsiz. Deneme bitince ${formatPrice(net)} alınır; bitmeden iptal edersen ücret alınmaz.`,
+            `${p.trial_days} days free. ${formatPrice(net)} is charged when the trial ends; cancel before then and you pay nothing.`,
           )
         : trialUsed
           ? t('Ücretsiz denemeni daha önce kullandın; ödeme bugün alınır.', 'You have already used your free trial; payment is taken today.')
           : ''
       $('[data-renew]').textContent =
         period === 'monthly'
-          ? t('Abonelik her ay yenilenir. Fiyatlara KDV dahildir.', 'The subscription renews every month. Prices include VAT.')
-          : t('Abonelik her yıl yenilenir. Fiyatlara KDV dahildir.', 'The subscription renews every year. Prices include VAT.')
+          ? t('Abonelik her ay yenilenir. Fiyatlara KDV dahildir.', 'The subscription renews every month. Prices include tax.')
+          : t('Abonelik her yıl yenilenir. Fiyatlara KDV dahildir.', 'The subscription renews every year. Prices include tax.')
       const url = new URL(location.href)
       url.searchParams.set('plan', plan === 'plusplus' ? 'plus_plus' : 'plus')
       url.searchParams.set('period', period)

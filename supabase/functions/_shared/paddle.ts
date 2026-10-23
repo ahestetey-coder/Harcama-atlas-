@@ -146,9 +146,13 @@ export function subscriptionFromEvent(e: PaddleEvent, knownPrices: Record<string
   }
 }
 
+export type Currency = 'TRY' | 'USD'
+
 export interface WebPrice {
   plan: Plan
   period: Period
+  /** Türkçe sitede TL, İngilizce sitede USD */
+  currency: Currency
   amount_kurus: number
   trial_days: number
   active: boolean
@@ -161,9 +165,9 @@ export interface WebPrice {
 export function priceBody(p: WebPrice, productId: string | null) {
   return {
     ...(productId ? { product_id: productId } : { status: p.active ? 'active' : 'archived' }),
-    description: `${PLAN_NAMES[p.plan]} · ${PERIOD_NAMES[p.period]}`,
+    description: `${PLAN_NAMES[p.plan]} · ${PERIOD_NAMES[p.period]} · ${p.currency}`,
     name: PERIOD_NAMES[p.period],
-    unit_price: { amount: String(p.amount_kurus), currency_code: 'TRY' },
+    unit_price: { amount: String(p.amount_kurus), currency_code: p.currency },
     billing_cycle: { interval: p.period === 'monthly' ? 'month' : 'year', frequency: 1 },
     trial_period: p.trial_days > 0 ? { interval: 'day', frequency: p.trial_days } : null,
     tax_mode: 'internal',
@@ -184,9 +188,12 @@ export interface Coupon {
   note: string | null
 }
 
-/** Paddle indirim gövdesi; yalnızca kodun geçerli olduğu fiyatlarla sınırlanır. Oluştururken status gönderilmez. */
-export function discountBody(c: Coupon, priceIds: Record<string, string>, create = false) {
-  const restrict = c.plans.flatMap((pl) => c.periods.map((pe) => priceIds[`${pl}:${pe}`])).filter(Boolean)
+/**
+ * Paddle indirim gövdesi; yalnızca kodun geçerli olduğu fiyatlarla (her para birimindeki) sınırlanır.
+ * priceIds: "plan:dönem" → o paketin Paddle fiyat kimlikleri. Oluştururken status gönderilmez.
+ */
+export function discountBody(c: Coupon, priceIds: Record<string, string[]>, create = false) {
+  const restrict = c.plans.flatMap((pl) => c.periods.flatMap((pe) => priceIds[`${pl}:${pe}`] ?? [])).filter(Boolean)
   const expired = c.expires_at !== null && new Date(c.expires_at).getTime() <= Date.now()
   return {
     description: c.note?.trim() || `Kampanya kodu ${c.code}`,
