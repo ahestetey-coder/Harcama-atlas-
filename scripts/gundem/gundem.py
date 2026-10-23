@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Gündem yazıları için yardımcı komutlar (zamanlanmış görev kullanır; bkz. GOREV.md).
 
-  python3 scripts/gundem/gundem.py scan [--hours 14]      Kanallardaki yeni videoları sırayla listeler (JSON)
+  python3 scripts/gundem/gundem.py scan [--hours N]       Son başarılı taramadan beri yeni videoları sırayla listeler (JSON)
+  python3 scripts/gundem/gundem.py done                    Taramayı başarılı say (sonraki tarama buradan başlar)
   python3 scripts/gundem/gundem.py transcript VIDEO_ID    Transkripti /tmp/gundem/VIDEO_ID.txt dosyasına yazar
   python3 scripts/gundem/gundem.py add yazi.json          Yazıyı public/gundem/ altına ekler, dizini günceller
   python3 scripts/gundem/gundem.py blog SLUG              Yazıyı site bloguna Türkçe Markdown olarak ekler
@@ -23,6 +24,8 @@ APP_DIR = ROOT / 'public' / 'gundem'
 BLOG_DIR = ROOT / 'site' / 'src' / 'content' / 'blog'
 BLOG_IMG = ROOT / 'site' / 'public' / 'blog'
 CHANNELS_FILE = Path(__file__).with_name('kanallar.json')
+STATE_FILE = Path(__file__).with_name('durum.json')
+MAX_CATCHUP_HOURS = 7 * 24
 TMP = Path('/tmp/gundem')
 UA = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.9'}
 CATEGORIES = {'piyasa-notu', 'finans-haberleri', 'finans-egitimi', 'kisisel-finans', 'kripto'}
@@ -66,10 +69,28 @@ def is_short(video_id):
         return False
 
 
-def cmd_scan(hours=14.0):
+def scan_since(hours):
+    """Varsayılan: son başarılı taramadan 1 saat öncesi (en az 12, en çok 7 gün geriye).
+    Görev bir saatte çalışamazsa (ör. kullanım limiti) sonraki çalışma kaçanları toplar."""
+    now = datetime.now(timezone.utc)
+    if hours is not None:
+        return now - timedelta(hours=hours)
+    last = None
+    if STATE_FILE.exists():
+        last = datetime.fromisoformat(json.loads(STATE_FILE.read_text('utf-8'))['lastScan'].replace('Z', '+00:00'))
+    since = min(now - timedelta(hours=12), (last or now) - timedelta(hours=1))
+    return max(since, now - timedelta(hours=MAX_CATCHUP_HOURS))
+
+
+def cmd_done():
+    STATE_FILE.write_text(json.dumps({'lastScan': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}) + '\n', 'utf-8')
+    print('son tarama kaydedildi')
+
+
+def cmd_scan(hours=None):
     channels = json.loads(CHANNELS_FILE.read_text('utf-8'))
     done = processed_ids()
-    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since = scan_since(hours)
     ns = {'a': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015', 'media': 'http://search.yahoo.com/mrss/'}
     out, errors, changed = [], [], False
     for order, ch in enumerate(channels, 1):
@@ -94,7 +115,7 @@ def cmd_scan(hours=14.0):
         out += sorted(items, key=lambda x: x['published'])
     if changed:
         CHANNELS_FILE.write_text(json.dumps(channels, ensure_ascii=False, indent=2) + '\n', 'utf-8')
-    print(json.dumps({'videos': out, 'errors': errors}, ensure_ascii=False, indent=2))
+    print(json.dumps({'since': since.isoformat(), 'videos': out, 'errors': errors}, ensure_ascii=False, indent=2))
 
 
 def cmd_transcript(video_id):
@@ -227,13 +248,15 @@ if __name__ == '__main__':
         sys.exit(__doc__)
     cmd, rest = args[0], args[1:]
     if cmd == 'scan':
-        cmd_scan(float(rest[rest.index('--hours') + 1]) if '--hours' in rest else 14.0)
+        cmd_scan(float(rest[rest.index('--hours') + 1]) if '--hours' in rest else None)
     elif cmd == 'transcript' and rest:
         cmd_transcript(rest[0])
     elif cmd == 'add' and rest:
         cmd_add(rest[0])
     elif cmd == 'blog' and rest:
         cmd_blog(rest[0])
+    elif cmd == 'done':
+        cmd_done()
     elif cmd == 'processed':
         print('\n'.join(sorted(processed_ids())))
     else:

@@ -8,8 +8,9 @@ Sahibi: osman (GitHub ahestetey-coder). Depo: ahestetey-coder/Harcama-atlas- (bu
 - `YT_TRANSCRIPT_API_KEY` ortam değişkeni bu ortamda tanımlı; anahtarı asla yazdırma, loglama ya da commit etme.
 
 ## 1. Yeni videoları bul
-- `python3 scripts/gundem/gundem.py scan` → kanal sırasına göre (1 Selcoin … 8 Coin Bureau) son ~12 saatte yayınlanmış, daha önce işlenmemiş videolar ve canlı yayınlar. Shorts zaten elenir.
-- Liste boşsa: hiçbir şey üretme, Higgsfield kredisi harcama, "Yeni içerik yok" de ve bitir (kanallar.json değiştiyse yalnızca onu commit edip push et).
+- `python3 scripts/gundem/gundem.py scan` → kanal sırasına göre (1 Selcoin … 8 Coin Bureau) son 12 saatte yayınlanmış, daha önce işlenmemiş videolar ve canlı yayınlar. Shorts zaten elenir. Önceki çalışma (ör. kullanım limiti yüzünden) yapılamadıysa tarama otomatik olarak son başarılı taramadan beri olanları kapsar (en çok 7 gün); kaçanları bu çalışmada işle.
+- Liste boşsa: hiçbir şey üretme, Higgsfield kredisi harcama, `gundem.py done` çalıştır, `scripts/gundem/` değişikliklerini commit edip push et, "Yeni içerik yok" de ve bitir.
+- Yarıda kalmaya karşı: her yazıyı `add` ettikten hemen sonra commit edip push et (ilk yazı yayına hemen girer). Sonraki çalışma işlenmiş videoları atlar.
 - Kanal hatası olursa o kanalı atla, raporda belirt.
 
 ## 2. Her video için (kanal sırasıyla)
@@ -42,7 +43,9 @@ Sahibi: osman (GitHub ahestetey-coder). Depo: ahestetey-coder/Harcama-atlas- (bu
    - Gövde Markdown'ı: `##` ara başlıklar, `- ` maddeler, `|` tablo, `**kalın**`; başka HTML kullanma. Başlık (title) gövdeye yazılmaz.
 
 ## 3. Uygulamaya yayınla
-- Tüm yazılar eklendikten sonra tek commit: `git add public/gundem scripts/gundem/kanallar.json && git commit -m "Gündem: N yeni yazı (tarih saat)"`, `git push origin main` (reddedilirse `git pull --rebase origin main` ve tekrar). GitHub Pages ~2 dakikada yayına alır; mobil derleme bu klasör için çalışmaz.
+- Her yazıdan sonra: `git add public/gundem scripts/gundem && git commit -m "Gündem: <başlık>"`, `git push origin main` (reddedilirse `git pull --rebase origin main` ve tekrar). GitHub Pages ~2 dakikada yayına alır; mobil derleme bu klasör için çalışmaz.
+- Tüm videolar bitince `python3 scripts/gundem/gundem.py done` çalıştır, commit ve push et.
+- Kullanım limitine takılıp görev başlayamazsa ya da yarıda kalırsa ayrıca bir şey yapma: limit açıldıktan sonraki ilk çalışma kaçanları toplar.
 
 ## 4. Web sitesi blogu (yalnızca `onBlog: true` olanlar)
 - Her blog yazısını kendi `publishAt` saatinde ekle: gerekirse o saate kadar arka planda bekle (`sleep` ile, Bash'in run_in_background seçeneğiyle; ön planda uzun sleep yapma).
