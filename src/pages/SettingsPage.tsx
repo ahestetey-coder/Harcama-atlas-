@@ -22,6 +22,7 @@ import { useData, useSettings } from '../state/data'
 import { useTheme } from '../state/theme'
 import { useUi } from '../state/ui'
 import { getLang, setLang, tt, ttf, type Lang } from '../lib/i18n'
+import { getCurrency, setCurrency, type Currency } from '../lib/currency'
 
 export default function SettingsPage() {
   const { preference, setPreference } = useTheme()
@@ -93,6 +94,17 @@ export default function SettingsPage() {
               { value: 'en', label: 'English' },
             ]}
           />
+          <Segmented<Currency>
+            label={tt('Para birimi')}
+            value={getCurrency()}
+            onChange={(v) => v !== getCurrency() && setCurrency(v)}
+            className="mt-4 w-full"
+            options={[
+              { value: 'TRY', label: '₺ TL' },
+              { value: 'USD', label: '$ USD' },
+            ]}
+          />
+          <p className="mt-2 text-[12.5px] text-subtle">{tt('Tutarlar bu para biriminde girilir ve gösterilir. Değiştirince kayıtlı tutarlar çevrilmez.')}</p>
         </Card>
 
         <Card className="p-5">

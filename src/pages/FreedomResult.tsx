@@ -6,12 +6,13 @@ import { Button, Card, Input, More } from '../components/ui/primitives'
 import { FAT_FACTOR, LEAN_FACTOR, MC_RUNS } from '../domain/assumptions'
 import { MONTH_NAMES } from '../domain/dates'
 import { buildFreedomPlan, durationLabel, planAmountToKurus, formatInBase, freedomSteps, reachDateLabel, type BaseRates, type FreedomPlan, type JourneyFacts, type JourneyProfile, type PlanBase } from '../domain/journey'
-import { formatKurus } from '../domain/money'
+import { formatKurus, formatKurusCompact, formatWholePlain } from '../domain/money'
 import { cn } from '../lib/cn'
 import { toUserMessage } from '../data/repository'
 import { useRepo } from '../state/data'
 import { useUi } from '../state/ui'
-import { tt, ttf } from '../lib/i18n'
+import { tt, ttf, pctText } from '../lib/i18n'
+import { curSymbol, isUsd } from '../lib/currency'
 
 const shortTl = (k: number) => {
   const v = k / 100
@@ -82,9 +83,9 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
         <More>
           {ttf('Yıllık {0} çekim ÷ %{1} çekim oranı ({2} yıllık çekim süresi {3}).', formatKurus(v.annualNeedKurus), v.withdrawal.usedPct.toLocaleString('tr-TR'), v.retirementYears, v.withdrawal.custom ? ttf('; önerilen %{0}', v.withdrawal.recommendedPct.toLocaleString('tr-TR')) : tt(', süreye göre önerilen'))}</More>
         <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3" role="group" aria-label={tt('Canlı özet')}>
-          <Mini label={tt('Hedef birikim')} value={base === 'TRY' ? shortTl(v.fiKurus) + ' ₺' : inBase(v.fiKurus)} />
+          <Mini label={tt('Hedef birikim')} value={base === 'TRY' ? (isUsd() ? formatKurusCompact(v.fiKurus) : shortTl(v.fiKurus) + ' ₺') : inBase(v.fiKurus)} />
           <Mini label={tt('Bugünkü hızla')} value={midAge === null ? tt('Ulaşılamıyor') : ttf('{0} yaşında', midAge)} tone={late ? 'warn' : 'good'} />
-          <Mini label={tt('Tasarruf oranı')} value={`%${Math.round(v.savingRate * 100)}`} />
+          <Mini label={tt('Tasarruf oranı')} value={pctText(Math.round(v.savingRate * 100), 0)} />
         </div>
         <OwnGoal profile={profile} rates={rates} plan={plan} inBase={inBase} />
         <ol className="mt-4 flex flex-col gap-1.5" aria-label={tt('Seviyeler')}>
@@ -111,13 +112,13 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
       </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Kpi icon={<PiggyBank className="size-4" />} label={ttf('{0} yaşında bağımsız olmak için', v.targetAge)} tone={v.gapKurus > 0 ? 'warn' : 'good'} value={ttf('{0} ₺/ay', Math.round(v.requiredMonthlyKurus / 100).toLocaleString('tr-TR'))}>
-          {ttf('Şu an {0} ₺/ay {1}', Math.round(v.monthlySavingKurus / 100).toLocaleString('tr-TR'), v.gapKurus > 0 ? (midAge === null ? tt(' · bu hızla ulaşılamıyor') : ttf(' · bu hızla {0} yaşında', midAge)) : tt(' · yetiyor'))}
+        <Kpi icon={<PiggyBank className="size-4" />} label={ttf('{0} yaşında bağımsız olmak için', v.targetAge)} tone={v.gapKurus > 0 ? 'warn' : 'good'} value={ttf('{0} ₺/ay', formatWholePlain(v.requiredMonthlyKurus))}>
+          {ttf('Şu an {0} ₺/ay {1}', formatWholePlain(v.monthlySavingKurus), v.gapKurus > 0 ? (midAge === null ? tt(' · bu hızla ulaşılamıyor') : ttf(' · bu hızla {0} yaşında', midAge)) : tt(' · yetiyor'))}
         </Kpi>
         <Kpi icon={<Hourglass className="size-4" />} label={tt('Coast FI eşiği')} tone={v.coastPassed ? 'good' : undefined} value={inBase(v.coastKurus)}>
           {v.coastPassed ? tt('Geçtiniz; eklemeseniz de yetiyor.') : ttf('Net birikiminiz {0}.', inBase(v.netKurus))}
         </Kpi>
-        <Kpi icon={<Gauge className="size-4" />} label={tt('Başarı olasılığı')} tone={v.successRate >= 0.8 ? 'good' : v.successRate < 0.6 ? 'warn' : undefined} value={`%${Math.round(v.successRate * 100)}`}>
+        <Kpi icon={<Gauge className="size-4" />} label={tt('Başarı olasılığı')} tone={v.successRate >= 0.8 ? 'good' : v.successRate < 0.6 ? 'warn' : undefined} value={pctText(Math.round(v.successRate * 100), 0)}>
           {tt('Varsayıma dayalı benzetimdir, garanti değildir.')}
         </Kpi>
         <Kpi icon={<CalendarCheck className="size-4" />} label={tt('Borçsuz olma tarihi')} value={debtDate}>
@@ -166,12 +167,14 @@ export function FreedomResult({ profile, facts, rates, plan, strategy, today }: 
           <Target className="size-4 text-accent" /> {tt('Hedef tarihte (')}{ageDate(v.targetAge)}{tt(') hedefiniz')}
         </h3>
         <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Future label={tt('TL (nominal)')} value={formatKurus(v.future.tlNominalKurus)} note={ttf('Yıllık %{0} enflasyonla.', v.future.inflationPct.toLocaleString('tr-TR'))} />
-          <Future
-            label="USD"
-            value={v.future.usd === null ? '—' : `${v.future.usd.toLocaleString('tr-TR')} $`}
-            note={base === 'USD' ? tt('Plan birimi USD: hedef bu tutarda sabit.') : tt('Güncel kurla.')}
-          />
+          <Future label={isUsd() ? tt('USD (nominal)') : tt('TL (nominal)')} value={formatKurus(v.future.tlNominalKurus)} note={ttf('Yıllık %{0} enflasyonla.', v.future.inflationPct.toLocaleString('tr-TR'))} />
+          {!isUsd() && (
+            <Future
+              label="USD"
+              value={v.future.usd === null ? '—' : `${v.future.usd.toLocaleString('tr-TR')} $`}
+              note={base === 'USD' ? tt('Plan birimi USD: hedef bu tutarda sabit.') : tt('Güncel kurla.')}
+            />
+          )}
           <Future
             label={tt('Gram altın')}
             value={v.future.goldGr === null ? '—' : `${v.future.goldGr.toLocaleString('tr-TR')} gr`}
@@ -226,7 +229,7 @@ function OwnGoal({ profile, rates, plan, inBase }: { profile: JourneyProfile; ra
   const repo = useRepo()
   const { toast } = useUi()
   const base: PlanBase = profile.base ?? 'TRY'
-  const unit = base === 'USD' ? '$' : base === 'XAU' ? tt('gr altın') : '₺'
+  const unit = base === 'USD' ? '$' : base === 'XAU' ? tt('gr altın') : curSymbol()
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const save = async (customFiKurus: number | undefined) => {

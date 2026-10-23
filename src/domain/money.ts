@@ -1,4 +1,5 @@
 import { tt, ttf } from '../lib/i18n'
+import { isUsd, moneyLocale, withSymbol } from '../lib/currency'
 /**
  * Para tutarları her yerde tam sayı kuruş olarak tutulur.
  * Ayrıştırma belirsiz biçimleri sessizce yorumlamaz; `ambiguous` döner.
@@ -179,9 +180,11 @@ export function inferNumberFormat(samples: string[]): NumberFormatHint {
 }
 
 const tryFormatter = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const usdFormatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-/** 123456 → "1.234,56" */
+/** 123456 → "1.234,56" (TL) ya da "1,234.56" (USD) */
 export function formatKurusPlain(kurus: number): string {
+  if (isUsd()) return usdFormatter.format(kurus / 100)
   const sign = kurus < 0 ? '-' : ''
   const abs = Math.abs(kurus)
   const lira = Math.trunc(abs / 100)
@@ -189,24 +192,32 @@ export function formatKurusPlain(kurus: number): string {
   return sign + tryFormatter.format(lira).replace(/,00$/, '') + ',' + String(k).padStart(2, '0')
 }
 
-/** 123456 → "1.234,56 ₺" */
+/** 123456 → "1.234,56 ₺" ya da "$1,234.56" */
 export function formatKurus(kurus: number): string {
-  return `${formatKurusPlain(kurus)} ₺`
+  return withSymbol(formatKurusPlain(kurus))
 }
 
-/** Kısa gösterim: 1.234 ₺ / 12,3 B ₺ */
+/** Kuruşsuz tam tutar: 1765000 → "17.650 ₺" ya da "$17,650" */
+export function formatWhole(kurus: number): string {
+  return withSymbol(Math.round(kurus / 100).toLocaleString(moneyLocale()))
+}
+
+/** Kuruşsuz sayı (simgesiz): 1765000 → "17.650" ya da "17,650" */
+export const formatWholePlain = (kurus: number): string => Math.round(kurus / 100).toLocaleString(moneyLocale())
+
+/** Kısa gösterim: 1.234 ₺ / 12,3 B ₺ / 1,2 Mn ₺ ya da $1,234 / $12.3K / $1.2M */
 export function formatKurusCompact(kurus: number): string {
   const lira = kurus / 100
-  if (Math.abs(lira) >= 1_000_000) return `${(lira / 1_000_000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ${tt('Mn')} ₺`
-  if (Math.abs(lira) >= 10_000) return `${(lira / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ${tt('B')} ₺`
-  return `${Math.round(lira).toLocaleString('tr-TR')} ₺`
+  const loc = moneyLocale()
+  const usd = isUsd()
+  if (Math.abs(lira) >= 1_000_000) return withSymbol(`${(lira / 1_000_000).toLocaleString(loc, { maximumFractionDigits: 1 })}${usd ? 'M' : ` ${tt('Mn')}`}`)
+  if (Math.abs(lira) >= 10_000) return withSymbol(`${(lira / 1000).toLocaleString(loc, { maximumFractionDigits: 1 })}${usd ? 'K' : ` ${tt('B')}`}`)
+  return withSymbol(Math.round(lira).toLocaleString(loc))
 }
 
 /** Form girişi için: kullanıcı "1.234,56" veya "1234,56" veya "1234.56" yazabilir. */
 export function parseUserAmount(input: string): AmountParseResult {
-  const r = parseAmount(input, 'tr')
-  if (r.ok) return r
-  return r
+  return parseAmount(input, isUsd() ? 'en' : 'tr')
 }
 
 export function sumKurus(values: number[]): number {

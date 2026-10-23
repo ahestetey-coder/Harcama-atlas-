@@ -15,6 +15,7 @@ import { useCategories, useGroups, useRules, useTransactions } from '../../state
 import { useUi } from '../../state/ui'
 import type { ReviewData } from './useImportFlow'
 import { tt, ttf } from '../../lib/i18n'
+import { isUsd, moneyLocale } from '../../lib/currency'
 
 const PAGE = 40
 type Tab = 'all' | RowStatus
@@ -386,7 +387,7 @@ const RowCard = memo(function RowCard({
 
   const commitAmount = () => {
     if (!amountText.trim()) return onChange(r.id, { amountKurus: null })
-    const p = parseAmount(amountText, 'tr')
+    const p = parseAmount(amountText, isUsd() ? 'en' : 'tr')
     if (p.ok && p.kurus !== 0) {
       lastAmount.current = Math.abs(p.kurus)
       onChange(r.id, { amountKurus: Math.abs(p.kurus), amountCandidates: undefined })
@@ -400,7 +401,7 @@ const RowCard = memo(function RowCard({
   const shownProblems = unknownMerchant ? problems.filter((p) => p.field !== 'category') : problems
   const notes = [
     ...(r.excludedReason && !r.include ? [ttf('Hariç: {0}', r.excludedReason)] : []),
-    ...(r.foreign ? [ttf('Döviz: {0} {1}. Yalnızca TL karşılığı kaydedilir.', (r.foreign.amountMinor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 }), r.foreign.currency)] : []),
+    ...(r.foreign ? [ttf('Döviz: {0} {1}. Yalnızca TL karşılığı kaydedilir.', (r.foreign.amountMinor / 100).toLocaleString(moneyLocale(), { minimumFractionDigits: 2 }), r.foreign.currency)] : []),
     ...(r.ruleConflict ? [r.ruleConflict] : r.ruleNote && r.categorySource === 'rule' ? [r.ruleNote] : []),
     ...r.notes,
   ]

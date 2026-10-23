@@ -17,6 +17,7 @@ import { CategoryIcon, GroupBadge, GroupPicker, Money } from './common'
 import { Modal } from './ui/Modal'
 import { Button, Checkbox, Field, Input, Segmented, Select, Textarea } from './ui/primitives'
 import { tt, ttf } from '../lib/i18n'
+import { curSymbol } from '../lib/currency'
 
 interface FormState {
   date: string
@@ -214,7 +215,7 @@ function TransactionForm({ tx, type, onDone }: { tx?: Transaction; type?: Transa
               aria-describedby={errors.amount ? 'tx-amount-error' : undefined}
               className="num pr-9 text-lg font-semibold sm:text-base"
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-subtle">₺</span>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-subtle">{curSymbol()}</span>
           </div>
         </Field>
         <Field label={tt('Tarih')} htmlFor="tx-date" error={errors.date}>

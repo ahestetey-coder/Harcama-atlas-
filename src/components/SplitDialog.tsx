@@ -18,6 +18,7 @@ import { Button, Input, More, Segmented } from './ui/primitives'
 import { usePlan } from '../state/plan'
 import { Link } from 'react-router-dom'
 import { tt, ttf } from '../lib/i18n'
+import { curSymbol } from '../lib/currency'
 
 /** Paylaşımdaki pay listesi (üye → kuruş). */
 export function sharesOf(result: SplitResult): Record<string, number> {
@@ -349,7 +350,7 @@ function RuleEditor({ rule, onChange, people, total }: { rule: SplitRule; onChan
       m === 'percent' ? Object.fromEntries(inc.map((id, i) => [id, i === 0 ? 100 - Math.floor(100 / inc.length) * (inc.length - 1) : Math.floor(100 / inc.length)])) : m === 'weights' ? Object.fromEntries(inc.map((id) => [id, 1])) : {}
     onChange({ ...rule, method: m, values })
   }
-  const unit = rule.method === 'percent' ? '%' : rule.method === 'amounts' ? '₺' : '×'
+  const unit = rule.method === 'percent' ? '%' : rule.method === 'amounts' ? curSymbol() : '×'
   return (
     <section aria-labelledby="split-rule" className="rounded-2xl border border-line p-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">

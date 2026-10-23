@@ -51,7 +51,8 @@ import { useStartNew } from '../lib/useStartNew'
 import { useAuth } from '../state/auth'
 import { searchSymbols, type SymbolSuggestion } from '../cloud/rates'
 import { refreshPricesNow, useLiveState, type LiveState } from '../state/livePrices'
-import { tt, ttf } from '../lib/i18n'
+import { tt, ttf, pctText } from '../lib/i18n'
+import { curCode, isUsd } from '../lib/currency'
 
 /** Dağılım renkleri: sabit sırayla (tür → renk), açık ve koyu temada doğrulanmış palet. */
 const KIND_COLOR: Record<Exclude<AssetKind, 'debt'>, string> = {
@@ -85,8 +86,8 @@ const PRESETS: Partial<Record<AssetKind, { name: string; unit: string; symbol?: 
     { name: tt('Ethereum'), unit: 'adet', symbol: 'ETH' },
     { name: tt('Solana'), unit: 'adet', symbol: 'SOL' },
   ],
-  deposit: [{ name: tt('Vadeli mevduat'), unit: 'TL' }],
-  cash: [{ name: tt('Nakit'), unit: 'TL' }],
+  deposit: [{ name: tt('Vadeli mevduat'), unit: curCode() }],
+  cash: [{ name: tt('Nakit'), unit: curCode() }],
 }
 
 const STALE_DAYS = 30
@@ -135,7 +136,7 @@ function providerOf(market: QuoteMarket): string {
 
 /** Kullanıcının elle güncellemesi gereken varlıklar (otomatik fiyat yoksa ya da alınamıyorsa). */
 const needsManual = (a: Asset, live: LiveState) => !hasAutoPrice(a) || !!live.failed[a.id]
-const pct = (part: number, whole: number) => (whole > 0 ? `%${((part / whole) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}` : '')
+const pct = (part: number, whole: number) => (whole > 0 ? pctText(((part / whole) * 100), 1) : '')
 
 export default function AssetsPage() {
   const [editing, setEditing] = useState<Editing>(null)
@@ -223,7 +224,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
       <Card className="p-5 lg:col-span-2" aria-label={tt('Yatırım özeti')}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-base font-semibold">{tt('Özet')}</h2>
-          {usd && (
+          {usd && !isUsd() && (
           <Segmented
             label={tt('Para birimi')}
             value={inUsd ? 'USD' : 'TRY'}
@@ -249,7 +250,7 @@ function AssetsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
             sub={p.realizedKurus !== 0 ? ttf('Gerçekleşen {0} · eldeki {1}', signedM(p.realizedKurus), signedM(p.unrealizedKurus)) : p.contributedKurus > 0 ? pct(gain, p.contributedKurus) : undefined}
           />
         </div>
-        {inUsd && usd && (
+        {inUsd && usd && !isUsd() && (
           <p className="mt-3 text-[12px] text-subtle">
             {ttf('TCMB kuruyla ({0} ₺ · {1}) dolara çevrildi.', usd.valueTl.toLocaleString('tr-TR', { maximumFractionDigits: 4 }), formatDate(usd.date))}</p>
         )}
@@ -820,7 +821,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
     }
     setBusy(true)
     try {
-      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms, quote, interestRatePct, debtType: debt ? f.debtType : undefined, debtPlan: debt ? debtPlan : undefined }, first)
+      await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? curCode() : f.unit, debtTerms, quote, interestRatePct, debtType: debt ? f.debtType : undefined, debtPlan: debt ? debtPlan : undefined }, first)
       toast(isNew ? ttf('{0} eklendi.', f.name.trim()) : tt('Kaydedildi.'))
       onClose()
     } catch (e) {

@@ -31,7 +31,7 @@ import {
   type PlanBase,
   type StageId,
 } from '../domain/journey'
-import { formatKurus } from '../domain/money'
+import { formatKurus, formatWhole } from '../domain/money'
 import { loadRouteDraft, routeProfile } from '../domain/routeSetup'
 import { summarizeMonth } from '../domain/summary'
 import { cn } from '../lib/cn'
@@ -48,7 +48,8 @@ import { usePlan } from '../state/plan'
 import { useBaseRates } from '../state/livePrices'
 import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
-import { tt, ttf } from '../lib/i18n'
+import { tt, ttf, pctText } from '../lib/i18n'
+import { isUsd } from '../lib/currency'
 
 export default function JourneyPage() {
   return (
@@ -177,13 +178,13 @@ interface Fmt {
 
 function useFmt(base: PlanBase, rates: BaseRates): Fmt {
   return useMemo(() => {
-    const tl = (k: number) => `${Math.round(k / 100).toLocaleString('tr-TR')} ₺`
+    const tl = formatWhole
     const inBase = (k: number) => (base === 'TRY' ? tl(k) : (formatInBase(k, base, rates) ?? tl(k)))
     return {
       tl,
       base: inBase,
       both: (k) => (base === 'TRY' ? formatKurus(k) : `${inBase(k)} (${formatKurus(k)})`),
-      cond: (c, v) => (c.unit === 'pct' ? `%${Math.round(v * 100)}` : c.inBase ? inBase(v) : tl(v)),
+      cond: (c, v) => (c.unit === 'pct' ? pctText(Math.round(v * 100), 0) : c.inBase ? inBase(v) : tl(v)),
     }
   }, [base, rates])
 }
@@ -299,7 +300,7 @@ function Hero({ j, profile, fmt, base, left, tested, saving, onBase, onRetake }:
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
           <Flag className="size-5 text-accent" /> {goalLabel} {tt('rotası')}
         </h2>
-        <Segmented label={tt('Plan birimi')} value={base} onChange={onBase} options={(Object.keys(BASE_LABEL) as PlanBase[]).map((b) => ({ value: b, label: BASE_LABEL[b] }))} />
+        <Segmented label={tt('Plan birimi')} value={base} onChange={onBase} options={(Object.keys(BASE_LABEL) as PlanBase[]).filter((b) => !(isUsd() && b === 'USD')).map((b) => ({ value: b, label: BASE_LABEL[b] }))} />
       </div>
       <div className="relative mt-3 flex items-center gap-3">
         <LevelRing position={j.position} total={j.stages.length} level={j.level} small />
@@ -589,7 +590,7 @@ function DebtsTab({ facts, profile }: { facts: JourneyFacts; profile: JourneyPro
           <Stat label={tt('Toplam borç')} value={formatKurus(facts.debtsKurus)} sub={installments > 0 ? ttf('{0} kalan taksit dahil', formatKurus(installments)) : undefined} tone="down" />
           <Stat label={tt('Yüksek faizli borç')} value={formatKurus(facts.consumerDebtKurus ?? 0)} sub={tt('Kart, KMH, ihtiyaç, kişisel')} />
           <Stat label={tt('Aylık borç ödemesi')} value={formatKurus(pay)} />
-          <Stat label={tt('Borç ödemesi / gelir')} value={dti === null ? '—' : `%${Math.round(dti * 100)}`} sub={ttf('Sınır %{0}', DTI_LIMIT * 100)} tone={dti !== null && dti > DTI_LIMIT ? 'down' : undefined} />
+          <Stat label={tt('Borç ödemesi / gelir')} value={dti === null ? '—' : pctText(Math.round(dti * 100), 0)} sub={ttf('Sınır %{0}', DTI_LIMIT * 100)} tone={dti !== null && dti > DTI_LIMIT ? 'down' : undefined} />
         </>
       )}
     </TabCard>
@@ -609,7 +610,7 @@ function MonthTab({ profile }: { profile: JourneyProfile }) {
       <Stat label={tt('Gelir')} value={formatKurus(income)} sub={s.incomeKurus > 0 ? tt('Kaydettiğiniz gelirler') : tt('Testteki aylık gelir')} />
       <Stat label={tt('Harcama')} value={formatKurus(s.netKurus)} sub={tt('İadeler düşülmüş')} />
       <Stat label={tt('Kalan')} value={`${left < 0 ? '−' : ''}${formatKurus(Math.abs(left))}`} tone={left < 0 ? 'down' : 'up'} />
-      <Stat label={tt('Birikim oranı')} value={income > 0 ? `%${Math.max(0, Math.round((left / income) * 100))}` : '—'} sub={tt('Rota ölçütü en az %20')} />
+      <Stat label={tt('Birikim oranı')} value={income > 0 ? pctText(Math.max(0, Math.round((left / income) * 100)), 0) : '—'} sub={tt('Rota ölçütü en az %20')} />
     </TabCard>
   )
 }

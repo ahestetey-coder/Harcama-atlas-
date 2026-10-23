@@ -10,7 +10,7 @@ import { CONSUMER_DEBT, DEBT_TYPE_LABEL, DEBT_TYPES, debtMonthlyPayment, debtTyp
 import { estimatedMinPayment } from '../domain/coach'
 import { currentPeriod, formatDate, MONTH_SHORT, todayIso } from '../domain/dates'
 import { DTI_LIMIT } from '../domain/journey'
-import { formatKurus } from '../domain/money'
+import { formatKurus, formatWholePlain } from '../domain/money'
 import { futureLoad, installmentPlans, progressOf } from '../domain/recurring'
 import { cn } from '../lib/cn'
 import { useStartNew } from '../lib/useStartNew'
@@ -20,7 +20,7 @@ import { usePersonalTransactions } from '../state/personal'
 import { useUi } from '../state/ui'
 import { ActionDialog, AssetEditor, HoldingRow, type Acting, type Editing } from './AssetsPage'
 import { PaymentsContent, RecurringEditor, type Draft } from './PaymentsSection'
-import { tt, ttf } from '../lib/i18n'
+import { tt, ttf, pctText } from '../lib/i18n'
 
 type Section = 'borclar' | 'odemeler'
 
@@ -158,7 +158,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
           <Figure label={tt('Yüksek faizli borç')} value={formatKurus(consumer)} sub={tt('Kart, KMH, ihtiyaç, kişisel')} />
           <Figure
             label={tt('Borç ödemesi / gelir')}
-            value={dti === null ? '—' : `%${Math.round(dti * 100)}`}
+            value={dti === null ? '—' : pctText(Math.round(dti * 100), 0)}
             sub={dti === null ? tt('Gelir, yolculuk testinde girilir') : dti <= DTI_LIMIT ? ttf('%{0} sınırının altında', DTI_LIMIT * 100) : ttf('%{0} sınırının üstünde', DTI_LIMIT * 100)}
             tone={dti !== null && dti > DTI_LIMIT ? 'down' : undefined}
           />
@@ -204,7 +204,7 @@ function DebtsContent({ onEdit }: { onEdit: (e: Editing) => void }) {
                 const [, m] = l.month.split('-').map(Number)
                 return (
                   <li key={l.month} className="flex flex-col items-center gap-1" title={`${l.month}: ${formatKurus(l.totalKurus)}`}>
-                    <span className="num text-[10.5px] text-muted">{l.totalKurus ? Math.round(l.totalKurus / 100).toLocaleString('tr-TR') : '–'}</span>
+                    <span className="num text-[10.5px] text-muted">{l.totalKurus ? formatWholePlain(l.totalKurus) : '–'}</span>
                     <div className="flex h-20 w-full items-end rounded-md bg-surface-2">
                       <div className="w-full rounded-md bg-[var(--asset-2)]" style={{ height: `${Math.round((l.totalKurus / maxLoad) * 100)}%` }} />
                     </div>

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
-import { fetchMarket, searchSymbols } from '../cloud/rates'
+import { fetchMarket, searchSymbols, type MarketData } from '../cloud/rates'
 import { autoPriceCode, autoQuote, confidentMatch, defaultMarket, quoteKey, quoteUpdates, rateUpdates, SYMBOL_KINDS, type Asset, type AssetQuote } from '../domain/assets'
 import type { BaseRates, JourneyProfile } from '../domain/journey'
 import { useAuth } from './auth'
 import { useAssets, useRepo } from './data'
 import { tt } from '../lib/i18n'
+import { isUsd } from '../lib/currency'
 
 /**
  * Varlıkların güncel fiyatı kendiliğinden alınır: uygulama açılınca, varlık listesi değişince ve açık kaldıkça
@@ -59,6 +60,21 @@ const signatureOf = (assets: Asset[]) =>
     .map((a) => `${a.id}=${autoPriceCode(a) ?? (autoQuote(a) ? quoteKey(autoQuote(a)!) : SYMBOL_KINDS.includes(a.kind) ? `?${a.name}` : '')}`)
     .join('|')
 
+/**
+ * Sunucu fiyatları TL olarak verir. Ana para birimi USD ise hepsi TCMB dolar kuruyla dolara çevrilir:
+ * dolar 1, TL ise 1/kur olur; böylece varlık değerleri ve plan birimi doğrudan dolardır.
+ */
+function inHomeCurrency(data: MarketData): MarketData {
+  if (!isUsd()) return data
+  const usd = data.rates.find((r) => r.code === 'USD')?.valueTl
+  if (!usd) return { ...data, date: null, rates: [], quotes: data.quotes.map((q) => ({ ...q, ok: false, error: tt('Dolar kuru alınamadı') })) }
+  return {
+    ...data,
+    rates: [...data.rates.filter((r) => r.code !== 'USD').map((r) => ({ ...r, valueTl: r.valueTl / usd })), { code: 'USD', valueTl: 1 }, { code: 'TRY', valueTl: 1 / usd }],
+    quotes: data.quotes.map((q) => (q.ok && q.priceTl ? { ...q, priceTl: q.priceTl / usd } : q)),
+  }
+}
+
 /** Uygulama kabuğunda bir kez bağlanır. */
 export function useLivePriceSync(enabled: boolean) {
   const { backend, user } = useAuth()
@@ -101,7 +117,7 @@ export function useLivePriceSync(enabled: boolean) {
         const q = autoQuote(a)
         if (q) wanted.set(quoteKey(q), q)
       }
-      const data = await fetchMarket(client, [...wanted.values()])
+      const data = inHomeCurrency(await fetchMarket(client, [...wanted.values()]))
       const ok = data.quotes.filter((q) => q.ok).map((q) => ({ market: q.market, symbol: q.symbol, priceTl: q.priceTl!, date: q.date! }))
       const updates = [...(data.date ? rateUpdates(list, data.rates, data.date) : []), ...quoteUpdates(list, ok)]
       for (const u of updates) await repo.setAssetValuation(u.assetId, u.valuation)
@@ -162,7 +178,8 @@ export function useLivePriceSync(enabled: boolean) {
 /** Plan birimi için güncel kurlar: canlı fiyat, yoksa planın sabitlendiği kur. Yolculuk ve Senaryolar aynı kuru kullanır. */
 export function useBaseRates(profile: JourneyProfile | undefined): BaseRates {
   const live = useLiveState()
-  const usd = live.usd?.valueTl ?? (profile?.base === 'USD' ? profile.baseRateTl : null)
+  // Ana para birimi USD ise dolar planı birimiyle aynıdır
+  const usd = isUsd() ? 1 : (live.usd?.valueTl ?? (profile?.base === 'USD' ? profile.baseRateTl : null))
   const gold = live.goldGram?.valueTl ?? (profile?.base === 'XAU' ? profile.baseRateTl : null)
   return useMemo(() => ({ USD: usd ?? null, XAU: gold ?? null }), [usd, gold])
 }

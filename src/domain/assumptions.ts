@@ -1,4 +1,5 @@
 import { tt, ttf } from '../lib/i18n'
+import { isUsd } from '../lib/currency'
 /**
  * Özgürlük Rotası'nın bütün varsayımları tek yerde. Her sabitin yanında kaynağı ve kısa gerekçesi
  * var; "Varsayımlar ve kaynaklar" bölümü (Öğren sayfası) bu listeden üretilir. Hesaplar eğitim ve
@@ -117,7 +118,8 @@ export const DEFAULT_LIFE_AGE = 90
 export const DEFAULT_TARGET_AGE = 55
 
 /** TL nominal hedef için varsayılan yıllık enflasyon (%); kullanıcı değiştirebilir. */
-export const DEFAULT_INFLATION_PCT = 25
+/** TL için %25; ana para birimi USD ise ABD enflasyonu (%3). */
+export const DEFAULT_INFLATION_PCT = isUsd() ? 3 : 25
 
 // ---------- Getiri ve oynaklık ----------
 

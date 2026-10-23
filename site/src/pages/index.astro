@@ -28,7 +28,7 @@ const features = [
   { img: 'islemler-light', free: true, chip: t('Ücretsiz', 'Free'), title: t('Ekstreni yükle, gerisini bırak', 'Upload your statement, we do the rest'), text: t('PDF, Excel, CSV ya da ekran görüntüsü. Harcamalar okunur, kategoriler önerilir, tekrar edenler yakalanır.', 'PDF, Excel, CSV or a screenshot. Transactions are read, categories suggested and duplicates caught.') },
   { img: 'butce-light', chip: 'Plus', title: t('Gelirine göre akıllı bütçe', 'A smart budget based on your income'), text: t('Maaş gününe göre dönem, kategori limitleri ve ay sonu tahmini. Bütçeyi koç kurar, sen onaylarsın.', 'Periods that follow your payday, category limits and a month-end forecast. The coach builds the budget, you approve it.') },
   { img: 'borclar-light', chip: 'Plus', title: t('Borçlar ve taksitler kontrolde', 'Debts and instalments under control'), text: t('Kart taksitleri, krediler ve düzenli ödemeler gelecek aylara yayılmış halde. Hangi ay ne kadar ödeyeceğin belli.', 'Card instalments, loans and recurring payments laid out across the coming months. You always know what is due when.') },
-  { img: 'yatirim-ozet-light', dark: 'yatirim-ozet-dark', chip: 'Plus', title: t('Yatırımların canlı fiyatla', 'Your investments at live prices'), text: t('Altın, döviz, fon, hisse, kripto ve emtia. Fiyatlar kendiliğinden güncellenir; maliyetini, güncel değerini ve kâr/zararını TL ya da dolar olarak görürsün.', 'Gold, currencies, funds, stocks, crypto and commodities. Prices update on their own; you see your cost, current value and profit/loss in lira or dollars.') },
+  { img: 'yatirim-ozet-light', dark: 'yatirim-ozet-dark', chip: 'Plus', title: t('Yatırımların canlı fiyatla', 'Your investments at live prices'), text: t('Altın, döviz, fon, hisse, kripto ve emtia. Fiyatlar kendiliğinden güncellenir; maliyetini, güncel değerini ve kâr/zararını TL ya da dolar olarak görürsün.', 'Gold, currencies, funds, stocks, crypto and commodities. Prices update on their own; you see your cost, current value and profit/loss in dollars.') },
   { img: 'finansal-bilgi-light', dark: 'finansal-bilgi-dark', chip: 'Plus+', title: t('Koç ve finansal bilgi', 'Coach and financial know-how'), text: t('Koç senin rakamlarınla plan çıkarır. Finansal bilgi bölümü risk, enflasyon, çeşitlendirme gibi kavramları sade bir dille anlatır.', 'The coach plans with your own numbers. The financial know-how section explains ideas like risk, inflation and diversification in plain language.') },
 ]
 
@@ -149,7 +149,7 @@ const jsonLd = {
       <li class="reveal" style="--d:1">
         <span class="n">02</span>
         <h3>{t('Testi çöz', 'Take the test')}</h3>
-        <p>{t('10 kısa soruyla konumunu ve hedefini belirle. Sonuç TL, dolar ya da altın cinsinden.', 'Ten short questions set where you are and where you are heading. Results in lira, dollars or gold.')}</p>
+        <p>{t('10 kısa soruyla konumunu ve hedefini belirle. Sonuç TL, dolar ya da altın cinsinden.', 'Ten short questions set where you are and where you are heading. Results in dollars or gold.')}</p>
       </li>
       <li class="reveal" style="--d:2">
         <span class="n">03</span>
@@ -187,7 +187,7 @@ const jsonLd = {
         <p class="lead reveal">{t('Sorular kısa ve görsel. Sonunda finansal arketipini, rotandaki konumunu ve bugünkü tempoyla özgürlük yılını görürsün.', 'Short, visual questions. At the end you see your financial archetype, where you are on your route and your freedom year at today’s pace.')}</p>
         <ul class="ticks reveal">
           <li>{t('Gelir, birikim, borç ve risk alışkanlığına göre kişisel sonuç', 'A personal result based on your income, savings, debt and risk habits')}</li>
-          <li>{t('Hedefini TL, dolar ya da gram altın cinsinden gör', 'See your goal in lira, dollars or grams of gold')}</li>
+          <li>{t('Hedefini TL, dolar ya da gram altın cinsinden gör', 'See your goal in dollars or grams of gold')}</li>
           <li>{t('Sonucun, aynı e-postayla girdiğin uygulamada seni bekler', 'Your result waits for you in the app when you sign in with the same email')}</li>
         </ul>
         <a class="btn btn-route reveal" href={L('/test')}>{t('Testi ücretsiz çöz', 'Take the test for free')} <span class="arr" aria-hidden="true">→</span></a>
@@ -254,7 +254,7 @@ const jsonLd = {
         <ul class="ticks reveal">
           <li>{t('Adını yazınca sembol önerilir: THYAO, SPY, TTE, BTC…', 'Type a name and the symbol is suggested: THYAO, SPY, TTE, BTC…')}</li>
           <li>{t('Maliyetin, güncel değerin ve kâr/zararın tutar ve yüzde olarak', 'Your cost, current value and profit/loss as an amount and a percentage')}</li>
-          <li>{t('Toplamı TL ya da dolar olarak gör, dağılımı grafikte izle', 'See your total in lira or dollars and follow your mix on a chart')}</li>
+          <li>{t('Toplamı TL ya da dolar olarak gör, dağılımı grafikte izle', 'See your total in dollars and follow your mix on a chart')}</li>
         </ul>
         <p class="note reveal">{t('Fiyatlar gecikmeli olabilir. Yatırım tavsiyesi değildir.', 'Prices may be delayed. Not investment advice.')}</p>
       </div>
@@ -267,8 +267,8 @@ const jsonLd = {
         </div>
         <div class="float-card card pl" aria-hidden="true">
           <span class="chip">{t('Gram altın', 'Gold (gram)')}</span>
-          <strong>+52.720 ₺</strong>
-          <span>{t('Kâr', 'Profit')} <b>%30,7</b></span>
+          <strong>{t('+52.720 ₺', '+$1,363.25')}</strong>
+          <span>{t('Kâr', 'Profit')} <b>{t('%30,7', '34.1%')}</b></span>
         </div>
       </div>
     </div>
@@ -298,7 +298,7 @@ const jsonLd = {
         <div class="msg bot reveal" style="--d:2">
           {
             lang === 'en' ? (
-              <>Let’s clear the interest-bearing card debt first. Put aside <b>₺4,500</b> a month and you are debt-free by <b>March 2027</b>. Then we move the same amount into your emergency fund.</>
+              <>Let’s clear the interest-bearing card debt first. Put aside <b>$450</b> a month and you are debt-free by <b>March 2027</b>. Then we move the same amount into your emergency fund.</>
             ) : (
               <>Önce faizli kart borcunu kapatalım. Aylık <b>₺4.500</b> ayırırsan <b>Mart 2027</b>’de borçsuzsun. Sonra aynı tutarla acil durum fonuna geçeriz.</>
             )

@@ -42,13 +42,14 @@ import { APP_CONFIG } from '../config/app'
 import { DEFAULT_INFLATION_PCT, nominalPct, SAVING_GROWTH_PCT } from '../domain/assumptions'
 import { SCENARIOS } from '../domain/journey'
 import { formatKurusCompact } from '../domain/money'
-import { newLeadCode, QUICK_QUESTIONS, QUICK_TEST_VERSION, quickResult, quickScenario, reachRange, type QuickAnswers, type QuickQuestion, type QuickResult } from '../domain/quickTest'
+import { HAYAL_DEFAULT, INCOME_TL, newLeadCode, QUICK_QUESTIONS, QUICK_TEST_VERSION, quickResult, quickScenario, reachRange, type QuickAnswers, type QuickQuestion, type QuickResult } from '../domain/quickTest'
 import { cn } from '../lib/cn'
 import { useReducedMotion } from '../lib/hooks'
 import { EMBEDDED, postToSite, startEmbedBridge } from '../lib/embed'
 import { AuroraBackground } from './AuthScreen'
 import { LevelRing } from '../components/LevelRing'
 import { tt, ttf } from '../lib/i18n'
+import { isUsd, pick } from '../lib/currency'
 
 /**
  * Girişsiz web testi (#/harita): 10 soru, iki ara durak, iletişim izni, sonuç ve uygulamaya geçiş.
@@ -81,7 +82,7 @@ const ICONS: Record<string, ReactNode> = {
 const EASE = [0.2, 0.8, 0.2, 1] as const
 const year0 = new Date().getFullYear()
 const yearAt = (months: number) => year0 + Math.ceil(months / 12)
-const tl = (n: number) => `${Math.round(n).toLocaleString('tr-TR')} TL`
+const tl = (n: number) => (isUsd() ? `$${Math.round(n).toLocaleString('en-US')}` : `${Math.round(n).toLocaleString('tr-TR')} TL`)
 
 /** Uygulama içinde çözülen test: iletişim adımı yok, sonuç cihaza kaydedilir ve sonraki adım uygulamaya göre değişir. */
 export interface InAppTest {
@@ -100,7 +101,7 @@ export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
   const [screen, setScreen] = useState<Screen>(saved0 ? 'result' : 'intro')
   const [idx, setIdx] = useState(0)
   const [draft, setDraft] = useState<Draft>(() => {
-    if (!saved0) return { hayal: 60000, nerede: [] }
+    if (!saved0) return { hayal: HAYAL_DEFAULT, nerede: [] }
     const { v: _v, ...rest } = saved0
     return rest
   })
@@ -151,7 +152,7 @@ export default function FreedomMapPage({ inApp }: { inApp?: InAppTest } = {}) {
     setIdx(j)
   }
   const restart = () => {
-    setDraft({ hayal: 60000, nerede: [] })
+    setDraft({ hayal: HAYAL_DEFAULT, nerede: [] })
     setSeen({ summit: false, half: false })
     setIdx(0)
     setScreen('quiz')
@@ -534,9 +535,9 @@ function SummitBreak({ hayal, onNext }: { hayal: number; onNext: () => void }) {
 }
 
 function halfTip(d: Draft): { title: string; text: string; icon: ReactNode } {
-  const income = { g1: 20000, g2: 37500, g3: 75000, g4: 150000, g5: 260000 }[d.gelir ?? 'g2']
+  const income = INCOME_TL[d.gelir ?? 'g2']
   const rate = { eksi: -0.05, az: 0.05, orta: 0.15, iyi: 0.3 }[d.kalan ?? 'az']
-  const surplus = income * rate > 0 ? ttf(' Tahmini aylık fazlan ~{0}.', tl(Math.round((income * rate) / 250) * 250)) : ''
+  const surplus = income * rate > 0 ? ttf(' Tahmini aylık fazlan ~{0}.', tl(Math.round((income * rate) / pick(250, 10)) * pick(250, 10))) : ''
   if (d.kalan === 'eksi') return { title: tt('Ay sonunda açık veriyorsun.'), text: tt('İyi haber: Rotanın ilk durağı tam olarak bunu çözmek için var.'), icon: <TriangleAlert /> }
   if (d.borc === 'zor') return { title: tt('Taksitler seni zorluyor.'), text: tt('Pahalı borcu doğru sırayla kapatmak, zirveye giden en hızlı kestirme olabilir.'), icon: <Unlink /> }
   if (d.acil === 'a0') return { title: tt('Acil fonun 1 aydan az.'), text: tt('İlk kalkanını kurmak rotanın ilk hedeflerinden biri olacak; sonraki her adımı güvenceye alır.'), icon: <ShieldCheck /> }
@@ -791,8 +792,9 @@ function Result({ result: r, name, code, saved, onRestart, next, teaser }: { res
 
 function Simulator({ result }: { result: QuickResult }) {
   const income = Math.round(result.journey.plan.spendKurus / 100) + Math.max(0, Math.round(result.journey.plan.availableKurus / 100))
-  const max = Math.max(5000, Math.round((income * 0.25) / 500) * 500)
-  const [extra, setExtra] = useState(() => Math.min(max, Math.max(1000, Math.round((income * 0.05) / 500) * 500)))
+  const step = pick(500, 25)
+  const max = Math.max(pick(5000, 200), Math.round((income * 0.25) / step) * step)
+  const [extra, setExtra] = useState(() => Math.min(max, Math.max(pick(1000, 50), Math.round((income * 0.05) / step) * step)))
   const s = useMemo(() => quickScenario(result, extra), [result, extra])
   const b = s.base.reachMonths
   const p = s.plus.reachMonths
@@ -828,7 +830,7 @@ function Simulator({ result }: { result: QuickResult }) {
         <h3 className="font-display text-xl font-bold text-ink">{tt('Geleceğini şimdi değiştir')}</h3>
         <p className="mt-1 text-[13.5px] text-muted">{tt('Harcamalarından her ay küçük bir tutar bulup birikime yönlendirdiğini düşün.')}</p>
       </div>
-      <Slider id="sim-extra" label={tt('Her ay fazladan ayıracağın')} value={extra} min={0} max={max} step={500} onChange={setExtra} display={(v) => `+${tl(v)}`} />
+      <Slider id="sim-extra" label={tt('Her ay fazladan ayıracağın')} value={extra} min={0} max={max} step={step} onChange={setExtra} display={(v) => `+${tl(v)}`} />
       <div className="rounded-xl bg-accent-soft px-4 py-3 text-[14px] text-ink" aria-live="polite">
         {gain}
       </div>
