@@ -30,7 +30,7 @@ export function ReportMeta({ r }: { r: Report }) {
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-subtle">
       <Badge tone={r.kind === 'acil' ? 'danger' : 'neutral'}>{REPORT_KIND_LABEL[r.kind]}</Badge>
       <span>
-        {r.published_at ? tt('Yayın') : 'Taslak'}: {fmtDate(at, true)}
+        {r.published_at ? tt('Yayın') : tt('Taslak')}: {fmtDate(at, true)}
       </span>
       <span>
         {ttf('· Kapsam: {0} – {1}', fmtDate(r.window_start), fmtDate(r.window_end))}
@@ -48,7 +48,7 @@ function Refs({ refs, topicIdx, reportId }: { refs: number[]; topicIdx: number; 
         <a key={n} href={`#kaynak-${reportId}-${topicIdx}-${n}`} onClick={(e) => {
           e.preventDefault()
           document.getElementById(`kaynak-${reportId}-${topicIdx}-${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }} className="rounded bg-accent-soft px-1 font-semibold text-accent-strong hover:underline dark:text-accent" aria-label={`Kaynak ${n}`}>
+        }} className="rounded bg-accent-soft px-1 font-semibold text-accent-strong hover:underline dark:text-accent" aria-label={ttf('Kaynak {0}', n)}>
           {n}
         </a>
       ))}

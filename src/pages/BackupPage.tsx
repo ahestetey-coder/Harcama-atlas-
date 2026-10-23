@@ -116,7 +116,7 @@ export default function BackupPage() {
                 [
                   [tt('İşlem'), counts.transactions],
                   ['Kategori', counts.categories],
-                  ['Kural', counts.rules],
+                  [tt('Kural'), counts.rules],
                   [tt('Aktarım'), counts.imports],
                 ] as const
               ).map(([l, n]) => (
@@ -224,7 +224,7 @@ export default function BackupPage() {
                   [
                     [tt('İşlem'), counts.transactions, b.data.transactions.length],
                     ['Kategori', counts.categories, b.data.categories.length],
-                    ['Kural', counts.rules, b.data.rules.length],
+                    [tt('Kural'), counts.rules, b.data.rules.length],
                     [tt('Aktarım'), counts.imports, b.data.imports.length],
                   ] as const
                 ).map(([l, a, c]) => (

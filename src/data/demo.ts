@@ -1,5 +1,6 @@
 import { addMonths, currentMonth, dayOf, daysInMonth, parseMonthKey, todayIso, toIsoDate } from '../domain/dates'
 import { normalizeText } from '../domain/normalize'
+import { tt, ttf } from '../lib/i18n'
 import type { Transaction } from '../domain/types'
 import type { AtlasRepository } from './repository'
 
@@ -14,12 +15,12 @@ const MERCHANTS: Array<[string, string, number, number, number]> = [
   ['STARBUCKS BAĞDAT CAD', 'cat-restoran', 95, 260, 4],
   ['KAHVE DÜNYASI', 'cat-restoran', 80, 190, 2],
   ['YEMEKSEPETİ', 'cat-restoran', 240, 780, 3],
-  ['İSTANBULKART DOLUM', 'cat-ulasim', 200, 500, 2],
+  [tt('İSTANBULKART DOLUM'), 'cat-ulasim', 200, 500, 2],
   ['BİTAKSİ', 'cat-ulasim', 140, 420, 1],
-  ['ENERJİSA ELEKTRİK', 'cat-faturalar', 650, 1350, 1],
-  ['İGDAŞ DOĞALGAZ', 'cat-faturalar', 300, 1900, 1],
+  [tt('ENERJİSA ELEKTRİK'), 'cat-faturalar', 650, 1350, 1],
+  [tt('İGDAŞ DOĞALGAZ'), 'cat-faturalar', 300, 1900, 1],
   ['TURKCELL FATURA', 'cat-faturalar', 390, 390, 1],
-  ['ECZANE YAŞAM', 'cat-saglik', 90, 640, 1],
+  [tt('ECZANE YAŞAM'), 'cat-saglik', 90, 640, 1],
   ['DEFACTO', 'cat-giyim', 350, 1600, 1],
   ['EBEBEK', 'cat-bebek', 250, 1200, 1],
   ['CİNEMAXİMUM', 'cat-eglence', 280, 560, 1],
@@ -57,7 +58,7 @@ export async function seedDemoData(repo: AtlasRepository): Promise<void> {
       groupId: type === 'transfer' ? null : SHARED_CATEGORIES.has(categoryId ?? '') ? 'grp-ortak' : 'grp-bireysel',
       source: 'demo',
       paymentMethod: 'credit',
-      accountAlias: 'Demo Kart',
+      accountAlias: tt('Demo Kart'),
       createdAt: now,
       updatedAt: now,
       ...extra,
@@ -67,7 +68,7 @@ export async function seedDemoData(repo: AtlasRepository): Promise<void> {
     const month = addMonths(cur, -back)
     const { year, month: m } = parseMonthKey(month)
     const lastDay = back === 0 ? dayOf(today) : daysInMonth(year, m)
-    add(toIsoDate(year, m, 1), 18500, 'KİRA ÖDEMESİ', 'cat-kira', 'expense', { paymentMethod: 'debit', accountAlias: undefined })
+    add(toIsoDate(year, m, 1), 18500, tt('KİRA ÖDEMESİ'), 'cat-kira', 'expense', { paymentMethod: 'debit', accountAlias: undefined })
     for (const [desc, cat, min, max, avg] of MERCHANTS) {
       const count = Math.max(0, Math.round(avg * (0.6 + rand() * 0.8) * (lastDay / daysInMonth(year, m))))
       for (let i = 0; i < count; i++) {
@@ -79,11 +80,11 @@ export async function seedDemoData(repo: AtlasRepository): Promise<void> {
     if (lastDay >= 12) {
       // 12.000 TL'lik alışverişin yalnızca o ayki taksidi (1.000 TL) gider olarak yazılır.
       const inst = 6 - back
-      add(toIsoDate(year, m, 12), 1000, `TEKNOSA ATAŞEHİR (${inst}/12 TAKSİT)`, 'cat-diger', 'expense', { installment: { current: inst, total: 12, purchaseTotalKurus: 1200000 } })
-      add(toIsoDate(year, m, Math.min(lastDay, 10)), 9500 + rand() * 3000, 'ÖDEMENİZ İÇİN TEŞEKKÜR EDERİZ', null, 'transfer')
+      add(toIsoDate(year, m, 12), 1000, ttf('TEKNOSA ATAŞEHİR ({0}/12 TAKSİT)', inst), 'cat-diger', 'expense', { installment: { current: inst, total: 12, purchaseTotalKurus: 1200000 } })
+      add(toIsoDate(year, m, Math.min(lastDay, 10)), 9500 + rand() * 3000, tt('ÖDEMENİZ İÇİN TEŞEKKÜR EDERİZ'), null, 'transfer')
     }
-    if (back === 0 && lastDay >= 22) add(toIsoDate(year, m, 22), 189.9, 'EBEBEK İADE', 'cat-bebek', 'refund')
-    if (back === 1) add(toIsoDate(year, m, Math.min(lastDay, 18)), 449.9, 'DEFACTO İADE', 'cat-giyim', 'refund')
+    if (back === 0 && lastDay >= 22) add(toIsoDate(year, m, 22), 189.9, tt('EBEBEK İADE'), 'cat-bebek', 'refund')
+    if (back === 1) add(toIsoDate(year, m, Math.min(lastDay, 18)), 449.9, tt('DEFACTO İADE'), 'cat-giyim', 'refund')
   }
   await repo.db.transaction('rw', repo.db.transactions, repo.db.settings, async () => {
     await repo.db.transactions.bulkAdd(txs)
@@ -92,7 +93,7 @@ export async function seedDemoData(repo: AtlasRepository): Promise<void> {
 }
 
 export async function resetDemoData(repo: AtlasRepository): Promise<void> {
-  if (!repo.isDemo) throw new Error('Yalnızca demo verisi sıfırlanabilir.')
+  if (!repo.isDemo) throw new Error(tt('Yalnızca demo verisi sıfırlanabilir.'))
   await repo.clearAll()
   await seedDemoData(repo)
 }

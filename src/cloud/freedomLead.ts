@@ -3,6 +3,7 @@ import { isQuickAnswers, LEAD_CODE_RE, newLeadCode, type QuickAnswers } from '..
 import { cloudErrorMessage } from './errors'
 import { envCloudConfig } from './config'
 import type { SupabaseBackend } from './supabaseBackend'
+import { tt } from '../lib/i18n'
 
 /**
  * Web Finansal Harita testinin kayıtları (supabase/schema.sql: ha_freedom_leads).
@@ -31,7 +32,7 @@ export interface LeadInput {
 /** Kaydı gönderir, devam kodunu döner. Aynı kod (çok düşük olasılık) çakışırsa yeni kodla bir kez dener. */
 export async function submitLead(input: LeadInput): Promise<string> {
   const client = anonClient()
-  if (!client) throw new Error('Kayıt sunucusu tanımlı değil.')
+  if (!client) throw new Error(tt('Kayıt sunucusu tanımlı değil.'))
   for (let attempt = 0; attempt < 2; attempt++) {
     const code = newLeadCode(() => {
       const b = new Uint32Array(1)
@@ -50,7 +51,7 @@ export async function submitLead(input: LeadInput): Promise<string> {
     if (attempt === 0 && /duplicate key|unique/i.test(error.message)) continue
     throw new Error(cloudErrorMessage(error))
   }
-  throw new Error('Kayıt tamamlanamadı, tekrar deneyin.')
+  throw new Error(tt('Kayıt tamamlanamadı, tekrar deneyin.'))
 }
 
 export interface ClaimedLead {

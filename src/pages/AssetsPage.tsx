@@ -428,9 +428,9 @@ function priceSourceLabel(asset: Asset, s: HoldingSummary['price'], balance: boo
   if (!s) return tt('Fiyat yok')
   if (s.source === 'piyasa') {
     const q = autoQuote(asset)
-    return `${q ? providerOf(q.market) : 'Piyasa'} · ${formatDate(s.date)}`
+    return `${q ? providerOf(q.market) : tt('Piyasa')} · ${formatDate(s.date)}`
   }
-  if (s.source === 'manual') return ttf('{0} elle girildi · {1}', balance ? 'Bakiye' : 'Fiyat', formatDate(s.date))
+  if (s.source === 'manual') return ttf('{0} elle girildi · {1}', balance ? tt('Bakiye') : tt('Fiyat'), formatDate(s.date))
   if (s.source === 'tcmb') return ttf('TCMB kuru · {0}', formatDate(s.date))
   return `${balance ? tt('Son hareket') : tt('İşlem fiyatı')} · ${formatDate(s.date)}`
 }
@@ -530,7 +530,7 @@ export function HoldingRow({
         <IconButton label={ttf('{0} düzenle', asset.name)} size="sm" onClick={onEdit}>
           <Pencil className="size-4" />
         </IconButton>
-        <IconButton label={`${asset.name} sil`} size="sm" onClick={onDelete}>
+        <IconButton label={ttf('{0} sil', asset.name)} size="sm" onClick={onDelete}>
           <Trash2 className="size-4" />
         </IconButton>
       </div>
@@ -649,7 +649,7 @@ export function ActionDialog({ acting, onClose }: { acting: Acting; onClose: () 
         if (!amt.ok || amt.kurus <= 0) return setError(tt('Geçerli bir tutar girin.'))
         // Bakiye türlerinde işlem güncel birim değerden yapılır; böylece yeni para kazanç gibi görünmez
         await repo.addAssetTrade(asset.id, { date, side, quantity: amt.kurus / cur, unitPriceKurus: cur })
-        toast('Kaydedildi.')
+        toast(tt('Kaydedildi.'))
       } else {
         const q = parseQuantity(qty)
         const p = parsePriceKurus(price)
@@ -821,7 +821,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
     setBusy(true)
     try {
       await repo.saveAsset({ id: editing?.asset?.id, kind: f.kind, name: f.name, unit: balance ? 'TL' : f.unit, debtTerms, quote, interestRatePct, debtType: debt ? f.debtType : undefined, debtPlan: debt ? debtPlan : undefined }, first)
-      toast(isNew ? `${f.name.trim()} eklendi.` : 'Kaydedildi.')
+      toast(isNew ? ttf('{0} eklendi.', f.name.trim()) : tt('Kaydedildi.'))
       onClose()
     } catch (e) {
       setError(toUserMessage(e))
@@ -942,7 +942,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
             <Field label={tt('Kaynak')} htmlFor="asset-market">
               <Input id="asset-market" value={SOURCE_TEXT[f.kind] ?? ''} readOnly disabled />
             </Field>
-            <Field label={f.kind === 'fund' ? tt('Fon kodu') : 'Sembol'} htmlFor="asset-symbol" hint={tt('Boşsa fiyatı siz girersiniz.')}>
+            <Field label={f.kind === 'fund' ? tt('Fon kodu') : tt('Sembol')} htmlFor="asset-symbol" hint={tt('Boşsa fiyatı siz girersiniz.')}>
               <SuggestInput
                 id="asset-symbol"
                 value={f.symbol}

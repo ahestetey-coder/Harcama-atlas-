@@ -20,7 +20,7 @@ import { ReviewStep } from './ReviewStep'
 import { ACCEPT, useImportFlow } from './useImportFlow'
 import { tt, ttf } from '../../lib/i18n'
 
-const STEPS = [tt('Dosya seç'), 'Oku', tt('İncele ve düzelt'), 'Kaydet']
+const STEPS = [tt('Dosya seç'), tt('Oku'), tt('İncele ve düzelt'), tt('Kaydet')]
 
 export default function ImportPage() {
   return <ImportFlow />

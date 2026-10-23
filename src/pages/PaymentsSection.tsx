@@ -237,7 +237,7 @@ export function PaymentsContent({ onEdit, onEditDebt }: { onEdit: (d: Draft) => 
                     <IconButton label={ttf('{0} düzenle', it.name)} size="sm" onClick={() => onEdit(it)}>
                       <Pencil className="size-4" />
                     </IconButton>
-                    <IconButton label={`${it.name} sil`} size="sm" onClick={() => setDel(it)}>
+                    <IconButton label={ttf('{0} sil', it.name)} size="sm" onClick={() => setDel(it)}>
                       <Trash2 className="size-4" />
                     </IconButton>
                   </li>
@@ -344,7 +344,7 @@ function LoadBars({ rows }: { rows: ReturnType<typeof futureLoad> }) {
                     <div
                       className="h-full rounded-[4px] transition-opacity group-hover:opacity-90"
                       style={{ flexGrow: r.installmentKurus, background: COLOR_INSTALLMENT }}
-                      title={`Taksitler: ${formatKurus(r.installmentKurus)}`}
+                      title={ttf('Taksitler: {0}', formatKurus(r.installmentKurus))}
                     />
                   )}
                 </div>
@@ -417,7 +417,7 @@ export function RecurringEditor({ draft, onClose }: { draft: Draft | null; onClo
         recordedThrough: draft?.recordedThrough,
         active: f.active,
       })
-      toast(isNew ? 'Eklendi.' : 'Kaydedildi.')
+      toast(isNew ? tt('Eklendi.') : tt('Kaydedildi.'))
       onClose()
     } catch (e) {
       setError(toUserMessage(e))

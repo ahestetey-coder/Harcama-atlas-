@@ -149,7 +149,7 @@ export default function TransactionsPage() {
         toast(tt('Seçilenler grup üyelerinin harcamaları; yalnızca ekleyen silebilir.'), { kind: 'info' })
         return
       }
-      toast((ids.length === 1 ? 'İşlem silindi.' : `${removed.length} işlem silindi.`) + (skipped ? ` Üyelerin eklediği ${skipped} işlem atlandı.` : ''), {
+      toast((ids.length === 1 ? tt('İşlem silindi.') : ttf('{0} işlem silindi.', removed.length)) + (skipped ? ttf(' Üyelerin eklediği {0} işlem atlandı.', skipped) : ''), {
         action: {
           label: tt('Geri al'),
           onClick: async () => {
@@ -175,7 +175,7 @@ export default function TransactionsPage() {
     setBusy(true)
     try {
       const n = await repo.bulkSetCategory([...selected], bulkCat)
-      toast(`${n} işlemin kategorisi “${catMap.get(bulkCat)?.name}” yapıldı.` + skippedNote(selected.size - n))
+      toast(ttf('{0} işlemin kategorisi “{1}” yapıldı.', n, catMap.get(bulkCat)?.name) + skippedNote(selected.size - n))
       setSelected(new Set())
       setBulkCatOpen(false)
     } catch (e) {
@@ -189,7 +189,7 @@ export default function TransactionsPage() {
     setBusy(true)
     try {
       const n = await repo.bulkSetGroup([...selected], bulkGroup || null)
-      toast((bulkGroup ? `${n} işlem “${groupMap.get(bulkGroup)?.name}” grubuna alındı.` : `${n} işlemin grubu kaldırıldı.`) + skippedNote(selected.size - n))
+      toast((bulkGroup ? ttf('{0} işlem “{1}” grubuna alındı.', n, groupMap.get(bulkGroup)?.name) : ttf('{0} işlemin grubu kaldırıldı.', n)) + skippedNote(selected.size - n))
       setSelected(new Set())
       setBulkGroupOpen(false)
     } catch (e) {
@@ -318,7 +318,7 @@ export default function TransactionsPage() {
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-subtle" aria-hidden />
           <Input aria-label={tt('Açıklama veya notta ara')} placeholder={tt('Ara: iş yeri, açıklama, not…')} value={query} onChange={(e) => setQuery(e.target.value)} className="rounded-2xl pl-10" type="search" />
         </div>
-        <Button className="shrink-0 rounded-2xl" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen(true)} aria-label={`Filtreler${activeFilterCount ? ttf(', {0} etkin', activeFilterCount) : ''}`}>
+        <Button className="shrink-0 rounded-2xl" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen(true)} aria-label={`${tt('Filtreler')}${activeFilterCount ? ttf(', {0} etkin', activeFilterCount) : ''}`}>
           <span className="max-sm:sr-only">{tt('Filtreler')}</span>
           {activeFilterCount ? <span className="num rounded-full bg-accent px-1.5 text-[11px] text-white">{activeFilterCount}</span> : null}
         </Button>

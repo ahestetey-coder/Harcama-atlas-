@@ -154,7 +154,7 @@ function mix(level: RiskLevel, label: string, equity: number): RiskProfile {
 }
 
 /** Hisse/tahvil oranına göre ağırlıklı ortalama getiri ve oynaklık. */
-export const RISK_PROFILES: RiskProfile[] = [mix(0, 'Temkinli', 0.3), mix(1, 'Dengeli', 0.5), mix(2, tt('Büyüme'), 0.7), mix(3, 'Atak', 0.9)]
+export const RISK_PROFILES: RiskProfile[] = [mix(0, tt('Temkinli'), 0.3), mix(1, tt('Dengeli'), 0.5), mix(2, tt('Büyüme'), 0.7), mix(3, tt('Atak'), 0.9)]
 
 const half = (x: number) => Math.round(x * 2) / 2
 /** Varış senaryoları: Temkinli, Dengeli ve Atak profillerin beklenen reel getirisi (yarım puana yuvarlı). */

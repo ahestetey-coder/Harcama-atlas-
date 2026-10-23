@@ -323,9 +323,9 @@ export interface RecurringPayment {
 }
 
 export const RECURRING_KIND_LABEL: Record<RecurringKind, string> = {
-  subscription: 'Abonelik',
+  subscription: tt('Abonelik'),
   bill: tt('Düzenli ödeme'),
-  installment: 'Taksit',
+  installment: tt('Taksit'),
 }
 
 export const CADENCE_LABEL: Record<RecurringCadence, string> = {
@@ -335,20 +335,20 @@ export const CADENCE_LABEL: Record<RecurringCadence, string> = {
 }
 
 export const TX_TYPE_LABEL: Record<TxType, string> = {
-  expense: 'Gider',
+  expense: tt('Gider'),
   refund: tt('İade'),
   transfer: tt('Kart ödemesi / Transfer'),
-  income: 'Gelir',
+  income: tt('Gelir'),
 }
 
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
-  cash: 'Nakit',
+  cash: tt('Nakit'),
   debit: tt('Banka kartı'),
   credit: tt('Kredi kartı'),
 }
 
 export const SOURCE_LABEL: Record<TxSource, string> = {
-  manual: 'Manuel',
+  manual: tt('Manuel'),
   pdf: 'PDF',
   csv: 'CSV',
   xlsx: 'Excel',

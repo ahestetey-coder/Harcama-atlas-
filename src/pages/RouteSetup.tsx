@@ -766,7 +766,7 @@ function Final({
   const rows: Array<[string, string, string, boolean?]> = [
     [tt('Özgürlük yılı'), webRange ?? '—', year ? String(year) : tt('Görünmüyor'), true],
     [tt('Gereken birikim'), formatKurusCompact(webGoal), formatKurusCompact(j.indicators.goalKurus)],
-    ['Seviye', `${webLevel}/${total}`, `${j.level}/${total}${cur ? ` · ${cur.title}` : ''}`],
+    [tt('Seviye'), `${webLevel}/${total}`, `${j.level}/${total}${cur ? ` · ${cur.title}` : ''}`],
   ]
   const first = name?.trim().split(' ')[0]
   const msg = ttf('{0}Haritan artık gerçek rakamlarınla çizildi. {1}{2}', first ? ttf('Merhaba {0}. ', first) : '', year ? ttf('Bu tempoyla özgürlük yılın {0}. ', year) : '', cur ? ttf('Şu an {0} durağındasın; ilk hedefimiz: {1}{2}.', cur.title, cur.goal.charAt(0).toLocaleLowerCase('tr-TR'), cur.goal.slice(1)) : tt('Rotan tamam; birikimini koru ve güvenli çekim planı yap.'))

@@ -1,6 +1,6 @@
 // Koç yanıtı üretimi ve yanıt denetimi. Sohbet fonksiyonu ve güvenlik testi aynı yolu kullanır, böylece
 // test gerçek kullanıcıların gördüğü davranışı ölçer.
-import { STEERING_FALLBACK, steeringIssues } from './guard.ts'
+import { STEERING_FALLBACK, STEERING_FALLBACK_EN, steeringIssues } from './guard.ts'
 import { openaiChatUsage, type ChatMessage } from './openai.ts'
 
 export const COACH_SYSTEM = `Sen "Harcama Atlası" uygulamasının Türkçe konuşan finans koçusun. Sıcak, kısa ve net yaz (en çok 6 cümle).
@@ -27,7 +27,7 @@ export interface CoachReply {
  * Yanıtı üretir ve denetler. İlk yanıtta kişisel yatırım yönlendirmesi varsa model bir kez daha, sorunlu
  * cümleler gösterilerek uyarılır; ikinci yanıt da temiz değilse hazır güvenli metin döner.
  */
-export async function generateCoachReply(messages: ChatMessage[], maxTokens = 500): Promise<CoachReply> {
+export async function generateCoachReply(messages: ChatMessage[], maxTokens = 500, lang: 'tr' | 'en' = 'tr'): Promise<CoachReply> {
   const first = await openaiChatUsage(messages, { maxTokens })
   const issues = steeringIssues(first.text)
   if (!issues.length) return { text: first.text.trim(), tokens: first.tokens, rawIssues: 0, outcome: 'temiz' }
@@ -44,12 +44,16 @@ export async function generateCoachReply(messages: ChatMessage[], maxTokens = 50
   )
   const tokens = first.tokens + retry.tokens
   if (!steeringIssues(retry.text).length) return { text: retry.text.trim(), tokens, rawIssues: issues.length, outcome: 'yeniden_yazildi' }
-  return { text: STEERING_FALLBACK, tokens, rawIssues: issues.length, outcome: 'engellendi' }
+  return { text: lang === 'en' ? STEERING_FALLBACK_EN : STEERING_FALLBACK, tokens, rawIssues: issues.length, outcome: 'engellendi' }
 }
 
-export function coachContext(summary: string, memory: string[], report: string | null): ChatMessage[] {
+/** İngilizce seçen kullanıcıya: kurallar aynı, yanıt dili İngilizce. */
+export const COACH_LANG_EN = `DİL: Kullanıcı uygulamayı İngilizce kullanıyor. Yanıtlarını doğal, sade İngilizceyle yaz (İngiliz İngilizcesi). Yukarıdaki kuralların hepsi aynen geçerli. Tutarlar TL'dir; "₺" ile yaz. Türkçe kurum adlarını (TCMB, TÜİK) koru, gerekirse kısaca açıkla.`
+
+export function coachContext(summary: string, memory: string[], report: string | null, lang: 'tr' | 'en' = 'tr'): ChatMessage[] {
   const out: ChatMessage[] = [
     { role: 'system', content: COACH_SYSTEM },
+    ...(lang === 'en' ? [{ role: 'system' as const, content: COACH_LANG_EN }] : []),
     { role: 'system', content: `ÖZET (kullanıcının izin verdiği veriler, tutarlar TL): ${summary}` },
   ]
   if (memory.length) out.push({ role: 'system', content: `HAFIZA (kullanıcının görüp düzenleyebildiği notlar):\n${memory.map((m) => `- ${m}`).join('\n')}` })

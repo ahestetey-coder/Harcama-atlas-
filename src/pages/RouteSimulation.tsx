@@ -113,7 +113,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
           )}
           {gained !== null && gained > 0 && (
             <motion.span key={extra} initial={reduced ? false : { scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="num rounded-full bg-accent-soft px-2.5 py-1 text-[12.5px] font-semibold text-accent">
-              {ttf('{0} erken', gained >= 1 ? ttf('{0} yıl', gained.toLocaleString('tr-TR')) : `${Math.round(gained * 12)} ay`)}</motion.span>
+              {ttf('{0} erken', gained >= 1 ? ttf('{0} yıl', gained.toLocaleString('tr-TR')) : ttf('{0} ay', Math.round(gained * 12)))}</motion.span>
           )}
         </div>
       </div>
@@ -218,7 +218,7 @@ export function RouteSimulation({ profile, facts, rates, j, strategy }: { profil
                 <span className="size-2 rounded-full" style={{ background: state === 'done' ? 'var(--accent)' : m.color }} aria-hidden />
                 {m.label}
               </div>
-              <div className={cn('num mt-0.5 text-[15px] font-semibold', state === 'done' ? 'text-accent' : 'text-ink')}>{state === 'done' ? 'Tamam' : state === 'far' ? '—' : yearOf(m.month!)}</div>
+              <div className={cn('num mt-0.5 text-[15px] font-semibold', state === 'done' ? 'text-accent' : 'text-ink')}>{state === 'done' ? tt('Tamam') : state === 'far' ? '—' : yearOf(m.month!)}</div>
             </motion.li>
           )
         })}

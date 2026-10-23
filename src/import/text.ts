@@ -1,3 +1,4 @@
+import { tt } from '../lib/i18n'
 /**
  * Metin dosyası kod çözme: UTF-8 (BOM'lu/BOM'suz), UTF-16, Windows-1254 (Türkçe) ve
  * yanlış çözülmüş UTF-8 ("Ã¼", "Ä±") onarımı.
@@ -48,7 +49,7 @@ export function decodeText(buffer: ArrayBuffer): DecodedText {
     const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
     return finish(text, 'utf-8', notes)
   } catch {
-    notes.push('Dosya UTF-8 değil; Türkçe Windows (1254) kodlamasıyla okundu.')
+    notes.push(tt('Dosya UTF-8 değil; Türkçe Windows (1254) kodlamasıyla okundu.'))
     return finish(new TextDecoder('windows-1254').decode(bytes), 'windows-1254', notes)
   }
 }
@@ -56,7 +57,7 @@ export function decodeText(buffer: ArrayBuffer): DecodedText {
 function finish(text: string, encoding: DecodedText['encoding'], notes: string[]): DecodedText {
   const repaired = repairMojibake(text)
   if (repaired !== null) {
-    notes.push('Bozuk görünen Türkçe karakterler ("Ã¼", "Ä±" gibi) onarıldı; açıklamaları kontrol edin.')
+    notes.push(tt('Bozuk görünen Türkçe karakterler ("Ã¼", "Ä±" gibi) onarıldı; açıklamaları kontrol edin.'))
     return { text: repaired, encoding, repairedMojibake: true, notes }
   }
   return { text, encoding, repairedMojibake: false, notes }

@@ -85,7 +85,7 @@ const monthName = (offset: number) => {
   const d = addMonthsClamped(todayIso(), offset)
   return new Date(`${d}T00:00:00`).toLocaleDateString(dateLocale(), { month: 'short', year: 'numeric' })
 }
-const monthsText = (m: number) => (m < 12 ? `${m} ay` : m % 12 === 0 ? ttf('{0} yıl', m / 12) : ttf('{0} yıl {1} ay', Math.floor(m / 12), m % 12))
+const monthsText = (m: number) => (m < 12 ? ttf('{0} ay', m) : m % 12 === 0 ? ttf('{0} yıl', m / 12) : ttf('{0} yıl {1} ay', Math.floor(m / 12), m % 12))
 
 function useCountUp(value: number, duration = 1.2): number {
   const reduced = useReducedMotion()
@@ -779,7 +779,7 @@ function AiCard({ consent, onChange }: { consent: boolean; onChange: (v: boolean
 const MEMORY_KIND: Record<CoachMemoryKind, string> = { hedef: 'Hedef', tercih: 'Tercih', not: 'Not', sohbet: tt('Sohbet özeti') }
 
 const SHARE_ROWS: Array<{ key: keyof CoachShare; label: string; value: (s: CoachState) => string }> = [
-  { key: 'income', label: tt('Gelir'), value: (s) => (s.profile ? `${formatKurus(s.profile.monthlyIncomeKurus)} / ay` : s.incomes.some((i) => i.active) ? tt('Düzenli gelirleriniz') : tt('Yolculuk anketinde girilmedi')) },
+  { key: 'income', label: tt('Gelir'), value: (s) => (s.profile ? ttf('{0} / ay', formatKurus(s.profile.monthlyIncomeKurus)) : s.incomes.some((i) => i.active) ? tt('Düzenli gelirleriniz') : tt('Yolculuk anketinde girilmedi')) },
   { key: 'expenses', label: tt('Giderler'), value: (s) => `${s.facts.averageExpenseKurus ? ttf('Ortalama {0} / ay', formatKurus(s.facts.averageExpenseKurus)) : tt('Henüz yeterli kayıt yok')}${s.recurring.some((r) => r.active) ? tt(' · düzenli ödemeler (adları gönderilmez)') : ''}` },
   { key: 'debts', label: tt('Borçlar'), value: (s) => (s.debts.length ? ttf('{0} borç, toplam {1} (adları gönderilmez)', s.debts.length, formatKurus(s.debts.reduce((n, d) => n + d.balanceKurus, 0))) : tt('Borç yok')) },
   { key: 'goals', label: tt('Birikim ve hedefler'), value: (s) => ttf('Hızlı kullanılabilir {0}{1}', formatKurus(s.facts.liquidKurus), s.plan?.goalKurus ? ttf(' · hedef {0}', formatKurus(s.plan.goalKurus)) : '') },

@@ -31,7 +31,7 @@ const LABEL: Record<AmountKey, string> = {
 }
 
 const HOUSING_OPTIONS: Array<[Housing, string]> = [
-  ['rent', 'Kirada'],
+  ['rent', tt('Kirada')],
   ['mortgage', tt('Konut kredisi')],
   ['owned', tt('Ev sahibi')],
   ['family', tt('Aile yanında')],

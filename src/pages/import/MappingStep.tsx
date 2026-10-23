@@ -45,7 +45,7 @@ export function MappingStep({
   const colSelect = (k: 'date' | 'description' | 'amount' | 'debit' | 'credit' | 'category' | 'currency', label: string, optional = false) => (
     <Field label={label} htmlFor={`map-${k}`} optional={optional}>
       <Select id={`map-${k}`} value={m[k] === null ? '' : String(m[k])} onChange={(e) => set(k, e.target.value === '' ? null : Number(e.target.value))}>
-        <option value="">{optional ? 'Yok' : tt('Seçin…')}</option>
+        <option value="">{optional ? tt('Yok') : tt('Seçin…')}</option>
         {cols.map((c) => (
           <option key={c.i} value={c.i}>
             {c.label}
@@ -56,14 +56,14 @@ export function MappingStep({
   )
   const used = new Map<number, string>()
   const mark = (i: number | null, name: string) => i !== null && used.set(i, name)
-  mark(m.date, 'Tarih')
+  mark(m.date, tt('Tarih'))
   mark(m.description, tt('Açıklama'))
-  if (m.amountMode === 'single') mark(m.amount, 'Tutar')
+  if (m.amountMode === 'single') mark(m.amount, tt('Tutar'))
   else {
     mark(m.debit, tt('Borç'))
-    mark(m.credit, 'Alacak')
+    mark(m.credit, tt('Alacak'))
   }
-  mark(m.category, 'Kategori')
+  mark(m.category, tt('Kategori'))
   mark(m.currency, tt('Para birimi'))
   const preview = table.rows.slice(m.headerRow, m.headerRow + 9)
 

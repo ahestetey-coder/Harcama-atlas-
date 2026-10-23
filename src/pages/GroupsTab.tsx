@@ -60,7 +60,7 @@ export function GroupsTab() {
       <IconButton label={g.archived ? ttf('{0} arşivden çıkar', g.name) : ttf('{0} arşivle', g.name)} size="sm" onClick={() => toggleArchive(g)}>
         {g.archived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
       </IconButton>
-      <IconButton label={`${g.name} sil`} size="sm" className="hover:text-danger" onClick={() => setDel(g)}>
+      <IconButton label={ttf('{0} sil', g.name)} size="sm" className="hover:text-danger" onClick={() => setDel(g)}>
         <Trash2 className="size-4" />
       </IconButton>
     </li>
@@ -197,7 +197,7 @@ function GroupEditor({ value, onClose }: { value: SpendGroup | 'new' | null; onC
               <button
                 key={c}
                 type="button"
-                aria-label={`Renk ${c}`}
+                aria-label={ttf('Renk {0}', c)}
                 aria-pressed={color === c}
                 onClick={() => setColor(c)}
                 className={cn('size-8 rounded-full ring-offset-2 ring-offset-surface transition-transform hover:scale-110', color === c && 'ring-2 ring-ink')}

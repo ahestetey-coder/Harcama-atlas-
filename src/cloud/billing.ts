@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { tt } from '../lib/i18n'
 
 /** Web aboneliği (Paddle) yönetimi: fiyatlar, kampanya kodları, bağlantı ayarı ve abonelikler. */
 export type WebPlan = 'plus' | 'plusplus'
@@ -118,4 +119,4 @@ export async function deleteCoupon(c: SupabaseClient, code: string) {
 }
 
 export const PLAN_LABEL: Record<WebPlan, string> = { plus: 'Plus', plusplus: 'Plus+' }
-export const PERIOD_LABEL: Record<WebPeriod, string> = { monthly: 'Aylık', yearly: 'Yıllık' }
+export const PERIOD_LABEL: Record<WebPeriod, string> = { monthly: tt('Aylık'), yearly: tt('Yıllık') }

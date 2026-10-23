@@ -94,7 +94,7 @@ function CategoriesTab() {
         )}
         {!c.system && (
           <IconButton
-            label={`${c.name} sil`}
+            label={ttf('{0} sil', c.name)}
             size="sm"
             className="hover:text-danger"
             onClick={() => {
@@ -132,7 +132,7 @@ function CategoriesTab() {
         open={!!del}
         onOpenChange={(o) => !o && setDel(null)}
         title={ttf('“{0}” silinsin mi?', del?.name)}
-        confirmLabel={needsTarget ? tt('Taşı ve sil') : 'Sil'}
+        confirmLabel={needsTarget ? tt('Taşı ve sil') : tt('Sil')}
         danger
         confirmDisabled={needsTarget && !target}
         onConfirm={async () => {
@@ -247,7 +247,7 @@ function CategoryEditor({ value, onClose }: { value: Category | 'new' | null; on
               <button
                 key={c}
                 type="button"
-                aria-label={`Renk ${c}`}
+                aria-label={ttf('Renk {0}', c)}
                 aria-pressed={color === c}
                 onClick={() => setColor(c)}
                 className={cn('size-8 rounded-full ring-offset-2 ring-offset-surface transition-transform hover:scale-110', color === c && 'ring-2 ring-ink')}
@@ -262,7 +262,7 @@ function CategoryEditor({ value, onClose }: { value: Category | 'new' | null; on
 }
 
 const MODE_LABEL: Record<RuleMatchMode, string> = { word: tt('Tam kelime/ifade'), prefix: tt('Kelime başı'), contains: tt('İçinde geçer') }
-const ORIGIN_LABEL: Record<Rule['origin'], string> = { default: tt('Hazır'), user: 'Sizin', learned: tt('Öğrenilmiş') }
+const ORIGIN_LABEL: Record<Rule['origin'], string> = { default: tt('Hazır'), user: tt('Sizin'), learned: tt('Öğrenilmiş') }
 
 function RulesTab() {
   const rules = useRules()

@@ -1,4 +1,5 @@
 import type { CloudBackend, CloudGroup, CloudMember, CloudPayment, CloudRecord, CloudSettlement, CloudTxInput, CloudTxRow } from './types'
+import { tt } from '../lib/i18n'
 
 /**
  * Testler için bellek içi bulut. supabase/schema.sql'deki kuralların aynısını uygular
@@ -29,7 +30,7 @@ export class MemoryCloud {
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- dönen nesnenin metotları bu bulutu paylaşır
     const c = this
     const must = (g: string) => {
-      if (!c.isMember(g, userId)) throw new Error('Bu grubun üyesi değilsiniz')
+      if (!c.isMember(g, userId)) throw new Error(tt('Bu grubun üyesi değilsiniz'))
     }
     return {
       userId: () => userId,
@@ -47,14 +48,14 @@ export class MemoryCloud {
       },
       async joinGroup(code, displayName) {
         const gid = c.invites.get(code)
-        if (!gid) throw new Error('Davet geçersiz veya süresi dolmuş')
+        if (!gid) throw new Error(tt('Davet geçersiz veya süresi dolmuş'))
         c.members = c.members.filter((m) => !(m.group_id === gid && m.user_id === userId))
         c.members.push({ group_id: gid, user_id: userId, display_name: displayName, color: '#0f766e' })
         return c.groups.get(gid)!
       },
       async removeMember(groupId, uid) {
         const g = c.groups.get(groupId)
-        if (!g || (uid !== userId && g.owner_id !== userId)) throw new Error('Yetkiniz yok')
+        if (!g || (uid !== userId && g.owner_id !== userId)) throw new Error(tt('Yetkiniz yok'))
         for (const [id, r] of c.rows) if (r.group_id === groupId && r.user_id === uid) c.rows.delete(id)
         c.members = c.members.filter((m) => !(m.group_id === groupId && m.user_id === uid))
       },
@@ -63,25 +64,25 @@ export class MemoryCloud {
       },
       async setGroupCycle(groupId, startDay) {
         const g = c.groups.get(groupId)
-        if (!g || g.owner_id !== userId) throw new Error('Ay döngüsünü yalnızca grup yöneticisi değiştirebilir')
+        if (!g || g.owner_id !== userId) throw new Error(tt('Ay döngüsünü yalnızca grup yöneticisi değiştirebilir'))
         g.cycle_start_day = startDay
       },
       async settlePeriod(groupId, start, end, totalKurus, shares) {
         const g = c.groups.get(groupId)
-        if (!g || g.owner_id !== userId) throw new Error('Gideri yalnızca grup yöneticisi paylaştırabilir')
-        for (const k of Object.keys(shares)) if (!c.isMember(groupId, k)) throw new Error('Paylar yalnızca grup üyelerine verilebilir')
+        if (!g || g.owner_id !== userId) throw new Error(tt('Gideri yalnızca grup yöneticisi paylaştırabilir'))
+        for (const k of Object.keys(shares)) if (!c.isMember(groupId, k)) throw new Error(tt('Paylar yalnızca grup üyelerine verilebilir'))
         c.settlements = c.settlements.filter((s) => !(s.group_id === groupId && s.period_start === start))
         c.settlements.push({ group_id: groupId, period_start: start, period_end: end, total_kurus: totalKurus, shares: { ...shares }, created_by: userId, created_at: c.now() })
       },
       async unsettlePeriod(groupId, start) {
         const g = c.groups.get(groupId)
-        if (!g || g.owner_id !== userId) throw new Error('Paylaşımı yalnızca grup yöneticisi geri alabilir')
+        if (!g || g.owner_id !== userId) throw new Error(tt('Paylaşımı yalnızca grup yöneticisi geri alabilir'))
         c.settlements = c.settlements.filter((s) => !(s.group_id === groupId && s.period_start === start))
         c.payments = c.payments.filter((p) => !(p.group_id === groupId && p.period_start === start))
       },
       async setGroupBudget(groupId, budgetKurus) {
         const g = c.groups.get(groupId)
-        if (!g || g.owner_id !== userId) throw new Error('Grup bütçesini yalnızca grup yöneticisi değiştirebilir')
+        if (!g || g.owner_id !== userId) throw new Error(tt('Grup bütçesini yalnızca grup yöneticisi değiştirebilir'))
         c.budgets.set(groupId, budgetKurus)
       },
       async listGroupBudgets(groupIds) {
@@ -89,9 +90,9 @@ export class MemoryCloud {
       },
       async markPayment(groupId, start, from, to, amountKurus, paid) {
         const g = c.groups.get(groupId)
-        if (!g || !c.isMember(groupId, userId)) throw new Error('Bu grubun üyesi değilsiniz')
-        if (userId !== from && userId !== to && g.owner_id !== userId) throw new Error('Ödemeyi yalnızca yönetici veya ödemenin tarafları işaretleyebilir')
-        if (!c.settlements.some((s) => s.group_id === groupId && s.period_start === start)) throw new Error('Bu dönem paylaştırılmamış')
+        if (!g || !c.isMember(groupId, userId)) throw new Error(tt('Bu grubun üyesi değilsiniz'))
+        if (userId !== from && userId !== to && g.owner_id !== userId) throw new Error(tt('Ödemeyi yalnızca yönetici veya ödemenin tarafları işaretleyebilir'))
+        if (!c.settlements.some((s) => s.group_id === groupId && s.period_start === start)) throw new Error(tt('Bu dönem paylaştırılmamış'))
         c.payments = c.payments.filter((p) => !(p.group_id === groupId && p.period_start === start && p.from_user === from && p.to_user === to))
         if (paid) c.payments.push({ group_id: groupId, period_start: start, from_user: from, to_user: to, amount_kurus: amountKurus, marked_by: userId, marked_at: c.now() })
       },
@@ -111,7 +112,7 @@ export class MemoryCloud {
         for (const r of rows) {
           must(r.group_id)
           const ex = c.rows.get(r.id)
-          if (ex && ex.user_id !== userId) throw new Error('Başka bir üyenin işlemi değiştirilemez')
+          if (ex && ex.user_id !== userId) throw new Error(tt('Başka bir üyenin işlemi değiştirilemez'))
           c.rows.set(r.id, { ...r, user_id: userId, deleted: false, updated_at: c.now() })
         }
       },

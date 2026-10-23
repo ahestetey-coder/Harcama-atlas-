@@ -134,7 +134,7 @@ function BudgetContent() {
             {byCoach && <CoachTag />}
           </h2>
           <Button size="sm" variant="ghost" onClick={() => setEditing({ kind: 'total' })}>
-            {monthly ? tt('Düzenle') : 'Belirle'}
+            {monthly ? tt('Düzenle') : tt('Belirle')}
           </Button>
         </div>
         {s.total ? <LimitBar status={s.total} label={tt('Toplam bütçe kullanımı')} /> : <p className="mt-2 text-sm text-muted">{tt('Dönemlik toplam bütçe belirlemediniz.')}</p>}
@@ -173,7 +173,7 @@ function BudgetContent() {
             {byCoach && plan.weeklyKurus ? <CoachTag /> : null}
           </h2>
           <Button size="sm" variant="ghost" onClick={() => setEditing({ kind: 'week' })}>
-            {plan.weeklyKurus ? tt('Düzenle') : 'Belirle'}
+            {plan.weeklyKurus ? tt('Düzenle') : tt('Belirle')}
           </Button>
         </div>
         {!plan.weeklyKurus ? (
@@ -276,7 +276,7 @@ function BudgetContent() {
               else delete limits[catId]
               await repo.saveSettings({ ...base, budgetPlan: { ...base.budgetPlan, categoryLimits: limits } })
             }
-            toast(byCoach ? tt('Kaydedildi. Bütçeyi artık elle yönetiyorsunuz.') : kurus ? 'Kaydedildi.' : tt('Kaldırıldı.'))
+            toast(byCoach ? tt('Kaydedildi. Bütçeyi artık elle yönetiyorsunuz.') : kurus ? tt('Kaydedildi.') : tt('Kaldırıldı.'))
             setEditing(null)
           } catch (err) {
             toast(toUserMessage(err), { kind: 'error' })

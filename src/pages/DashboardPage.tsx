@@ -303,7 +303,7 @@ export default function DashboardPage() {
                       </span>
                       {canEditGroupBudget && (
                         <button type="button" onClick={() => setGroupBudgetOpen(true)} className="rounded-lg px-2 py-0.5 font-semibold text-emerald-200 hover:bg-white/10">
-                          {budgetGroup.budgetKurus ? tt('Düzenle') : 'Belirle'}
+                          {budgetGroup.budgetKurus ? tt('Düzenle') : tt('Belirle')}
                         </button>
                       )}
                     </div>
@@ -439,7 +439,7 @@ export default function DashboardPage() {
             <button type="button" onClick={() => setDailyOpen((v) => !v)} aria-expanded={dailyOpen} className="flex w-full items-center justify-between gap-2 text-left">
               <h2 className="font-display text-base font-semibold">{tt('Günlük gider')}</h2>
               <span className="flex items-center gap-1 text-[13px] font-medium text-accent">
-                {dailyOpen ? 'Gizle' : tt('Göster')}
+                {dailyOpen ? tt('Gizle') : tt('Göster')}
                 <ChevronDown className={cn('size-4 transition-transform', dailyOpen && 'rotate-180')} />
               </span>
             </button>

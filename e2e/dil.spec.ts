@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test.use({ locale: 'en-GB' })
+test.use({ locale: 'en-GB', timezoneId: 'Europe/London' })
 
 test('cihaz dili İngilizce olan yeni kurulum İngilizce açılır, Ayarlar\'dan Türkçeye geçilir', async ({ page }) => {
   await page.goto('./#/')

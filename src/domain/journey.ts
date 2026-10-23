@@ -56,8 +56,8 @@ export type RiskStance = 'cautious' | 'balanced' | 'bold'
 /** Planın ölçü birimi: hedefler TL, dolar ya da gram altın cinsinden sabitlenir. */
 export type PlanBase = 'TRY' | 'USD' | 'XAU'
 
-export const HOUSING_LABEL: Record<Housing, string> = { rent: 'Kirada', mortgage: tt('Ev sahibi, kredisi sürüyor'), owned: tt('Ev sahibi, borçsuz'), family: tt('Aile yanında / lojman') }
-export const PENSION_LABEL: Record<Pension, string> = { 'sgk-bes': tt('SGK ve BES'), sgk: tt('Yalnızca SGK'), bes: tt('Yalnızca BES'), none: 'Yok' }
+export const HOUSING_LABEL: Record<Housing, string> = { rent: tt('Kirada'), mortgage: tt('Ev sahibi, kredisi sürüyor'), owned: tt('Ev sahibi, borçsuz'), family: tt('Aile yanında / lojman') }
+export const PENSION_LABEL: Record<Pension, string> = { 'sgk-bes': tt('SGK ve BES'), sgk: tt('Yalnızca SGK'), bes: tt('Yalnızca BES'), none: tt('Yok') }
 export const HEALTH_LABEL: Record<HealthCover, string> = { private: tt('SGK ve özel sağlık sigortası'), public: tt('Yalnızca SGK (genel sağlık sigortası)'), none: 'Yok' }
 export const RISK_LABEL: Record<RiskStance, string> = { cautious: tt('Temkinli: dalgalanma beni çok rahatsız eder'), balanced: tt('Dengeli: kısa vadeli düşüşlere katlanırım'), bold: tt('Atak: uzun vadede dalgalanmayı kabul ederim') }
 export const BASE_LABEL: Record<PlanBase, string> = { TRY: 'TL', USD: 'USD', XAU: tt('Gram altın') }
@@ -737,7 +737,7 @@ export function durationLabel(months: number): string {
   if (months <= 0) return tt('Şimdi')
   const y = Math.floor(months / 12)
   const m = months % 12
-  return [y ? ttf('{0} yıl', y) : '', m ? `${m} ay` : ''].filter(Boolean).join(' ')
+  return [y ? ttf('{0} yıl', y) : '', m ? ttf('{0} ay', m) : ''].filter(Boolean).join(' ')
 }
 
 /** Bugünden `months` ay sonrası, "Mart 2041" biçiminde. */
@@ -963,7 +963,7 @@ export const RISK_QUESTIONS: Array<{ q: string; options: string[] }> = [
   { q: tt('Birikiminiz bir yılda %25 değer kaybetse ne yaparsınız?'), options: [tt('Hepsini satarım'), tt('Bir kısmını satarım'), tt('Dokunmam, beklerim'), tt('Fırsat bilip eklerim')] },
   { q: tt('Arkadaşlarınız sizi riske karşı nasıl tanımlar?'), options: [tt('Riskten kaçınan'), 'Temkinli', tt('Hesaplı risk alan'), tt('Risk sever')] },
   { q: tt('Yatırım deneyiminiz nedir?'), options: [tt('Hiç yok'), tt('Mevduat, altın, döviz'), tt('Fon ya da hisse, az deneyim'), tt('Birkaç yıldır düzenli yatırımcıyım')] },
-  { q: tt('"Risk" kelimesi size önce ne düşündürür?'), options: [tt('Kayıp'), 'Belirsizlik', tt('Fırsat'), 'Heyecan'] },
+  { q: tt('"Risk" kelimesi size önce ne düşündürür?'), options: [tt('Kayıp'), tt('Belirsizlik'), tt('Fırsat'), tt('Heyecan')] },
   { q: tt('Hangi seçeneği tercih edersiniz?'), options: [tt('Kesin 10.000 ₺'), tt('%50 ihtimalle 25.000 ₺, yoksa 0'), tt('%25 ihtimalle 60.000 ₺, yoksa 0'), tt('%5 ihtimalle 300.000 ₺, yoksa 0')] },
   { q: tt('Beklenmedik bir kazancı nasıl değerlendirirsiniz?'), options: [tt('Mevduatta tutarım'), tt('Çoğunu güvenli araçlarda tutarım'), tt('Yarısını dalgalı araçlara ayırırım'), tt('Çoğunu yüksek getiri beklediğim araçlara ayırırım')] },
 ]

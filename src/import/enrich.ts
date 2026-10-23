@@ -5,6 +5,7 @@ import type { Category, ImportFileKind, ImportRecord, Rule, Transaction, TxSourc
 import type { ImportCommit, LearnRuleRequest } from '../data/repository'
 import { OTHER_CATEGORY_ID } from '../data/seed'
 import type { DraftRow, RowProblem, RowStatus } from './types'
+import { tt, ttf } from '../lib/i18n'
 
 /** Kategorisi olmayan satırlara kural önerisi uygular. Tanınmayan iş yeri için tahmin yapmaz. */
 export function applyRules(rows: DraftRow[], rules: Rule[], categories: Category[]): DraftRow[] {
@@ -19,9 +20,9 @@ export function applyRules(rows: DraftRow[], rules: Rule[], categories: Category
       ...r,
       categoryId: cat && !cat.archived ? cat.id : null,
       categorySource: cat && !cat.archived ? 'rule' : undefined,
-      ruleNote: `Kural: "${ev.winner.rule.pattern}" (öncelik ${ev.winner.rule.priority})`,
+      ruleNote: ttf('Kural: "{0}" (öncelik {1})', ev.winner.rule.pattern, ev.winner.rule.priority),
       ruleConflict: ev.conflict
-        ? `Çakışma: ${others.map((m) => `"${m.rule.pattern}" → ${byId.get(m.rule.categoryId)?.name ?? '?'} (öncelik ${m.rule.priority})`).join(', ')} de eşleşti; öncelik sırasına göre ${cat?.name ?? '?'} seçildi.`
+        ? ttf('Çakışma: {0} de eşleşti; öncelik sırasına göre {1} seçildi.', others.map((m) => ttf('"{0}" → {1} (öncelik {2})', m.rule.pattern, byId.get(m.rule.categoryId)?.name ?? '?', m.rule.priority)).join(', '), cat?.name ?? '?')
         : undefined,
     }
   })
@@ -57,16 +58,16 @@ export function markDuplicates(rows: DraftRow[], existing: Transaction[], accoun
 
 export function rowProblems(r: DraftRow, activeCategoryIds: Set<string>): RowProblem[] {
   const p: RowProblem[] = []
-  if (!r.date) p.push({ field: 'date', message: 'Tarih eksik veya okunamadı.' })
+  if (!r.date) p.push({ field: 'date', message: tt('Tarih eksik veya okunamadı.') })
   if (r.amountKurus === null) {
-    if (r.foreign) p.push({ field: 'currency', message: `Döviz tutarı (${r.foreign.currency}): TL karşılığını girin.` })
-    else if (r.amountCandidates) p.push({ field: 'amount', message: 'Tutar biçimi belirsiz: doğru değeri seçin.' })
-    else p.push({ field: 'amount', message: 'Tutar eksik veya okunamadı.' })
-  } else if (r.amountKurus <= 0) p.push({ field: 'amount', message: 'Tutar sıfırdan büyük olmalı.' })
-  if (!r.description.trim()) p.push({ field: 'description', message: 'Açıklama eksik.' })
+    if (r.foreign) p.push({ field: 'currency', message: ttf('Döviz tutarı ({0}): TL karşılığını girin.', r.foreign.currency) })
+    else if (r.amountCandidates) p.push({ field: 'amount', message: tt('Tutar biçimi belirsiz: doğru değeri seçin.') })
+    else p.push({ field: 'amount', message: tt('Tutar eksik veya okunamadı.') })
+  } else if (r.amountKurus <= 0) p.push({ field: 'amount', message: tt('Tutar sıfırdan büyük olmalı.') })
+  if (!r.description.trim()) p.push({ field: 'description', message: tt('Açıklama eksik.') })
   if (r.type === 'expense') {
-    if (!r.categoryId) p.push({ field: 'category', message: 'Kategori seçilmeli.' })
-    else if (!activeCategoryIds.has(r.categoryId)) p.push({ field: 'category', message: 'Seçilen kategori arşivde veya silinmiş.' })
+    if (!r.categoryId) p.push({ field: 'category', message: tt('Kategori seçilmeli.') })
+    else if (!activeCategoryIds.has(r.categoryId)) p.push({ field: 'category', message: tt('Seçilen kategori arşivde veya silinmiş.') })
   }
   return p
 }
@@ -145,7 +146,7 @@ export function buildCommit(opts: {
     foreign: r.foreign,
     accountAlias: opts.accountAlias?.trim() || undefined,
     paymentMethod: opts.paymentMethod,
-    note: r.ownDate && r.ownDate !== r.date ? `İşlem tarihi: ${r.ownDate.split('-').reverse().join('.')}` : undefined,
+    note: r.ownDate && r.ownDate !== r.date ? ttf('İşlem tarihi: {0}', r.ownDate.split('-').reverse().join('.')) : undefined,
     createdAt: now,
     updatedAt: now,
   }))

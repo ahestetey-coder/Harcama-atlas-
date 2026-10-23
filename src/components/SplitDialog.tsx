@@ -156,7 +156,7 @@ export function SplitDialog({
                     p.balanceKurus > 0 ? 'bg-accent-soft text-accent-strong dark:text-accent' : p.balanceKurus < 0 ? 'bg-danger-soft text-danger' : 'bg-surface-2 text-muted',
                   )}
                 >
-                  {p.balanceKurus > 0 ? ttf('+{0} alacak', formatKurus(p.balanceKurus)) : p.balanceKurus < 0 ? ttf('{0} borç', formatKurus(-p.balanceKurus)) : 'Denk'}
+                  {p.balanceKurus > 0 ? ttf('+{0} alacak', formatKurus(p.balanceKurus)) : p.balanceKurus < 0 ? ttf('{0} borç', formatKurus(-p.balanceKurus)) : tt('Denk')}
                 </span>
               </li>
             ))}
