@@ -4,10 +4,14 @@ import { expect, test, type Page } from '@playwright/test'
 const KEY = 'sb-muonkdoiiuxwmcgshyza-auth-token'
 const USER = { id: '22222222-2222-2222-2222-222222222222', email: 'deniz@ornek.com', aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: '2026-10-01T00:00:00Z' }
 const PRICES = [
-  { plan: 'plus', period: 'monthly', amount_kurus: 9999, trial_days: 0, active: true, paddle_price_id: 'pri_a' },
-  { plan: 'plus', period: 'yearly', amount_kurus: 95990, trial_days: 0, active: true, paddle_price_id: 'pri_b' },
-  { plan: 'plusplus', period: 'monthly', amount_kurus: 19999, trial_days: 7, active: true, paddle_price_id: 'pri_c' },
-  { plan: 'plusplus', period: 'yearly', amount_kurus: 191990, trial_days: 7, active: true, paddle_price_id: 'pri_d' },
+  { plan: 'plus', period: 'monthly', currency: 'TRY', amount_kurus: 9999, trial_days: 0, active: true, paddle_price_id: 'pri_a' },
+  { plan: 'plus', period: 'yearly', currency: 'TRY', amount_kurus: 95990, trial_days: 0, active: true, paddle_price_id: 'pri_b' },
+  { plan: 'plusplus', period: 'monthly', currency: 'TRY', amount_kurus: 19999, trial_days: 7, active: true, paddle_price_id: 'pri_c' },
+  { plan: 'plusplus', period: 'yearly', currency: 'TRY', amount_kurus: 191990, trial_days: 7, active: true, paddle_price_id: 'pri_d' },
+  { plan: 'plus', period: 'monthly', currency: 'USD', amount_kurus: 299, trial_days: 7, active: true, paddle_price_id: 'pri_ua' },
+  { plan: 'plus', period: 'yearly', currency: 'USD', amount_kurus: 2870, trial_days: 7, active: true, paddle_price_id: 'pri_ub' },
+  { plan: 'plusplus', period: 'monthly', currency: 'USD', amount_kurus: 599, trial_days: 7, active: true, paddle_price_id: 'pri_uc' },
+  { plan: 'plusplus', period: 'yearly', currency: 'USD', amount_kurus: 5750, trial_days: 7, active: true, paddle_price_id: 'pri_ud' },
 ]
 
 async function fakeSupabase(page: Page, opts: { signedIn: boolean; sub?: Record<string, unknown> | null; token?: string | null }) {
@@ -59,6 +63,16 @@ test('ödeme: Plus+ denemesi, kampanya kodu ve onay zorunluluğu', async ({ page
   await expect(page).toHaveURL(/plan=plus&period=yearly/)
   await page.getByRole('button', { name: 'Ödemeye geç' }).click()
   await expect(page.getByText(/sözleşmeyi onayla/)).toBeVisible()
+})
+
+test('İngilizce ödeme sayfası dolar fiyatlarını kullanır', async ({ page }) => {
+  await fakeSupabase(page, { signedIn: true, sub: null })
+  await page.goto('/en/checkout?dil=en&plan=plus&period=monthly')
+  const sum = page.locator('.summary')
+  await expect(sum.locator('[data-sum-price]')).toHaveText('$2.99')
+  await expect(sum.getByText(/7 days free. \$2\.99 is charged/)).toBeVisible()
+  await page.locator('[data-period="yearly"]').click()
+  await expect(sum.locator('[data-sum-price]')).toHaveText('$28.70')
 })
 
 test('ödeme: Paddle bağlanmadıysa "çok yakında" gösterir', async ({ page }) => {

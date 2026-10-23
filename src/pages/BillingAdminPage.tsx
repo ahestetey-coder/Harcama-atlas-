@@ -8,6 +8,7 @@ import {
   addCoupon,
   BillingNotInstalledError,
   deleteCoupon,
+  formatWebPrice,
   loadBillingAdmin,
   PERIOD_LABEL,
   PLAN_LABEL,
@@ -24,7 +25,7 @@ import {
   type WebhookEvent,
 } from '../cloud/billing'
 import { cloudErrorMessage } from '../cloud/errors'
-import { formatKurus, formatKurusPlain, parseUserAmount } from '../domain/money'
+import { parseAmount } from '../domain/money'
 import { cn } from '../lib/cn'
 import { useIsAdmin } from '../state/admin'
 import { useAuth } from '../state/auth'
@@ -157,10 +158,10 @@ function PricesTab({ prices, onSaved }: { prices: WebPrice[]; onSaved: () => Pro
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {prices.map((p) => (
-        <PriceCard key={`${p.plan}:${p.period}`} price={p} onSaved={onSaved} />
+        <PriceCard key={`${p.currency}:${p.plan}:${p.period}`} price={p} onSaved={onSaved} />
       ))}
       <p className="text-[12.5px] text-subtle sm:col-span-2">
-        Fiyatlar KDV dahildir. Değişiklik yeni abonelere uygulanır; mevcut aboneler eski fiyattan devam eder. Deneme süresi yalnızca ilk abonelikte anlamlıdır.
+        Fiyatlar KDV dahildir. TL fiyatlar Türkçe sitede, USD fiyatlar İngilizce sitede satılır. Değişiklik yeni abonelere uygulanır; mevcut aboneler eski fiyattan devam eder. Deneme süresi yalnızca ilk abonelikte anlamlıdır.
       </p>
     </div>
   )
@@ -169,20 +170,22 @@ function PricesTab({ prices, onSaved }: { prices: WebPrice[]; onSaved: () => Pro
 function PriceCard({ price, onSaved }: { price: WebPrice; onSaved: () => Promise<void> }) {
   const { backend } = useAuth()
   const { toast } = useUi()
-  const [amount, setAmount] = useState(formatKurusPlain(price.amount_kurus))
+  const usd = price.currency === 'USD'
+  // Tutar her zaman Türkçe biçimde yazılır (2,99), uygulamanın para biriminden bağımsız
+  const [amount, setAmount] = useState(((price.amount_kurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })))
   const [trial, setTrial] = useState(String(price.trial_days))
   const [active, setActive] = useState(price.active)
   const [busy, setBusy] = useState(false)
-  const parsed = parseUserAmount(amount)
+  const parsed = parseAmount(amount, 'tr')
   const trialN = Number(trial)
-  const err = !parsed.ok || parsed.kurus < 2700 ? 'En az 27 TL olmalı' : !Number.isInteger(trialN) || trialN < 0 || trialN > 30 ? 'Deneme 0–30 gün olmalı' : null
+  const err = !parsed.ok || parsed.kurus < (usd ? 70 : 2700) ? (usd ? 'En az 0,70 $ olmalı' : 'En az 27 TL olmalı') : !Number.isInteger(trialN) || trialN < 0 || trialN > 30 ? 'Deneme 0–30 gün olmalı' : null
   const dirty = parsed.ok && (parsed.kurus !== price.amount_kurus || trialN !== price.trial_days || active !== price.active)
-  const id = `${price.plan}-${price.period}`
+  const id = `${price.currency}-${price.plan}-${price.period}`
   const save = async () => {
     if (err || !parsed.ok) return
     setBusy(true)
     try {
-      await savePrice(backend!.client, { plan: price.plan, period: price.period, amount_kurus: parsed.kurus, trial_days: trialN, active })
+      await savePrice(backend!.client, { plan: price.plan, period: price.period, currency: price.currency, amount_kurus: parsed.kurus, trial_days: trialN, active })
       await onSaved()
     } catch (e) {
       toast(cloudErrorMessage(e), { kind: 'error' })
@@ -194,12 +197,12 @@ function PriceCard({ price, onSaved }: { price: WebPrice; onSaved: () => Promise
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="font-display text-base font-semibold">
-          {PLAN_LABEL[price.plan]} · {PERIOD_LABEL[price.period]}
+          {PLAN_LABEL[price.plan]} · {PERIOD_LABEL[price.period]} · {usd ? 'USD' : 'TL'}
         </h3>
         {price.paddle_price_id ? <Badge tone="accent">Paddle'da</Badge> : <Badge tone="warning">Aktarılmadı</Badge>}
       </div>
       <div className="grid grid-cols-[1fr_7rem] gap-3">
-        <Field label="Fiyat (TL)" htmlFor={`${id}-a`} error={err ?? undefined}>
+        <Field label={usd ? 'Fiyat ($)' : 'Fiyat (TL)'} htmlFor={`${id}-a`} error={err ?? undefined}>
           <Input id={`${id}-a`} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>
         <Field label="Deneme (gün)" htmlFor={`${id}-t`}>
@@ -366,14 +369,19 @@ function SubscriptionsTab({ subs, events }: { subs: WebSubscription[]; events: W
       .catch(() => setEmails({}))
   }, [backend])
   const live = subs.filter((s) => s.status !== 'canceled')
-  const mrr = useMemo(() => live.filter((s) => s.status === 'active').reduce((n, s) => n + (s.amount_kurus ?? 0) / (s.period === 'yearly' ? 12 : 1), 0), [live])
+  // Aylık gelir para birimine göre ayrı toplanır
+  const mrr = useMemo(() => {
+    const m = { TRY: 0, USD: 0 }
+    for (const s of live) if (s.status === 'active') m[s.currency === 'USD' ? 'USD' : 'TRY'] += (s.amount_kurus ?? 0) / (s.period === 'yearly' ? 12 : 1)
+    return m
+  }, [live])
   const failed = events.filter((e) => e.error && !e.processed_at).length
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Etkin" value={String(live.filter((s) => s.status === 'active').length)} />
         <Stat label="Denemede" value={String(live.filter((s) => s.status === 'trialing').length)} />
-        <Stat label="Aylık gelir (yaklaşık)" value={formatKurus(Math.round(mrr))} />
+        <Stat label="Aylık gelir (yaklaşık)" value={[formatWebPrice(Math.round(mrr.TRY), 'TRY'), mrr.USD > 0 ? formatWebPrice(Math.round(mrr.USD), 'USD') : ''].filter(Boolean).join(' · ')} />
         <Stat label="İşlenemeyen bildirim" value={String(failed)} danger={failed > 0} />
       </div>
       <Card className="overflow-hidden">
@@ -387,7 +395,7 @@ function SubscriptionsTab({ subs, events }: { subs: WebSubscription[]; events: W
                 <span>
                   {PLAN_LABEL[s.plan]} · {PERIOD_LABEL[s.period]}
                 </span>
-                <span className="num text-muted">{s.amount_kurus ? formatKurus(s.amount_kurus) : ''}</span>
+                <span className="num text-muted">{s.amount_kurus ? formatWebPrice(s.amount_kurus, s.currency) : ''}</span>
                 <Badge tone={STATUS[s.status].tone}>{s.cancel_at && s.status !== 'canceled' ? 'İptal edildi' : STATUS[s.status].label}</Badge>
                 <span className="text-[12px] text-subtle">
                   {s.status === 'trialing' && s.trial_end ? `Deneme ${new Date(s.trial_end).toLocaleDateString('tr-TR')}` : s.current_period_end ? `Dönem sonu ${new Date(s.current_period_end).toLocaleDateString('tr-TR')}` : ''}

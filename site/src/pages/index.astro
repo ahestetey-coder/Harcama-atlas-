@@ -4,6 +4,7 @@ import Phone from '../components/Phone.astro'
 import PriceCards from '../components/PriceCards.astro'
 import { contourPaths } from '../lib/contours'
 import { langOf, localize, translator } from '../lib/i18n'
+import { currencyFor } from '../data/plans'
 
 const lang = langOf(Astro.url.pathname)
 const t = translator(lang)
@@ -44,7 +45,7 @@ const faqs = [
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    { '@type': 'SoftwareApplication', name: 'Harcama Atlası', applicationCategory: 'FinanceApplication', operatingSystem: 'iOS, Android, Web', offers: { '@type': 'Offer', price: '0', priceCurrency: 'TRY' } },
+    { '@type': 'SoftwareApplication', name: 'Harcama Atlası', applicationCategory: 'FinanceApplication', operatingSystem: 'iOS, Android, Web', offers: { '@type': 'Offer', price: '0', priceCurrency: currencyFor(lang) } },
     { '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
   ],
 }

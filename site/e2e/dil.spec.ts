@@ -12,7 +12,7 @@ test('İngilizce sürüm ve dil seçici', async ({ page, isMobile }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Pick the plan')
   // Fiyatlar İngilizce biçimde, ödeme bağlantısı İngilizce sayfaya gider
   await expect(page.locator('a[data-plan="plus"]').first()).toHaveAttribute('href', /^\/en\/checkout\?plan=plus/)
-  await expect(page.locator('.prices .amt').nth(1)).toHaveText(/₺99\.99/)
+  await expect(page.locator('.prices .amt').nth(1)).toHaveText(/\$2\.99/)
 })
 
 test.describe('yurt dışından gelen ziyaretçi', () => {

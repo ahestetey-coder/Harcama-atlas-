@@ -85,19 +85,20 @@ describe('abonelik olayı', () => {
 
 describe('Paddle gövdeleri', () => {
   it('fiyat KDV dahil, deneme süresi ve paket bilgisiyle gider', () => {
-    const b = priceBody({ plan: 'plusplus', period: 'yearly', amount_kurus: 191990, trial_days: 7, active: true }, 'pro_1')
+    const b = priceBody({ plan: 'plusplus', period: 'yearly', currency: 'TRY', amount_kurus: 191990, trial_days: 7, active: true }, 'pro_1')
     expect(b.unit_price).toEqual({ amount: '191990', currency_code: 'TRY' })
     expect(b.billing_cycle).toEqual({ interval: 'year', frequency: 1 })
     expect(b.trial_period).toEqual({ interval: 'day', frequency: 7 })
     expect(b.tax_mode).toBe('internal')
     expect(b.custom_data).toEqual({ plan: 'plusplus', period: 'yearly' })
     expect(b).not.toHaveProperty('status')
-    expect(priceBody({ plan: 'plus', period: 'monthly', amount_kurus: 9999, trial_days: 0, active: false }, null)).toMatchObject({ trial_period: null, status: 'archived' })
+    expect(priceBody({ plan: 'plus', period: 'monthly', currency: 'TRY', amount_kurus: 9999, trial_days: 0, active: false }, null)).toMatchObject({ trial_period: null, status: 'archived' })
+    expect(priceBody({ plan: 'plus', period: 'monthly', currency: 'USD', amount_kurus: 299, trial_days: 7, active: true }, 'pro_1').unit_price).toEqual({ amount: '299', currency_code: 'USD' })
   })
   it('kampanya kodu yalnızca seçilen fiyatlara uygulanır', () => {
-    const ids = { 'plus:monthly': 'pri_a', 'plus:yearly': 'pri_b', 'plusplus:monthly': 'pri_c', 'plusplus:yearly': 'pri_d' }
+    const ids = { 'plus:monthly': ['pri_a'], 'plus:yearly': ['pri_b'], 'plusplus:monthly': ['pri_c', 'pri_cu'], 'plusplus:yearly': ['pri_d'] }
     const b = discountBody({ code: 'YAZ20', percent_off: 20, plans: ['plusplus'], periods: ['monthly', 'yearly'], recur_intervals: 3, usage_limit: 100, expires_at: null, active: true, note: null }, ids)
-    expect(b).toMatchObject({ amount: '20', type: 'percentage', code: 'YAZ20', recur: true, maximum_recurring_intervals: 3, restrict_to: ['pri_c', 'pri_d'], status: 'active' })
+    expect(b).toMatchObject({ amount: '20', type: 'percentage', code: 'YAZ20', recur: true, maximum_recurring_intervals: 3, restrict_to: ['pri_c', 'pri_cu', 'pri_d'], status: 'active' })
     const once = discountBody({ code: 'ILK', percent_off: 50, plans: ['plus'], periods: ['monthly'], recur_intervals: 1, usage_limit: null, expires_at: '2020-01-01T00:00:00Z', active: true, note: 'İlk ay' }, ids)
     expect(once).toMatchObject({ recur: false, maximum_recurring_intervals: null, status: 'archived', expires_at: null, description: 'İlk ay' })
     expect(discountBody({ code: 'X1', percent_off: 10, plans: ['plus'], periods: ['monthly'], recur_intervals: null, usage_limit: null, expires_at: null, active: true, note: null }, ids, true)).not.toHaveProperty('status')

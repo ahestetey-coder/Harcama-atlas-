@@ -64,6 +64,30 @@ insert into public.ha_web_prices (plan, period, amount_kurus, trial_days) values
   ('plusplus', 'monthly', 19999, 7),
   ('plusplus', 'yearly', 191990, 7)
 on conflict (plan, period) do nothing;
+-- Para birimi: Türkçe sitede TL, İngilizce sitede USD fiyatlar. Tutar o birimin kuruşu/sentidir.
+-- Paddle'ın alt sınırı TL'de 27 TL, USD'de 0,70 $.
+alter table public.ha_web_prices add column if not exists currency text not null default 'TRY';
+alter table public.ha_web_prices drop constraint if exists ha_web_prices_currency_check;
+alter table public.ha_web_prices add constraint ha_web_prices_currency_check check (currency in ('TRY', 'USD'));
+alter table public.ha_web_prices drop constraint if exists ha_web_prices_amount_kurus_check;
+alter table public.ha_web_prices drop constraint if exists ha_web_prices_amount_check;
+alter table public.ha_web_prices add constraint ha_web_prices_amount_check check (amount_kurus between (case when currency = 'TRY' then 2700 else 70 end) and 10000000);
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+    where c.conrelid = 'public.ha_web_prices'::regclass and c.contype = 'p' and a.attname = 'currency'
+  ) then
+    alter table public.ha_web_prices drop constraint ha_web_prices_pkey;
+    alter table public.ha_web_prices add primary key (plan, period, currency);
+  end if;
+end $$;
+insert into public.ha_web_prices (plan, period, currency, amount_kurus, trial_days) values
+  ('plus', 'monthly', 'USD', 299, 7),
+  ('plus', 'yearly', 'USD', 2870, 7),
+  ('plusplus', 'monthly', 'USD', 599, 7),
+  ('plusplus', 'yearly', 'USD', 5750, 7)
+on conflict (plan, period, currency) do nothing;
 alter table public.ha_web_prices enable row level security;
 revoke all on public.ha_web_prices from anon, authenticated;
 grant select on public.ha_web_prices to anon, authenticated;
