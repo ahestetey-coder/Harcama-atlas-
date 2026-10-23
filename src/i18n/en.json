@@ -2971,5 +2971,7 @@
 "Yeni yazı gelince koçtan bildirim": "A notification from your coach when a new article arrives",
 "finans haberi": "finance news",
 "piyasa notu": "market note",
-"yazı": "article"
+"yazı": "article",
+"\"{0}\" başlıklı yeni yazımız yayınlandı.": "Our new article \"{0}\" is out.",
+"Yazıyı oku": "Read the article"
 }
