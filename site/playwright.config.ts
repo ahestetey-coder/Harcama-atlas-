@@ -5,7 +5,8 @@ const PORT = 4330
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
-  use: { baseURL: `http://localhost:${PORT}`, launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {} },
+  // Varsayılan ziyaretçi Türkiye'den: site Türkçe açılır. İngilizce testler kendi dil/saat dilimini verir.
+  use: { baseURL: `http://localhost:${PORT}`, locale: 'tr-TR', timezoneId: 'Europe/Istanbul', launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {} },
   projects: [
     { name: 'masaustu', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
     { name: 'mobil', use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true } },

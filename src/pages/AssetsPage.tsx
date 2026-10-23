@@ -504,7 +504,7 @@ export function HoldingRow({
           <div className="num font-semibold">{money(s.valueKurus)}</div>
           {!debt && s.quantity > 0 && (
             <div className={cn('num text-[12px]', s.unrealizedKurus > 0 ? 'text-accent' : s.unrealizedKurus < 0 ? 'text-danger' : 'text-muted')}>
-              {s.unrealizedKurus > 0 ? 'Kâr ' : s.unrealizedKurus < 0 ? tt('Zarar ') : ''}
+              {s.unrealizedKurus > 0 ? tt('Kâr ') : s.unrealizedKurus < 0 ? tt('Zarar ') : ''}
               {signedWith(money)(s.unrealizedKurus)} {pct(s.unrealizedKurus, s.costKurus)}
             </div>
           )}
@@ -969,7 +969,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
           />
         )}
         {(f.kind === 'other' || f.kind === 'fx' || (f.kind === 'commodity' && !f.symbol)) && (
-          <Field label={f.kind === 'fx' ? tt('Döviz kodu') : 'Birim'} htmlFor="asset-unit" hint={f.kind === 'fx' ? tt('Örn. USD, EUR') : tt('Gram, adet, pay…')}>
+          <Field label={f.kind === 'fx' ? tt('Döviz kodu') : tt('Birim')} htmlFor="asset-unit" hint={f.kind === 'fx' ? tt('Örn. USD, EUR') : tt('Gram, adet, pay…')}>
             <Input id="asset-unit" value={f.unit} maxLength={16} onChange={(e) => set('unit', f.kind === 'fx' ? e.target.value.toUpperCase() : e.target.value)} />
           </Field>
         )}
@@ -1049,7 +1049,7 @@ export function AssetEditor({ editing, onClose }: { editing: Editing; onClose: (
           </div>
         )}
         {isNew && !debt && (
-          <Field label={debt ? 'Tarih' : balance ? tt('Yatırma tarihi') : tt('Alış tarihi')} htmlFor="asset-first-date">
+          <Field label={debt ? tt('Tarih') : balance ? tt('Yatırma tarihi') : tt('Alış tarihi')} htmlFor="asset-first-date">
             <Input id="asset-first-date" type="date" value={f.date} max={todayIso()} onChange={(e) => set('date', e.target.value)} />
           </Field>
         )}

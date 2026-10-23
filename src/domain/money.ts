@@ -197,8 +197,8 @@ export function formatKurus(kurus: number): string {
 /** Kısa gösterim: 1.234 ₺ / 12,3 B ₺ */
 export function formatKurusCompact(kurus: number): string {
   const lira = kurus / 100
-  if (Math.abs(lira) >= 1_000_000) return `${(lira / 1_000_000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} Mn ₺`
-  if (Math.abs(lira) >= 10_000) return `${(lira / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} B ₺`
+  if (Math.abs(lira) >= 1_000_000) return `${(lira / 1_000_000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ${tt('Mn')} ₺`
+  if (Math.abs(lira) >= 10_000) return `${(lira / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ${tt('B')} ₺`
   return `${Math.round(lira).toLocaleString('tr-TR')} ₺`
 }
 

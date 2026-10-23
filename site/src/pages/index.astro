@@ -164,9 +164,9 @@ const jsonLd = {
     <div class="wrap test-grid">
       <div class="test-phone reveal">
         <Phone light="test-soru-1" alt={t('Finansal Harita testinin çözülüşü', 'Taking the Financial Map test')}>
-          <video data-autoplay muted loop playsinline preload="none" poster="/screenshots/test-soru-1.webp" aria-label={t('Finansal Harita testinin çözülüşünü gösteren kısa video', 'Short video of the Financial Map test being taken')}>
-            <source src="/video/harita-testi.webm" type="video/webm" />
-            <source src="/video/harita-testi.mp4" type="video/mp4" />
+          <video data-autoplay muted loop playsinline preload="none" poster={lang === 'en' ? '/screenshots/en/test-soru-1.webp' : '/screenshots/test-soru-1.webp'} aria-label={t('Finansal Harita testinin çözülüşünü gösteren kısa video', 'Short video of the Financial Map test being taken')}>
+            <source src={lang === 'en' ? '/video/en/harita-testi.webm' : '/video/harita-testi.webm'} type="video/webm" />
+            <source src={lang === 'en' ? '/video/en/harita-testi.mp4' : '/video/harita-testi.mp4'} type="video/mp4" />
           </video>
         </Phone>
         <div class="float-card card" aria-hidden="true">

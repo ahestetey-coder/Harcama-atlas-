@@ -1,4 +1,6 @@
 ---
+import { langOf } from '../lib/i18n'
+
 /** Uygulama ekran görüntüsü için telefon çerçevesi. dark verilirse koyu temada o görüntü gösterilir. */
 interface Props {
   light: string
@@ -8,14 +10,16 @@ interface Props {
   class?: string
 }
 const { light, dark, alt, eager = false, class: cls } = Astro.props
+// İngilizce sayfalarda uygulamanın İngilizce ekranları gösterilir (aynı adlar, screenshots/en altında)
+const dir = langOf(Astro.url.pathname) === 'en' ? '/screenshots/en' : '/screenshots'
 const loading = eager ? 'eager' : 'lazy'
 ---
 
 <figure class:list={['phone', cls]}>
   <div class="screen">
-    <img class:list={[{ 'only-light': !!dark }]} src={`/screenshots/${light}.webp`} alt={alt} width="560" height="1212" loading={loading} decoding="async" />
+    <img class:list={[{ 'only-light': !!dark }]} src={`${dir}/${light}.webp`} alt={alt} width="560" height="1212" loading={loading} decoding="async" />
     {/* Koyu görsel her zaman tembel yüklenir: açık temada gizli olduğu için hiç indirilmez */}
-    {dark && <img class="only-dark" src={`/screenshots/${dark}.webp`} alt={alt} width="560" height="1212" loading="lazy" decoding="async" />}
+    {dark && <img class="only-dark" src={`${dir}/${dark}.webp`} alt={alt} width="560" height="1212" loading="lazy" decoding="async" />}
     <slot />
   </div>
 </figure>

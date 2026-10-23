@@ -501,6 +501,7 @@ function BreakNav({ label, onNext, ms, reduced }: { label: string; onNext: () =>
 
 function SummitBreak({ hayal, onNext }: { hayal: number; onNext: () => void }) {
   const reduced = useAutoNext(onNext, 9000)
+  const summitText = tt('Ayda {0} pasif gelir için gereken birikim kabaca bu. Büyük görünüyor; ama bu dağa tek hamlede değil, duraklarla çıkılır. Şimdi neredesin, bakalım.').split('{0}')
   return (
     <>
       <Badge tone="accent" className="self-start">
@@ -524,7 +525,7 @@ function SummitBreak({ hayal, onNext }: { hayal: number; onNext: () => void }) {
         <h2 className="font-display text-3xl font-bold text-ink">{tt('Zirven belirdi.')}</h2>
         <AnimatedKurus value={hayal * 300 * 100} className="num font-display text-4xl font-extrabold tracking-tight text-accent sm:text-5xl" />
         <p className="text-[15px] leading-relaxed text-muted">
-          {tt('Ayda')} <span className="font-semibold text-ink">{tl(hayal)}</span> {tt('pasif gelir için gereken birikim kabaca bu. Büyük görünüyor; ama bu dağa tek hamlede değil, duraklarla çıkılır. Şimdi neredesin, bakalım.')}
+          {summitText[0]}<span className="font-semibold text-ink">{tl(hayal)}</span>{summitText[1]}
         </p>
       </div>
       <BreakNav label={tt('Konumumu bul')} onNext={onNext} ms={9000} reduced={reduced} />

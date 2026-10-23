@@ -125,7 +125,7 @@ export function DailyBars({ data, onSelect, highlightDay }: { data: DailyPoint[]
             axisLine={false}
             width={52}
             tick={{ fill: 'var(--subtle)', fontSize: 11 }}
-            tickFormatter={(v: number) => (Math.abs(v) >= 100000 ? `${(v / 100000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} B ₺` : formatKurusCompact(v))}
+            tickFormatter={(v: number) => (Math.abs(v) >= 100000 ? `${(v / 100000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ${tt('B')} ₺` : formatKurusCompact(v))}
             allowDecimals={false}
           />
           <Tooltip
