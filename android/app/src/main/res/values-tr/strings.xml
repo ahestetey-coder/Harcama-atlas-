@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Cihaz dili Türkçeyse ana ekrandaki uygulama adı; diğer dillerde values/ (Spending Atlas) kullanılır -->
+<resources>
+    <string name="app_name">Harcama Atlası</string>
+    <string name="title_activity_main">Harcama Atlası</string>
+</resources>

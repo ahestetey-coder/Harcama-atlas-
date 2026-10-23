@@ -5,7 +5,7 @@ import { langOf, translator } from '../../lib/i18n'
 const t = translator(langOf(Astro.url.pathname))
 ---
 
-<Site title={t('Aboneliğim · Harcama Atlası', 'My subscription · Harcama Atlası')} description={t('Harcama Atlası aboneliğini görüntüle ve yönet.', 'View and manage your Harcama Atlası subscription.')} noindex>
+<Site title={t('Aboneliğim · Harcama Atlası', 'My subscription · Spending Atlas')} description={t('Harcama Atlası aboneliğini görüntüle ve yönet.', 'View and manage your Spending Atlas subscription.')} noindex>
   <section class="wrap acc" data-acc>
     <p class="eyebrow">{t('Hesabım', 'My account')}</p>
     <h1 class="h-section">{t('Aboneliğim', 'My subscription')}</h1>

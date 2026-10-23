@@ -4,8 +4,9 @@ import { tt } from '../lib/i18n'
  * başlık, menü, PWA manifesti ve yedek dosya adları buradan beslenir.
  */
 export const APP_CONFIG = {
-  name: 'Harcama Atlası',
-  shortName: 'Harcama Atlası',
+  /** İngilizcede "Spending Atlas" (en.json); PWA manifesti ve sayfa başlığının ilk hali Türkçe adla derlenir. */
+  name: tt('Harcama Atlası'),
+  shortName: tt('Harcama Atlası'),
   description: tt('Aylık giderlerinizi yerelde, gizlilikle takip edin.'),
   /** Dosya adlarında kullanılan kısa ad (Türkçe karakter içermemeli). */
   slug: 'harcama-atlasi',

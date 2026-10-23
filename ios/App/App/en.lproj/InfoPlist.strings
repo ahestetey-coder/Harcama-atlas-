@@ -1,0 +1,3 @@
+/* Ana ekrandaki uygulama adı (cihaz dili İngilizce ve diğerleri) */
+"CFBundleDisplayName" = "Spending Atlas";
+"CFBundleName" = "Spending Atlas";
