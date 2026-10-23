@@ -1,6 +1,27 @@
 {
  "articles": [
   {
+   "slug": "cin-otomobilde-avrupayi-geride-birakti-2026-10-23",
+   "videoId": "D6HvJM1mTT4",
+   "channel": "Coin Bureau",
+   "category": "finans-haberleri",
+   "publishAt": "2026-10-23T18:47:00Z",
+   "title": {
+    "tr": "Çin otomobilde Avrupa devlerini nasıl geride bıraktı?",
+    "en": "How China's carmakers overtook Europe's giants"
+   },
+   "summary": {
+    "tr": "Çin elektrikli araçta ihracat lideri olurken Alman otomobil üreticilerinde kârlar ve pazar payı hızla eriyor.",
+    "en": "As China leads EV exports, German carmakers' profits and market share are shrinking fast."
+   },
+   "cover": "https://d8j0ntlcm91z4.cloudfront.net/user_36pFp5nFrWwQLYwgxN8PefZqIU2/hf_20261023_181057_6ddb55be-e2b8-4f68-8956-4c4b389700ba.png",
+   "coverAlt": {
+    "tr": "Limanda gemiye yüklenmeyi bekleyen yeni elektrikli otomobiller",
+    "en": "New electric cars waiting to be loaded at a port"
+   },
+   "onBlog": false
+  },
+  {
    "slug": "guvenli-yatirimin-gizli-riski-2026-10-23",
    "videoId": "u-1ayc9SuOs",
    "channel": "The Money Guy Show",
