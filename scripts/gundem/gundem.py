@@ -69,6 +69,71 @@ def is_short(video_id):
         return False
 
 
+REL_UNITS = [('mo', 30 * 86400), ('month', 30 * 86400), ('second', 1), ('sec', 1), ('minute', 60), ('min', 60), ('hour', 3600), ('hr', 3600),
+             ('day', 86400), ('week', 7 * 86400), ('year', 365 * 86400), ('s', 1), ('m', 60), ('h', 3600), ('d', 86400), ('w', 7 * 86400), ('y', 365 * 86400)]
+
+
+def rel_seconds(text):
+    """'3h ago', '1 day ago', 'Streamed 5 hours ago' → saniye; canlı yayın → 0; anlaşılmazsa None."""
+    t = (text or '').lower()
+    if 'watching' in t or t.strip() == 'live':
+        return 0
+    m = re.search(r'(\d+)\s*([a-z]+)\s+ago', t)
+    if not m:
+        return None
+    for unit, sec in REL_UNITS:
+        if m.group(2) == unit or m.group(2).rstrip('s') == unit:
+            return int(m.group(1)) * sec
+    return None
+
+
+def walk(o):
+    if isinstance(o, dict):
+        yield o
+        for v in o.values():
+            yield from walk(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from walk(v)
+
+
+def page_entries(cid):
+    """RSS çalışmazsa yedek: kanalın Videolar ve Canlı yayınlar sekmelerinden (göreli tarihle)."""
+    now = datetime.now(timezone.utc)
+    out, seen = [], set()
+    for tab in ('videos', 'streams'):
+        html = http(f'https://www.youtube.com/channel/{cid}/{tab}').read().decode('utf-8', 'ignore')
+        m = re.search(r'var ytInitialData\s*=\s*(\{.*?\});\s*</script>', html, re.S)
+        if not m:
+            continue
+        for o in walk(json.loads(m.group(1))):
+            vid = title = when = None
+            if 'lockupViewModel' in o:
+                lv = o['lockupViewModel']
+                if lv.get('contentType', 'LOCKUP_CONTENT_TYPE_VIDEO') != 'LOCKUP_CONTENT_TYPE_VIDEO':
+                    continue
+                vid = lv.get('contentId')
+                meta = lv.get('metadata', {}).get('lockupMetadataViewModel', {})
+                title = meta.get('title', {}).get('content')
+                texts = [d.get('content', '') for d in walk(meta.get('metadata', {})) if isinstance(d.get('content'), str)]
+                texts += [d.get('accessibilityLabel', '') for d in walk(meta.get('metadata', {})) if isinstance(d.get('accessibilityLabel'), str)]
+                when = next((x for x in (rel_seconds(t) for t in texts) if x is not None), None)
+            elif 'videoRenderer' in o or 'gridVideoRenderer' in o:
+                vr = o.get('videoRenderer') or o.get('gridVideoRenderer')
+                vid = vr.get('videoId')
+                title = ''.join(r.get('text', '') for r in vr.get('title', {}).get('runs', [])) or vr.get('title', {}).get('simpleText')
+                when = rel_seconds(vr.get('publishedTimeText', {}).get('simpleText'))
+                if when is None and any('LIVE' in str(b) for b in vr.get('badges', [])):
+                    when = 0
+            if not vid or vid in seen or when is None:
+                continue
+            seen.add(vid)
+            out.append((vid, title or '', now - timedelta(seconds=when)))
+    if not out:
+        raise RuntimeError('kanal sayfasından video okunamadı')
+    return out
+
+
 def scan_since(hours):
     """Varsayılan: son başarılı taramadan 1 saat öncesi (en az 12, en çok 7 gün geriye).
     Görev bir saatte çalışamazsa (ör. kullanım limiti) sonraki çalışma kaçanları toplar."""
@@ -98,20 +163,24 @@ def cmd_scan(hours=None):
             had = bool(ch.get('id'))
             cid = channel_id(ch)
             changed |= not had
-            feed = ET.fromstring(http(f'https://www.youtube.com/feeds/videos.xml?channel_id={cid}').read())
+            try:
+                feed = ET.fromstring(http(f'https://www.youtube.com/feeds/videos.xml?channel_id={cid}').read())
+                entries = [(e.findtext('yt:videoId', namespaces=ns), e.findtext('a:title', namespaces=ns),
+                            datetime.fromisoformat(e.findtext('a:published', namespaces=ns).replace('Z', '+00:00')))
+                           for e in feed.findall('a:entry', ns)]
+            except Exception:  # noqa: BLE001  (YouTube RSS zaman zaman 404 veriyor)
+                entries = page_entries(cid)
         except Exception as e:  # noqa: BLE001
             errors.append({'channel': ch['handle'], 'error': str(e)})
             continue
         items = []
-        for e in feed.findall('a:entry', ns):
-            vid = e.findtext('yt:videoId', namespaces=ns)
-            published = datetime.fromisoformat(e.findtext('a:published', namespaces=ns).replace('Z', '+00:00'))
+        for vid, title, published in entries:
             if published < since or vid in done:
                 continue
             if is_short(vid):
                 continue
             items.append({'order': order, 'channel': ch['name'], 'handle': ch['handle'], 'lang': ch['lang'],
-                          'videoId': vid, 'title': e.findtext('a:title', namespaces=ns), 'published': published.isoformat()})
+                          'videoId': vid, 'title': title, 'published': published.isoformat()})
         out += sorted(items, key=lambda x: x['published'])
     if changed:
         CHANNELS_FILE.write_text(json.dumps(channels, ensure_ascii=False, indent=2) + '\n', 'utf-8')

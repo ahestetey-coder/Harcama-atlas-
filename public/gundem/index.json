@@ -1,6 +1,27 @@
 {
  "articles": [
   {
+   "slug": "borsa-sert-dustu-altin-4000-dolar-sinirinda-2026-10-24",
+   "videoId": "LQzRpf_WudQ",
+   "channel": "Cihat E. Çiçek",
+   "category": "piyasa-notu",
+   "publishAt": "2026-10-24T06:20:00Z",
+   "title": {
+    "tr": "Borsa sert düştü, altın 4.000 dolar sınırında",
+    "en": "Stocks slide hard as gold holds near $4,000"
+   },
+   "summary": {
+    "tr": "Bankaların öncülüğünde sert düşen Borsa İstanbul, 4.000 dolar civarında tutunan ons altın ve bütçedeki konut vergisi beklentisi haftanın son tablosunu çiziyor.",
+    "en": "A bank-led slide on Borsa Istanbul, gold clinging to around $4,000 an ounce and a budget assumption on housing taxes shape the week's closing picture."
+   },
+   "cover": "https://d8j0ntlcm91z4.cloudfront.net/user_36pFp5nFrWwQLYwgxN8PefZqIU2/hf_20261024_061044_58be47de-befe-444a-abec-a2a415285773.png",
+   "coverAlt": {
+    "tr": "Kırmızı ekran ışığı önünde altın külçeler",
+    "en": "Gold bars in front of a red market screen glow"
+   },
+   "onBlog": false
+  },
+  {
    "slug": "cin-otomobilde-avrupayi-geride-birakti-2026-10-23",
    "videoId": "D6HvJM1mTT4",
    "channel": "Coin Bureau",
