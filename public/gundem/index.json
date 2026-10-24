@@ -1,6 +1,27 @@
 {
  "articles": [
   {
+   "slug": "kara-pazartesi-1987-korumanin-tersine-dondugu-gun-2026-10-24",
+   "videoId": "yzk-aMHCvv8",
+   "channel": "Coin Bureau",
+   "category": "finans-egitimi",
+   "publishAt": "2026-10-24T06:50:00Z",
+   "title": {
+    "tr": "Kara Pazartesi 1987: korumanın tersine döndüğü gün",
+    "en": "Black Monday 1987: the day protection backfired"
+   },
+   "summary": {
+    "tr": "1987 çöküşünde portföy sigortası ve teminat çağrıları satışları büyüttü, Fed'in likidite desteği ise krizin ekonomiye yayılmasını önledi.",
+    "en": "In the 1987 crash, portfolio insurance and margin calls amplified the selling, while Fed liquidity support kept the crisis from spreading to the economy."
+   },
+   "cover": "https://d8j0ntlcm91z4.cloudfront.net/user_36pFp5nFrWwQLYwgxN8PefZqIU2/hf_20261024_061048_d22674a2-05ec-4db2-81f1-73fa24314d29.png",
+   "coverAlt": {
+    "tr": "1980'lerde kaotik bir borsa salonu",
+    "en": "A chaotic 1980s stock exchange floor"
+   },
+   "onBlog": true
+  },
+  {
    "slug": "borsa-sert-dustu-altin-4000-dolar-sinirinda-2026-10-24",
    "videoId": "LQzRpf_WudQ",
    "channel": "Cihat E. Çiçek",
